@@ -119,10 +119,10 @@ namespace bla
 				sum += m_data[i] * m_data[i];
 			return sum;
 		}
-		inline Scalar L2() const {
+		inline Scalar L2_norm() const {
 			return std::sqrt(L2_square());
 		}
-		inline Scalar L1() const {
+		inline Scalar L1_norm() const {
 			Scalar sum = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
 				sum += std::abs(m_data[i]);
