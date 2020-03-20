@@ -5,9 +5,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(SmallEngine)
 
+
 if(MSVC)
-    #add_compile_options(/W4 /WX)
+    message("Compiler" ${MSVC_VERSION})
+    add_compile_options(/WX)
     add_compile_options(/MDd)
+    if (MSVC_VERSION GREATER_EQUAL "1900")
+        include(CheckCXXCompilerFlag)
+        CHECK_CXX_COMPILER_FLAG("/std:c++latest" _cpp_latest_flag_supported)
+        if (_cpp_latest_flag_supported)
+            add_compile_options("/std:c++latest")
+        endif()
+    endif()
 else()
     add_compile_options(-Wall -Wextra)
 endif()
@@ -29,9 +38,6 @@ include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 
 include("${CMAKE_SOURCE_DIR}/include/local.cmake")
 
-include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-)
 
 # ---------------------------------------------------------------------------
 # Sources

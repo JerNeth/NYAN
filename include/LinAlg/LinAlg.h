@@ -1,31 +1,37 @@
-#ifndef LINALG_H
-#define LINALG_H
+#pragma once
 #include <type_traits>
 #include <cstdint>
 #include <optional>
+#include <array>
+#include <concepts>
 
 namespace bla
 {
 	//C++20 alternative
+	//Should work but somehow doesn't
 	//template<typename T>
-	//concept Test = requires std::is_arithmetic<T>::value;
+	//concept Is_Scalar = requires std::is_arithmetic<T>::value;
+	//replaces
+	//typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type 
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) {
-		if (a < b)
+	inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
+		if ((a <=> b) < 0)
 			return a;
 		return b;
 	}
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const Scalar& max(const Scalar& a, const Scalar& b) {
-		if (a > b)
+	inline constexpr const Scalar& max(const Scalar& a, const Scalar& b) noexcept {
+		//Three way comparison, why? because it's new
+		//No really, no reason to do this
+		if ((a <=> b) > 0)
 			return a;
 		return b;
 	}
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar&eps = Scalar(1e-5)) {
+	inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar&eps = Scalar(1e-5)) noexcept {
 		return ((a - eps) <= b) && ((a + eps) >= b);
 	}
 
@@ -36,204 +42,266 @@ namespace bla
 	class Vec
 	{
 	private:
-		Scalar m_data[Size];
+		std::array<Scalar, Size> m_data;
 	public:
-		Vec(): m_data() {
+		Vec() noexcept : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = 0;
 		}
-		Vec(Scalar scalar) : m_data() {
+		// I think this one is unnecessary
+		// Although you could also argue that the other one is unnecessary and copy is better
+		//explicit Vec(Scalar scalar) : m_data() {
+		//	for (size_t i = 0; i < Size; i++)
+		//		m_data[i] = scalar;
+		//}
+		//Without explicit: Vec<int, 2> t = 2; would compile
+		explicit Vec(Scalar const& scalar) noexcept : m_data()  {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = scalar;
 		}
+		// For now this only confuses, sticking to initializer lists
+		//Vec(Scalar scalar, Scalar scalar...) : m_data() {
+		//	if constexpr (Size != sizeof(scalar...))
+		//		throw std::out_of_range("Too many parameters");
+		//}
 		Vec(std::initializer_list<Scalar> scalars) : m_data() {
 			if (Size != scalars.size())
-				throw std::out_of_range("Index out of range");
+				throw std::out_of_range("Too many parameters");
 			size_t i = 0;
 			for (Scalar s : scalars) {
 				m_data[i] = s;
 				i++;
 			}
 		}
-		Vec(Scalar& scalar): m_data() {
-			for (size_t i = 0; i < Size; i++)
-				m_data[i] = scalar;
-		}
-		friend inline bool operator==(const Vec& lhs, const Vec& rhs) {
+		friend inline bool operator==(const Vec& lhs, const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (lhs.m_data[i] != rhs.m_data[i]) 
 					return false;
 			return true;
 		}
-		friend inline Vec operator+(const Vec& lhs, const Vec& rhs) {
+		friend inline Vec operator+(const Vec& lhs, const Vec& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] + rhs.m_data[i];
 			return result;
 		}
-		friend inline Vec operator-(const Vec& lhs, const Vec& rhs) {
+		friend inline Vec operator-(const Vec& lhs, const Vec& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] - rhs.m_data[i];
 			return result;
 		}
-		friend inline Vec operator*(const Vec& lhs, const Vec& rhs) {
+		/*
+		*	elementwise multiplication
+		*/
+		friend inline Vec operator*(const Vec& lhs, const Vec& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] * rhs.m_data[i];
 			return result;
 		}
-		friend inline bool operator==(const Vec& lhs, const Scalar& rhs) {
+		friend inline bool operator==(const Vec& lhs, const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (lhs.m_data[i] != rhs)
 					return false;
 			return true;
 		}
-		friend inline Vec operator+(const Vec& lhs, const Scalar& rhs) {
+		friend inline Vec operator+(const Vec& lhs, const Scalar& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] + rhs;
 			return result;
 		}
-		friend inline Vec operator-(const Vec& lhs, const Scalar& rhs) {
+		friend inline Vec operator+(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs + rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator-(const Vec& lhs, const Scalar& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] - rhs;
 			return result;
 		}
-		friend inline Vec operator*(const Vec& lhs, const Scalar& rhs) {
+		friend inline Vec operator-(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs - rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator*(const Vec& lhs, const Scalar& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] * rhs;
 			return result;
 		}
-		friend inline Vec operator/(const Vec& lhs, const Scalar& rhs) {
+		friend inline Vec operator*(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs * rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator/(const Vec& lhs, const Scalar& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] / rhs;
 			return result;
 		}
-		inline Scalar L2_square() const {
+		friend inline Vec operator/(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs / rhs.m_data[i];
+			return result;
+		}
+		inline Scalar L2_square() const noexcept {
 			Scalar sum = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
 				sum += m_data[i] * m_data[i];
 			return sum;
 		}
-		inline Scalar L2_norm() const {
+		inline Scalar L2_norm() const noexcept {
 			return std::sqrt(L2_square());
 		}
-		inline Scalar L1_norm() const {
+		inline Scalar L1_norm() const noexcept {
 			Scalar sum = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
 				sum += std::abs(m_data[i]);
 			return sum;
 		}
-		inline Vec& operator=(const Scalar& rhs)
-		{
+		inline Vec& operator=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] += rhs;
 			return *this;
 		}
-		inline Vec& operator=(Scalar& rhs)
-		{
+		inline Vec& operator=(Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = rhs;
 			return *this;
 		}
-		inline Vec& operator+=(const Vec& rhs)
-		{
+		inline Vec& operator+=(const Vec& rhs) noexcept {
 			for(size_t i = 0; i<Size; i++)
 				m_data[i] += rhs.m_data[i];
 			return *this;
 		}
-		inline Vec& operator-=(const Vec& rhs)
-		{
+		inline Vec& operator-=(const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] -= rhs.m_data[i];
 			return *this;
 		}
-		inline Vec& operator*=(const Vec& rhs)
-		{
+		inline Vec& operator*=(const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] *= rhs.m_data[i];
 			return *this;
 		}
-		inline Vec& operator+=(const Scalar& rhs)
-		{
+		inline Vec& operator+=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] += rhs;
 			return *this;
 		}
-		inline Vec& operator-=(const Scalar& rhs)
-		{
+		inline Vec& operator-=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] -= rhs;
 			return *this;
 		}
-		inline Vec& operator*=(const Scalar& rhs)
-		{
+		inline Vec& operator*=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] *= rhs;
 			return *this;
 		}
-		inline Vec& operator/=(const Scalar& rhs)
-		{
+		inline Vec& operator/=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] /= rhs;
 			return *this;
 		}
-		inline const Scalar& operator[] (const size_t index) const {
+		inline const Scalar& operator[] (const size_t index) const noexcept {
 			//Just pass through, User responsible for bounds
 			//if (Size <= index)
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
-		inline Scalar& operator[](const size_t index) {
+		inline Scalar& operator[](const size_t index) noexcept {
 			//Just pass through, User responsible for bounds
 			//if(Size <= index)
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
-		inline Scalar dot(const Vec& rhs) const {
+		//inline Vec pow(Scalar exponent) {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = pow(m_data[i], exponent);
+		//	return result;
+		//}
+		/// I don't know if this is a good idea, or not. We'll see.
+		friend inline Vec operator^(const Vec& lhs, const Scalar& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = pow(lhs.m_data[i], rhs);
+			return result;
+		}
+		/// Even less of a good idea than the one before
+		friend inline Vec operator^(const Vec& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = pow(lhs.m_data[i], rhs.m_data[i]);
+			return result;
+		}
+		inline Scalar dot(const Vec& rhs) const noexcept {
 			// Not sure if this is better than = 0, but this way we correctly have a Scalar
 			Scalar result = Scalar();
 			for (size_t i = 0; i < Size; i++)
 				result += m_data[i] * rhs.m_data[i];
 			return result;
 		}
-		inline Scalar& x() {
+		inline Vec& apply_fun( Scalar fun(Scalar)) noexcept {
+			for (size_t i = 0; i < Size; i++)
+				m_data[i] = fun(m_data[i]);
+			return *this;
+		}
+		
+		inline Scalar& x() noexcept {
 			static_assert(Size > 0);
 			return m_data[0];
 		}
-		inline Scalar& y() {
+		inline Scalar& y() noexcept {
 			static_assert(Size > 1);
 			return m_data[1];
 		}
-		inline Scalar& z() {
+		inline Scalar& z() noexcept {
 			static_assert(Size > 2);
 			return m_data[2];
 		}
-		inline Scalar& w() {
+		inline Scalar& w() noexcept {
 			static_assert(Size > 3);
 			return m_data[3];
 		}
-		inline Scalar& r() {
+		inline Scalar& r() noexcept {
 			static_assert(Size > 0);
 			return m_data[0];
 		}
-		inline Scalar& g() {
+		inline Scalar& g() noexcept {
 			static_assert(Size > 1);
 			return m_data[1];
 		}
-		inline Scalar& b() {
+		inline Scalar& b() noexcept {
 			static_assert(Size > 2);
 			return m_data[2];
 		}
-		inline Scalar& a() {
+		inline Scalar& a() noexcept {
 			static_assert(Size > 3);
 			return m_data[3];
 		}
 	};
+	template<typename Scalar,
+		size_t Size,
+		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
+	inline Scalar dot(Vec<Scalar, Size>& lhs, Vec<Scalar, Size>& rhs) {
+		// Not sure if this is better than = 0, but this way we correctly have a Scalar
+		Scalar result = Scalar();
+		for (size_t i = 0; i < Size; i++)
+			result += lhs[i] * rhs[i];
+		return result;
+	}
 	template<
 		typename Scalar,
 		size_t Size_x,
@@ -242,7 +310,7 @@ namespace bla
 	class Mat
 	{
 	private:
-		Scalar m_data[Size_x * Size_y];
+		std::array<Scalar, Size_x* Size_y> m_data;
 	public:
 		Mat() : m_data() {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
@@ -252,7 +320,11 @@ namespace bla
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = scalar;
 		}
-		Mat(Vec<Scalar,Size_x>& vec) : m_data() {
+		Mat(const Scalar& scalar) : m_data() {
+			for (size_t i = 0; i < Size_x * Size_y; i++)
+				m_data[i] = scalar;
+		}
+		explicit Mat(Vec<Scalar,Size_x>& vec) : m_data() {
 			static_assert(Size_y == 1);
 			for (size_t i = 0; i < Size_x; i++)
 				m_data[i] = vec[i];
@@ -266,10 +338,7 @@ namespace bla
 				i++;
 			}
 		}
-		Mat(Scalar& scalar) : m_data() {
-			for (size_t i = 0; i < Size_x * Size_y; i++)
-				m_data[i] = scalar;
-		}
+		
 		friend inline Mat operator+(const Mat& lhs, const Mat& rhs) {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
@@ -429,6 +498,7 @@ namespace bla
 			//	throw std::out_of_range("Index out of range");
 			return m_data[y*Size_x + x];
 		}
+		//TODO, this is ugly
 		Mat<Scalar, Size_x -1, Size_y -1> cofactor(const size_t i, const size_t j) const {
 			Mat<Scalar, Size_x - 1, Size_y - 1> ret;
 			size_t x_offset = 0;
@@ -455,6 +525,7 @@ namespace bla
 		}
 		Mat transpose() const {
 			Mat ret;
+			//TODO do that for non square matrices
 			static_assert(Size_x == Size_y);
 			for (size_t x = 0; x < Size_x; x++) {
 				for (size_t y = x; y < Size_y; y++) {
@@ -583,8 +654,8 @@ namespace bla
 	template<typename Scalar, typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 	class Quaternion {
 	private:
-		Scalar real;
-		Vec<Scalar, 3> imaginary;
+		Scalar m_real;
+		Vec<Scalar, 3> m_imaginary;
 	};
 
 	typedef Vec<float, 2> vec2;
@@ -602,6 +673,8 @@ namespace bla
 	typedef Vec<int8_t, 3> vec2_b;
 	typedef Vec<int8_t, 3> vec3_b;
 	typedef Vec<int8_t, 4> vec4_b;
+
+	/*
 	typedef Vec<uint32_t, 2> vec2_ui;
 	typedef Vec<uint32_t, 3> vec3_ui;
 	typedef Vec<uint32_t, 4> vec4_ui;
@@ -611,6 +684,7 @@ namespace bla
 	typedef Vec<uint8_t, 2> vec2_ub;
 	typedef Vec<uint8_t, 3> vec3_ub;
 	typedef Vec<uint8_t, 4> vec4_ub;
+	*/
 
 
 
@@ -629,6 +703,7 @@ namespace bla
 	typedef Mat<int8_t, 2, 2> mat22_b;
 	typedef Mat<int8_t, 3, 3> mat33_b;
 	typedef Mat<int8_t, 4, 4> mat44_b;
+	/*
 	typedef Mat<uint32_t, 2, 2> mat22_ui;
 	typedef Mat<uint32_t, 3, 3> mat33_ui;
 	typedef Mat<uint32_t, 4, 4> mat44_ui;
@@ -638,10 +713,10 @@ namespace bla
 	typedef Mat<uint8_t, 2, 2> mat22_ub;
 	typedef Mat<uint8_t, 3, 3> mat33_ub;
 	typedef Mat<uint8_t, 4, 4> mat44_ub;
+	*/
 
 	typedef Quaternion<float>  quat;
 	typedef Quaternion<double> quatd;
 
 
 }
-#endif // LINALG_H
