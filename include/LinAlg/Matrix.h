@@ -1,6 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 #pragma once
+#include <optional>
 
 namespace bla {
 	template<typename Scalar, size_t Size> class Vec;

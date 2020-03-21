@@ -1,13 +1,14 @@
 #ifndef LINALG_H
 #define LINALG_H
 #pragma once
-#include <type_traits>
-#include <cstdint>
-#include <optional>
-#include <array>
 #include "Matrix.h"
 #include "Vector.h"
 #include "Quaternion.h"
+
+#include <type_traits>
+#include <cstdint>
+#include <array>
+#include <compare>
 
 namespace bla
 {
@@ -19,6 +20,8 @@ namespace bla
 	//concept Is_Scalar = requires std::is_arithmetic<T>::value;
 	//replaces
 	//typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type 
+
+
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 	inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
@@ -38,7 +41,7 @@ namespace bla
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 	inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar&eps = Scalar(1e-5)) noexcept {
-		return ((a - eps) <= b) && ((a + eps) >= b);
+		return ((a - eps) < b) && ((a + eps) > b);
 	}
 	template<typename T>
 	inline constexpr const T square(const T& a) noexcept {
@@ -66,7 +69,7 @@ namespace bla
 	typedef Vec<int8_t, 3> vec3_b;
 	typedef Vec<int8_t, 4> vec4_b;
 
-	/*
+	/* Unsigned integer vectors do not really make that much sense
 	typedef Vec<uint32_t, 2> vec2_ui;
 	typedef Vec<uint32_t, 3> vec3_ui;
 	typedef Vec<uint32_t, 4> vec4_ui;
@@ -95,7 +98,7 @@ namespace bla
 	typedef Mat<int8_t, 2, 2> mat22_b;
 	typedef Mat<int8_t, 3, 3> mat33_b;
 	typedef Mat<int8_t, 4, 4> mat44_b;
-	/*
+	/* Unsigned integer matrices do not really make that much sense
 	typedef Mat<uint32_t, 2, 2> mat22_ui;
 	typedef Mat<uint32_t, 3, 3> mat33_ui;
 	typedef Mat<uint32_t, 4, 4> mat44_ui;
@@ -109,7 +112,12 @@ namespace bla
 
 	typedef Quaternion<float>  quat;
 	typedef Quaternion<double> quatd;
-
-
+	// ============================================================================================================
+	// Constants
+	// ============================================================================================================
+	constexpr double pi	= 3.14159265358979323846;
+	constexpr double pi_2 = 1.57079632679489661923;
+	constexpr double rad_to_deg = 180.0 / pi; 
+	constexpr double deg_to_rad = pi / 180.0;
 }
 #endif // !LINALG_H

@@ -1,7 +1,25 @@
 #include <gtest/gtest.h>
 #include "LinAlg.h"
-
+#include <random>
 namespace bla {
+    TEST(Linalg, Close) {
+        double a = 1.0;
+        double b = 1.0;
+        double c = 1.0001;
+        EXPECT_TRUE(close(a, b));
+        EXPECT_FALSE(close(a, c));
+        EXPECT_TRUE(close(a, c, 0.1));
+    }
+    TEST(Linalg, Min) {
+        double a = 1.0;
+        double c = 1.0001;
+        EXPECT_EQ(a, min(a, c));
+    }
+    TEST(Linalg, MAX) {
+        double a = 1.0;
+        double c = 1.0001;
+        EXPECT_EQ(c, max(a, c));
+    }
     TEST(Vectors, Assignment) {
         bla::vec4 test({ 0,0,0,0 });
         test.x() = 5;
@@ -169,7 +187,66 @@ namespace bla {
         quat a;
         vec3 t;
         vec4 b;
-        //t = a * t;
-        //b = a * b;
+        t = a * t;
+        b = a * b;
+    }
+    TEST(Quaternions, EulerAnglesBasic) {
+        vec3 angles({90, 0, 0});
+        quat q(angles);
+        vec3 angles2 = q.to_euler_angles();
+        EXPECT_TRUE(close(angles, angles2));
+    }
+    TEST(Quaternions, EulerAnglesExtensive) {
+        /* Rotations aren't unique need comparison function
+        static std::default_random_engine rng;
+
+        std::uniform_real_distribution<float> dist(0.0, 360.0);
+
+        for (int i = 0; i < 1000; i++) {
+            vec3 angles({ dist(rng), 0, 0});
+            quat q(angles);
+            vec3 angles2 = q.to_euler_angles();
+            for (int j = 0; j < 3; j++) {
+                if (angles2[j] < 0) {
+                    angles2[j] += 360;
+                }
+            }
+            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+        }
+        for (int i = 0; i < 1000; i++) {
+            vec3 angles({ 0, dist(rng), 0 });
+            quat q(angles);
+            vec3 angles2 = q.to_euler_angles();
+            for (int j = 0; j < 3; j++) {
+                if (angles2[j] < 0) {
+                    angles2[j] += 360;
+                }
+            }
+            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+        }
+        for (int i = 0; i < 1000; i++) {
+            vec3 angles({ 0, 0, dist(rng) });
+            quat q(angles);
+            vec3 angles2 = q.to_euler_angles();
+            for (int j = 0; j < 3; j++) {
+                if (angles2[j] < 0) {
+                    angles2[j] += 360;
+                }
+            }
+            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+        }
+        */
+    }
+    TEST(Quaternions, VectorRotations) {
+        vec3 position({ 1,0,0 });
+        quat q(vec3{0,0,90});
+        vec3 result = q * position;
+        vec3 expected_result({0, 1, 0});
+        EXPECT_TRUE(close(result, expected_result)) << result.to_string() << " not equal to " << expected_result.to_string();
+
+        q = quat(vec3{ 0,90,0 });
+        result = q * position;
+        expected_result = vec3({ 0, 0, -1 });
+        EXPECT_TRUE(close(result, expected_result)) << result.to_string() << " not equal to " << expected_result.to_string();
     }
 }

@@ -69,6 +69,19 @@ namespace bla {
 				result.m_data[i] = lhs.m_data[i] * rhs.m_data[i];
 			return result;
 		}
+		inline std::string to_string() {
+			std::string result("(");
+			for (size_t i = 0; i < (Size-1); i++)
+				result += std::to_string(m_data[i]) + ", ";
+			result += std::to_string(m_data[Size - 1]) + ")";
+			return result;
+		}
+		friend inline bool close(const Vec& lhs, const Vec& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
+			for (size_t i = 0; i < Size; i++)
+				if (!close(lhs.m_data[i], rhs.m_data[i], eps))
+					return false;
+			return true;
+		}
 		friend inline bool operator==(const Vec& lhs, const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (lhs.m_data[i] != rhs)
