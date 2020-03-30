@@ -2,4 +2,4 @@
 
 ## Description
 
-This is supposed to be a simple rendering engine based on vulkan
+This is supposed to be a simple engine based on vulkan
