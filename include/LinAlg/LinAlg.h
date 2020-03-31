@@ -41,7 +41,7 @@ namespace bla
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 	inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar&eps = Scalar(1e-5)) noexcept {
-		return ((a - eps) < b) && ((a + eps) > b);
+		return ((a - eps) <= b) && ((a + eps) >= b);
 	}
 	template<typename T>
 	inline constexpr const T square(const T& a) noexcept {

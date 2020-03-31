@@ -1,6 +1,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 #pragma once
+#include <string>
 
 namespace bla {
 	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
@@ -28,12 +29,19 @@ namespace bla {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = scalar;
 		}
+		template<size_t Size_other>
+		explicit Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
+			for (size_t i = 0; i < min(Size, Size_other); i++)
+				m_data[i] = other[i];
+			for (size_t i = min(Size, Size_other); i < Size; i++)
+				m_data[i] = Scalar(0);
+		}
 		// For now this only confuses, sticking to initializer lists
 		//Vec(Scalar scalar, Scalar scalar...) : m_data() {
 		//	if constexpr (Size != sizeof(scalar...))
 		//		throw std::out_of_range("Too many parameters");
 		//}
-		Vec(std::initializer_list<Scalar> scalars) : m_data() {
+		explicit Vec(std::initializer_list<Scalar> scalars) : m_data() {
 			if (Size != scalars.size())
 				throw std::out_of_range("Too many parameters");
 			size_t i = 0;
@@ -69,7 +77,7 @@ namespace bla {
 				result.m_data[i] = lhs.m_data[i] * rhs.m_data[i];
 			return result;
 		}
-		inline std::string to_string() {
+		inline std::string convert_to_string() {
 			std::string result("(");
 			for (size_t i = 0; i < (Size-1); i++)
 				result += std::to_string(m_data[i]) + ", ";

@@ -21,7 +21,9 @@ endif()
 
 
 
-#find_package(Threads REQUIRED)
+find_package(Threads REQUIRED)
+find_package(Openmp REQUIRED)
+find_package(Vulkan REQUIRED)
 # GTest
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 

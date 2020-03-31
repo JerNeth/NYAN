@@ -12,15 +12,15 @@ namespace bla {
 		Quaternion() : m_real(), m_imaginary() {
 
 		}
-		Quaternion(Scalar real, Vec<Scalar, 3> imaginary) : m_real(real), m_imaginary(imaginary) {
+		explicit Quaternion(Scalar real, Vec<Scalar, 3> imaginary) : m_real(real), m_imaginary(imaginary) {
 
 		}
-		Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
+		explicit Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
 
 		}
 		// Expects Angles in Degrees
 		// Reason being: this is expected to be used as a human interface and not intended for internal use, this is what quaternions are for
-		Quaternion(Scalar x_roll, Scalar y_pitch, Scalar z_yaw)  {
+		explicit Quaternion(Scalar x_roll, Scalar y_pitch, Scalar z_yaw)  {
 			//Source https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 			//TODO currently expanded to double, maybe give the option to stick to given precision
 			double cy = cos(z_yaw * 0.5 * deg_to_rad);
@@ -36,7 +36,7 @@ namespace bla {
 		}
 		// Expects Angles in Degrees
 		// Reason being: this is expected to be used as a human interface and not intended for internal use, this is what quaternions are for
-		Quaternion(Vec<Scalar, 3> euler_angles) {
+		explicit Quaternion(Vec<Scalar, 3> euler_angles) {
 			//Source https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 			//TODO currently expanded to double, maybe give the option to stick to given precision
 			double cy = cos(euler_angles[2] * 0.5 * deg_to_rad);
@@ -80,13 +80,22 @@ namespace bla {
 			result.m_imaginary = lhs.m_imaginary * rhs;
 			return result;
 		}
+		inline std::string convert_to_string() {
+			std::string result("(");
+			result += std::to_string(m_real) + ", ";
+			result += m_imaginary.convert_to_string() + ")";
+			return result;
+		}
 		friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
-			Quaternion result = lhs * Quaternion(0, rhs) * lhs.inverse();
-			return result.m_imaginary;
+			//Vec<Scalar, 3> result = Scalar(2) * dot(m_imaginary, rhs) * m_imaginary + (square(m_real) - dot(m_imaginary, m_imaginary)) * rhs + Scalar(2) * m_real * (cross(m_imaginary, rhs));
+			return Scalar(2) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(rhs);
 		}
 		friend inline Vec<Scalar, 4> operator*(const Quaternion& lhs, const Vec<Scalar, 4>& rhs) noexcept {
-			Quaternion result = lhs * Quaternion(0, Vec<Scalar, 3>({ rhs[0], rhs[1], rhs[2] })) * lhs.inverse();
-			return Vec<Scalar, 4>({result.m_imaginary[0], result.m_imaginary[1], result.m_imaginary[2], Scalar(1)});
+			//Quaternion result = lhs * Quaternion(0, Vec<Scalar, 3>({ rhs[0], rhs[1], rhs[2] })) * lhs.inverse();
+			//return Vec<Scalar, 4>({result.m_imaginary[0], result.m_imaginary[1], result.m_imaginary[2], Scalar(1)});
+			auto tmp = Vec<Scalar, 3>(rhs);
+			tmp = Scalar(2) * lhs.m_imaginary.dot(tmp) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * tmp + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(tmp);
+			return Vec<Scalar, 4>({ tmp.x(), tmp.y(), tmp.z(), rhs[3]});
 		}
 		friend inline Quaternion operator/(const Quaternion& lhs, const Scalar& rhs) noexcept {
 			Quaternion result;

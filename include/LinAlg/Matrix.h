@@ -1,6 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 #pragma once
+#include <string>
 #include <optional>
 
 namespace bla {
@@ -18,11 +19,7 @@ namespace bla {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = Scalar();
 		}
-		Mat(Scalar scalar) : m_data() {
-			for (size_t i = 0; i < Size_x * Size_y; i++)
-				m_data[i] = scalar;
-		}
-		Mat(const Scalar& scalar) : m_data() {
+		explicit Mat(const Scalar& scalar) : m_data() {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = scalar;
 		}
@@ -34,12 +31,12 @@ namespace bla {
 			m_data[at<Size_x>(2, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] + rotation.m_imaginary[1] * rotation.m_real);
 
 			m_data[at<Size_x>(0, 1)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] + rotation.m_imaginary[2] * rotation.m_real);
-			m_data[at<Size_x>(1, 1)] = Scalar(1) - s2 * (square(rotation.m_imaginary[1]) + square(rotation.m_imaginary[2]));
+			m_data[at<Size_x>(1, 1)] = Scalar(1) - s2 * (square(rotation.m_imaginary[0]) + square(rotation.m_imaginary[2]));
 			m_data[at<Size_x>(2, 1)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] - rotation.m_imaginary[0] * rotation.m_real);
 
 			m_data[at<Size_x>(0, 2)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] - rotation.m_imaginary[1] * rotation.m_real);
 			m_data[at<Size_x>(1, 2)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] + rotation.m_imaginary[0] * rotation.m_real);
-			m_data[at<Size_x>(2, 2)] = Scalar(1) - s2 * (square(rotation.m_imaginary[1]) + square(rotation.m_imaginary[2]));
+			m_data[at<Size_x>(2, 2)] = Scalar(1) - s2 * (square(rotation.m_imaginary[0]) + square(rotation.m_imaginary[1]));
 			if constexpr (Size_x == 4) {
 				m_data[at<Size_x>(0, 3)] = Scalar(0);
 				m_data[at<Size_x>(1, 3)] = Scalar(0);
@@ -63,7 +60,7 @@ namespace bla {
 					m_data[i] = vec[i];
 			}
 		}
-		Mat(std::initializer_list<Scalar> scalars) : m_data() {
+		explicit Mat(std::initializer_list<Scalar> scalars) : m_data() {
 			if (Size_x * Size_y != scalars.size())
 				throw std::out_of_range("Index out of range");
 			size_t i = 0;
@@ -109,10 +106,25 @@ namespace bla {
 				result.m_data[i] = lhs.m_data[i] / rhs;
 			return result;
 		}
+		inline std::string convert_to_string() {
+			std::string result("(");
+			for (size_t j = 0; j < (Size_y - 1); j++) {
+				for (size_t i = 0; i < Size_x; i++)
+					result += std::to_string(m_data[at<Size_x>((int)i, (int)j)]) + ", ";
+				result += "\n";
+			}
+			for (size_t i = 0; i < Size_x-1; i++)
+				result += std::to_string(m_data[at<Size_x>((int)i, Size_y - 1)]) + ", ";
+			result += std::to_string(m_data[Size_x*Size_y - 1]) + ")";
+			return result;
+		}
 		friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_y>& rhs) noexcept {
 			Vec<Scalar, Size_y> result;
 			for (size_t y = 0; y < Size_y; y++) {
-				result.m_data[y] = lhs.col(y).dot(rhs);
+				Scalar tmp = Scalar(0);
+				for (size_t x = 0; x < Size_x; x++)
+					tmp += lhs.m_data[at<Size_x>((int) x, (int) y)] * rhs[x];
+				result[y] = tmp;
 			}
 			return result;
 		}
@@ -366,6 +378,28 @@ namespace bla {
 		static Mat identity() {
 			return Mat::eye(1);
 		}
+		static Mat<Scalar, 2, 2> rotation_matrix(Scalar angle) {
+			Scalar cos_t = Scalar(cos(angle));
+			Scalar sin_t = Scalar(sin(angle));
+			return Mat<Scalar, 2, 2>({ cos_t, -sin_t, sin_t, cos_t});
+		}
+		static Mat<Scalar, 3, 3> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) { // roll (x), pitch (y), yaw (z) in degrees
+			Scalar cos_a = Scalar(cos(yaw * deg_to_rad));
+			Scalar sin_a = Scalar(sin(yaw * deg_to_rad));
+			Scalar cos_b = Scalar(cos(pitch * deg_to_rad));
+			Scalar sin_b = Scalar(sin(pitch * deg_to_rad));
+			Scalar cos_y = Scalar(cos(roll * deg_to_rad));
+			Scalar sin_y = Scalar(sin(roll * deg_to_rad));
+
+			//https://en.wikipedia.org/wiki/Rotation_matrix
+			return Mat<Scalar, 3, 3>({ cos_a * cos_b,	cos_a * sin_b * sin_y - sin_a * cos_y,	cos_a * sin_b * cos_y + sin_a * sin_y,
+										sin_a * cos_b,	sin_a * sin_b * sin_y + cos_y * cos_y,	sin_a * sin_b * cos_y - cos_a * sin_y,
+										-sin_b,			cos_b * sin_y,							cos_b * cos_y });
+		}
+		static inline Mat<Scalar, 3, 3> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
+			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
+		}
+		
 	private:
 		std::array<Scalar, Size_x* Size_y> m_data;
 		// I would really prefer C++20 concepts instead of this

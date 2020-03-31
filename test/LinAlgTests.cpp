@@ -6,9 +6,14 @@ namespace bla {
         double a = 1.0;
         double b = 1.0;
         double c = 1.0001;
+        double d = -1.0;
+        double e = -1.0001;
         EXPECT_TRUE(close(a, b));
         EXPECT_FALSE(close(a, c));
         EXPECT_TRUE(close(a, c, 0.1));
+        EXPECT_FALSE(close(d, e));
+        EXPECT_TRUE(close(d, e, 0.1));
+
     }
     TEST(Linalg, Min) {
         double a = 1.0;
@@ -173,6 +178,50 @@ namespace bla {
         EXPECT_EQ(cross(a, c), -b);
         EXPECT_EQ(cross(c, b), -a);
     }
+    TEST(Vectors, Close) {
+        bla::vec3 a({ 0, 0, 1 }), b({ 0, 0, 1 }), c({ 0, 0, 1.001f }), d({ 0, 0, -1.0f }), e({0, 0, -1.001f});
+
+        EXPECT_TRUE(close(a, a));
+        EXPECT_TRUE(close(a, b));
+        EXPECT_FALSE(close(a, c));
+        EXPECT_TRUE(close(a, c, 0.01f));
+        EXPECT_TRUE(close(d, d));
+        EXPECT_FALSE(close(d, e));
+        EXPECT_TRUE(close(d, e, 0.01f));
+    }
+    TEST(Matrices, Basic) {
+        mat44 t;
+        //EXPECT_EQ(a.dot(b), 0);
+    }
+    TEST(Matrices, MatrixVectorMultiplication) {
+        mat33 test({2, 0, 0,  0, 1, 0, 0, 0, 1});
+        vec3 testv({1,1,1});
+
+        EXPECT_TRUE(close(test * testv, vec3({2,1,1})));
+
+        mat33 test2({ 2, 2, 2,  0, 0, 0, 0, 0, 0 });
+        vec3 testv2({ 1,1,1 });
+
+        EXPECT_TRUE(close(test2 * testv2, vec3({ 6,0,0 })));
+
+        mat44 t44 = mat44::identity();
+        mat33 t33 = mat33::identity();
+        static std::default_random_engine rng;
+
+        std::uniform_real_distribution<float> dist_vec(-100000.0, 100000.0);
+
+        for (int i = 0; i < 10000; i++) {
+            vec4 a({ dist_vec(rng), dist_vec(rng), dist_vec(rng), dist_vec(rng) });
+            vec4 result1 = t44 * a;
+
+            vec3 b({ dist_vec(rng), dist_vec(rng), dist_vec(rng) });
+            vec3 result2 = t33 * b;
+
+            ASSERT_TRUE(close(a, result1, 0.0001f)) << a.convert_to_string() << " not close to " << result1.convert_to_string() << " at: i="<< i;
+            ASSERT_TRUE(close(b, result2, 0.0001f)) << b.convert_to_string() << " not close to " << result2.convert_to_string() << " at: i=" << i;
+        }
+        //EXPECT_EQ(a.dot(b), 0);
+    }
     TEST(Quaternions, Dot) {
         quat a, b;
         EXPECT_EQ(dot(a,b), 0);
@@ -195,12 +244,16 @@ namespace bla {
         quat q(angles);
         vec3 angles2 = q.to_euler_angles();
         EXPECT_TRUE(close(angles, angles2));
+
+
     }
     TEST(Quaternions, EulerAnglesExtensive) {
-        /* Rotations aren't unique need comparison function
+        ///* Rotations aren't unique need comparison function
         static std::default_random_engine rng;
 
         std::uniform_real_distribution<float> dist(0.0, 360.0);
+        std::uniform_real_distribution<float> dist2(0.0, 179.0);
+
 
         for (int i = 0; i < 1000; i++) {
             vec3 angles({ dist(rng), 0, 0});
@@ -211,10 +264,10 @@ namespace bla {
                     angles2[j] += 360;
                 }
             }
-            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+            //EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.convert_to_string() << " not equal to " << angles2.convert_to_string();
         }
         for (int i = 0; i < 1000; i++) {
-            vec3 angles({ 0, dist(rng), 0 });
+            vec3 angles({ 0, dist2(rng), 0 });
             quat q(angles);
             vec3 angles2 = q.to_euler_angles();
             for (int j = 0; j < 3; j++) {
@@ -222,7 +275,7 @@ namespace bla {
                     angles2[j] += 360;
                 }
             }
-            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+            //EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.convert_to_string() << " not equal to " << angles2.convert_to_string();
         }
         for (int i = 0; i < 1000; i++) {
             vec3 angles({ 0, 0, dist(rng) });
@@ -233,20 +286,85 @@ namespace bla {
                     angles2[j] += 360;
                 }
             }
-            EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.to_string() << " not equal to " << angles2.to_string();
+            //EXPECT_TRUE(close(angles, angles2, 0.001f)) << angles.convert_to_string() << " not equal to " << angles2.convert_to_string();
         }
-        */
+        //*/
     }
     TEST(Quaternions, VectorRotations) {
         vec3 position({ 1,0,0 });
         quat q(vec3{0,0,90});
         vec3 result = q * position;
         vec3 expected_result({0, 1, 0});
-        EXPECT_TRUE(close(result, expected_result)) << result.to_string() << " not equal to " << expected_result.to_string();
+        EXPECT_TRUE(close(result, expected_result)) << result.convert_to_string() << " not equal to " << expected_result.convert_to_string();
 
         q = quat(vec3{ 0,90,0 });
         result = q * position;
         expected_result = vec3({ 0, 0, -1 });
-        EXPECT_TRUE(close(result, expected_result)) << result.to_string() << " not equal to " << expected_result.to_string();
+        EXPECT_TRUE(close(result, expected_result)) << result.convert_to_string() << " not equal to " << expected_result.convert_to_string();
+    }
+    TEST(Quaternions, VectorRotationsAndMatrixRotationsBasic) {
+        vec3 angles({ 0, 0, 90});
+        quat q(angles);
+        vec3 pos({ 1, 0, 0 });
+        vec3 expected_result({ 0, 1, 0 });
+        vec3 result1 = mat33(q) * pos;
+        vec3 result2 = q * pos;
+        vec3 result3 = mat33::rotation_matrix(angles) * pos;
+        EXPECT_TRUE(close(result1, expected_result, 0.0001f)) << result1.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33(q).convert_to_string();
+        EXPECT_TRUE(close(result2, expected_result, 0.0001f)) << result2.convert_to_string() << " not equal to " << expected_result.convert_to_string();
+        EXPECT_TRUE(close(result3, expected_result, 0.0001f)) << result3.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string();
+
+        angles = vec3{ 0,90,0 };
+        q = quat(angles);
+        result1 = mat33(q) * pos;
+        result2 = q * pos;
+        expected_result = vec3({ 0, 0, -1 });
+        result3 = mat33::rotation_matrix(angles) * pos;
+        EXPECT_TRUE(close(result1, expected_result, 0.0001f)) << result1.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33(q).convert_to_string();
+        EXPECT_TRUE(close(result2, expected_result, 0.0001f)) << result2.convert_to_string() << " not equal to " << expected_result.convert_to_string();
+        EXPECT_TRUE(close(result3, expected_result, 0.0001f)) << result3.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string();
+
+        angles = vec3{ 90,0,0 };
+        pos = vec3({ 0, 1, 0 });
+        q = quat(angles);
+        result1 = mat33(q) * pos;
+        result2 = q * pos;
+        expected_result = vec3({ 0, 0, 1 });
+        result3 = mat33::rotation_matrix(angles) * pos;
+        EXPECT_TRUE(close(result1, expected_result, 0.0001f)) << result1.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33(q).convert_to_string();
+        EXPECT_TRUE(close(result2, expected_result, 0.0001f)) << result2.convert_to_string() << " not equal to " << expected_result.convert_to_string();
+        EXPECT_TRUE(close(result3, expected_result, 0.0001f)) << result3.convert_to_string() << " not equal to " << expected_result.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string();
+    }
+    TEST(Quaternions, VectorRotationsAndMatrixRotations) {
+        static std::default_random_engine rng;
+
+        std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
+        std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
+        std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
+        int counter = 0;
+        int counter2 = 0;
+        int counter3 = 0;
+        for (int i = 0; i < 100000; i++) {
+            vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
+            quat q(angles);
+            vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
+            vec3 result1 = mat33(q) * pos;
+            vec3 result2 = q * pos;
+            vec3 result3 = mat33::rotation_matrix(angles) * pos;
+            //EXPECT_TRUE(close(result1.L2_norm(), result2.L2_norm())) << result1.L2_norm() << " != " << result2.L2_norm();
+            //EXPECT_TRUE(close(result2.L2_norm(), result3.L2_norm())) << result2.L2_norm() << " != " << result3.L2_norm();
+            //EXPECT_TRUE(close(result1, result2, 0.0001f));// << result1.convert_to_string() << " not equal to " << result2.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33(q).convert_to_string();
+            //EXPECT_TRUE(close(result2, result3, 0.0001f));// << result2.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << q.convert_to_string();
+            //EXPECT_TRUE(close(result1, result3, 0.0001f));// << result1.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << mat33(q).convert_to_string();
+            if (!close(result1, result2, 0.0001f))
+                counter++;
+            if (!close(result2, result3, 0.0001f))
+                counter2++;
+            if (!close(result1, result3, 0.0001f))
+                counter3++;
+        }
+        EXPECT_EQ(counter, 0);
+        EXPECT_EQ(counter2, 0);
+        EXPECT_EQ(counter3, 0);
     }
 }
