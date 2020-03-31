@@ -19,4 +19,4 @@ This is supposed to be a simple engine based on vulkan
 
 Requires the following dependencies:
 
-- [https://vulkan.lunarg.com/](Vulkan SDK)
+- [Vulkan SDK](https://vulkan.lunarg.com/)
