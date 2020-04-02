@@ -2,7 +2,11 @@
 
 ## Description
 
-This is supposed to be a simple engine based on vulkan
+This is supposed to be a simple lightweight engine based on vulkan
+
+## Features
+
+Basically nothing right now
 
 ## Progress
 
@@ -11,7 +15,7 @@ This is supposed to be a simple engine based on vulkan
 	- [ ] Matrizes
 	- [ ] Quaternions
 - [ ] Mesh Representations
-- [ ] Create a window
+- [x] Create a window
 - [ ] Render into that window
 - [ ] Scene Representation
 
@@ -19,4 +23,6 @@ This is supposed to be a simple engine based on vulkan
 
 Requires the following dependencies:
 
-- [Vulkan SDK](https://vulkan.lunarg.com/)
+- [Vulkan SDK](https://vulkan.lunarg.com/): Has to be manually installed
+- GLFW: is automatically fetched
+- GTest: is automatically fetched

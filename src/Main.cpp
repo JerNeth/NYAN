@@ -1,43 +1,41 @@
 ﻿#include "LinAlg.h"
 #include <iostream>
 #include "Transform.h"
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#include <glfwWrapper.h>
 using namespace std;
 using namespace bla;
-std::tuple<int, int, int> tst() {
-	return std::make_tuple<int, int, int>(0, 0, 0);
+
+void main_loop() {
+
 }
-struct MixedData
-{
-	char Data1;
-	short Data2;
-	int Data3;
-	char Data4;
-};
-struct AlignedMixedData
-{
-	char Data1;
-	char Data4;
-	short Data2;
-	int Data3;
-};
+
 int main()
 {
+	uint32_t extensionCount = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	
-	auto [a, b, c] = tst();
-	vec2 test({ 1,2 });
-	//bla::vec2 test2( 1,2 );
-	const float tmp = 2.f;
-	vec2 test2;
-	new(&test2) vec2(2);
-	//bla::vec2 b = bla::vec2(2.f);
-	vec2 b2 = vec2(tmp);
-	cout << "Hello World" << endl;
-	cout << "sizeof(vec2) " << sizeof(vec2) << endl;
-	cout << "sizeof(vec3) " << sizeof(vec3) << endl;
-	cout << "sizeof(vec4) " << sizeof(vec4) << endl;
+	std::cout << extensionCount << endl;
+	try {
+		glfww::Library library;
+		glfww::Window window = glfww::Window(1920, 1080);
 
-	cout << "sizeof(MixedData) " << sizeof(MixedData) << endl;
-	cout << "sizeof(AlignedMixedData) " << sizeof(AlignedMixedData) << endl;
-	cout << "sizeof(Transform) " << sizeof(Transform) << endl;
+		VkInstance_T* instance;
+		VkApplicationInfo applicationInfo = {};
+		applicationInfo.apiVersion;
+		main_loop();
+		while (!window.should_close())
+		{
+			//window.swap_buffers();
+			glfwPollEvents();
+		}
+	}
+	catch (const std::runtime_error& error) {
+		std::cerr << error.what() << std::endl;
+		//Probable cause: GLFW could not be loaded
+		return EXIT_FAILURE;
+	}
+	
 	return 0;
 }

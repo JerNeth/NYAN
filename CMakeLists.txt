@@ -23,16 +23,26 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(Openmp REQUIRED)
+
 find_package(Vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIRS})
+
+
 # GTest
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
+
+# GLFW
+include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
+
+# SDL2
+#include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
+# Would work, but why use it instead of GLFW
 
 # ---------------------------------------------------------------------------
 # Includes
 # ---------------------------------------------------------------------------
 
 include("${CMAKE_SOURCE_DIR}/include/local.cmake")
-
 
 # ---------------------------------------------------------------------------
 # Sources
@@ -51,3 +61,5 @@ include("${CMAKE_SOURCE_DIR}/test/local.cmake")
 # ---------------------------------------------------------------------------
 
 add_executable(Main ${SRC_CPP})
+
+target_link_libraries(Main glfw Vulkan::Vulkan)
