@@ -34,6 +34,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 # GLFW
 include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
 
+# Imgui
+include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
+
 # SDL2
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
 # Would work, but why use it instead of GLFW
@@ -60,6 +63,6 @@ include("${CMAKE_SOURCE_DIR}/test/local.cmake")
 # Executable
 # ---------------------------------------------------------------------------
 
-add_executable(Main ${SRC_CPP})
+add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
 
 target_link_libraries(Main glfw Vulkan::Vulkan)
