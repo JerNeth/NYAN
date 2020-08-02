@@ -45,6 +45,11 @@ namespace glfww {
 				glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
 				glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
 				glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+				//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+			}
+			if (!glfwVulkanSupported())
+			{
+				throw std::runtime_error("GLFW: Vulkan not supported");
 			}
 			//Because we are using vulkan
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -59,6 +64,9 @@ namespace glfww {
 				int error = glfwGetError(&error_msg);
 				throw std::runtime_error(error_msg);
 			}
+		}
+		inline HWND get_win32_window() {
+			return glfwGetWin32Window(m_window);
 		}
 		~Window() {
 			glfwDestroyWindow(m_window);
@@ -76,7 +84,7 @@ namespace glfww {
 		inline bool should_close() {
 			return glfwWindowShouldClose(m_window);
 		}
-		inline void swap_buffers() {
+		void swap_buffers() {
 			glfwSwapBuffers(m_window);
 			const char* error_msg;
 			int error = glfwGetError(&error_msg);
@@ -84,6 +92,7 @@ namespace glfww {
 				throw std::runtime_error(error_msg);
 		
 		}
+
 		static Window create_full_screen(int width, int height) {
 			return Window(width, height, glfwGetPrimaryMonitor());
 		}
