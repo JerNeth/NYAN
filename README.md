@@ -6,7 +6,7 @@ This is supposed to be a simple lightweight engine based on vulkan
 
 ## Features
 
-Basically nothing right now
+Nothing, yet.
 
 ## Progress
 
@@ -14,9 +14,10 @@ Basically nothing right now
 	- [x] Vectors
 	- [ ] Matrizes
 	- [ ] Quaternions
+- [ ] Window management
+	- [x] Create a window
+	- [ ] Get Vulkan Context
 - [ ] Mesh Representations
-- [x] Create a window
-- [ ] Render into that window
 - [ ] Scene Representation
 
 ## Requirements
@@ -24,5 +25,6 @@ Basically nothing right now
 Requires the following dependencies:
 
 - [Vulkan SDK](https://vulkan.lunarg.com/): Has to be manually installed
-- GLFW: is automatically fetched
-- GTest: is automatically fetched
+- [GLFW](https://github.com/glfw/glfw): automatically fetched
+- [GTest](https://github.com/google/googletest): automatically fetched
+- [Imgui](https://github.com/ocornut/imgui): automatically fetched
