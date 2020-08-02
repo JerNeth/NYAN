@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <array>
 #include <compare>
+#undef min
+#undef max
 
 namespace bla
 {

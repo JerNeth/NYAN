@@ -173,22 +173,22 @@ namespace bla {
 			//Source: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 			Vec<Scalar, 3> result;
 			// roll (x)
-			double sinr_cosp = 2.0 * (m_real * m_imaginary[0] + m_imaginary[1] * m_imaginary[2]);
-			double cosr_cosp = 1.0 - 2.0 * (square(m_imaginary[0]) + square(m_imaginary[1]));
+			Scalar sinr_cosp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[0] + m_imaginary[1] * m_imaginary[2]);
+			Scalar cosr_cosp = static_cast<Scalar>(1.0) - static_cast<Scalar>(2.0) * static_cast<Scalar>(square(m_imaginary[0]) + square(m_imaginary[1]));
 			result[0] = Scalar(std::atan2(sinr_cosp, cosr_cosp) * rad_to_deg);
 
 			// pitch (y)
 
-			double sinp = 2.0 * (m_real * m_imaginary[1] - m_imaginary[2] * m_imaginary[0]);
-			if (std::abs(sinp) >= 1.0)
+			Scalar sinp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[1] - m_imaginary[2] * m_imaginary[0]);
+			if (std::abs(sinp) >= static_cast<Scalar>(1.0))
 				result[1] = Scalar(std::copysign(pi_2, sinp) * rad_to_deg);
 			else
 				result[1] = Scalar(std::asin(sinp) * rad_to_deg);
 			
 			// yaw (z)
 
-			double siny_cosp = 2.0 * (m_real * m_imaginary[2] + m_imaginary[1] * m_imaginary[0]);
-			double cosy_cosp = 1.0 - 2.0 * (square(m_imaginary[1]) + square(m_imaginary[2]));
+			Scalar siny_cosp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[2] + m_imaginary[1] * m_imaginary[0]);
+			Scalar cosy_cosp = static_cast<Scalar>(1.0) - static_cast<Scalar>(2.0) * static_cast<Scalar>(square(m_imaginary[1]) + square(m_imaginary[2]));
 			result[2] = Scalar(std::atan2(siny_cosp, cosy_cosp) * rad_to_deg);
 
 			return result;
