@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.11)
 include(FetchContent)
 
 FetchContent_Declare(
-        glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw
+	glfw
+	GIT_REPOSITORY https://github.com/glfw/glfw.git
+	GIT_TAG        master
+	GIT_SHALLOW    true
 )
 FetchContent_MakeAvailable(glfw)
 
