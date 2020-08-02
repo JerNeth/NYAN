@@ -6,4 +6,5 @@
 set(
     SRC_CPP
     src/Main.cpp
+    src/VulkanWrapper/VkWrapper.cpp
 )

@@ -1,11 +1,16 @@
-﻿#include "LinAlg.h"
+﻿
 #include <iostream>
-#include "Transform.h"
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include "VkWrapper.h"
 #include <glfwWrapper.h>
+
+
+#include "LinAlg.h"
+#include "Transform.h"
+
 using namespace std;
 using namespace bla;
+
 
 void main_loop() {
 
@@ -13,18 +18,22 @@ void main_loop() {
 
 int main()
 {
-	uint32_t extensionCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-	
-	std::cout << extensionCount << endl;
+	int width = 1920, height = 1080;
+	std::string applicationName{ "Demo" };
+	std::string engineName{ "Simple Engine" };
 	try {
 		glfww::Library library;
-		glfww::Window window = glfww::Window(1920, 1080);
+		glfww::Window window(width, height, nullptr, nullptr, applicationName.c_str());
+		//auto window = glfww::Window::create_full_screen(width, height);
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		VkInstance_T* instance;
-		VkApplicationInfo applicationInfo = {};
-		applicationInfo.apiVersion;
+		vk::Instance instance(glfwExtensions, glfwExtensionCount, applicationName, engineName);		
+		instance.setup_win32_surface(window.get_win32_window(), GetModuleHandle(nullptr));
+		instance.setup_device();
+		instance.create_swapchain();
 		main_loop();
+
 		while (!window.should_close())
 		{
 			//window.swap_buffers();
@@ -33,7 +42,6 @@ int main()
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;
-		//Probable cause: GLFW could not be loaded
 		return EXIT_FAILURE;
 	}
 	
