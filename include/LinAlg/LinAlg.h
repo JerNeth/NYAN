@@ -53,7 +53,10 @@ namespace bla
 	inline constexpr const int at(int x, int y) {
 		return x + y * width;
 	}
-
+	template<size_t width>
+	inline constexpr const size_t at(size_t x, size_t y) {
+		return x + y * width;
+	}
 
 	typedef Vec<float, 2> vec2;
 	typedef Vec<float, 3> vec3;

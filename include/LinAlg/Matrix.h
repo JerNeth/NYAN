@@ -26,6 +26,7 @@ namespace bla {
 		explicit Mat(const Quaternion<Scalar>& rotation) {
 			static_assert((Size_x == 3 && Size_y == 3) || (Size_x == 4 || Size_y == 4), "Rotation matrices from Quaternions are inherently 3D or 3D homogeneous");
 			Scalar s2 = Scalar(2) / rotation.squared_norm();
+			
 			m_data[at<Size_x>(0, 0)] = Scalar(1) - s2 * (square(rotation.m_imaginary[1]) + square(rotation.m_imaginary[2]));
 			m_data[at<Size_x>(1, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] - rotation.m_imaginary[2] * rotation.m_real);
 			m_data[at<Size_x>(2, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] + rotation.m_imaginary[1] * rotation.m_real);
@@ -37,6 +38,31 @@ namespace bla {
 			m_data[at<Size_x>(0, 2)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] - rotation.m_imaginary[1] * rotation.m_real);
 			m_data[at<Size_x>(1, 2)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] + rotation.m_imaginary[0] * rotation.m_real);
 			m_data[at<Size_x>(2, 2)] = Scalar(1) - s2 * (square(rotation.m_imaginary[0]) + square(rotation.m_imaginary[1]));
+			/*			
+			Scalar x2 = rotation.m_imaginary[0] + rotation.m_imaginary[0];
+			Scalar y2 = rotation.m_imaginary[1] + rotation.m_imaginary[1];
+			Scalar z2 = rotation.m_imaginary[2] + rotation.m_imaginary[2];
+			Scalar xx = x2 * rotation.m_imaginary[0];
+			Scalar xy = rotation.m_imaginary[0] * y2;
+			Scalar xz = rotation.m_imaginary[0] * z2;
+			Scalar yy = y2 * rotation.m_imaginary[1];
+			Scalar yz = rotation.m_imaginary[1] * z2;
+			Scalar zz = rotation.m_imaginary[2] * z2;
+			Scalar wx = x2 * rotation.m_real;
+			Scalar wy = y2 * rotation.m_real;
+			Scalar wz = z2 * rotation.m_real;
+			m_data[at<Size_x>(0, 0)] = Scalar(1) - (yy+zz);
+			m_data[at<Size_x>(1, 0)] = xy-wz;
+			m_data[at<Size_x>(2, 0)] = xz + wy;
+
+			m_data[at<Size_x>(0, 1)] = xy + wz;
+			m_data[at<Size_x>(1, 1)] = Scalar(1) - (xx+zz);
+			m_data[at<Size_x>(2, 1)] = yz -wx;
+
+			m_data[at<Size_x>(0, 2)] = xz - wy;
+			m_data[at<Size_x>(1, 2)] = yz + wx;
+			m_data[at<Size_x>(2, 2)] = Scalar(1) - (xx+yy);
+			*/
 			if constexpr (Size_x == 4) {
 				m_data[at<Size_x>(0, 3)] = Scalar(0);
 				m_data[at<Size_x>(1, 3)] = Scalar(0);
@@ -60,13 +86,11 @@ namespace bla {
 					m_data[i] = vec[i];
 			}
 		}
-		explicit Mat(std::initializer_list<Scalar> scalars) : m_data() {
-			if (Size_x * Size_y != scalars.size())
-				throw std::out_of_range("Index out of range");
-			size_t i = 0;
-			for (Scalar s : scalars) {
-				m_data[i] = s;
-				i++;
+		explicit Mat(const Scalar(&list)[Size_x*Size_y]) : m_data() {
+			for (int y = 0; y < Size_y; y++) {
+				for (int x = 0; x < Size_x; x++) {
+					m_data[at<Size_x>(x, y)] = list[at<Size_x>(x, y)];
+				}
 			}
 		}
 
@@ -108,13 +132,13 @@ namespace bla {
 		}
 		inline std::string convert_to_string() {
 			std::string result("(");
-			for (size_t j = 0; j < (Size_y - 1); j++) {
-				for (size_t i = 0; i < Size_x; i++)
-					result += std::to_string(m_data[at<Size_x>((int)i, (int)j)]) + ", ";
+			for (size_t y = 0; y < (Size_y - 1); y++) {
+				for (size_t x = 0; x < Size_x; x++)
+					result += std::to_string(m_data[at<Size_x>(x, y)]) + ", ";
 				result += "\n";
 			}
-			for (size_t i = 0; i < Size_x-1; i++)
-				result += std::to_string(m_data[at<Size_x>((int)i, Size_y - 1)]) + ", ";
+			for (size_t x = 0; x < Size_x-1; x++)
+				result += std::to_string(m_data[at<Size_x>(x, Size_y - 1)]) + ", ";
 			result += std::to_string(m_data[Size_x*Size_y - 1]) + ")";
 			return result;
 		}
@@ -123,7 +147,7 @@ namespace bla {
 			for (size_t y = 0; y < Size_y; y++) {
 				Scalar tmp = Scalar(0);
 				for (size_t x = 0; x < Size_x; x++)
-					tmp += lhs.m_data[at<Size_x>((int) x, (int) y)] * rhs[x];
+					tmp += lhs.m_data[at<Size_x>( x, y)] * rhs[x];
 				result[y] = tmp;
 			}
 			return result;
@@ -209,7 +233,7 @@ namespace bla {
 			if (Size_y <= index)
 				throw std::out_of_range("Index out of range");
 			for (size_t x = 0; x < Size_x; x++)
-				ret[x] = m_data[x + index * Size_x];
+				ret[x] = m_data[at<Size_x>(static_cast<int>(x), static_cast<int>(index))];
 			return ret;
 		}
 		inline Vec<Scalar, Size_y> col(const size_t index) const {
@@ -217,7 +241,7 @@ namespace bla {
 			if (Size_x <= index)
 				throw std::out_of_range("Index out of range");
 			for (size_t y = 0; y < Size_y; y++)
-				ret[y] = m_data[index + y * Size_x];
+				ret[y] = m_data[at<Size_x>(static_cast<int>(index), static_cast<int>(y))];
 			return ret;
 		}
 		inline const Scalar& operator[] (const size_t index) const {
@@ -260,11 +284,11 @@ namespace bla {
 		}
 		Mat& transposed() {
 			static_assert(Size_x == Size_y);
-			for (size_t x = 0; x < Size_x; x++) {
-				for (size_t y = x; y < Size_y; y++) {
-					Scalar tmp = m_data[x + y * Size_x];
-					m_data[x + y * Size_x] = m_data[(x - Size_x) + (y - Size_y) * Size_x];
-					m_data[(x - Size_x) + (y - Size_y) * Size_x] = tmp;
+			for (size_t y = 0; y < Size_y; y++) {
+				for (size_t x = y+1; x < Size_x; x++) {
+					Scalar tmp = m_data[at<Size_x>(x, y)];
+					m_data[at<Size_x>(x, y)] = m_data[at<Size_x>(y, x)];
+					m_data[at<Size_x>(y, x)] = tmp;
 				}
 			}
 			return *this;
@@ -273,10 +297,10 @@ namespace bla {
 			Mat ret;
 			//TODO do that for non square matrices
 			static_assert(Size_x == Size_y);
-			for (size_t x = 0; x < Size_x; x++) {
-				for (size_t y = x; y < Size_y; y++) {
-					ret.m_data[x + y * Size_x] = m_data[(x - Size_x) + (y - Size_y) * Size_x];
-					ret.m_data[(x - Size_x) + (y - Size_y) * Size_x] = m_data[x + y * Size_x];
+			for (size_t y = 0; y < Size_y; y++) {
+				for (size_t x = y; x < Size_x; x++) {
+					ret.m_data[at<Size_x>(x,y)] = m_data[at<Size_x>(y, x)];
+					ret.m_data[at<Size_x>(y,x)] = m_data[at<Size_x>(x, y)];
 				}
 			}
 			return ret;
@@ -383,18 +407,80 @@ namespace bla {
 			Scalar sin_t = Scalar(sin(angle));
 			return Mat<Scalar, 2, 2>({ cos_t, -sin_t, sin_t, cos_t});
 		}
+		/* Rotates first around x, then around y and then around z
+		*/
 		static Mat<Scalar, 3, 3> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) { // roll (x), pitch (y), yaw (z) in degrees
-			Scalar cos_a = Scalar(cos(yaw * deg_to_rad));
-			Scalar sin_a = Scalar(sin(yaw * deg_to_rad));
-			Scalar cos_b = Scalar(cos(pitch * deg_to_rad));
-			Scalar sin_b = Scalar(sin(pitch * deg_to_rad));
-			Scalar cos_y = Scalar(cos(roll * deg_to_rad));
-			Scalar sin_y = Scalar(sin(roll * deg_to_rad));
+			
+			
+			Scalar cy = Scalar(cos(yaw * deg_to_rad));
+			Scalar sy = Scalar(sin(yaw * deg_to_rad));
+			Scalar cp = Scalar(cos(pitch * deg_to_rad));
+			Scalar sp = Scalar(sin(pitch * deg_to_rad));
+			Scalar cr = Scalar(cos(roll * deg_to_rad));
+			Scalar sr = Scalar(sin(roll * deg_to_rad));
 
+			Scalar ca = Scalar(cos(yaw * deg_to_rad));
+			Scalar sa = Scalar(sin(yaw * deg_to_rad));
+			Scalar ch = Scalar(cos(pitch * deg_to_rad));
+			Scalar sh = Scalar(sin(pitch * deg_to_rad));
+			Scalar cb = Scalar(cos(roll * deg_to_rad));
+			Scalar sb = Scalar(sin(roll * deg_to_rad));
+			//return Mat<Scalar, 3, 3>({ cy * cp,		cy * sp * sr - sy * cr,		cy * sp * cr + sy * sr,
+			//							sy * cp,	sy * sp * sr + cr * cr,		sy * sp * cr - cy * sr,
+			//							-sp,			cp * sr,							cp * cr });
+			//return Mat<Scalar, 3, 3>({ ch * ca, -ch*sa*cb + sh*sb, ch*sa*sb + sh*cb,
+			//							sa, ca*cb, -ca*sb,
+			//							-sh*ca, sh*sa*cb + ch*sb, -sh*sa*sb + ch*cb});
 			//https://en.wikipedia.org/wiki/Rotation_matrix
-			return Mat<Scalar, 3, 3>({ cos_a * cos_b,	cos_a * sin_b * sin_y - sin_a * cos_y,	cos_a * sin_b * cos_y + sin_a * sin_y,
-										sin_a * cos_b,	sin_a * sin_b * sin_y + cos_y * cos_y,	sin_a * sin_b * cos_y - cos_a * sin_y,
-										-sin_b,			cos_b * sin_y,							cos_b * cos_y });
+			//return Mat<Scalar, 3, 3>({ cy * cp,		-sp,						cp*sy,
+			//							cy*sp*cr+sr*sy,	cr*cp,		sp*cr*sy-sr*cy,
+			//							sr*sp*cy-sy*cr, sr*cp, sp*sr*sy+cr*cy});
+			//attitude = yaw, heading= pitch, bank = roll
+			
+			Mat<Scalar, 3, 3> ret;
+			ret.m_data[at<Size_x>(0, 0)] = ch * ca;
+			ret.m_data[at<Size_x>(1, 0)] = sh* sb - ch*sa*cb;
+			ret.m_data[at<Size_x>(2, 0)] = ch*sa*sb + sh*cb;
+
+			ret.m_data[at<Size_x>(0, 1)] = sa;
+			ret.m_data[at<Size_x>(1, 1)] = ca *cb;
+			ret.m_data[at<Size_x>(2, 1)] = -ca*sb;
+
+			ret.m_data[at<Size_x>(0, 2)] = -sh*ca;
+			ret.m_data[at<Size_x>(1, 2)] = sh*sa*cb + ch*sb;
+			ret.m_data[at<Size_x>(2, 2)] = -sh * sa *sb + ch*cb;
+
+			Mat<Scalar, 3, 3> temp2({ ch*ca, -ch*sa, sh,
+									sa, ca, 0,
+									-sh*ca, sh*sa, ch});
+			if constexpr (Size_x == 4) {
+				ret.m_data[at<Size_x>(0, 3)] = Scalar(0);
+				ret.m_data[at<Size_x>(1, 3)] = Scalar(0);
+				ret.m_data[at<Size_x>(2, 3)] = Scalar(0);
+
+				ret.m_data[at<Size_x>(3, 0)] = Scalar(0);
+				ret.m_data[at<Size_x>(3, 1)] = Scalar(0);
+				ret.m_data[at<Size_x>(3, 2)] = Scalar(0);
+
+				ret.m_data[at<Size_x>(3, 3)] = Scalar(1);
+			}
+			//return ret;
+			Mat<Scalar, 3, 3> temp3 = temp2;
+			temp3.transposed();
+			Mat<Scalar, 3, 3> roll_m({ 1, 0, 0,
+									0, cr, -sr,
+									0, sr, cr});
+			Mat<Scalar, 3, 3> pitch_m({ cp, 0, sp,
+									0, 1, 0,
+									-sp, 0, cp });
+			Mat<Scalar, 3, 3> yaw_m({ cy, -sy, 0,
+									sy, cy, 0,
+									0, 0, 1 });
+			Mat<Scalar, 3, 3> temp = (yaw_m * pitch_m);
+			Mat<Scalar, 3, 3> comb = (yaw_m * pitch_m) * roll_m;
+			//for some reason this (probably wrong) matrix multiplications work 
+			//std::cout << temp.convert_to_string() << '\n' << temp2.convert_to_string() << '\n' << temp3.convert_to_string() << std::endl;
+			return comb;
 		}
 		static inline Mat<Scalar, 3, 3> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
 			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
@@ -413,13 +499,29 @@ namespace bla {
 				return false;
 		return true;
 	}
+	/*
 	template<typename Scalar, size_t rows, size_t equal, size_t cols>
 	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, rows, equal>& lhs, const Mat<Scalar, equal, cols>& rhs) {
 		Mat<Scalar, rows, cols> result;
-		for (size_t x = 0; x < rows; x++) {
-			Vec<Scalar, equal> old_col = lhs.col(x);
-			for (size_t y = 0; y < cols; y++) {
-				result[y * rows + x] = old_col.dot(rhs.row(y));
+		for (size_t y = 0; y < cols; y++) {
+			Vec<Scalar, equal> old_col = lhs.row(y);
+			for (size_t x = 0; x < rows; x++) {
+				result[at<rows>(x, y)] = old_col.dot(rhs.col(x));
+			}
+		}
+		return result;
+	}
+	*/
+	template<typename Scalar, size_t rows, size_t equal, size_t cols>
+	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, rows, equal>& lhs, const Mat<Scalar, equal, cols>& rhs) {
+		Mat<Scalar, rows, cols> result;
+		for (size_t y = 0; y < cols; y++) {
+			for (size_t x = 0; x < rows; x++) {
+				Scalar tmp = Scalar(0);
+				for (size_t i = 0; i < equal; i++) {
+					tmp += lhs[at<rows>(i, y)] * rhs[at<equal>(x, i)];
+				}
+				result[at<rows>(x, y)] = tmp;
 			}
 		}
 		return result;

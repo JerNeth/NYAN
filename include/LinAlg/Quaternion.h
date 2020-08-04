@@ -89,6 +89,23 @@ namespace bla {
 		friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
 			//Vec<Scalar, 3> result = Scalar(2) * dot(m_imaginary, rhs) * m_imaginary + (square(m_real) - dot(m_imaginary, m_imaginary)) * rhs + Scalar(2) * m_real * (cross(m_imaginary, rhs));
 			return Scalar(2) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(rhs);
+			/* As suggested by Horn, I don't know which one is right
+			Scalar xx = lhs.m_imaginary[0] * lhs.m_imaginary[0];
+			Scalar xy = lhs.m_imaginary[0] * lhs.m_imaginary[1];
+			Scalar xz = lhs.m_imaginary[0] * lhs.m_imaginary[2];
+			Scalar yy = lhs.m_imaginary[1] * lhs.m_imaginary[1];
+			Scalar yz = lhs.m_imaginary[1] * lhs.m_imaginary[2];
+			Scalar zz = lhs.m_imaginary[2] * lhs.m_imaginary[2];
+			Scalar ww = lhs.m_real * lhs.m_real;
+			Scalar wx = lhs.m_real * lhs.m_imaginary[0];
+			Scalar wy = lhs.m_real * lhs.m_imaginary[1];
+			Scalar wz = lhs.m_real * lhs.m_imaginary[2];
+			return Vec<Scalar, 3> ({
+				rhs[0] * (ww + xx - yy - zz) + rhs[1]* Scalar(2) * (xy - wz) +rhs[2] * Scalar(2) * (wy + xz),
+				rhs[0] * Scalar(2) * (xy + wz) + rhs[1] * (ww - xx + yy - zz) + rhs[2] * Scalar(2) * (yz - wx),
+				rhs[0] * Scalar(2) * (xz - wy) + rhs[1] * Scalar(2) * (yz + wz) + rhs[2] * (ww - xx - yy +zz)
+			});
+			*/
 		}
 		friend inline Vec<Scalar, 4> operator*(const Quaternion& lhs, const Vec<Scalar, 4>& rhs) noexcept {
 			//Quaternion result = lhs * Quaternion(0, Vec<Scalar, 3>({ rhs[0], rhs[1], rhs[2] })) * lhs.inverse();

@@ -36,19 +36,9 @@ namespace bla {
 			for (size_t i = min(Size, Size_other); i < Size; i++)
 				m_data[i] = Scalar(0);
 		}
-		// For now this only confuses, sticking to initializer lists
-		//Vec(Scalar scalar, Scalar scalar...) : m_data() {
-		//	if constexpr (Size != sizeof(scalar...))
-		//		throw std::out_of_range("Too many parameters");
-		//}
-		explicit Vec(std::initializer_list<Scalar> scalars) : m_data() {
-			if (Size != scalars.size())
-				throw std::out_of_range("Too many parameters");
-			size_t i = 0;
-			for (Scalar s : scalars) {
-				m_data[i] = s;
-				i++;
-			}
+		explicit Vec(const Scalar(&list)[Size]) : m_data() {
+			for (size_t i = 0; i < Size; i++)
+				m_data[i] = list[i];
 		}
 		friend inline bool operator==(const Vec& lhs, const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
@@ -249,7 +239,7 @@ namespace bla {
 		}
 		inline Scalar dot(const Vec& rhs) const noexcept {
 			// Not sure if this is better than = 0, but this way we correctly have a Scalar
-			Scalar result = Scalar();
+			Scalar result = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
 				result += m_data[i] * rhs.m_data[i];
 			return result;
