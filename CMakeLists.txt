@@ -54,6 +54,12 @@ include("${CMAKE_SOURCE_DIR}/include/local.cmake")
 include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 
 # ---------------------------------------------------------------------------
+# Shaders
+# ---------------------------------------------------------------------------
+
+include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
+
+# ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
@@ -64,5 +70,6 @@ include("${CMAKE_SOURCE_DIR}/test/local.cmake")
 # ---------------------------------------------------------------------------
 
 add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
+add_dependencies(Main shaders)
 
 target_link_libraries(Main glfw Vulkan::Vulkan)
