@@ -30,15 +30,19 @@ int main()
 
 		vk::Instance instance(glfwExtensions, glfwExtensionCount, applicationName, engineName);		
 		instance.setup_win32_surface(window.get_win32_window(), GetModuleHandle(nullptr));
-		instance.setup_device();
-		instance.create_swapchain();
-		main_loop();
+		vk::LogicalDevice device = instance.setup_device();
 
+		main_loop();
+		int frame = 0;
 		while (!window.should_close())
 		{
+			std::cout << frame << '\n';
 			//window.swap_buffers();
 			glfwPollEvents();
+			device.draw_frame();
+			frame++;
 		}
+		device.wait_idle();
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;

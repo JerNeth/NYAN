@@ -1,6 +1,12 @@
-#include "VkWrapper.h"
+#include "Instance.h"
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+{
+	(void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
+	fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
+	return VK_FALSE;
+}
 
-void vk::Instance::setup_device() 
+vk::LogicalDevice vk::Instance::setup_device() 
 {
 	uint32_t numDevices;
 	std::vector<VkPhysicalDevice> devices;
@@ -14,8 +20,8 @@ void vk::Instance::setup_device()
 		[this](const auto& device) {return this->is_device_suitable(device); }); selectedDevice != devices.cend()) {
 		m_physicalDevice = *selectedDevice;
 		auto [device, queueIndex] = setup_logical_device(*selectedDevice);
-		m_device = device;
-		vkGetDeviceQueue(m_device, queueIndex, 0, &m_graphicsQueue);
+		return LogicalDevice(*this, device, queueIndex);
+		
 	}
 	else {
 		throw std::runtime_error("VK: available devices do not support the required features");
@@ -34,6 +40,9 @@ void vk::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 		}
 		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
 			throw std::runtime_error("VK: could not create win32 surface, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
 }
@@ -61,8 +70,6 @@ void vk::Instance::create_instance()
 		.enabledExtensionCount = static_cast<uint32_t>(m_extensions.size()),
 		.ppEnabledExtensionNames = m_extensions.data()
 	};
-
-
 	if (auto result = vkCreateInstance(&createInfo, m_allocator, &m_instance)) {
 		if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
 			throw std::runtime_error("VK: could not create instance, missing extension");
@@ -82,42 +89,27 @@ void vk::Instance::create_instance()
 		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
 			throw std::runtime_error("VK: could not create instance, out of device memory");
 		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+		}
 	}
-}
-
-void vk::Instance::create_image_views()
-{
-	m_swapChainImageViews.resize(m_swapChainImages.size());
-	for (int i = 0; i < m_swapChainImages.size(); i++) {
-		VkImageViewCreateInfo createInfo{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.image = m_swapChainImages[i],
-			.viewType = VK_IMAGE_VIEW_TYPE_2D,
-			.format = m_swapChainImageFormat,
-			.components = {
-				.r = VK_COMPONENT_SWIZZLE_IDENTITY,
-				.g = VK_COMPONENT_SWIZZLE_IDENTITY, 
-				.b = VK_COMPONENT_SWIZZLE_IDENTITY, 
-				.a = VK_COMPONENT_SWIZZLE_IDENTITY
-			},
-			.subresourceRange{
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1
-			}
+	if constexpr (debug) {
+		auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugReportCallbackEXT");
+		if (vkCreateDebugReportCallbackEXT == NULL) {
+			throw std::runtime_error("VK: could not find debug report callback ext");
+		}
+		VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{
+			.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
+			.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+			.pfnCallback = debugCallback,
+			.pUserData = nullptr
 		};
-		if (auto result = vkCreateImageView(m_device, &createInfo, m_allocator, &m_swapChainImageViews[i]); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not create image view, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not create image view, out of device memory");
-			}
+		if (auto result = vkCreateDebugReportCallbackEXT(m_instance, &debugReportCallbackCreateInfo, m_allocator, &m_debugReport); result != VK_SUCCESS) {
+			throw std::runtime_error("VK: could not create debug report callback");
 		}
 	}
 }
+
 
 bool vk::Instance::device_supports_features(const VkPhysicalDevice& device) const
 {
@@ -278,83 +270,7 @@ bool vk::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) con
 	return true;
 }
 
-void vk::Instance::create_swapchain()
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	
-	uint32_t numFormats;
-	uint32_t numModes;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, nullptr);
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, nullptr);
 
-	std::vector<VkSurfaceFormatKHR> surfaceFormats(numFormats);
-	std::vector<VkPresentModeKHR> presentModes(numModes);
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, surfaceFormats.data());
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, presentModes.data());
-	VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
-	if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(), 
-		[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;});
-		_surfaceFormat != surfaceFormats.cend())
-		surfaceFormat = *_surfaceFormat;
-	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-	if (std::find(presentModes.cbegin(), presentModes.cend(), VK_PRESENT_MODE_MAILBOX_KHR) != presentModes.cend())
-		presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-	m_swapChainExtent = capabilities.currentExtent;
-	if (m_swapChainExtent.width == UINT32_MAX) {
-		m_swapChainExtent = capabilities.maxImageExtent;
-	}
-	uint32_t imageCount = capabilities.minImageCount + 1;
-	if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
-		imageCount = capabilities.maxImageCount;
-	}
-	VkSwapchainCreateInfoKHR createInfo{
-		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface = m_surface,
-		.minImageCount = imageCount,
-		.imageFormat = surfaceFormat.format,
-		.imageColorSpace = surfaceFormat.colorSpace,
-		.imageExtent = m_swapChainExtent,
-		.imageArrayLayers = 1,
-		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, //TODO: For defered rendering switch to VK_IMAGE_USAGE_TRANSFER_DST_BIT
-		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.queueFamilyIndexCount = 0,
-		.pQueueFamilyIndices = nullptr,
-		.preTransform = capabilities.currentTransform,
-		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-		.presentMode = presentMode,
-		.clipped = VK_TRUE,
-		.oldSwapchain = VK_NULL_HANDLE
-	};
-	if (auto result = vkCreateSwapchainKHR(m_device, &createInfo, m_allocator, &m_swapChain); result != VK_SUCCESS) {
-		if (result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, native window in use");
-		}
-		if (result == VK_ERROR_INITIALIZATION_FAILED) {
-			throw std::runtime_error("VK: could not create swapchain, initialization failed");
-		}
-		if (result == VK_ERROR_SURFACE_LOST_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, surface lost");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not create swapchain, device lost");
-		}
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of device memory");
-		}
-	}
-	m_swapChainImageFormat = surfaceFormat.format;
-	vkGetSwapchainImagesKHR(m_device, m_swapChain, &imageCount, nullptr);
-	m_swapChainImages.resize(imageCount);
-	vkGetSwapchainImagesKHR(m_device, m_swapChain, &imageCount, m_swapChainImages.data());
-	create_image_views();
-}
-void vk::Instance::create_graphics_pipeline()
-{
-}
 bool vk::Instance::is_device_suitable(const VkPhysicalDevice& device) const
 {
 	return device_supports_extensions(device) && device_supports_features(device) && device_has_properties(device) && device_swapchain_suitable(device);
@@ -375,7 +291,6 @@ uint32_t vk::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& d
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, graphicsQueueFamilyIndex, m_surface, &presentSupport);
 		return (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport;
 	});
-
 	if (graphicsQueue == queueFamilies.cend()) {
 		throw std::runtime_error("VK: available device has no graphics queue or no present support or they are not the same");
 	}
@@ -428,6 +343,9 @@ std::pair<VkDevice, uint32_t> vk::Instance::setup_logical_device(const VkPhysica
 		}
 		if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
 			throw std::runtime_error("VK: could not create device, extension not present");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
 	return std::make_pair(logicalDevice, static_cast<uint32_t>(graphicsQueueFamilyIndex));
