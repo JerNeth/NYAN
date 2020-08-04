@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include "VkWrapper.h"
 #include <glfwWrapper.h>
+#include <chrono>
 
 
 #include "LinAlg.h"
@@ -34,14 +35,18 @@ int main()
 
 		main_loop();
 		int frame = 0;
+		auto start = chrono::steady_clock::now();
 		while (!window.should_close())
 		{
-			std::cout << frame << '\n';
+			
 			//window.swap_buffers();
 			glfwPollEvents();
 			device.draw_frame();
 			frame++;
+			
 		}
+		auto end = chrono::steady_clock::now();
+		std::cout << "Average: "<< chrono::duration_cast<chrono::microseconds>(end - start).count()/frame << "microseconds\n";
 		device.wait_idle();
 	}
 	catch (const std::runtime_error& error) {

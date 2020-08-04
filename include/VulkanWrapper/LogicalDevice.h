@@ -4,13 +4,18 @@
 #include "VkWrapper.h"
 namespace vk {
 	class Instance;
-	constexpr size_t MAX_FRAMES_IN_FLIGHT = 3;
+	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
 	public:
 		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
+		void draw_frame();
+		void wait_idle();
+		
+		
+	private:
 		void create_swapchain();
 		void create_graphics_pipeline();
 		void create_image_views();
@@ -19,9 +24,6 @@ namespace vk {
 		void create_command_pool();
 		void create_command_buffers();
 		void create_sync_objects();
-		void draw_frame();
-		void wait_idle();
-	private:
 		VkShaderModule create_shader_module(const std::vector<char>& shaderCode);
 
 		/// *******************************************************************
@@ -48,7 +50,7 @@ namespace vk {
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAvailableSemaphores;
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_renderFinishedSemaphores;
 		std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_inFlightFences;
-		std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_imagesInFlight;
+		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
 
 		VkQueue m_graphicsQueue;

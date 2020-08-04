@@ -524,9 +524,9 @@ void vk::LogicalDevice::create_sync_objects()
 		.sType =VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 		.flags = VK_FENCE_CREATE_SIGNALED_BIT
 	};
-
+	m_imagesInFlight.resize(m_swapChainImages.size(), VK_NULL_HANDLE);
 	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_imagesInFlight[i] = VK_NULL_HANDLE;
+		
 		if (auto result = vkCreateSemaphore(m_device, &semaphoreCreateInfo, m_allocator, &m_imageAvailableSemaphores[i]); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 				throw std::runtime_error("VK: could not create Semaphore, out of host memory");
@@ -604,7 +604,7 @@ void vk::LogicalDevice::draw_frame()
 		}
 	}
 	if (m_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-		if (auto result = vkWaitForFences(m_device, 1, &m_inFlightFences[imageIndex], VK_TRUE, UINT64_MAX); result != VK_SUCCESS) {
+		if (auto result = vkWaitForFences(m_device, 1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 				throw std::runtime_error("VK: could not wait for fence(s), out of host memory");
 			}
