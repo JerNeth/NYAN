@@ -6,25 +6,30 @@ This is supposed to be a simple lightweight engine based on vulkan
 
 ## Features
 
-Nothing, yet.
+None, yet.
 
 ## Progress
 
-- [ ] Linear Algebra
+- [x] Linear Algebra
 	- [x] Vectors
-	- [ ] Matrizes
-	- [ ] Quaternions
-- [ ] Window management
+	- [x] Matrizes
+	- [x] Quaternions
+- [x] Window management
 	- [x] Create a window
-	- [ ] Get Vulkan Context
+	- [x] Get Vulkan Context
+- [ ] Vulkan
+	- [ ] Rendergraph
+	- [ ] Pipeline abstraction
+	- [ ] Renderpass abstraction
 - [ ] Mesh Representations
 - [ ] Scene Representation
 
 ## Requirements
 
-Requires the following dependencies:
+This engine depends on the following libraries:
 
 - [Vulkan SDK](https://vulkan.lunarg.com/): Has to be manually installed
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
+- [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): included in this repository
