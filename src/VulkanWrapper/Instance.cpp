@@ -6,7 +6,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
 	return VK_FALSE;
 }
 
-vk::LogicalDevice vk::Instance::setup_device() 
+Vulkan::LogicalDevice Vulkan::Instance::setup_device() 
 {
 	uint32_t numDevices;
 	std::vector<VkPhysicalDevice> devices;
@@ -28,7 +28,7 @@ vk::LogicalDevice vk::Instance::setup_device()
 	}
 }
 
-void vk::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
+void Vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 	VkWin32SurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 		.hinstance = hinstance,
@@ -47,7 +47,18 @@ void vk::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 	}
 }
 
-void vk::Instance::create_instance()
+uint32_t Vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties)const 
+{
+	VkPhysicalDeviceMemoryProperties memoryProperties;
+	vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) &&((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
+			return i;
+	}
+	throw std::runtime_error("VK: Could not find suitable memory type");
+}
+
+void Vulkan::Instance::create_instance()
 {
 	VkApplicationInfo applicationInfo{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -111,7 +122,7 @@ void vk::Instance::create_instance()
 }
 
 
-bool vk::Instance::device_supports_features(const VkPhysicalDevice& device) const
+bool Vulkan::Instance::device_supports_features(const VkPhysicalDevice& device) const
 {
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
@@ -230,7 +241,7 @@ bool vk::Instance::device_supports_features(const VkPhysicalDevice& device) cons
 	return true;
 }
 
-bool vk::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
+bool Vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
 {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -248,14 +259,14 @@ bool vk::Instance::device_supports_extensions(const VkPhysicalDevice& device) co
 	return true;
 }
 
-bool vk::Instance::device_has_properties(const VkPhysicalDevice& device) const
+bool Vulkan::Instance::device_has_properties(const VkPhysicalDevice& device) const
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 	return true;
 }
 
-bool vk::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
+bool Vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
 {
 	uint32_t numFormats;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &numFormats, nullptr);
@@ -271,12 +282,12 @@ bool vk::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) con
 }
 
 
-bool vk::Instance::is_device_suitable(const VkPhysicalDevice& device) const
+bool Vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
 {
 	return device_supports_extensions(device) && device_supports_features(device) && device_has_properties(device) && device_swapchain_suitable(device);
 }
 
-uint32_t vk::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
+uint32_t Vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
 {
 	uint32_t numQueueFamilies = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
@@ -297,7 +308,7 @@ uint32_t vk::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& d
 	return graphicsQueueFamilyIndex;
 }
 
-std::pair<VkDevice, uint32_t> vk::Instance::setup_logical_device(const VkPhysicalDevice& device) const
+std::pair<VkDevice, uint32_t> Vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
 {
 
 	auto graphicsQueueFamilyIndex = get_graphics_family_queue_index(device);

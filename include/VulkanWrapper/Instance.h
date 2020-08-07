@@ -1,8 +1,10 @@
 #ifndef VKINSTANCE_H
 #define VKINSTANCE_H
 #pragma once
+
 #include "VkWrapper.h"
-namespace vk {
+
+namespace Vulkan {
 	class LogicalDevice;
 	class Instance {
 	public:
@@ -16,17 +18,17 @@ namespace vk {
 				vkDestroyDebugReportCallbackEXT(m_instance, m_debugReport, m_allocator);
 			}
 			vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
-
 			vkDestroyInstance(m_instance, m_allocator);
+			
 		}
 		Instance(Instance&) = delete;
 		Instance& operator=(Instance&) = delete;
 		LogicalDevice setup_device();
 		void setup_win32_surface(HWND hwnd, HINSTANCE hinstance);
-
+		uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 	private:
 		void create_instance();
-
+		
 		bool device_supports_features(const VkPhysicalDevice& device) const;
 		bool device_supports_extensions(const VkPhysicalDevice& device) const;
 		bool device_has_properties(const VkPhysicalDevice& device) const;

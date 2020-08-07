@@ -2,8 +2,65 @@
 #define VKLOGICALDEVICE_H
 #pragma once
 #include "VkWrapper.h"
-namespace vk {
+#include "LinAlg.h"
+namespace Vulkan {
 	class Instance;
+	struct Vertex {
+		std::array<float, 3> pos;
+		std::array<float, 3> color;
+		std::array<float, 2> texcoords;
+		static VkVertexInputBindingDescription get_binding_description() {
+			VkVertexInputBindingDescription bindingDescription{
+				.binding = 0,
+				.stride = sizeof(Vertex),
+				.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+			};
+			return bindingDescription;
+		}
+		static std::array<VkVertexInputAttributeDescription, 3> get_attribute_descriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{
+				VkVertexInputAttributeDescription{
+					.location = 0,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32B32_SFLOAT,
+					.offset = offsetof(Vertex, pos)
+				},
+				VkVertexInputAttributeDescription{
+					.location = 1,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32B32_SFLOAT,
+					.offset = offsetof(Vertex, color)
+				},
+				VkVertexInputAttributeDescription{
+					.location = 2,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32_SFLOAT,
+					.offset = offsetof(Vertex, texcoords)
+				},
+			};
+			return attributeDescriptions;
+		}
+	};
+	constexpr std::array<Vertex, 8> vertices{
+		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		Vertex{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+		Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+		Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		Vertex{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+	};
+	constexpr std::array<uint16_t, 12> indices = {
+		0, 1, 2, 2, 3, 0,
+		4, 5, 6, 6, 7, 4
+	};
+	struct Ubo {
+		bla::mat44 model;
+		bla::mat44 view;
+		bla::mat44 proj;
+	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
 	public:
@@ -13,17 +70,39 @@ namespace vk {
 		LogicalDevice& operator=(LogicalDevice&) = delete;
 		void draw_frame();
 		void wait_idle();
-		
-		
+		void create_swap_chain();
+		void create_sync_objects();
+		void recreate_swap_chain();
+		void create_texture_image(uint32_t width, uint32_t height, uint32_t channels, char* imageData);
 	private:
+		std::pair<VkBuffer, VmaAllocation> create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage);
+		void cleanup_swapchain();
+		void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+		void transition_image_layout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+		void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+		VkCommandBuffer begin_single_time_commands();
+		void end_single_time_commands(VkCommandBuffer commandBuffer);
+		void create_texture_image_view();
+		void create_texture_sampler();
+		void create_depth_resources();
+		void create_vertex_buffer();
+		void create_index_buffer();
+		void create_uniform_buffers();
 		void create_swapchain();
 		void create_graphics_pipeline();
 		void create_image_views();
+		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
 		void create_render_pass();
 		void create_framebuffers();
 		void create_command_pool();
 		void create_command_buffers();
-		void create_sync_objects();
+		void create_vma_allocator();
+		void create_descriptor_set_layout();
+		void create_descriptor_sets();
+		void create_descriptor_pool();
+		std::pair< VkImage, VmaAllocation> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags flags, VmaMemoryUsage memoryUsage);
+		
+		void update_uniform_buffer(uint32_t currentImage);
 		VkShaderModule create_shader_module(const std::vector<char>& shaderCode);
 
 		/// *******************************************************************
@@ -36,7 +115,7 @@ namespace vk {
 		VkAllocationCallbacks* m_allocator = NULL;
 		const uint32_t m_graphicsFamilyQueueIndex;
 
-		VkSwapchainKHR m_swapChain;
+		VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
 		std::vector<VkImage> m_swapChainImages;
 		VkExtent2D m_swapChainExtent;
 		VkFormat m_swapChainImageFormat;
@@ -46,12 +125,35 @@ namespace vk {
 		VkPipeline m_graphicsPipeline;
 		std::vector<VkFramebuffer> m_swapChainFramebuffers;
 		VkCommandPool m_commandPool;
+		VkDescriptorSetLayout m_descriptorSetLayout;
+		VkDescriptorPool m_descriptorPool;
+		std::vector<VkDescriptorSet> m_descriptorSets;
+
+		std::vector<VkBuffer> m_uniformBuffers;
+		std::vector<VmaAllocation> m_uniformBuffersAllocations;
+
+		VkBuffer m_vertexBuffer;
+		VmaAllocation m_vertexBufferAllocation;
+		VkBuffer m_indexBuffer;
+		VmaAllocation m_indexBufferAllocation;
+		VkImage m_image;
+		VmaAllocation m_imageAllocation;
+		VkImageView m_imageView;
+		VkSampler m_imageSampler;
+
+		VkImage m_depthImage;
+		VmaAllocation m_depthImageAllocation;
+		VkImageView m_depthImageView;
+
+		VmaAllocator m_vmaAllocator;
+
 		std::vector<VkCommandBuffer> m_commandBuffers;
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAvailableSemaphores;
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_renderFinishedSemaphores;
 		std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_inFlightFences;
 		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
+
 
 		VkQueue m_graphicsQueue;
 

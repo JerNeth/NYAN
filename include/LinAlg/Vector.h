@@ -288,6 +288,21 @@ namespace bla {
 			static_assert(Size > 3, "Vector too small");
 			return m_data[3];
 		}
+		inline Vec& normalize() noexcept {
+			Scalar inverseNorm = Scalar(1)/L2_norm();
+			for (int i = 0; i < m_data.size(); i++) {
+				m_data[i] *= inverseNorm;
+			}
+			return *this;
+		}
+		inline Vec normalized() const noexcept  {
+			Vec ret;
+			Scalar inverseNorm = Scalar(1) / L2_norm();
+			for (int i = 0; i < m_data.size(); i++) {
+				ret.m_data[i] = m_data[i]*inverseNorm;
+			}
+			return ret;
+		}
 		friend inline Scalar dot(Vec const& lhs, Vec const& rhs) {
 			// Not sure if this is better than = 0, but this way we correctly have a Scalar
 			Scalar result = Scalar();

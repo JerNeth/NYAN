@@ -1,11 +1,12 @@
 ﻿
 #include <iostream>
+
 #include <imgui.h>
 #include "VkWrapper.h"
 #include <glfwWrapper.h>
 #include <chrono>
 
-
+#include <stb_image.h>
 #include "LinAlg.h"
 #include "Transform.h"
 
@@ -29,10 +30,17 @@ int main()
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-		vk::Instance instance(glfwExtensions, glfwExtensionCount, applicationName, engineName);		
+		Vulkan::Instance instance(glfwExtensions, glfwExtensionCount, applicationName, engineName);		
 		instance.setup_win32_surface(window.get_win32_window(), GetModuleHandle(nullptr));
-		vk::LogicalDevice device = instance.setup_device();
+		Vulkan::LogicalDevice device = instance.setup_device();
 
+		int texWidth, texHeight, texChannels;
+		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		device.create_texture_image(texWidth, texHeight, 4, reinterpret_cast<char*>(pixels));
+		stbi_image_free(pixels);
+		
+		device.create_swap_chain();
+		device.create_sync_objects();
 		main_loop();
 		int frame = 0;
 		auto start = chrono::steady_clock::now();

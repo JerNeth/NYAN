@@ -10,7 +10,7 @@ constexpr bool debug = true;
 #define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
-
+#include "vk_mem_alloc.h"
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -25,7 +25,7 @@ constexpr bool debug = true;
 
 #include <LogicalDevice.h>
 #include <Instance.h>
-namespace vk {
+namespace Vulkan {
 	
 }
 

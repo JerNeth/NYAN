@@ -50,11 +50,11 @@ namespace bla
 		return a * a;
 	}
 	template<int width>
-	inline constexpr const int at(int x, int y) {
+	inline constexpr const int at(int y, int x) {
 		return x + y * width;
 	}
 	template<size_t width>
-	inline constexpr const size_t at(size_t x, size_t y) {
+	inline constexpr const size_t at(size_t y, size_t x) {
 		return x + y * width;
 	}
 

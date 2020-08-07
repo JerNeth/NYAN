@@ -28,15 +28,15 @@ namespace bla {
 			Scalar s2 = Scalar(2) / rotation.squared_norm();
 			
 			m_data[at<Size_x>(0, 0)] = Scalar(1) - s2 * (square(rotation.m_imaginary[1]) + square(rotation.m_imaginary[2]));
-			m_data[at<Size_x>(1, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] - rotation.m_imaginary[2] * rotation.m_real);
-			m_data[at<Size_x>(2, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] + rotation.m_imaginary[1] * rotation.m_real);
+			m_data[at<Size_x>(0, 1)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] - rotation.m_imaginary[2] * rotation.m_real);
+			m_data[at<Size_x>(0, 2)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] + rotation.m_imaginary[1] * rotation.m_real);
 
-			m_data[at<Size_x>(0, 1)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] + rotation.m_imaginary[2] * rotation.m_real);
+			m_data[at<Size_x>(1, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[1] + rotation.m_imaginary[2] * rotation.m_real);
 			m_data[at<Size_x>(1, 1)] = Scalar(1) - s2 * (square(rotation.m_imaginary[0]) + square(rotation.m_imaginary[2]));
-			m_data[at<Size_x>(2, 1)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] - rotation.m_imaginary[0] * rotation.m_real);
+			m_data[at<Size_x>(1, 2)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] - rotation.m_imaginary[0] * rotation.m_real);
 
-			m_data[at<Size_x>(0, 2)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] - rotation.m_imaginary[1] * rotation.m_real);
-			m_data[at<Size_x>(1, 2)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] + rotation.m_imaginary[0] * rotation.m_real);
+			m_data[at<Size_x>(2, 0)] = s2 * (rotation.m_imaginary[0] * rotation.m_imaginary[2] - rotation.m_imaginary[1] * rotation.m_real);
+			m_data[at<Size_x>(2, 1)] = s2 * (rotation.m_imaginary[1] * rotation.m_imaginary[2] + rotation.m_imaginary[0] * rotation.m_real);
 			m_data[at<Size_x>(2, 2)] = Scalar(1) - s2 * (square(rotation.m_imaginary[0]) + square(rotation.m_imaginary[1]));
 			/*			
 			Scalar x2 = rotation.m_imaginary[0] + rotation.m_imaginary[0];
@@ -93,7 +93,14 @@ namespace bla {
 				}
 			}
 		}
-
+		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other>
+		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other>& other) : m_data() {
+			for (int y = 0; y < min(Size_y, Size_y_other); y++) {
+				for (int x = 0; x < min(Size_x, Size_x_other); x++) {
+					m_data[at<Size_x>(x, y)] = other[at<Size_x_other>(x, y)];
+				}
+			}
+		}
 		friend inline Mat operator+(const Mat& lhs, const Mat& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
@@ -147,7 +154,7 @@ namespace bla {
 			for (size_t y = 0; y < Size_y; y++) {
 				Scalar tmp = Scalar(0);
 				for (size_t x = 0; x < Size_x; x++)
-					tmp += lhs.m_data[at<Size_x>( x, y)] * rhs[x];
+					tmp += lhs.m_data[at<Size_x>( y, x)] * rhs[x];
 				result[y] = tmp;
 			}
 			return result;
@@ -260,13 +267,13 @@ namespace bla {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[y * Size_x + x];
+			return m_data[at<Size_x>(x, y)];
 		}
 		inline constexpr Scalar& operator()(const size_t x, const size_t y) {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[y * Size_x + x];
+			return m_data[at<Size_x>(x, y)];
 		}
 		//TODO, this is ugly
 		Mat<Scalar, Size_x - 1, Size_y - 1> cofactor(const size_t i, const size_t j) const {
@@ -407,9 +414,32 @@ namespace bla {
 			Scalar sin_t = Scalar(sin(angle));
 			return Mat<Scalar, 2, 2>({ cos_t, -sin_t, sin_t, cos_t});
 		}
-		/* Rotates first around x, then around y and then around z
+		template<typename Scalar, size_t Size>
+		void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
+			//assert(offset + Size < Size_y);
+			for (size_t i = offset; i < Size + offset; i++) {
+				m_data[at<Size_x>(colNum, i)] = column[i];
+			}
+		}
+		template<typename Scalar, size_t Size>
+		void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
+			//assert(offset + Size < Size_x);
+			for (size_t i = offset; i < Size + offset; i++) {
+				m_data[at<Size_x>(i, rowNum)] = row[i];
+			}
+		}
+		Mat& set_to_identity() {
+			for (int i = 0; i < Size_y* Size_x; i++) {
+				m_data[i] = 0;
+			}
+			for (int i = 0; i < min(Size_x, Size_y); i++)
+				m_data[at<Size_x>(i, i)] = 1;
+			return *this;
+		}
+		/*	Rotates first around x, then around y and then around z
+		*	roll (x), pitch (y), yaw (z) in degrees
 		*/
-		static Mat<Scalar, 3, 3> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) { // roll (x), pitch (y), yaw (z) in degrees
+		static Mat<Scalar, 3, 3> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) { 
 			
 			
 			Scalar cy = Scalar(cos(yaw * deg_to_rad));
@@ -464,7 +494,7 @@ namespace bla {
 
 				ret.m_data[at<Size_x>(3, 3)] = Scalar(1);
 			}
-			//return ret;
+			return ret;
 			Mat<Scalar, 3, 3> temp3 = temp2;
 			temp3.transposed();
 			Mat<Scalar, 3, 3> roll_m({ 1, 0, 0,
@@ -485,8 +515,54 @@ namespace bla {
 		static inline Mat<Scalar, 3, 3> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
 			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
 		}
+		static inline Mat<Scalar, 4, 4> translation_matrix(Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
+			Mat<Scalar, 4, 4> matrix = Mat<Scalar, 4, 4>::identity();
+			matrix.set_col(translation_vector, 3);
+			return matrix;
+		}
+		static inline Mat<Scalar, 4, 4> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
+			Mat<Scalar, 4, 4> matrix = Mat<Scalar, 4, 4>::identity();
+			Vec<Scalar, 3> zAxis = at - eye;
+			zAxis.normalize();
+			Vec<Scalar, 3> xAxis = zAxis.cross(up);
+			xAxis.normalize();
+			Vec<Scalar, 3> yAxis = zAxis.cross(xAxis);
+			matrix.set_row(xAxis, 0);
+			matrix.set_row(yAxis, 1);
+			matrix.set_row(-zAxis, 2);
+			//matrix[bla::at<Size_x>(0, 0)] = xAxis.x();
+			//matrix[bla::at<Size_x>(1, 0)] = xAxis.y();
+			//matrix[bla::at<Size_x>(2, 0)] = xAxis.z();
+			//matrix[bla::at<Size_x>(0, 1)] = yAxis.x();
+			//matrix[bla::at<Size_x>(1, 1)] = yAxis.y();
+			//matrix[bla::at<Size_x>(2, 1)] = yAxis.z();
+			//matrix[bla::at<Size_x>(0, 2)] = -(zAxis.x());
+			//matrix[bla::at<Size_x>(1, 2)] = -(zAxis.y());
+			//matrix[bla::at<Size_x>(2, 2)] = -(zAxis.z());
+			matrix[bla::at<Size_x>(3, 0)] = -(xAxis.dot(eye));
+			matrix[bla::at<Size_x>(3, 1)] = -(yAxis.dot(eye));
+			matrix[bla::at<Size_x>(3, 2)] =  (zAxis.dot(eye));
+			return matrix;
+		}
 		
+		static inline Mat<Scalar, 4, 4> perspective(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
+			//Right handed, zero to one
+			Mat<Scalar, 4, 4> matrix;
+			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
+			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
+			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
+			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
+			//matrix(2, 3) = -Scalar(1);
+			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
+			matrix[bla::at<Size_x>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
+			matrix[bla::at<Size_x>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix[bla::at<Size_x>(2, 2)] =  farPlane / (nearPlane  - farPlane);
+			matrix[bla::at<Size_x>(2, 3)] = -Scalar(1);
+			matrix[bla::at<Size_x>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			return matrix;
+		}
 	private:
+
 		std::array<Scalar, Size_x* Size_y> m_data;
 		// I would really prefer C++20 concepts instead of this
 		static_assert(std::is_arithmetic<Scalar>::value, "Scalar must be numeric");
@@ -519,9 +595,9 @@ namespace bla {
 			for (size_t x = 0; x < rows; x++) {
 				Scalar tmp = Scalar(0);
 				for (size_t i = 0; i < equal; i++) {
-					tmp += lhs[at<rows>(i, y)] * rhs[at<equal>(x, i)];
+					tmp += lhs[at<rows>(y, i)] * rhs[at<equal>(i, x)];
 				}
-				result[at<rows>(x, y)] = tmp;
+				result[at<rows>(y, x)] = tmp;
 			}
 		}
 		return result;
