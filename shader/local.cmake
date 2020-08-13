@@ -18,4 +18,4 @@ set(
     basic_frag.spv
 )
 
-add_custom_target(shaders DEPENDS basic_vert.spv basic_frag.spv)
+add_custom_target(shaders DEPENDS ${SHADERS})

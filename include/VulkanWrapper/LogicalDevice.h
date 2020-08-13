@@ -1,21 +1,36 @@
 #ifndef VKLOGICALDEVICE_H
 #define VKLOGICALDEVICE_H
 #pragma once
-#include "VkWrapper.h"
+#include "VulkanIncludes.h"
+#include <vector>
+#include <array>
+#include <fstream>
+#include <assert.h>
+#include <unordered_map>
+#include "Utility.h"
 #include "LinAlg.h"
+#include "Shader.h"
+#include "Instance.h"
+#include "DescriptorSet.h"
+#include "Pipeline.h"
 namespace Vulkan {
-	class Instance;
+	class Instance; 
+	class Program;
+	struct ShaderLayout;
+	class PipelineLayout;
 	struct Vertex {
 		std::array<float, 3> pos;
 		std::array<float, 3> color;
 		std::array<float, 2> texcoords;
-		static VkVertexInputBindingDescription get_binding_description() {
-			VkVertexInputBindingDescription bindingDescription{
-				.binding = 0,
-				.stride = sizeof(Vertex),
-				.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+		static std::array<VkVertexInputBindingDescription, 1> get_binding_descriptions() {
+			std::array<VkVertexInputBindingDescription, 1> bindingDescriptions{ 
+				VkVertexInputBindingDescription{
+					.binding = 0,
+					.stride = sizeof(Vertex),
+					.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+				}
 			};
-			return bindingDescription;
+			return bindingDescriptions;
 		}
 		static std::array<VkVertexInputAttributeDescription, 3> get_attribute_descriptions() {
 			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{
@@ -63,8 +78,15 @@ namespace Vulkan {
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
+		friend class PipelineLayout;
+		friend class Shader;
+		friend class Pipeline;
+		friend class Renderpass;
+		friend class DescriptorSetAllocator;
+		
 	public:
-		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex);
+
+		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex, VkPhysicalDeviceProperties& properties);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
@@ -74,6 +96,13 @@ namespace Vulkan {
 		void create_sync_objects();
 		void recreate_swap_chain();
 		void create_texture_image(uint32_t width, uint32_t height, uint32_t channels, char* imageData);
+		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
+		void register_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
+		Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
+		Shader* request_shader(const std::string& shaderName) const;
+		Program* request_program(const std::vector<Shader*>& shaders);
+		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
+		void create_program();
 	private:
 		std::pair<VkBuffer, VmaAllocation> create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage);
 		void cleanup_swapchain();
@@ -89,7 +118,8 @@ namespace Vulkan {
 		void create_index_buffer();
 		void create_uniform_buffers();
 		void create_swapchain();
-		void create_graphics_pipeline();
+		template<typename VertexType, size_t numShaders>
+		void create_graphics_pipeline(std::array<Shader*, numShaders> shaders);
 		void create_image_views();
 		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
 		void create_render_pass();
@@ -97,13 +127,13 @@ namespace Vulkan {
 		void create_command_pool();
 		void create_command_buffers();
 		void create_vma_allocator();
-		void create_descriptor_set_layout();
+		template<size_t numBindings>
+		void create_descriptor_set_layout(std::array<VkDescriptorSetLayoutBinding, numBindings> bindings);
 		void create_descriptor_sets();
 		void create_descriptor_pool();
 		std::pair< VkImage, VmaAllocation> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags flags, VmaMemoryUsage memoryUsage);
 		
 		void update_uniform_buffer(uint32_t currentImage);
-		VkShaderModule create_shader_module(const std::vector<char>& shaderCode);
 
 		/// *******************************************************************
 		/// Member variables
@@ -111,9 +141,10 @@ namespace Vulkan {
 		
 
 		VkDevice m_device;
-		const Instance& m_parentInstance;
+		const Instance& r_instance;
 		VkAllocationCallbacks* m_allocator = NULL;
 		const uint32_t m_graphicsFamilyQueueIndex;
+		VkPhysicalDeviceProperties m_physicalProperties;
 
 		VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
 		std::vector<VkImage> m_swapChainImages;
@@ -154,10 +185,20 @@ namespace Vulkan {
 		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
 
-
+		Program* m_program;
 		VkQueue m_graphicsQueue;
 
-		
+		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
+		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
+
+		std::unordered_map< std::string, size_t> m_shaderIds;
+		Utility::LinkedBucketList<Shader> m_shaderStorage;
+
+		std::unordered_map< std::vector<Shader*>, size_t, Utility::VectorHash<Shader*>> m_programIds;
+		Utility::LinkedBucketList<Program> m_programStorage;
+
+		std::unordered_map< ShaderLayout, size_t, Utility::Hash<ShaderLayout>> m_pipelineLayoutIds;
+		Utility::LinkedBucketList<PipelineLayout> m_pipelineLayoutStorage;
 	};
 }
 #endif // VKLOGICALDEVICE_H

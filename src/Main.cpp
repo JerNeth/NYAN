@@ -9,7 +9,8 @@
 #include <stb_image.h>
 #include "LinAlg.h"
 #include "Transform.h"
-
+#include <new>
+#include <thread>
 using namespace std;
 using namespace bla;
 
@@ -20,10 +21,17 @@ void main_loop() {
 
 int main()
 {
+	/*
+	unsigned int n = std::thread::hardware_concurrency();
+	std::cout << n << " concurrent threads are supported.\n";
+	std::cout << std::hardware_constructive_interference_size << " hardware_constructive_interference_size.\n";
+	std::cout << std::hardware_destructive_interference_size << " hardware_destructive_interference_size .\n";
+	*/
 	int width = 1920, height = 1080;
 	std::string applicationName{ "Demo" };
 	std::string engineName{ "Simple Engine" };
 	try {
+
 		glfww::Library library;
 		glfww::Window window(width, height, nullptr, nullptr, applicationName.c_str());
 		//auto window = glfww::Window::create_full_screen(width, height);

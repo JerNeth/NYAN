@@ -6,6 +6,7 @@
 set(TEST_CPP
     test/LinAlgTests.cpp
     test/Tester.cpp
+    test/UtilityTests.cpp
 )
 
 # ---------------------------------------------------------------------------

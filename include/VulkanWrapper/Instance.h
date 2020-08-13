@@ -1,8 +1,13 @@
 #ifndef VKINSTANCE_H
 #define VKINSTANCE_H
 #pragma once
+#include "VulkanIncludes.h"
+#include <bitset>
+#include <vector>
+#include <iostream>
 
-#include "VkWrapper.h"
+
+#include "LogicalDevice.h"
 
 namespace Vulkan {
 	class LogicalDevice;
@@ -11,6 +16,7 @@ namespace Vulkan {
 		Instance(const char** extensions, uint32_t extensionCount, std::string applicationName = "", std::string engineName = "") : m_applicationName(applicationName), m_engineName(engineName) {
 			m_extensions.assign(extensions, extensions + extensionCount);
 			create_instance();
+
 		}
 		~Instance() {
 			if constexpr (debug) {

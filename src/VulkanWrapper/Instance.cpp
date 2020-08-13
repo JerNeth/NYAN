@@ -14,13 +14,16 @@ Vulkan::LogicalDevice Vulkan::Instance::setup_device()
 	if (numDevices == 0) {
 		throw std::runtime_error("VK: no physical device with Vulkan support available");
 	}
+	
 	devices.resize(numDevices);
 	vkEnumeratePhysicalDevices(m_instance, &numDevices, devices.data());
 	if (auto selectedDevice = std::find_if(devices.cbegin(), devices.cend(),
 		[this](const auto& device) {return this->is_device_suitable(device); }); selectedDevice != devices.cend()) {
 		m_physicalDevice = *selectedDevice;
+		VkPhysicalDeviceProperties properties;
+		vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
 		auto [device, queueIndex] = setup_logical_device(*selectedDevice);
-		return LogicalDevice(*this, device, queueIndex);
+		return LogicalDevice(*this, device, queueIndex, properties);
 		
 	}
 	else {

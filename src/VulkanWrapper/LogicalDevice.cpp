@@ -1,8 +1,7 @@
 #include "LogicalDevice.h"
 
 
-
-static std::vector<char> read_binary_file(const std::string& filename) {
+static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 	if (!(file.is_open())) {
@@ -10,10 +9,10 @@ static std::vector<char> read_binary_file(const std::string& filename) {
 	}
 
 	auto fileSize = file.tellg();
-	std::vector<char> buffer(fileSize);
+	std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
 	file.seekg(0);
-	file.read(buffer.data(), fileSize);
+	file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
 	file.close();
 	return buffer;
 }
@@ -28,7 +27,6 @@ std::pair<VkBuffer, VmaAllocation> Vulkan::LogicalDevice::create_buffer(VkDevice
 		.usage = usage,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE
 	};
-
 	VmaAllocationCreateInfo allocInfo{
 		.usage = memoryUsage
 	};
@@ -41,6 +39,7 @@ void Vulkan::LogicalDevice::cleanup_swapchain()
 {
 
 	vmaDestroyImage(m_vmaAllocator, m_depthImage, m_depthImageAllocation);
+	vkDestroyImageView(m_device, m_depthImageView, m_allocator);
 	for (size_t i = 0; i < m_swapChainImages.size(); i++) {
 		vmaDestroyBuffer(m_vmaAllocator, m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
 	}
@@ -54,7 +53,7 @@ void Vulkan::LogicalDevice::cleanup_swapchain()
 	vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
 	
 	vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocator);
-	vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocator);
+	//vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocator);
 	vkDestroyRenderPass(m_device, m_renderPass, m_allocator);
 	
 	vkDestroySwapchainKHR(m_device, m_swapChain, m_allocator);
@@ -146,6 +145,7 @@ VkCommandBuffer Vulkan::LogicalDevice::begin_single_time_commands()
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
 	};
+	
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 	return commandBuffer;
 }
@@ -250,14 +250,14 @@ void Vulkan::LogicalDevice::create_swapchain()
 
 	uint32_t numFormats;
 	uint32_t numModes;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_parentInstance.m_physicalDevice, m_parentInstance.m_surface, &numFormats, nullptr);
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_parentInstance.m_physicalDevice, m_parentInstance.m_surface, &numModes, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(r_instance.m_physicalDevice, r_instance.m_surface, &numFormats, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(r_instance.m_physicalDevice, r_instance.m_surface, &numModes, nullptr);
 
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(numFormats);
 	std::vector<VkPresentModeKHR> presentModes(numModes);
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_parentInstance.m_physicalDevice, m_parentInstance.m_surface, &capabilities);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_parentInstance.m_physicalDevice, m_parentInstance.m_surface, &numFormats, surfaceFormats.data());
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_parentInstance.m_physicalDevice, m_parentInstance.m_surface, &numModes, presentModes.data());
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(r_instance.m_physicalDevice, r_instance.m_surface, &capabilities);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(r_instance.m_physicalDevice, r_instance.m_surface, &numFormats, surfaceFormats.data());
+	vkGetPhysicalDeviceSurfacePresentModesKHR(r_instance.m_physicalDevice, r_instance.m_surface, &numModes, presentModes.data());
 	VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 	if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
 		[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
@@ -277,7 +277,7 @@ void Vulkan::LogicalDevice::create_swapchain()
 	}
 	VkSwapchainCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface = m_parentInstance.m_surface,
+		.surface = r_instance.m_surface,
 		.minImageCount = imageCount,
 		.imageFormat = surfaceFormat.format,
 		.imageColorSpace = surfaceFormat.colorSpace,
@@ -322,38 +322,24 @@ void Vulkan::LogicalDevice::create_swapchain()
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &imageCount, m_swapChainImages.data());
 	
 }
-void Vulkan::LogicalDevice::create_graphics_pipeline()
+template<typename VertexType, size_t numShaders>
+void Vulkan::LogicalDevice::create_graphics_pipeline(std::array<Shader*, numShaders> shaders)
 {
-	auto vertShaderCode = read_binary_file("basic_vert.spv");
-	auto fragShaderCode = read_binary_file("basic_frag.spv");
 
-	VkShaderModule vertShaderModule = create_shader_module(vertShaderCode);
-	VkShaderModule fragShaderModule = create_shader_module(fragShaderCode);
+	std::array<VkPipelineShaderStageCreateInfo, numShaders> shaderStages;
+	for (size_t i = 0; i < numShaders; i++) {
+		shaderStages[i] = shaders[i]->get_create_info();
+	}
 
-	VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		.stage = VK_SHADER_STAGE_VERTEX_BIT,
-		.module = vertShaderModule,
-		.pName = "main"
-	};
-
-	VkPipelineShaderStageCreateInfo fragShaderStageCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.module = fragShaderModule,
-		.pName = "main"
-	};
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages{ vertShaderStageCreateInfo, fragShaderStageCreateInfo };
-
-	auto bindingDescription = Vertex::get_binding_description();
-	auto attributeDescription = Vertex::get_attribute_descriptions();
-
+	auto bindingDescriptions = VertexType::get_binding_descriptions();
+	auto attributeDescriptions = VertexType::get_attribute_descriptions();
+	
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &bindingDescription,
-		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size()),
-		.pVertexAttributeDescriptions = attributeDescription.data()
+		.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size()),
+		.pVertexBindingDescriptions = bindingDescriptions.data(),
+		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+		.pVertexAttributeDescriptions = attributeDescriptions.data()
 	};
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -400,7 +386,7 @@ void Vulkan::LogicalDevice::create_graphics_pipeline()
 	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-		.sampleShadingEnable = VK_FALSE,
+		.sampleShadingEnable = VK_TRUE,
 		.minSampleShading = 1.0f, // Optional
 		.pSampleMask = nullptr, // Optional
 		.alphaToCoverageEnable = VK_FALSE, // Optional
@@ -457,18 +443,17 @@ void Vulkan::LogicalDevice::create_graphics_pipeline()
 	};
 	
 
-	if (auto result = vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, m_allocator, &m_pipelineLayout); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create pipeline layout, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-
+	//if (auto result = vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, m_allocator, &m_pipelineLayout); result != VK_SUCCESS) {
+	//	if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+	//		throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
+	//	}
+	//	if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+	//		throw std::runtime_error("VK: could not create pipeline layout, out of device memory");
+	//	}
+	//	else {
+	//		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+	//	}
+	//}
 	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 		.stageCount = static_cast<uint32_t>(shaderStages.size()),
@@ -503,17 +488,35 @@ void Vulkan::LogicalDevice::create_graphics_pipeline()
 		}
 	}
 
-	vkDestroyShaderModule(m_device, fragShaderModule, m_allocator);
-	vkDestroyShaderModule(m_device, vertShaderModule, m_allocator);
-
 }
-Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex) : m_parentInstance(parentInstance), m_device(device), m_graphicsFamilyQueueIndex(graphicsFamilyQueueIndex) {
+Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex, VkPhysicalDeviceProperties& properties) : 
+	r_instance(parentInstance),
+	m_device(device), 
+	m_graphicsFamilyQueueIndex(graphicsFamilyQueueIndex),
+	m_physicalProperties(properties)
+{
 	vkGetDeviceQueue(m_device, graphicsFamilyQueueIndex, 0, &m_graphicsQueue);
 	create_vma_allocator();
 	
+	VkDescriptorSetLayoutBinding uboLayoutBinding{
+		.binding = 0,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		.pImmutableSamplers = nullptr
+	};
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{
+		.binding = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+		.pImmutableSamplers = nullptr
+	};
+	DescriptorSetLayout l;
 	
-	create_descriptor_set_layout();
-	
+	create_descriptor_set_layout(std::array< VkDescriptorSetLayoutBinding, 2>{uboLayoutBinding, samplerLayoutBinding});
+
+	create_program();
 	create_command_pool();
 	create_vertex_buffer();
 	create_index_buffer();
@@ -526,6 +529,10 @@ Vulkan::LogicalDevice::~LogicalDevice()
 {
 
 	cleanup_swapchain();
+	m_descriptorAllocatorsStorage.destroy();
+	m_shaderStorage.destroy();
+	m_programStorage.destroy();
+	m_pipelineLayoutStorage.destroy();
 	vkDestroySampler(m_device, m_imageSampler, m_allocator);
 	vkDestroyImageView(m_device, m_imageView, m_allocator);
 	vmaDestroyImage(m_vmaAllocator, m_image, m_imageAllocation);
@@ -613,7 +620,6 @@ void Vulkan::LogicalDevice::create_render_pass()
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	};
-
 	VkAttachmentReference depthAttachmentReference{
 		.attachment = 1,
 		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
@@ -624,6 +630,7 @@ void Vulkan::LogicalDevice::create_render_pass()
 		.pColorAttachments = &colorAttachmentReference,
 		.pDepthStencilAttachment = &depthAttachmentReference
 	};
+	
 	VkSubpassDependency subpassDependency{
 		.srcSubpass = VK_SUBPASS_EXTERNAL,
 		.dstSubpass = 0,
@@ -764,9 +771,9 @@ void Vulkan::LogicalDevice::create_command_buffers()
 		VkDeviceSize offsets[]{ 0 };
 		vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(m_commandBuffers[i], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(m_commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[i],0, nullptr);
+		uint32_t offset[] = { 0,0 };
+		vkCmdBindDescriptorSets(m_commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[i],1, offset);
 		vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
 		vkCmdEndRenderPass(m_commandBuffers[i]);
 		
 		if (auto result = vkEndCommandBuffer(m_commandBuffers[i]); result != VK_SUCCESS) {
@@ -834,37 +841,25 @@ void Vulkan::LogicalDevice::create_sync_objects()
 void Vulkan::LogicalDevice::create_vma_allocator()
 {
 	VmaAllocatorCreateInfo allocatorInfo{
-		.physicalDevice = m_parentInstance.m_physicalDevice,
+		.physicalDevice = r_instance.m_physicalDevice,
 		.device = m_device,
-		.instance = m_parentInstance.m_instance,
+		.instance = r_instance.m_instance,
 	};
 	if (auto result = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator); result != VK_SUCCESS) {
 		throw std::runtime_error("VMA: could not create allocator");
 	}
 }
-
-void Vulkan::LogicalDevice::create_descriptor_set_layout()
+template<size_t numBindings>
+void Vulkan::LogicalDevice::create_descriptor_set_layout(std::array<VkDescriptorSetLayoutBinding, numBindings> bindings)
 {
-	VkDescriptorSetLayoutBinding uboLayoutBinding{
-		.binding = 0,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		.pImmutableSamplers = nullptr
-	};
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{
-		.binding = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-		.pImmutableSamplers = nullptr
-	};
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings{uboLayoutBinding, samplerLayoutBinding};
+	
+	//std::array<VkDescriptorSetLayoutBinding, 2> bindings{uboLayoutBinding, samplerLayoutBinding};
 	VkDescriptorSetLayoutCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 		.bindingCount = static_cast<uint32_t>(bindings.size()),
 		.pBindings = bindings.data()
 	};
+	
 	if (auto result = vkCreateDescriptorSetLayout(m_device, &createInfo, m_allocator, &m_descriptorSetLayout); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
@@ -884,14 +879,14 @@ void Vulkan::LogicalDevice::create_descriptor_sets()
 	VkDescriptorSetAllocateInfo allocateInfo{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 		.descriptorPool = m_descriptorPool,
-		.descriptorSetCount = static_cast<uint32_t>(m_swapChainImages.size()),
+		.descriptorSetCount = static_cast<uint32_t>(layouts.size()),
 		.pSetLayouts = layouts.data()
 	};
-	m_descriptorSets.resize(m_swapChainImages.size());
+	m_descriptorSets.resize(layouts.size());
 	if (auto result = vkAllocateDescriptorSets(m_device, &allocateInfo, m_descriptorSets.data()); result != VK_SUCCESS) {
 		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 	}
-	for (size_t i = 0; i < m_swapChainImages.size(); i++) {
+	for (size_t i = 0; i < layouts.size(); i++) {
 		VkDescriptorBufferInfo bufferInfo{
 			.buffer = m_uniformBuffers[i],
 			.offset = 0,
@@ -911,7 +906,7 @@ void Vulkan::LogicalDevice::create_descriptor_sets()
 				.dstBinding = 0,
 				.dstArrayElement = 0,
 				.descriptorCount = 1,
-				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 				.pImageInfo = nullptr,
 				.pBufferInfo = &bufferInfo,
 				.pTexelBufferView = nullptr
@@ -936,7 +931,7 @@ void Vulkan::LogicalDevice::create_descriptor_pool()
 {
 	std::array< VkDescriptorPoolSize, 2> poolSizes{
 		VkDescriptorPoolSize{
-			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 			.descriptorCount = static_cast<uint32_t>(m_swapChainImages.size())
 		},
 		VkDescriptorPoolSize{
@@ -950,6 +945,7 @@ void Vulkan::LogicalDevice::create_descriptor_pool()
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data(),
 	};
+
 	if (auto result = vkCreateDescriptorPool(m_device, &createInfo, m_allocator, &m_descriptorPool); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorPool, out of host memory");
@@ -1021,6 +1017,75 @@ void Vulkan::LogicalDevice::create_texture_image(uint32_t width, uint32_t height
 	
 	create_texture_image_view();
 }
+
+Vulkan::DescriptorSetAllocator* Vulkan::LogicalDevice::request_descriptor_set_allocator(const DescriptorSetLayout& layout)
+{
+
+	//std::hash <std::pair < DescriptorSetLayout, std::array<uint32_t, MAX_BINDINGS>>> h{};
+	
+	
+	if (!m_descriptorAllocatorIds.contains(layout)) {
+		m_descriptorAllocatorIds.emplace(layout, m_descriptorAllocatorsStorage.emplace(*this, layout));
+	}
+	return m_descriptorAllocatorsStorage.get(m_descriptorAllocatorIds.at(layout));
+}
+
+void Vulkan::LogicalDevice::register_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode)
+{
+	if (!m_shaderIds.contains(shaderName)) {
+		m_shaderIds.emplace(shaderName, m_shaderStorage.emplace(*this, shaderCode));
+	}
+}
+
+Vulkan::Shader* Vulkan::LogicalDevice::request_shader(const std::string& shaderName) const
+{
+	return m_shaderStorage.get(m_shaderIds.at(shaderName));
+}
+
+Vulkan::Shader* Vulkan::LogicalDevice::request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode)
+{
+	register_shader(shaderName, shaderCode);
+	return request_shader(shaderName);
+}
+
+Vulkan::Program* Vulkan::LogicalDevice::request_program(const std::vector<Shader*>& shaders)
+{
+	if (!m_programIds.contains(shaders)) {
+		m_programIds.emplace(shaders, m_programStorage.emplace(shaders));
+	}
+	return m_programStorage.get(m_programIds.at(shaders));
+}
+
+Vulkan::PipelineLayout* Vulkan::LogicalDevice::request_pipeline_layout(const ShaderLayout& layout)
+{
+	
+	if (!m_pipelineLayoutIds.contains(layout)) {
+		m_pipelineLayoutIds.emplace(layout, m_pipelineLayoutStorage.emplace(*this, layout));
+	}
+	return m_pipelineLayoutStorage.get(m_pipelineLayoutIds.at(layout));
+	
+	return nullptr;
+}
+
+void Vulkan::LogicalDevice::create_program()
+{
+	auto vertName = "basic_vert.spv";
+	auto fragName = "basic_frag.spv";
+	auto vertShaderCode = read_binary_file(vertName);
+	auto fragShaderCode = read_binary_file(fragName);
+	ShaderLayout layout;
+	auto vertShader = request_shader(vertName, vertShaderCode);
+	auto fragShader = request_shader(fragName, fragShaderCode);
+	std::vector<Shader*> shaders{ vertShader, fragShader };
+	vertShader->parse_shader(layout, vertShaderCode);
+	fragShader->parse_shader(layout, fragShaderCode);
+	auto program = request_program(shaders);
+	program->set_pipeline_layout(request_pipeline_layout(layout));
+	m_pipelineLayout = program->get_pipeline_layout()->get_layout();
+}
+
+
+
 
 void Vulkan::LogicalDevice::update_uniform_buffer(uint32_t currentImage)
 {
@@ -1197,7 +1262,13 @@ void Vulkan::LogicalDevice::create_swap_chain()
 	create_swapchain();
 	create_image_views();
 	create_render_pass();
-	create_graphics_pipeline();
+	auto vertShaderCode = read_binary_file("basic_vert.spv");
+	auto fragShaderCode = read_binary_file("basic_frag.spv");
+	ShaderLayout l;
+	Shader vert(*this, vertShaderCode);
+	Shader frag(*this, fragShaderCode);
+
+	create_graphics_pipeline<Vertex, 2>({&frag, &vert });
 	create_depth_resources();
 	create_framebuffers();
 	create_uniform_buffers();
@@ -1215,27 +1286,3 @@ void Vulkan::LogicalDevice::recreate_swap_chain()
 
 }
 
-VkShaderModule Vulkan::LogicalDevice::create_shader_module(const std::vector<char>& shaderCode)
-{
-	VkShaderModuleCreateInfo createInfo{
-		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		.codeSize = shaderCode.size(),
-		.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data()),
-	};
-	VkShaderModule shaderModule;
-	if (auto result = vkCreateShaderModule(m_device, &createInfo, m_allocator, &shaderModule); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create shader module, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create shader module, out of device memory");
-		}
-		if (result == VK_ERROR_INVALID_SHADER_NV) {
-			throw std::runtime_error("VK: could not create shader module, invalid shader NV");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-	return shaderModule;
-}
