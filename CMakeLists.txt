@@ -41,6 +41,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
 # Would work, but why use it instead of GLFW
 
+# SPIRV-Cross
+include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
+
 # ---------------------------------------------------------------------------
 # Includes
 # ---------------------------------------------------------------------------
@@ -72,4 +75,4 @@ include("${CMAKE_SOURCE_DIR}/test/local.cmake")
 add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
 add_dependencies(Main shaders)
 
-target_link_libraries(Main glfw Vulkan::Vulkan)
+target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core)
