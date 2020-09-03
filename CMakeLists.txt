@@ -63,16 +63,16 @@ include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 # ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-
-include("${CMAKE_SOURCE_DIR}/test/local.cmake")
-
-# ---------------------------------------------------------------------------
-# Executable
+# Executables
 # ---------------------------------------------------------------------------
 
 add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
 add_dependencies(Main shaders)
 
 target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core)
+
+# ---------------------------------------------------------------------------
+# Testing
+# ---------------------------------------------------------------------------
+
+include("${CMAKE_SOURCE_DIR}/test/local.cmake")

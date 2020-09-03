@@ -52,9 +52,9 @@ void Vulkan::LogicalDevice::cleanup_swapchain()
 
 	vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
 	
-	vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocator);
+	//vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocator);
 	//vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocator);
-	vkDestroyRenderPass(m_device, m_renderPass, m_allocator);
+	//vkDestroyRenderPass(m_device, m_renderPass, m_allocator);
 	
 	vkDestroySwapchainKHR(m_device, m_swapChain, m_allocator);
 }
@@ -515,13 +515,27 @@ Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkD
 	DescriptorSetLayout l;
 	
 	create_descriptor_set_layout(std::array< VkDescriptorSetLayoutBinding, 2>{uboLayoutBinding, samplerLayoutBinding});
-
+	create_swapchain();
+	create_image_views();
+	create_render_pass();
 	create_program();
+	//auto vertName = "basic_vert.spv";
+	//auto fragName = "basic_frag.spv";
+	//auto vertShader = request_shader(vertName);
+	//auto fragShader = request_shader(fragName);
+
+	//create_graphics_pipeline<Vertex, 2>({ vertShader, fragShader });
 	create_command_pool();
 	create_vertex_buffer();
 	create_index_buffer();
 	
+	
 	create_texture_sampler();
+	create_depth_resources();
+	create_framebuffers();
+	create_uniform_buffers();
+	create_descriptor_pool();
+	
 
 	
 }
@@ -533,6 +547,8 @@ Vulkan::LogicalDevice::~LogicalDevice()
 	m_shaderStorage.destroy();
 	m_programStorage.destroy();
 	m_pipelineLayoutStorage.destroy();
+	m_pipeline->~Pipeline();
+	delete m_testRenderPass;
 	vkDestroySampler(m_device, m_imageSampler, m_allocator);
 	vkDestroyImageView(m_device, m_imageView, m_allocator);
 	vmaDestroyImage(m_vmaAllocator, m_image, m_imageAllocation);
@@ -595,71 +611,92 @@ VkImageView Vulkan::LogicalDevice::create_image_view(VkFormat format, VkImage im
 
 void Vulkan::LogicalDevice::create_render_pass()
 {
-	VkAttachmentDescription colorAttachment{
-		.format = m_swapChainImageFormat,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	};
+	if (m_testRenderPass)
+		delete m_testRenderPass;
+	RenderpassCreateInfo createInfo;
+	createInfo.colorAttachmentsCount = 1;
+	createInfo.clearAttachments.set(0);
+	createInfo.storeAttachments.set(0);
+	createInfo.attachmentInfos[0].format = m_swapChainImageFormat;
+	createInfo.attachmentInfos[0].isSwapchainImage = true;
+	createInfo.attachmentInfos[0].layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-	VkAttachmentReference colorAttachmentReference{
-		.attachment = 0,
-		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	};
-	VkAttachmentDescription depthAttachment{
-		.format = VK_FORMAT_D16_UNORM,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-	VkAttachmentReference depthAttachmentReference{
-		.attachment = 1,
-		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-	VkSubpassDescription subpassDescription{
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.colorAttachmentCount = 1,
-		.pColorAttachments = &colorAttachmentReference,
-		.pDepthStencilAttachment = &depthAttachmentReference
-	};
-	
-	VkSubpassDependency subpassDependency{
-		.srcSubpass = VK_SUBPASS_EXTERNAL,
-		.dstSubpass = 0,
-		.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-		.srcAccessMask = 0,
-		.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-	};
-	std::array< VkAttachmentDescription, 2> attachments{ colorAttachment ,depthAttachment };
-	VkRenderPassCreateInfo renderPassCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		.attachmentCount = static_cast<uint32_t>(attachments.size()),
-		.pAttachments = attachments.data(),
-		.subpassCount = 1,
-		.pSubpasses = &subpassDescription,
-		.dependencyCount = 1,
-		.pDependencies = &subpassDependency
-	};
-	if (auto result = vkCreateRenderPass(m_device, &renderPassCreateInfo, m_allocator, &m_renderPass); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create render pass, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create render pass, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
+	createInfo.usingDepth = true;
+	createInfo.subpassCount = 1;
+	createInfo.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
+
+	createInfo.subpasses[0].colorAttachmentsCount = 1;
+	createInfo.subpasses[0].colorAttachments[0] = 0;
+	createInfo.subpasses[0].depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
+
+	m_testRenderPass = new Renderpass(*this, createInfo);
+	m_renderPass = m_testRenderPass->get_render_pass();
+	//VkAttachmentDescription colorAttachment{
+	//	.format = m_swapChainImageFormat,
+	//	.samples = VK_SAMPLE_COUNT_1_BIT,
+	//	.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+	//	.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+	//	.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+	//	.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+	//	.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	//	.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+	//};
+
+	//VkAttachmentReference colorAttachmentReference{
+	//	.attachment = 0,
+	//	.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	//};
+	//
+	//VkAttachmentDescription depthAttachment{
+	//	.format = VK_FORMAT_D16_UNORM,
+	//	.samples = VK_SAMPLE_COUNT_1_BIT,
+	//	.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+	//	.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+	//	.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+	//	.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+	//	.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	//	.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	//};
+	//VkAttachmentReference depthAttachmentReference{
+	//	.attachment = 1,
+	//	.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	//};
+	//VkSubpassDescription subpassDescription{
+	//	.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+	//	.colorAttachmentCount = 1,
+	//	.pColorAttachments = &colorAttachmentReference,
+	//	.pDepthStencilAttachment = &depthAttachmentReference
+	//};
+	////VkRenderPassMultiviewCreateInfo
+	//VkSubpassDependency subpassDependency{
+	//	.srcSubpass = VK_SUBPASS_EXTERNAL,
+	//	.dstSubpass = 0,
+	//	.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	//	.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	//	.srcAccessMask = 0,
+	//	.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+	//};
+	//std::array< VkAttachmentDescription, 2> attachments{ colorAttachment ,depthAttachment };
+	//VkRenderPassCreateInfo renderPassCreateInfo{
+	//	.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+	//	.attachmentCount = static_cast<uint32_t>(attachments.size()),
+	//	.pAttachments = attachments.data(),
+	//	.subpassCount = 1,
+	//	.pSubpasses = &subpassDescription,
+	//	.dependencyCount = 1,
+	//	.pDependencies = &subpassDependency
+	//};
+	//if (auto result = vkCreateRenderPass(m_device, &renderPassCreateInfo, m_allocator, &m_renderPass); result != VK_SUCCESS) {
+	//	if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+	//		throw std::runtime_error("VK: could not create render pass, out of host memory");
+	//	}
+	//	if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+	//		throw std::runtime_error("VK: could not create render pass, out of device memory");
+	//	}
+	//	else {
+	//		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+	//	}
+	//}
 }
 
 void Vulkan::LogicalDevice::create_framebuffers()
@@ -764,9 +801,25 @@ void Vulkan::LogicalDevice::create_command_buffers()
 			.clearValueCount = static_cast<uint32_t>(clearColors.size()),
 			.pClearValues = clearColors.data(),
 		};
+		VkViewport viewport{
+		.x = 0.0f,
+		.y = 0.0f,
+		.width = (float)m_swapChainExtent.width,
+		.height = (float)m_swapChainExtent.height,
+		.minDepth = 0.0f,
+		.maxDepth = 1.0f
+		};
+
+		VkRect2D scissor{
+			.offset = {0,0},
+			.extent = m_swapChainExtent
+		};
+		
 
 		vkCmdBeginRenderPass(m_commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+		vkCmdSetViewport(m_commandBuffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(m_commandBuffers[i], 0, 1, &scissor);
 		VkBuffer vertexBuffers[]{ m_vertexBuffer };
 		VkDeviceSize offsets[]{ 0 };
 		vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
@@ -983,7 +1036,6 @@ std::pair< VkImage, VmaAllocation> Vulkan::LogicalDevice::create_image(uint32_t 
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	};
-
 	
 	VmaAllocationCreateInfo allocInfo{
 		.usage = memoryUsage,
@@ -1082,6 +1134,10 @@ void Vulkan::LogicalDevice::create_program()
 	auto program = request_program(shaders);
 	program->set_pipeline_layout(request_pipeline_layout(layout));
 	m_pipelineLayout = program->get_pipeline_layout()->get_layout();
+	
+	//Renderpass dummy(*this,m_renderPass);
+	m_pipeline = new(pipelineStorage)Pipeline(Pipeline::request_pipeline(*this, program, m_testRenderPass, 0));
+	m_graphicsPipeline = m_pipeline->get_pipeline();
 }
 
 
@@ -1262,13 +1318,13 @@ void Vulkan::LogicalDevice::create_swap_chain()
 	create_swapchain();
 	create_image_views();
 	create_render_pass();
-	auto vertShaderCode = read_binary_file("basic_vert.spv");
-	auto fragShaderCode = read_binary_file("basic_frag.spv");
-	ShaderLayout l;
-	Shader vert(*this, vertShaderCode);
-	Shader frag(*this, fragShaderCode);
+	//auto vertShaderCode = read_binary_file("basic_vert.spv");
+	//auto fragShaderCode = read_binary_file("basic_frag.spv");
+	//ShaderLayout l;
+	//Shader vert(*this, vertShaderCode);
+	//Shader frag(*this, fragShaderCode);
 
-	create_graphics_pipeline<Vertex, 2>({&frag, &vert });
+	//create_graphics_pipeline<Vertex, 2>({&frag, &vert });
 	create_depth_resources();
 	create_framebuffers();
 	create_uniform_buffers();

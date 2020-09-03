@@ -47,7 +47,7 @@ int main()
 		device.create_texture_image(texWidth, texHeight, 4, reinterpret_cast<char*>(pixels));
 		stbi_image_free(pixels);
 		
-		device.create_swap_chain();
+		device.create_stuff();
 		device.create_sync_objects();
 		main_loop();
 		int frame = 0;

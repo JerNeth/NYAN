@@ -3,7 +3,7 @@
 #ifdef NDEBUG
 constexpr bool debug = false;
 #else
-constexpr bool debug = true;
+constexpr bool debug = false;
 #endif
 #define GLFW_INCLUDE_VULKAN
 #define VK_USE_PLATFORM_WIN32_KHR

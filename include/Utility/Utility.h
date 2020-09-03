@@ -16,6 +16,9 @@ namespace Utility {
 		}
 		return 0;
 	}
+	inline constexpr uint32_t bit_pos(uint64_t value) {
+		return bit_width(value) - 1;
+	}
 	template<typename T>
 	struct Hash {
 		size_t operator()(const T& t) const {

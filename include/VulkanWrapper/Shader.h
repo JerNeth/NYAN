@@ -33,12 +33,18 @@ namespace Vulkan {
 		}
 	};
 	enum class ShaderStage {
-		Vertex = 0,// VK_SHADER_STAGE_VERTEX_BIT,
-		TesselationControl = 1, //VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-		TesselationEvaluation = 2, //VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-		Geometry = 3, //VK_SHADER_STAGE_GEOMETRY_BIT,
-		Fragment = 4, //VK_SHADER_STAGE_FRAGMENT_BIT,
-		Compute = 5,//VK_SHADER_STAGE_COMPUTE_BIT,
+		Vertex = Utility::bit_pos(VK_SHADER_STAGE_VERTEX_BIT),// 0,
+		TesselationControl = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT), //1,
+		TesselationEvaluation = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT), //2,
+		Geometry = Utility::bit_pos(VK_SHADER_STAGE_GEOMETRY_BIT), //3,
+		Fragment = Utility::bit_pos(VK_SHADER_STAGE_FRAGMENT_BIT), //4,
+		Compute = Utility::bit_pos(VK_SHADER_STAGE_COMPUTE_BIT),//5,
+		Raygen = Utility::bit_pos(VK_SHADER_STAGE_RAYGEN_BIT_NV),//8
+		AnyHit = Utility::bit_pos(VK_SHADER_STAGE_ANY_HIT_BIT_NV),//9
+		ClosestHit = Utility::bit_pos(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV),//10
+		Miss = Utility::bit_pos(VK_SHADER_STAGE_MISS_BIT_NV),//11
+		Intersection = Utility::bit_pos(VK_SHADER_STAGE_INTERSECTION_BIT_NV),//12
+		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
 	};
 	constexpr size_t NUM_SHADER_STAGES = 6;
 	
@@ -73,7 +79,7 @@ namespace Vulkan {
 	private:
 		void set_shader(Shader* shader);
 		PipelineLayout* m_layout;
-		std::array<Shader*, NUM_SHADER_STAGES> m_shaders;
+		std::array<Shader*, NUM_SHADER_STAGES> m_shaders{};
 	};
 };
 

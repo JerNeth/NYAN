@@ -15,9 +15,6 @@
 #include "Pipeline.h"
 namespace Vulkan {
 	class Instance; 
-	class Program;
-	struct ShaderLayout;
-	class PipelineLayout;
 	struct Vertex {
 		std::array<float, 3> pos;
 		std::array<float, 3> color;
@@ -78,6 +75,7 @@ namespace Vulkan {
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
+		friend class Renderpass;
 		friend class PipelineLayout;
 		friend class Shader;
 		friend class Pipeline;
@@ -103,6 +101,11 @@ namespace Vulkan {
 		Program* request_program(const std::vector<Shader*>& shaders);
 		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
 		void create_program();
+		void create_stuff() {
+			create_descriptor_sets();
+			create_command_buffers();
+
+		}
 	private:
 		std::pair<VkBuffer, VmaAllocation> create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage);
 		void cleanup_swapchain();
@@ -185,8 +188,13 @@ namespace Vulkan {
 		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
 
+		Renderpass* m_testRenderPass = nullptr;
 		Program* m_program;
 		VkQueue m_graphicsQueue;
+
+
+		std::byte pipelineStorage[sizeof(Pipeline)];
+		Pipeline* m_pipeline;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;

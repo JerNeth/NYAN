@@ -21,54 +21,84 @@ namespace Vulkan {
 	struct PipelineState {
 		unsigned depth_write : 1;
 		unsigned depth_test : 1;
-		unsigned blend_enabled : 1;
+		unsigned blend_enable : 1;
 
-		VkCullModeFlags cull_mode : CULL_MODE_BITS;
-		VkFrontFace front_face : FRONT_FACE_BITS;
+		unsigned cull_mode : CULL_MODE_BITS;
+		unsigned front_face : FRONT_FACE_BITS;
 		unsigned depth_bias_enable : 1;
 
 		unsigned depth_compare : COMPARE_OP_BITS;
 
 		unsigned stencil_test : 1;
-		VkStencilOp stencil_front_fail : STENCIL_OP_BITS;
-		VkStencilOp stencil_front_pass : STENCIL_OP_BITS;
-		VkStencilOp stencil_front_depth_fail : STENCIL_OP_BITS;
-		VkCompareOp stencil_front_compare_op : COMPARE_OP_BITS;
-		VkStencilOp stencil_back_fail : STENCIL_OP_BITS;
-		VkStencilOp stencil_back_pass : STENCIL_OP_BITS;
-		VkStencilOp stencil_back_depth_fail : STENCIL_OP_BITS;
-		VkCompareOp stencil_back_compare_op : COMPARE_OP_BITS;
+		unsigned stencil_front_fail : STENCIL_OP_BITS;
+		unsigned stencil_front_pass : STENCIL_OP_BITS;
+		unsigned stencil_front_depth_fail : STENCIL_OP_BITS;
+		unsigned stencil_front_compare_op : COMPARE_OP_BITS;
+		unsigned stencil_back_fail : STENCIL_OP_BITS;
+		unsigned stencil_back_pass : STENCIL_OP_BITS;
+		unsigned stencil_back_depth_fail : STENCIL_OP_BITS;
+		unsigned stencil_back_compare_op : COMPARE_OP_BITS;
 
 		unsigned alpha_to_coverage : 1;
 		unsigned alpha_to_one : 1;
 		unsigned sample_shading : 1;
 
-		VkBlendFactor src_color_blend : BLEND_FACTOR_BITS;
-		VkBlendFactor dst_color_blend : BLEND_FACTOR_BITS;
-		VkBlendOp color_blend_op : BLEND_OP_BITS;
-		VkBlendFactor src_alpha_blend : BLEND_FACTOR_BITS;
-		VkBlendFactor dst_alpha_blend : BLEND_FACTOR_BITS;
-		VkBlendOp alpha_blend_op : BLEND_OP_BITS;
-		VkColorComponentFlags color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
+		unsigned src_color_blend : BLEND_FACTOR_BITS;
+		unsigned dst_color_blend : BLEND_FACTOR_BITS;
+		unsigned color_blend_op : BLEND_OP_BITS;
+		unsigned src_alpha_blend : BLEND_FACTOR_BITS;
+		unsigned dst_alpha_blend : BLEND_FACTOR_BITS;
+		unsigned alpha_blend_op : BLEND_OP_BITS;
+		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
 
 		unsigned primitive_restart : 1;
-		VkPrimitiveTopology topology : Utility::bit_width(VK_PRIMITIVE_TOPOLOGY_END_RANGE);
+		unsigned topology : Utility::bit_width(VK_PRIMITIVE_TOPOLOGY_END_RANGE);
 
-		VkPolygonMode wireframe : 1;
+		unsigned wireframe : 1;
 		unsigned subgroup_control_size : 1;
 		unsigned subgroup_full_group : 1;
 		unsigned subgroup_min_size_log2 : 3;
 		unsigned subgroup_max_size_log2 : 3;
 		unsigned conservative_raster : 1;
-		unsigned padding : 13;
+		unsigned padding : 17{};
+		friend bool operator==(const PipelineState& left, const PipelineState& right) {
+			return std::memcmp(&left, &right, sizeof(PipelineState))== 0;
+		}
 	};
-	constexpr size_t size = sizeof(PipelineState);
-	static_assert(size == 16);
+	static_assert(sizeof(PipelineState) == 16);
+	constexpr PipelineState defaultPipelineState{
+		.depth_write = VK_TRUE,
+		.depth_test = VK_TRUE,
+		.blend_enable = VK_FALSE,
+		.cull_mode = VK_CULL_MODE_BACK_BIT,
+		.front_face = VK_FRONT_FACE_CLOCKWISE,
+		.depth_bias_enable = VK_FALSE,
+		.depth_compare = VK_COMPARE_OP_LESS,
+		.stencil_test = VK_FALSE,
+		.alpha_to_coverage = VK_FALSE,
+		.alpha_to_one = VK_FALSE,
+		.sample_shading = VK_TRUE,
+		.src_color_blend = VK_BLEND_FACTOR_ONE,
+		.dst_color_blend = VK_BLEND_FACTOR_ZERO,
+		.color_blend_op = VK_BLEND_OP_ADD,
+		.src_alpha_blend = VK_BLEND_FACTOR_ONE,
+		.dst_alpha_blend = VK_BLEND_FACTOR_ZERO,
+		.alpha_blend_op = VK_BLEND_OP_ADD,
+		.color_write_mask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+		.primitive_restart = VK_FALSE,
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.wireframe = VK_POLYGON_MODE_FILL,
+		.subgroup_control_size = VK_FALSE,
+		.subgroup_full_group = VK_FALSE,
+		.subgroup_min_size_log2 = 0,
+		.subgroup_max_size_log2 = 0,
+		.conservative_raster = 0,
+		.padding {}
+	};
 	struct PipelineCompile {
 		PipelineState state;
-		PipelineLayout* layout;
 		Program* program;
-		Renderpass* comatibleRenderPass;
+		Renderpass* compatibleRenderPass;
 
 		uint32_t subpassIndex;
 	};
@@ -87,9 +117,44 @@ namespace Vulkan {
 	public:
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
 		~Pipeline();
+		VkPipeline get_pipeline();
+		static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, uint32_t subpassIndex);
+		static void reset_static_pipeline();
+		static void set_depth_write(bool depthWrite);
+		static void set_depth_test(bool depthTest);
+		static void set_blend_enabled(bool blendEnabled);
+		static void set_cull_mode(VkCullModeFlags cullMode);
+		static void set_front_face(VkFrontFace frontFace);
+		static void set_depth_bias_enabled(bool depthBiasEnabled);
+		static void set_stencil_test_enabled(bool stencilTestEnabled);
+		static void set_stencil_front_fail(VkStencilOp frontFail);
+		static void set_stencil_front_pass(VkStencilOp frontPass);
+		static void set_stencil_front_depth_fail(VkStencilOp frontDepthFail);
+		static void set_stencil_front_compare_op(VkCompareOp frontCompareOp);
+		static void set_stencil_back_fail(VkStencilOp backFail);
+		static void set_stencil_back_pass(VkStencilOp backPass);
+		static void set_stencil_back_depth_fail(VkStencilOp backDepthFail);
+		static void set_stencil_back_compare_op(VkCompareOp backCompareOp);
+		static void set_alpha_to_coverage(bool alphaToCoverage);
+		static void set_alpha_to_one(bool alphaToOne);
+		static void set_sample_shading(bool sampleShading);
+		static void set_src_color_blend(VkBlendFactor srcColorBlend);
+		static void set_dst_color_blend(VkBlendFactor dstColorBlend);
+		static void set_color_blend_op(VkBlendOp colorBlendOp);
+		static void set_src_alpha_blend(VkBlendFactor srcAlphaBlend);
+		static void set_dst_alpha_blend(VkBlendFactor dstAlphaBlend);
+		static void set_alpha_blend_op(VkBlendOp alphaBlendOp);
+		static void set_color_write_mask(VkColorComponentFlags writeMask, uint32_t colorAttachment);
+		static void set_primitive_restart(bool primitiveRestart);
+		static void set_topology(VkPrimitiveTopology primitiveTopology);
+		static void set_wireframe(VkPolygonMode wireframe);
+		static void set_subgroup_control_size(bool controlSize);
+		static void set_subgroup_full_group(bool fullGroup);
+		static void set_subgroup_min_size_log2(unsigned subgroupMinSize);
+		static void set_subgroup_max_size_log2(unsigned subgroupMaxSize);
+		static void set_conservative_raster(bool conservativeRaster);
+
 	private:
-		template<typename VertexType, size_t numShaders>
-		void create_graphics_pipeline(std::array<Shader*, numShaders> shaders);
 
 
 		LogicalDevice& r_parent;
@@ -98,6 +163,8 @@ namespace Vulkan {
 
 		VkPipeline m_pipeline = VK_NULL_HANDLE;
 		VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
+		static PipelineState s_pipelineState;
+		
 	};
 }
 

@@ -196,6 +196,7 @@ Vulkan::Program::Program(const std::vector<Shader*>& shaders)
 
 Vulkan::Shader* Vulkan::Program::get_shader(ShaderStage stage) const
 {
+	assert(static_cast<uint32_t>(stage) < NUM_SHADER_STAGES);
 	return m_shaders[static_cast<uint32_t>(stage)];
 }
 
@@ -211,5 +212,7 @@ Vulkan::PipelineLayout* Vulkan::Program::get_pipeline_layout() const
 
 void Vulkan::Program::set_shader(Shader* shader)
 {
+	assert(shader);
+	assert(static_cast<uint32_t>(shader->get_stage()) < NUM_SHADER_STAGES);
 	m_shaders[static_cast<uint32_t>(shader->get_stage())] = shader;
 }
