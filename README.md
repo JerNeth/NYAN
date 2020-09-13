@@ -1,4 +1,4 @@
-# Small Engine
+# Not Yet Another eNgine
 
 ## Description
 
@@ -19,8 +19,12 @@ None, yet.
 	- [x] Get Vulkan Context
 - [ ] Vulkan
 	- [ ] Rendergraph
-	- [ ] Pipeline abstraction
-	- [ ] Renderpass abstraction
+	- [x] Pipeline abstraction
+	- [x] Renderpass abstraction
+	- [ ] Descriptor abstraction
+	- [ ] Command Buffer abstraction
+	- [ ] Buffer abstraction
+	- [ ] Image abstraction
 - [ ] Mesh Representations
 - [ ] Scene Representation
 

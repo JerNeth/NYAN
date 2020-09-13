@@ -29,7 +29,7 @@ int main()
 	*/
 	int width = 1920, height = 1080;
 	std::string applicationName{ "Demo" };
-	std::string engineName{ "Simple Engine" };
+	std::string engineName{ "NYAN" };
 	try {
 
 		glfww::Library library;
