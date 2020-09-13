@@ -32,8 +32,9 @@ None, yet.
 
 This engine depends on the following libraries:
 
-- [Vulkan SDK](https://vulkan.lunarg.com/): Has to be manually installed
+- [Vulkan SDK](https://vulkan.lunarg.com/): must be to be manually installed
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): included in this repository
+- [stb](https://github.com/nothings/stb): included in this repository
