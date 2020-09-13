@@ -54,15 +54,15 @@ namespace Vulkan {
 		}
 	};
 	constexpr std::array<Vertex, 8> vertices{
-		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-		Vertex{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+		Vertex{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
 
-		Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-		Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-		Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-		Vertex{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+		Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+		Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+		Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+		Vertex{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
 	};
 	constexpr std::array<uint16_t, 12> indices = {
 		0, 1, 2, 2, 3, 0,
@@ -121,8 +121,6 @@ namespace Vulkan {
 		void create_index_buffer();
 		void create_uniform_buffers();
 		void create_swapchain();
-		template<typename VertexType, size_t numShaders>
-		void create_graphics_pipeline(std::array<Shader*, numShaders> shaders);
 		void create_image_views();
 		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
 		void create_render_pass();
@@ -199,6 +197,7 @@ namespace Vulkan {
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
 
+		//TODO instead use hash
 		std::unordered_map< std::string, size_t> m_shaderIds;
 		Utility::LinkedBucketList<Shader> m_shaderStorage;
 

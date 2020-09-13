@@ -322,173 +322,7 @@ void Vulkan::LogicalDevice::create_swapchain()
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &imageCount, m_swapChainImages.data());
 	
 }
-template<typename VertexType, size_t numShaders>
-void Vulkan::LogicalDevice::create_graphics_pipeline(std::array<Shader*, numShaders> shaders)
-{
 
-	std::array<VkPipelineShaderStageCreateInfo, numShaders> shaderStages;
-	for (size_t i = 0; i < numShaders; i++) {
-		shaderStages[i] = shaders[i]->get_create_info();
-	}
-
-	auto bindingDescriptions = VertexType::get_binding_descriptions();
-	auto attributeDescriptions = VertexType::get_attribute_descriptions();
-	
-	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size()),
-		.pVertexBindingDescriptions = bindingDescriptions.data(),
-		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-		.pVertexAttributeDescriptions = attributeDescriptions.data()
-	};
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-		.primitiveRestartEnable = VK_FALSE
-	};
-
-	VkViewport viewport{
-		.x = 0.0f,
-		.y = 0.0f,
-		.width = (float) m_swapChainExtent.width,
-		.height = (float) m_swapChainExtent.height,
-		.minDepth = 0.0f,
-		.maxDepth = 1.0f
-	};
-
-	VkRect2D scissor{
-		.offset = {0,0},
-		.extent = m_swapChainExtent
-	};
-
-	VkPipelineViewportStateCreateInfo viewportStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-		.viewportCount = 1,
-		.pViewports = &viewport,
-		.scissorCount = 1,
-		.pScissors = &scissor
-	};
-	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-		.depthClampEnable = VK_FALSE,
-		.rasterizerDiscardEnable = VK_FALSE,
-		.polygonMode = VK_POLYGON_MODE_FILL,
-		.cullMode = VK_CULL_MODE_NONE,
-		.frontFace = VK_FRONT_FACE_CLOCKWISE,
-		.depthBiasEnable = VK_FALSE,
-		.depthBiasConstantFactor = 0.f,
-		.depthBiasClamp = 0.f,
-		.depthBiasSlopeFactor = 0.f,
-		.lineWidth = 1.0f,
-
-	};
-
-	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-		.sampleShadingEnable = VK_TRUE,
-		.minSampleShading = 1.0f, // Optional
-		.pSampleMask = nullptr, // Optional
-		.alphaToCoverageEnable = VK_FALSE, // Optional
-		.alphaToOneEnable = VK_FALSE, // Optional
-	};
-
-	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = VK_TRUE,
-		.depthWriteEnable = VK_TRUE,
-		.depthCompareOp = VK_COMPARE_OP_LESS,
-		.depthBoundsTestEnable = VK_FALSE,
-		.stencilTestEnable = VK_FALSE,
-		.front{},
-		.back{},
-		.minDepthBounds = 0.0f,
-		.maxDepthBounds = 1.0f,
-	};
-	VkPipelineColorBlendAttachmentState colorBlendAttachement{
-		.blendEnable = VK_FALSE,
-		.srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-		.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
-		.colorBlendOp = VK_BLEND_OP_ADD,
-		.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-		.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-		.alphaBlendOp = VK_BLEND_OP_ADD,
-		.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-	};
-	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-		.logicOpEnable = VK_FALSE,
-		.logicOp = VK_LOGIC_OP_COPY,
-		.attachmentCount = 1,
-		.pAttachments = &colorBlendAttachement,
-		.blendConstants{0.0f, 0.0f, 0.0f, 0.0f}
-	};
-	VkDynamicState dynamicStates[]{
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_LINE_WIDTH
-	};
-
-	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-		.dynamicStateCount = 2,
-		.pDynamicStates = dynamicStates
-	};
-
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.setLayoutCount = 1,
-		.pSetLayouts = &m_descriptorSetLayout,
-		.pushConstantRangeCount = 0,
-		.pPushConstantRanges = nullptr
-	};
-	
-
-	//if (auto result = vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, m_allocator, &m_pipelineLayout); result != VK_SUCCESS) {
-	//	if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-	//		throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
-	//	}
-	//	if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-	//		throw std::runtime_error("VK: could not create pipeline layout, out of device memory");
-	//	}
-	//	else {
-	//		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-	//	}
-	//}
-	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-		.stageCount = static_cast<uint32_t>(shaderStages.size()),
-		.pStages = shaderStages.data(),
-		.pVertexInputState = &vertexInputStateCreateInfo,
-		.pInputAssemblyState = &inputAssemblyStateCreateInfo,
-		.pViewportState = &viewportStateCreateInfo,
-		.pRasterizationState = &rasterizationStateCreateInfo,
-		.pMultisampleState = &multisampleStateCreateInfo,
-		.pDepthStencilState = &depthStencilStateCreateInfo,
-		.pColorBlendState = &colorBlendStateCreateInfo,
-		.pDynamicState = nullptr, //&dynamicStateCreateInfo
-		.layout = m_pipelineLayout,
-		.renderPass = m_renderPass,
-		.subpass = 0,
-		.basePipelineHandle = VK_NULL_HANDLE,
-		.basePipelineIndex = -1
-	};
-
-	if (auto result = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, m_allocator, &m_graphicsPipeline); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create graphics pipeline, out of device memory");
-		}
-		if (result == VK_ERROR_INVALID_SHADER_NV) {
-			throw std::runtime_error("VK: could not create graphics pipeline, invalid shader nv");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-
-}
 Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex, VkPhysicalDeviceProperties& properties) : 
 	r_instance(parentInstance),
 	m_device(device), 
@@ -893,9 +727,14 @@ void Vulkan::LogicalDevice::create_sync_objects()
 
 void Vulkan::LogicalDevice::create_vma_allocator()
 {
+	VmaRecordSettings vmaRecordSettings{
+		.flags = VMA_RECORD_FLUSH_AFTER_CALL_BIT,
+		.pFilePath = "vma_replay.csv",
+	};
 	VmaAllocatorCreateInfo allocatorInfo{
 		.physicalDevice = r_instance.m_physicalDevice,
 		.device = m_device,
+		.pRecordSettings = &vmaRecordSettings,
 		.instance = r_instance.m_instance,
 	};
 	if (auto result = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator); result != VK_SUCCESS) {

@@ -17,7 +17,8 @@ namespace Vulkan {
 		enum class OpFlags {
 			DepthStencilClear = 0,
 			DepthStencilLoad = 1,
-			DepthStencilStore = 2
+			DepthStencilStore = 2,
+			DepthStencilReadOnly = 3
 		};
 		enum class DepthStencil {
 			None,

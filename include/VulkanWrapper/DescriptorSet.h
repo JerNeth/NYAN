@@ -56,6 +56,7 @@ namespace Vulkan {
 	public:
 		DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout);
 		~DescriptorSetAllocator();
+		VkDescriptorSet find(unsigned threadId);
 		VkDescriptorSetLayout get_layout() const noexcept;
 	private:
 		LogicalDevice& r_parent;

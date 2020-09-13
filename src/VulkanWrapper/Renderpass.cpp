@@ -28,7 +28,8 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 
 	if (createInfo.usingDepth) {
 		//TODO get depth layout
-		depthStencilLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		bool test = createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly));
+		depthStencilLayout = test ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 
 	const auto get_color_load_op = [&createInfo](uint32_t idx) {
@@ -85,7 +86,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = depthStencilLayout,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED
 		};
 		attachmentDescriptions[createInfo.colorAttachmentsCount] = depthAttachment;
 	}
@@ -290,7 +291,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			}
 			else if (depth && input) {
 				assert(createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
-				if (createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::ReadWrite) {
+				if (createInfo.subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthSelfDependency.set(subpass);
 					currentLayout = VK_IMAGE_LAYOUT_GENERAL;
 					depthStencilAttachmentWrite.set(subpass);
@@ -316,7 +317,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			}
 			else if (depth) {
 				assert(createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
-				if (createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::ReadWrite) {
+				if (createInfo.subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthStencilAttachmentWrite.set(subpass);
 					if (currentLayout != VK_IMAGE_LAYOUT_GENERAL)
 						currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -355,6 +356,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			assert(currentLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 			attachmentDescriptions[attachment].finalLayout = currentLayout;
 		}
+		assert(attachmentDescriptions[attachment].finalLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 	}
 	std::vector<uint32_t> preserveAttachments;
 	preserveAttachments.reserve(subpassCount* MAX_ATTACHMENTS);

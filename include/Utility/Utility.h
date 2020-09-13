@@ -19,14 +19,32 @@ namespace Utility {
 	inline constexpr uint32_t bit_pos(uint64_t value) {
 		return bit_width(value) - 1;
 	}
-	template<typename T>
-	struct Hash {
-		size_t operator()(const T& t) const {
-			const uint64_t prime = 0x100000001b3;
-			uint64_t hash = 0xcbf29ce484222325;
+	typedef uint64_t HashValue;
+	struct Hasher {
+		template<typename T>
+		HashValue operator()(const T& t) {
+			constexpr const HashValue prime = 0x100000001b3ull;
 			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&t);
 			for (size_t i = 0; i < sizeof(T); i++) {
-				hash ^= static_cast<uint64_t>(bytes[i]);
+				hash ^= static_cast<HashValue>(bytes[i]);
+				hash *= prime;
+			}
+			return hash;
+		}
+		HashValue operator()() {
+			return hash;
+		}
+	private:
+		HashValue hash = 0xcbf29ce484222325ull;
+	};
+	template<typename T>
+	struct Hash {
+		HashValue operator()(const T& t) const {
+			const HashValue prime = 0x100000001b3ull;
+			HashValue hash = 0xcbf29ce484222325ull;
+			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&t);
+			for (size_t i = 0; i < sizeof(T); i++) {
+				hash ^= static_cast<HashValue>(bytes[i]);
 				hash *= prime;
 			}
 			return hash;
@@ -34,12 +52,12 @@ namespace Utility {
 	};
 	template<typename T>
 	struct DataHash {
-		size_t operator()(const T* t, size_t size) const {
-			const uint64_t prime = 0x100000001b3;
-			uint64_t hash = 0xcbf29ce484222325;
+		HashValue operator()(const T* t, size_t size) const {
+			const HashValue prime = 0x100000001b3ull;
+			HashValue hash = 0xcbf29ce484222325ull;
 			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(t);
 			for (size_t i = 0; i < size; i++) {
-				hash ^= static_cast<uint64_t>(bytes[i]);
+				hash ^= static_cast<HashValue>(bytes[i]);
 				hash *= prime;
 			}
 			return hash;
@@ -47,20 +65,21 @@ namespace Utility {
 	};
 	template<typename T>
 	struct VectorHash {
-		size_t operator()(std::vector<T> data) const {
-			const uint64_t prime = 0x100000001b3;
-			uint64_t hash = 0xcbf29ce484222325;
+		HashValue operator()(std::vector<T> data) const {
+			const HashValue prime = 0x100000001b3ull;
+			HashValue hash = 0xcbf29ce484222325ull;
 			for (size_t i = 0; i < data.size(); i++) {
 				size_t hashInner = std::hash<T>()(data[i]);
 				const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&hashInner);
 				for (size_t j = 0; j < sizeof(size_t); j++) {
-					hash ^= static_cast<uint64_t>(bytes[j]);
+					hash ^= static_cast<HashValue>(bytes[j]);
 					hash *= prime;
 				}
 			}
 			return hash;
 		}
 	};
+	
 	inline uint32_t fast_log2(uint32_t num) {
 		double ff = static_cast<double>(num | 1);
 		uint32_t tmp;
