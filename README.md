@@ -14,19 +14,30 @@ None, yet.
 	- [x] Vectors
 	- [x] Matrizes
 	- [x] Quaternions
+- [ ] Utility
+	- [x] Hash
+	- [x] HashMap
 - [x] Window management
 	- [x] Create a window
 	- [x] Get Vulkan Context
-- [ ] Vulkan
+- [ ] Renderer
 	- [ ] Rendergraph
+	- [ ] UI
+	- [ ] Lights
+	- [ ] Deferred renderer
+	- [ ] Forward renderer
+	- [ ] Mesh representations
+		- [ ] Skeletal mesh
+		- [ ] Static mesh
+		- [ ] Heightmap
+- [ ] Vulkan
 	- [x] Pipeline abstraction
 	- [x] Renderpass abstraction
-	- [ ] Descriptor abstraction
+	- [x] Descriptor abstraction
 	- [ ] Command Buffer abstraction
 	- [ ] Buffer abstraction
 	- [ ] Image abstraction
-- [ ] Mesh Representations
-- [ ] Scene Representation
+- [ ] Scene representation
 
 ## Requirements
 
