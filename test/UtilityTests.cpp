@@ -52,6 +52,7 @@ namespace Utility {
         }
         EXPECT_EQ(result, result2);
     }
+    
     TEST(Utility, linkedBucketList) {
         LinkedBucketList<uint32_t> l;
         auto id = l.insert(0);
@@ -126,6 +127,34 @@ namespace Utility {
             }
             auto end = std::chrono::steady_clock::now();
             std::cout << "List push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+        }
+    }
+    TEST(Utility, hashMap) {
+        HashMap<int*> map;
+        int num_obj = 1000000;
+        std::vector<int> vec;
+        for (int i = 0; i < num_obj; i++)
+            vec.push_back(i);
+        for(int i = 0; i < num_obj; i++)
+            map.insert(Hasher()(i), &vec[i]);
+        for (int i = 0; i < num_obj; i++) {
+            EXPECT_TRUE(map.get(Hasher()(i)).has_value());
+            EXPECT_EQ(**map.get(Hasher()(i)), vec[i]);
+        }
+        for (int i = num_obj; i < num_obj*2; i++) {
+            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
+        }
+        int delNum = 10000;
+        for (int i = 0; i < delNum; i++) {
+            map.remove(Hasher()(i));
+            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
+        }
+        for (int i = 0; i < delNum; i++) {
+            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
+        }
+        for (int i = delNum; i < num_obj; i++) {
+            EXPECT_TRUE(map.get(Hasher()(i)).has_value());
+            EXPECT_EQ(**map.get(Hasher()(i)), vec[i]);
         }
     }
 }

@@ -35,9 +35,9 @@ namespace Vulkan {
 
 		
 		struct SubpassCreateInfo {
-			std::array<uint32_t, MAX_ATTACHMENTS> colorAttachments;
-			std::array<uint32_t, MAX_ATTACHMENTS> inputAttachments;
-			std::array<uint32_t, MAX_ATTACHMENTS> resolveAttachments;
+			std::array<uint32_t, MAX_ATTACHMENTS> colorAttachments{};
+			std::array<uint32_t, MAX_ATTACHMENTS> inputAttachments{};
+			std::array<uint32_t, MAX_ATTACHMENTS> resolveAttachments{};
 			DepthStencil depthStencil = DepthStencil::ReadWrite;
 			uint32_t colorAttachmentsCount = 0;
 			uint32_t inputAttachmentsCount = 0;
@@ -45,7 +45,7 @@ namespace Vulkan {
 		};
 		//TODO either dynamic array or other solution for magic number
 		std::array<SubpassCreateInfo, 8> subpasses;
-		uint32_t subpassCount;
+		uint32_t subpassCount = 0;
 	};
 	struct Subpass {
 		std::array<VkAttachmentReference, MAX_ATTACHMENTS> colorAttachmentReferences;

@@ -787,9 +787,7 @@ void Vulkan::LogicalDevice::create_descriptor_sets()
 		VkDescriptorImageInfo imageInfo{
 			.sampler = m_imageSampler,
 			.imageView = m_imageView,
-			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			
-			
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,		
 		};
 		std::array< VkWriteDescriptorSet, 2> descriptorWrites{
 			VkWriteDescriptorSet {

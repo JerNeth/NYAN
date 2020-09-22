@@ -6,20 +6,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(SmallEngine)
 
 
-if(MSVC)
-    message("Compiler" ${MSVC_VERSION})
-    add_compile_options(/WX)
-    add_compile_options(/MDd)
-else()
-    add_compile_options(-Wall -Wextra)
-endif()
 
 
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
-
-
 
 find_package(Threads REQUIRED)
 find_package(Openmp REQUIRED)
@@ -27,6 +18,17 @@ find_package(Openmp REQUIRED)
 find_package(Vulkan REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
+
+
+# SPIRV-Cross
+include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
+
+if(MSVC)
+    add_compile_options(/WX)
+    add_compile_options(/MDd)
+else()
+    add_compile_options(-Wall -Wextra)
+endif()
 
 # GTest
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
@@ -41,8 +43,6 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
 # Would work, but why use it instead of GLFW
 
-# SPIRV-Cross
-include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -61,6 +61,10 @@ include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 # ---------------------------------------------------------------------------
 
 include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # Executables

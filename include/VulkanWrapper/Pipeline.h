@@ -106,18 +106,27 @@ namespace Vulkan {
 	public:
 		PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout);
 		~PipelineLayout();
-		VkPipelineLayout get_layout() const;
-		const ShaderLayout& get_resourceLayout();
+		const VkPipelineLayout& get_layout() const;
+		const ShaderLayout& get_resourceLayout() const;
+		const VkDescriptorUpdateTemplate& get_update_template(size_t set) const;
+		
 	private:
+		void create_update_template();
 		LogicalDevice& r_parent;
 		ShaderLayout m_resourceLayout;
+		std::array<DescriptorSetAllocator*, MAX_DESCRIPTOR_SETS> m_descriptors{};
+		std::array<VkDescriptorUpdateTemplate, MAX_DESCRIPTOR_SETS> m_updateTemplate{};
 		VkPipelineLayout m_layout = VK_NULL_HANDLE;
 	};
 	class Pipeline {
 	public:
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
-		~Pipeline();
-		VkPipeline get_pipeline();
+		~Pipeline() noexcept;
+		Pipeline(Pipeline& other) = delete;
+		Pipeline(Pipeline&& other);
+		const Pipeline& operator=(Pipeline& other) = delete;
+		const Pipeline& operator=(Pipeline&&) = delete;
+		VkPipeline get_pipeline() const noexcept;
 		static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, uint32_t subpassIndex);
 		static void reset_static_pipeline();
 		static void set_depth_write(bool depthWrite);
@@ -158,11 +167,8 @@ namespace Vulkan {
 
 
 		LogicalDevice& r_parent;
-		float m_width;
-		float m_height;
 
 		VkPipeline m_pipeline = VK_NULL_HANDLE;
-		VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
 		static PipelineState s_pipelineState;
 		
 	};

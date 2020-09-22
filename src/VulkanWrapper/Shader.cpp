@@ -103,7 +103,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 	for (auto& separateSampler : resources.separate_samplers) {
 		auto [set, binding, type] = get_values(separateSampler, comp);
 		layout.used.set(set);
-		layout.descriptors[set].sampler.set(binding);
+		layout.descriptors[set].seperateSampler.set(binding);
 
 		array_info(layout.descriptors, type, set, binding);
 	}
@@ -116,22 +116,10 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 		}
 		array_info(layout.descriptors, type, set, binding);
 	}
-	for (auto& storageImage : resources.storage_images) {
+	for (auto& storageImage : resources.storage_buffers) {
 		auto [set, binding, type] = get_values(storageImage, comp);
 		layout.used.set(set);
-		layout.descriptors[set].storageImage.set(binding);
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
-		}
-		array_info(layout.descriptors, type, set, binding);
-	}
-	for (auto& storageImage : resources.storage_images) {
-		auto [set, binding, type] = get_values(storageImage, comp);
-		layout.used.set(set);
-		layout.descriptors[set].storageImage.set(binding);
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
-		}
+		layout.descriptors[set].storageBuffer.set(binding);
 		array_info(layout.descriptors, type, set, binding);
 	}
 	for (auto& attrib : resources.stage_inputs) {

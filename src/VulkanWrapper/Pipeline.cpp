@@ -21,14 +21,14 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_parent(parent), m_resourceLayout(layout) {
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
 	for (int i = 0; i < descriptorSets.size(); i++) {
-		auto allocator = r_parent.request_descriptor_set_allocator(layout.descriptors[i]);
-		descriptorSets[i] = allocator->get_layout();
+		m_descriptors[i] = r_parent.request_descriptor_set_allocator(layout.descriptors[i]);
+		descriptorSets[i] = m_descriptors[i]->get_layout();
 	}
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = static_cast<uint32_t>(layout.used.count()),
 		.pSetLayouts = descriptorSets.data(),
-		.pushConstantRangeCount = layout.pushConstantRange.size == 0? 0u: 1u,
+		.pushConstantRangeCount = layout.pushConstantRange.size == 0u? 0u: 1u,
 		.pPushConstantRanges = &layout.pushConstantRange
 	};
 
@@ -43,6 +43,7 @@ Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
+	create_update_template();
 }
 Vulkan::PipelineLayout::~PipelineLayout()
 {
@@ -50,14 +51,161 @@ Vulkan::PipelineLayout::~PipelineLayout()
 		vkDestroyPipelineLayout(r_parent.m_device, m_layout, r_parent.m_allocator);
 }
 
-VkPipelineLayout Vulkan::PipelineLayout::get_layout() const
+const VkPipelineLayout& Vulkan::PipelineLayout::get_layout() const
 {
 	return m_layout;
 }
 
-const  Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_resourceLayout()
+const Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_resourceLayout() const
 {
 	return m_resourceLayout;
+}
+
+const VkDescriptorUpdateTemplate& Vulkan::PipelineLayout::get_update_template(size_t set) const
+{
+	return m_updateTemplate[set];
+}
+
+void Vulkan::PipelineLayout::create_update_template()
+{
+	for (uint32_t descriptorIdx = 0; descriptorIdx < MAX_DESCRIPTOR_SETS; descriptorIdx++) {
+		if (!m_resourceLayout.used.test(descriptorIdx))
+			continue;
+		std::array<VkDescriptorUpdateTemplateEntry, MAX_BINDINGS> entries;
+		uint32_t updateCount{};
+
+		auto& descriptor = m_resourceLayout.descriptors[descriptorIdx];
+		Utility::for_each_bit(descriptor.uniformBuffer, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+				.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.storageBuffer, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.sampledBuffer, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+				.offset = offsetof(ResourceBinding, bufferView) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.imageSampler, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.offset = descriptor.fp.test(binding) ?offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.separateImage, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.seperateSampler, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.offset = offsetof(ResourceBinding, image.fp) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.storageImage, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		Utility::for_each_bit(descriptor.inputAttachment, [&](uint32_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = binding,
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+		});
+		VkDescriptorUpdateTemplateCreateInfo createInfo{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
+			.descriptorUpdateEntryCount = updateCount,
+			.pDescriptorUpdateEntries = entries.data(),
+			.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
+			.descriptorSetLayout = m_descriptors[descriptorIdx]->get_layout(),
+			//TODO handle compute and RT case
+			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+			.pipelineLayout = m_layout,
+			.set = descriptorIdx,
+		};
+		if (auto result = vkCreateDescriptorUpdateTemplate(r_parent.m_device, &createInfo, r_parent.m_allocator, &m_updateTemplate[descriptorIdx]); result != VK_SUCCESS) {
+			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+				throw std::runtime_error("VK: could not create DescriptorUpdateTemplate, out of host memory");
+			}
+			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+				throw std::runtime_error("VK: could not create DescriptorUpdateTemplate, out of device memory");
+			}
+			else {
+				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			}
+		}
+	}
 }
 
 Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile) :
@@ -228,13 +376,27 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	}
 }
 
-Vulkan::Pipeline::~Pipeline()
+Vulkan::Pipeline::~Pipeline() noexcept
 {
 	if (m_pipeline != VK_NULL_HANDLE)
 		vkDestroyPipeline(r_parent.m_device, m_pipeline, r_parent.m_allocator);
 }
 
-VkPipeline Vulkan::Pipeline::get_pipeline()
+Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) :
+	r_parent(other.r_parent)
+{
+	this->m_pipeline = other.m_pipeline;
+	other.m_pipeline = VK_NULL_HANDLE;
+}
+
+//const Vulkan::Pipeline& Vulkan::Pipeline::operator=(Vulkan::Pipeline&& other)
+//{
+//	this->r_parent = other.r_parent;
+//	this->m_pipeline = other.m_pipeline;
+//	other.m_pipeline = VK_NULL_HANDLE;
+//}
+
+VkPipeline Vulkan::Pipeline::get_pipeline() const noexcept
 {
 	return m_pipeline;
 }

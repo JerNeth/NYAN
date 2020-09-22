@@ -7,11 +7,23 @@
 #include "Utility.h"
 
 namespace Vulkan {
+	struct ResourceBinding {
+		union {
+			VkDescriptorBufferInfo buffer;
+			struct {
+				VkDescriptorImageInfo fp;
+				VkDescriptorImageInfo integer;
+			} image;
+			VkBufferView bufferView;
+		};
+		VkDeviceSize dynamicOffset;
+	};
 	struct ShaderLayout {
 		std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptors;
 		std::bitset<MAX_DESCRIPTOR_SETS> used;
 		std::bitset<32> inputs;
 		std::bitset<32> outputs;
+		std::array<uint16_t, MAX_DESCRIPTOR_SETS> stagesForSets;
 		VkPushConstantRange pushConstantRange{};
 		friend bool operator==(ShaderLayout& left, ShaderLayout& right){
 			return left.descriptors == right.descriptors &&

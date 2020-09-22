@@ -15,6 +15,11 @@ if(NOT SPIRV-Cross_POPULATED)
     # populate the content as part of this build
     set(SPIRV-Cross_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/SPIRV-Cross-src)
     set(SPIRV-Cross_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/SPIRV-Cross-build)
+    set_source_files_properties(
+      ${Cross_SOURCE_DIR}
+      PROPERTIES
+      COMPILE_FLAGS "..."
+    )
     #add_subdirectory(${SPIRVCross_SOURCE_DIR} EXCLUDE_FROM_ALL)
     add_subdirectory(${SPIRV-Cross_SOURCE_DIR} ${SPIRV-Cross_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
