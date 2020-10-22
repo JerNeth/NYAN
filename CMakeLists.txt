@@ -23,6 +23,9 @@ include_directories(${Vulkan_INCLUDE_DIRS})
 # SPIRV-Cross
 include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 
+# GLFW
+include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
+
 if(MSVC)
     add_compile_options(/WX)
     add_compile_options(/MDd)
@@ -33,8 +36,7 @@ endif()
 # GTest
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 
-# GLFW
-include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
+
 
 # Imgui
 include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")

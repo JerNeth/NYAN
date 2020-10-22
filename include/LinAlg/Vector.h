@@ -217,6 +217,9 @@ namespace bla {
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
+		inline operator std::array<Scalar, Size>() const noexcept{
+			return m_data;
+		}
 		//inline Vec pow(Scalar exponent) {
 		//	Vec result;
 		//	for (size_t i = 0; i < Size; i++)

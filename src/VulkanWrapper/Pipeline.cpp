@@ -3,6 +3,7 @@
 #include "LogicalDevice.h"
 
 Vulkan::PipelineState Vulkan::Pipeline::s_pipelineState = Vulkan::defaultPipelineState;
+/*
 static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -18,6 +19,7 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
+*/
 Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_parent(parent), m_resourceLayout(layout) {
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
 	for (int i = 0; i < descriptorSets.size(); i++) {
@@ -252,7 +254,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		if (compile.compatibleRenderPass->get_color_attachment(compile.subpassIndex, i).attachment != VK_ATTACHMENT_UNUSED &&
 			compile.program->get_pipeline_layout()->get_resourceLayout().outputs.test(i)) {
 			attachment.colorWriteMask = (compile.state.color_write_mask >> (WRITE_MASK_BITS * i)) & ((1 << WRITE_MASK_BITS) - 1);
-			if (attachment.blendEnable = compile.state.blend_enable) {
+			if (attachment.blendEnable = compile.state.blend_enable; attachment.blendEnable) {
 				attachment.srcColorBlendFactor = static_cast<VkBlendFactor>(compile.state.src_color_blend);
 				attachment.dstColorBlendFactor = static_cast<VkBlendFactor>(compile.state.dst_color_blend);
 				attachment.colorBlendOp = static_cast<VkBlendOp>(compile.state.color_blend_op);
@@ -277,7 +279,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	if (compile.compatibleRenderPass->has_depth_attachment(compile.subpassIndex)) {
 		depthStencilStateCreateInfo.depthWriteEnable = compile.state.depth_test;
 		depthStencilStateCreateInfo.stencilTestEnable = compile.state.depth_test;
-		if (depthStencilStateCreateInfo.depthTestEnable = compile.state.depth_test) {
+		if (depthStencilStateCreateInfo.depthTestEnable = compile.state.depth_test; depthStencilStateCreateInfo.depthTestEnable) {
 			depthStencilStateCreateInfo.front = {
 				.failOp = static_cast<VkStencilOp>(compile.state.stencil_front_pass),
 				.passOp = static_cast<VkStencilOp>(compile.state.stencil_front_fail),

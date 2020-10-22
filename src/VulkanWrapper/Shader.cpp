@@ -52,7 +52,7 @@ void Vulkan::Shader::parse_stage(const std::vector<uint32_t>& shaderCode)
 void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32_t>& shaderCode) const
 {
 	using namespace spirv_cross;
-	bool usesBinding = false;
+	//bool usesBinding = false;
 	Compiler comp(shaderCode);
 	ShaderResources resources = comp.get_shader_resources();
 	

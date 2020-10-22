@@ -15,6 +15,10 @@ namespace bla {
         EXPECT_TRUE(close(d, e, 0.1));
 
     }
+    TEST(Linalg, OperatorConversion) {
+        std::array<float, 3> t;
+        t = bla::vec3{};
+    }
     TEST(Linalg, Min) {
         double a = 1.0;
         double c = 1.0001;

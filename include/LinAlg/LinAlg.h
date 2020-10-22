@@ -1,6 +1,7 @@
 #ifndef LINALG_H
 #define LINALG_H
 #pragma once
+#include "Util.h"
 #include "Matrix.h"
 #include "Vector.h"
 #include "Quaternion.h"
@@ -24,39 +25,7 @@ namespace bla
 	//typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type 
 
 
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
-		if ((a <=> b) < 0)
-			return a;
-		return b;
-	}
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const Scalar& max(const Scalar& a, const Scalar& b) noexcept {
-		//Three way comparison, why? because it's new
-		//No really, no reason to do this
-		if ((a <=> b) > 0)
-			return a;
-		return b;
-	}
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar&eps = Scalar(1e-5)) noexcept {
-		return ((a - eps) <= b) && ((a + eps) >= b);
-	}
-	template<typename T>
-	inline constexpr const T square(const T& a) noexcept {
-		return a * a;
-	}
-	template<int width>
-	inline constexpr const int at(int y, int x) {
-		return x + y * width;
-	}
-	template<size_t width>
-	inline constexpr const size_t at(size_t y, size_t x) {
-		return x + y * width;
-	}
+
 
 	typedef Vec<float, 2> vec2;
 	typedef Vec<float, 3> vec3;
@@ -74,7 +43,7 @@ namespace bla
 	typedef Vec<int8_t, 3> vec3_b;
 	typedef Vec<int8_t, 4> vec4_b;
 
-	/* Unsigned integer vectors do not really make that much sense
+	/* Unsigned integer vectors do not really make that much sense right now
 	typedef Vec<uint32_t, 2> vec2_ui;
 	typedef Vec<uint32_t, 3> vec3_ui;
 	typedef Vec<uint32_t, 4> vec4_ui;
@@ -103,7 +72,7 @@ namespace bla
 	typedef Mat<int8_t, 2, 2> mat22_b;
 	typedef Mat<int8_t, 3, 3> mat33_b;
 	typedef Mat<int8_t, 4, 4> mat44_b;
-	/* Unsigned integer matrices do not really make that much sense
+	/* Unsigned integer matrices do not really make that much sense right now
 	typedef Mat<uint32_t, 2, 2> mat22_ui;
 	typedef Mat<uint32_t, 3, 3> mat33_ui;
 	typedef Mat<uint32_t, 4, 4> mat44_ui;
@@ -120,9 +89,9 @@ namespace bla
 	// ============================================================================================================
 	// Constants
 	// ============================================================================================================
-	constexpr double pi	= 3.14159265358979323846;
-	constexpr double pi_2 = 1.57079632679489661923;
-	constexpr double rad_to_deg = 180.0 / pi; 
-	constexpr double deg_to_rad = pi / 180.0;
+	inline constexpr double pi	= 3.14159265358979323846;
+	inline constexpr double pi_2 = 1.57079632679489661923;
+	inline constexpr double rad_to_deg = 180.0 / pi; 
+	inline constexpr double deg_to_rad = pi / 180.0;
 }
 #endif // !LINALG_H

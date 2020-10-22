@@ -61,7 +61,7 @@ namespace glfww {
 			
 			if (!m_window) {
 				const char* error_msg;
-				int error = glfwGetError(&error_msg);
+				glfwGetError(&error_msg);
 				throw std::runtime_error(error_msg);
 			}
 		}
@@ -80,6 +80,7 @@ namespace glfww {
 		Window& operator=(Window&& other) noexcept {
 			this->m_window = other.m_window;
 			other.m_window = nullptr;
+			return *this;
 		}
 		inline bool should_close() {
 			return glfwWindowShouldClose(m_window);

@@ -66,7 +66,7 @@ namespace Vulkan {
 		}
 	};
 	static_assert(sizeof(PipelineState) == 16);
-	constexpr PipelineState defaultPipelineState{
+	constexpr PipelineState defaultPipelineState {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
 		.blend_enable = VK_FALSE,

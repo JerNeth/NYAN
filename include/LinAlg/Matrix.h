@@ -1,6 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 #pragma once
+#include "Util.h"
 #include <string>
 #include <optional>
 
@@ -414,14 +415,14 @@ namespace bla {
 			Scalar sin_t = Scalar(sin(angle));
 			return Mat<Scalar, 2, 2>({ cos_t, -sin_t, sin_t, cos_t});
 		}
-		template<typename Scalar, size_t Size>
+		template<size_t Size>
 		void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
 			//assert(offset + Size < Size_y);
 			for (size_t i = offset; i < Size + offset; i++) {
 				m_data[at<Size_x>(colNum, i)] = column[i];
 			}
 		}
-		template<typename Scalar, size_t Size>
+		template<size_t Size>
 		void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
 			//assert(offset + Size < Size_x);
 			for (size_t i = offset; i < Size + offset; i++) {
@@ -506,7 +507,7 @@ namespace bla {
 			Mat<Scalar, 3, 3> yaw_m({ cy, -sy, 0,
 									sy, cy, 0,
 									0, 0, 1 });
-			Mat<Scalar, 3, 3> temp = (yaw_m * pitch_m);
+			//Mat<Scalar, 3, 3> temp = (yaw_m * pitch_m);
 			Mat<Scalar, 3, 3> comb = (yaw_m * pitch_m) * roll_m;
 			//for some reason this (probably wrong) matrix multiplications work 
 			//std::cout << temp.convert_to_string() << '\n' << temp2.convert_to_string() << '\n' << temp3.convert_to_string() << std::endl;

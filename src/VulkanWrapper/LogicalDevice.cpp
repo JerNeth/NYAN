@@ -621,8 +621,8 @@ void Vulkan::LogicalDevice::create_command_buffers()
 			}
 		}
 		std::array<VkClearValue, 2> clearColors{
-			VkClearValue{0.0f, 0.0f, 0.0f, 1.0f},
-			VkClearValue{1.0f}
+			VkClearValue{.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
+			VkClearValue{.depthStencil = {.depth = 1.0f, .stencil= 0}}
 		};
 		VkRenderPassBeginInfo renderPassBeginInfo{
 			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -708,7 +708,7 @@ void Vulkan::LogicalDevice::create_sync_objects()
 				throw std::runtime_error("VK: could not create Semaphore, out of device memory");
 			}
 			else {
-				throw std::runtime_error("VK: error "+ result+ std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+				throw std::runtime_error("VK: error "+ std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 			}
 		}
 		if (auto result = vkCreateFence(m_device, &fenceCreateInfo, m_allocator, &m_inFlightFences[i]); result != VK_SUCCESS) {
@@ -1110,7 +1110,7 @@ void Vulkan::LogicalDevice::draw_frame()
 		.waitSemaphoreCount = 1,
 		.pWaitSemaphores = signalSemaphores,
 		.swapchainCount = 1,
-		.pSwapchains = &m_swapChain,
+		.pSwapchains = swapChains,
 		.pImageIndices = &imageIndex,
 		.pResults = &results
 	};

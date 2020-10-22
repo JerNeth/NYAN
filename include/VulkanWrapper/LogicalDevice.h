@@ -139,10 +139,9 @@ namespace Vulkan {
 		/// *******************************************************************
 		/// Member variables
 		/// *******************************************************************
-		
 
-		VkDevice m_device;
 		const Instance& r_instance;
+		VkDevice m_device;
 		VkAllocationCallbacks* m_allocator = NULL;
 		const uint32_t m_graphicsFamilyQueueIndex;
 		VkPhysicalDeviceProperties m_physicalProperties;

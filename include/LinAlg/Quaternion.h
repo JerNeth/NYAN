@@ -213,13 +213,8 @@ namespace bla {
 		// ============================================================================================================
 		// Frens
 		// ============================================================================================================
-		template<typename Scalar,
-			size_t Size_x,
-			size_t Size_y>
-			friend class Mat;
-		template<typename Scalar,
-			size_t Size>
-			friend class Vec;
+		template<typename, size_t, size_t> friend class Mat;
+		template<typename, size_t> friend class Vec;
 	private:
 		Scalar m_real;
 		Vec<Scalar, 3> m_imaginary;
