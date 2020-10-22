@@ -11,13 +11,21 @@ constexpr bool debug = true;
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #define NOMINMAX
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnullability-completeness"
+#ifdef __clang__
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wnullability-completeness"
+	#pragma clang diagnostic ignored "-Wunused-variable"
+#endif
 #include "vk_mem_alloc.h"
-#pragma clang diagnostic pop
+#ifdef __clang__
+	#pragma clang diagnostic pop
+#endif
+
+
 #undef VMA_RECORDING_ENABLED
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+
+#include "glfwIncludes.h"
+
 #include "MaxVals.h"
 #include "spirv_cross.hpp"
 

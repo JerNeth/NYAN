@@ -18,6 +18,8 @@ namespace bla {
     TEST(Linalg, OperatorConversion) {
         std::array<float, 3> t;
         t = bla::vec3{};
+        bla::vec3 v;
+        auto [x, y, z] = t;
     }
     TEST(Linalg, Min) {
         double a = 1.0;

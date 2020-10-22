@@ -727,6 +727,7 @@ void Vulkan::LogicalDevice::create_sync_objects()
 
 void Vulkan::LogicalDevice::create_vma_allocator()
 {
+	#ifdef VMA_RECORDING_ENABLED
 	VmaRecordSettings vmaRecordSettings{
 		.flags = VMA_RECORD_FLUSH_AFTER_CALL_BIT,
 		.pFilePath = "vma_replay.csv",
@@ -737,6 +738,14 @@ void Vulkan::LogicalDevice::create_vma_allocator()
 		.pRecordSettings = &vmaRecordSettings,
 		.instance = r_instance.m_instance,
 	};
+	#else
+	VmaAllocatorCreateInfo allocatorInfo{
+		.physicalDevice = r_instance.m_physicalDevice,
+		.device = m_device,
+		.pRecordSettings = nullptr,
+		.instance = r_instance.m_instance,
+	};
+	#endif
 	if (auto result = vmaCreateAllocator(&allocatorInfo, &m_vmaAllocator); result != VK_SUCCESS) {
 		throw std::runtime_error("VMA: could not create allocator");
 	}
@@ -886,7 +895,7 @@ std::pair< VkImage, VmaAllocation> Vulkan::LogicalDevice::create_image(uint32_t 
 
 void Vulkan::LogicalDevice::create_texture_image(uint32_t width, uint32_t height, uint32_t channels, char* imageData)
 {
-	VkDeviceSize imageSize = width * height * channels;
+	VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * static_cast<VkDeviceSize>(height) * static_cast<VkDeviceSize>(channels);
 
 	auto [stagingBuffer, stagingAllocation] = create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
