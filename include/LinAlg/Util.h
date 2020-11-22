@@ -5,16 +5,14 @@ namespace bla {
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 		inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
-		if ((a <=> b) < 0)
+		if (a <= b)
 			return a;
 		return b;
 	}
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 		inline constexpr const Scalar& max(const Scalar& a, const Scalar& b) noexcept {
-		//Three way comparison, why? because it's new
-		//No really, no reason to do this
-		if ((a <=> b) > 0)
+		if (a > b)
 			return a;
 		return b;
 	}
@@ -34,6 +32,13 @@ namespace bla {
 	template<size_t width>
 	inline constexpr const size_t at(size_t y, size_t x) {
 		return x + y * width;
+	}
+	//This function does not handle limits well
+	//This function is also stable
+	template<typename T, typename U>
+	inline constexpr T lerp(T a, T b, U t) {
+		assert(t >= 0.0f && t <= 1.0f);
+		return (1 - t) * a + t * b;
 	}
 }
 #endif

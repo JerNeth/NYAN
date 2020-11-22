@@ -2,7 +2,7 @@
 #include "Utility.h"
 #include <array>
 #include <chrono>
-
+#include <list>
 namespace Utility {
     TEST(Utility, bitwidth) {
         EXPECT_EQ(bit_width(0x0), 0);

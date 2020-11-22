@@ -43,7 +43,7 @@ None, yet.
 
 This engine depends on the following libraries:
 
-- [Vulkan SDK](https://vulkan.lunarg.com/): must be to be manually installed
+- [Vulkan SDK](https://vulkan.lunarg.com/): must be manually installed
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched

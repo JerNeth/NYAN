@@ -13,7 +13,7 @@ namespace bla {
         EXPECT_TRUE(close(a, c, 0.1));
         EXPECT_FALSE(close(d, e));
         EXPECT_TRUE(close(d, e, 0.1));
-
+        
     }
     TEST(Linalg, OperatorConversion) {
         std::array<float, 3> t;
@@ -40,10 +40,10 @@ namespace bla {
         EXPECT_EQ(test, vec4({5,-4,3,4}));
     }
     TEST(Vectors, Addition) {
+       
         bla::vec2 a2(0), b2(1), c2(2);
         bla::vec3 a3(0), b3(1), c3(2);
         bla::vec4 a4(0), b4(1), c4(2);
-
         EXPECT_EQ(a2 + b2, b2);
         EXPECT_EQ(a3 + b3, b3);
         EXPECT_EQ(a4 + b4, b4);
@@ -160,7 +160,16 @@ namespace bla {
         EXPECT_EQ(c3.dot( c3), 12);
         EXPECT_EQ(c4.dot( c4), 16);
     }
+    TEST(Vectors, Lerp) {
+        bla::vec2 a2(0), b2(1), c2(0.5);
+        bla::vec3 a3(0), b3(1), c3(0.5);
+        bla::vec4 a4(0), b4(1), c4(0.5);
+        float t = 0.5f;
+        EXPECT_EQ(bla::lerp(a2, b2, t), c2);
+        EXPECT_EQ(bla::lerp(a3, b3, t), c3);
+        EXPECT_EQ(bla::lerp(a4, b4, t), c4);
 
+    }
     TEST(Vectors, Broadcast) {
         bla::vec2 a2(0), b2(1), c2(2);
         bla::vec3 a3(0), b3(1), c3(2);

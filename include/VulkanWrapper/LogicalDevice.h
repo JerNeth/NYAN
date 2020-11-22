@@ -88,6 +88,8 @@ namespace Vulkan {
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
+		LogicalDevice(LogicalDevice&&) = delete;
+		LogicalDevice& operator=(LogicalDevice&&) = delete;
 		void draw_frame();
 		void wait_idle();
 		void create_swap_chain();

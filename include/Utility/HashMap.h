@@ -2,6 +2,7 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 #include <optional>
+#include <new>
 #include "Hash.h"
 namespace Utility {
 

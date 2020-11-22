@@ -15,10 +15,6 @@ using namespace std;
 using namespace bla;
 
 
-void main_loop() {
-
-}
-
 int main()
 {
 	/*
@@ -40,6 +36,7 @@ int main()
 
 		Vulkan::Instance instance(glfwExtensions, glfwExtensionCount, applicationName, engineName);		
 		instance.setup_win32_surface(window.get_win32_window(), GetModuleHandle(nullptr));
+
 		Vulkan::LogicalDevice device = instance.setup_device();
 
 		int texWidth, texHeight, texChannels;
@@ -49,7 +46,6 @@ int main()
 		
 		device.create_stuff();
 		device.create_sync_objects();
-		main_loop();
 		int frame = 0;
 		auto start = chrono::steady_clock::now();
 		while (!window.should_close())

@@ -459,78 +459,18 @@ void Vulkan::LogicalDevice::create_render_pass()
 	createInfo.subpassCount = 1;
 	createInfo.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
 
-	createInfo.subpasses[0].colorAttachmentsCount = 1;
-	createInfo.subpasses[0].colorAttachments[0] = 0;
-	createInfo.subpasses[0].depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
-
+	//createInfo.subpasses[0].colorAttachmentsCount = 1;
+	//createInfo.subpasses[0].colorAttachments[0] = 0;
+	//createInfo.subpasses[0].depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
+	createInfo.subpasses[0] = RenderpassCreateInfo::SubpassCreateInfo{ 
+		.colorAttachments {0},
+		.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite,
+		.colorAttachmentsCount = 1,
+		
+	};
 	m_testRenderPass = new Renderpass(*this, createInfo);
 	m_renderPass = m_testRenderPass->get_render_pass();
-	//VkAttachmentDescription colorAttachment{
-	//	.format = m_swapChainImageFormat,
-	//	.samples = VK_SAMPLE_COUNT_1_BIT,
-	//	.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	//	.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	//	.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-	//	.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	//	.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	//	.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	//};
 
-	//VkAttachmentReference colorAttachmentReference{
-	//	.attachment = 0,
-	//	.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	//};
-	//
-	//VkAttachmentDescription depthAttachment{
-	//	.format = VK_FORMAT_D16_UNORM,
-	//	.samples = VK_SAMPLE_COUNT_1_BIT,
-	//	.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	//	.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	//	.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-	//	.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	//	.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	//	.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	//};
-	//VkAttachmentReference depthAttachmentReference{
-	//	.attachment = 1,
-	//	.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	//};
-	//VkSubpassDescription subpassDescription{
-	//	.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-	//	.colorAttachmentCount = 1,
-	//	.pColorAttachments = &colorAttachmentReference,
-	//	.pDepthStencilAttachment = &depthAttachmentReference
-	//};
-	////VkRenderPassMultiviewCreateInfo
-	//VkSubpassDependency subpassDependency{
-	//	.srcSubpass = VK_SUBPASS_EXTERNAL,
-	//	.dstSubpass = 0,
-	//	.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	//	.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	//	.srcAccessMask = 0,
-	//	.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-	//};
-	//std::array< VkAttachmentDescription, 2> attachments{ colorAttachment ,depthAttachment };
-	//VkRenderPassCreateInfo renderPassCreateInfo{
-	//	.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-	//	.attachmentCount = static_cast<uint32_t>(attachments.size()),
-	//	.pAttachments = attachments.data(),
-	//	.subpassCount = 1,
-	//	.pSubpasses = &subpassDescription,
-	//	.dependencyCount = 1,
-	//	.pDependencies = &subpassDependency
-	//};
-	//if (auto result = vkCreateRenderPass(m_device, &renderPassCreateInfo, m_allocator, &m_renderPass); result != VK_SUCCESS) {
-	//	if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-	//		throw std::runtime_error("VK: could not create render pass, out of host memory");
-	//	}
-	//	if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-	//		throw std::runtime_error("VK: could not create render pass, out of device memory");
-	//	}
-	//	else {
-	//		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-	//	}
-	//}
 }
 
 void Vulkan::LogicalDevice::create_framebuffers()

@@ -3,6 +3,7 @@
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+
 project(SmallEngine)
 
 
@@ -13,18 +14,19 @@ project(SmallEngine)
 # ---------------------------------------------------------------------------
 
 find_package(Threads REQUIRED)
-find_package(Openmp REQUIRED)
+#find_package(Openmp REQUIRED)
 
 find_package(Vulkan REQUIRED)
-include_directories(${Vulkan_INCLUDE_DIRS})
 
-
-
-
-if(MSVC)
+#Project Wide Settings
+#All Options which change the ABI come here
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    message("Detected MSVC")
     #add_compile_options(/WX)
-    #add_compile_options(/MDd)
-else()
+    add_compile_options(/MDd)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    message("Detected Clang")
+    add_compile_options(-MDd)
     #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
 endif()
 # SPIRV-Cross
@@ -35,8 +37,6 @@ include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
 
 # GTest
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
-
-
 
 # Imgui
 include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
@@ -65,9 +65,6 @@ include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
-
-
-
 # ---------------------------------------------------------------------------
 # Executables
 # ---------------------------------------------------------------------------
@@ -75,13 +72,19 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
 add_dependencies(Main shaders)
 
-target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core)
+target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core )
 
-if(MSVC)
-    target_compile_options(Main PUBLIC /WX /std:c++latest)
-else()
-    target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    #target_compile_options(Main PUBLIC /WX /std:c++latest)
+    target_compile_options(Main PUBLIC /WX)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
+    target_compile_options(Main PUBLIC -Wall -Wextra)
 endif()
+
+target_compile_features(Main PUBLIC 
+    cxx_std_20
+)
 # ---------------------------------------------------------------------------
 # Testing
 # ---------------------------------------------------------------------------
