@@ -142,6 +142,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 
 VkPipelineShaderStageCreateInfo Vulkan::Shader::get_create_info()
 {
+	assert(m_module != VK_NULL_HANDLE);
 	VkPipelineShaderStageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = static_cast<VkShaderStageFlagBits>(1u <<static_cast<uint32_t>(m_stage)),

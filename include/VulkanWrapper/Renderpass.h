@@ -26,6 +26,7 @@ namespace Vulkan {
 			ReadWrite
 		};
 		bool usingDepth = false;
+		//Last is depth
 		std::bitset<MAX_ATTACHMENTS + 1> loadAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> clearAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> storeAttachments;

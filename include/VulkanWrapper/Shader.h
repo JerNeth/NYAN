@@ -7,6 +7,8 @@
 #include "Utility.h"
 
 namespace Vulkan {
+	class LogicalDevice;
+	class PipelineLayout;
 	struct ResourceBinding {
 		union {
 			VkDescriptorBufferInfo buffer;
@@ -60,8 +62,7 @@ namespace Vulkan {
 	};
 	constexpr size_t NUM_SHADER_STAGES = 6;
 	
-	class LogicalDevice;
-	class PipelineLayout;
+	
 	class Shader
 	{
 	public:

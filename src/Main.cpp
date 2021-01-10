@@ -53,7 +53,8 @@ int main()
 			
 			//window.swap_buffers();
 			glfwPollEvents();
-			device.draw_frame();
+			if(!window.is_iconified())
+				device.draw_frame();
 			frame++;
 			
 		}

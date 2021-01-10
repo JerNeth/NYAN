@@ -14,13 +14,13 @@ r_parent(parent)
 			uint32_t poolSize = layout.arraySizes[i] * MAX_SETS_PER_POOL;
 			if (layout.imageSampler.test(i)) {
 				bindings.push_back(VkDescriptorSetLayoutBinding
-				{
-					.binding = i,
-					.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-					.descriptorCount = layout.arraySizes[i],
-					.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
-					.pImmutableSamplers = nullptr
-				}
+					{
+						.binding = i,
+						.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+						.descriptorCount = layout.arraySizes[i],
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.pImmutableSamplers = nullptr
+					}
 				);
 				poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolSize});
 			}

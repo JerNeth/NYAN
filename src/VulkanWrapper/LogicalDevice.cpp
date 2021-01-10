@@ -1091,7 +1091,7 @@ void Vulkan::LogicalDevice::draw_frame()
 	m_currentFrame++;
 	if (m_currentFrame == MAX_FRAMES_IN_FLIGHT)
 		m_currentFrame = 0;
-	vkQueueWaitIdle(m_graphicsQueue);
+	//vkQueueWaitIdle(m_graphicsQueue);
 }
 
 void Vulkan::LogicalDevice::wait_idle()

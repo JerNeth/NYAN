@@ -65,6 +65,10 @@ namespace glfww {
 				throw std::runtime_error(error_msg);
 			}
 		}
+		bool is_iconified() {
+			int iconified = glfwGetWindowAttrib(m_window, GLFW_ICONIFIED);
+			return iconified != 0;
+		}
 		inline HWND get_win32_window() {
 			return glfwGetWin32Window(m_window);
 		}

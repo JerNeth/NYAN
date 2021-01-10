@@ -39,7 +39,7 @@ include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 
 # Imgui
-include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
+#include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 
 # SDL2
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
@@ -69,7 +69,7 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # Executables
 # ---------------------------------------------------------------------------
 
-add_executable(Main ${SRC_CPP} ${IMGUI_SRC})
+add_executable(Main ${SRC_CPP})# ${IMGUI_SRC})
 add_dependencies(Main shaders)
 
 target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core )
@@ -78,10 +78,13 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)
     target_compile_options(Main PUBLIC /WX)
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
-    target_compile_options(Main PUBLIC -Wall -Wextra)
+    target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
+    #target_compile_options(Main PUBLIC -Wall -Wextra)
 endif()
-
+set_target_properties(Main PROPERTIES
+    CXX_STANDARD 20
+    CXX_EXTENSIONS ON
+)
 target_compile_features(Main PUBLIC 
     cxx_std_20
 )

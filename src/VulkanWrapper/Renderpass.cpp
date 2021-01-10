@@ -91,7 +91,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		attachmentDescriptions[createInfo.colorAttachmentsCount] = depthAttachment;
 	}
 	std::vector<VkAttachmentReference> references;
-	references.reserve(subpassCount * MAX_ATTACHMENTS * 3 + subpassCount);
+	references.reserve(static_cast<size_t>(subpassCount) * static_cast<size_t>(MAX_ATTACHMENTS) * 3ull + static_cast<size_t>(subpassCount));
 	std::vector<VkSubpassDescription> subpassDescriptions(subpassCount);
 	std::vector<VkSubpassDependency> externalDependencies;
 	for (uint32_t i = 0; i < subpassCount; i++) {
