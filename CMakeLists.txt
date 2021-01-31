@@ -6,7 +6,21 @@
 
 project(SmallEngine)
 
-
+#Project Wide Settings
+#All Options which change the ABI come here
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    message("Detected MSVC")
+    #add_compile_options(/WX)
+    #set(CMAKE_CXX_FLAGS_RELEASE "/MT")
+    #set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
+    add_compile_options(/MTd /wd26812)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    message("Detected Clang")
+    #set(CMAKE_CXX_FLAGS_RELEASE "-MT")
+    #set(CMAKE_CXX_FLAGS_DEBUG "-MTd")
+    add_compile_options(-MTd)
+    #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
+endif()
 
 
 # ---------------------------------------------------------------------------
@@ -18,17 +32,7 @@ find_package(Threads REQUIRED)
 
 find_package(Vulkan REQUIRED)
 
-#Project Wide Settings
-#All Options which change the ABI come here
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-    message("Detected MSVC")
-    #add_compile_options(/WX)
-    add_compile_options(/MDd)
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    message("Detected Clang")
-    add_compile_options(-MDd)
-    #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
-endif()
+
 # SPIRV-Cross
 include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 
@@ -69,23 +73,33 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # Executables
 # ---------------------------------------------------------------------------
 
-add_executable(Main ${SRC_CPP})# ${IMGUI_SRC})
-add_dependencies(Main shaders)
+add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC})
 
-target_link_libraries(Main glfw Vulkan::Vulkan spirv-cross-core )
+add_executable(Demo ${DEMO_SRC})# ${IMGUI_SRC})
+add_executable(Demo2 ${DEMO2_SRC})
+add_dependencies(Demo shaders)
+add_dependencies(Demo2 shaders)
+
+target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan)
+target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
+target_link_libraries(Demo Engine)
+target_link_libraries(Demo2 Engine)
+
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)
-    target_compile_options(Main PUBLIC /WX)
+    target_compile_options(Demo PRIVATE /WX)
+    target_compile_options(Engine PRIVATE /WX)
+    target_compile_options(Third-Party-Dependencies PRIVATE /w)
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
-    #target_compile_options(Main PUBLIC -Wall -Wextra)
+    target_compile_options(Demo PRIVATE -W4)
+    target_compile_options(Engine PRIVATE -W4)
+    target_compile_options(Third-Party-Dependencies PRIVATE -Wno-everything)
+    #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
 endif()
-set_target_properties(Main PROPERTIES
-    CXX_STANDARD 20
-    CXX_EXTENSIONS ON
-)
-target_compile_features(Main PUBLIC 
+
+target_compile_features(Engine PUBLIC 
     cxx_std_20
 )
 # ---------------------------------------------------------------------------

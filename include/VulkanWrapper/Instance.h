@@ -32,6 +32,10 @@ namespace Vulkan {
 		LogicalDevice setup_device();
 		void setup_win32_surface(HWND hwnd, HINSTANCE hinstance);
 		uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+		std::vector<VkPresentModeKHR> get_present_modes() const;
+		std::vector<VkSurfaceFormatKHR> get_surface_formats() const;
+		VkSurfaceCapabilitiesKHR get_surface_capabilites() const;
+		VkSurfaceKHR get_surface() const;
 	private:
 		void create_instance();
 		
@@ -41,7 +45,8 @@ namespace Vulkan {
 		bool device_swapchain_suitable(const VkPhysicalDevice& device) const;
 		bool is_device_suitable(const VkPhysicalDevice& device) const;
 		uint32_t get_graphics_family_queue_index(const VkPhysicalDevice& device) const;
-		std::pair<VkDevice, uint32_t> setup_logical_device(const VkPhysicalDevice& device) const;
+		uint32_t get_transfer_family_queue_index(const VkPhysicalDevice& device) const;
+		std::tuple<VkDevice, uint32_t, uint32_t> setup_logical_device(const VkPhysicalDevice& device) const;
 
 		/// *******************************************************************
 		/// Member variables

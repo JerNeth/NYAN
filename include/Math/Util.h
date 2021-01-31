@@ -1,7 +1,9 @@
 #ifndef LINALGUTIL_H
 #define LINALGUTIL_H
 #pragma once
-namespace bla {
+#include <type_traits>
+
+namespace Math {
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
 		inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
@@ -18,7 +20,7 @@ namespace bla {
 	}
 	template<typename Scalar,
 		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-		inline constexpr const bool close(const Scalar& a, const Scalar& b, const Scalar& eps = Scalar(1e-5)) noexcept {
+		inline constexpr bool close(const Scalar& a, const Scalar& b, const Scalar& eps = Scalar(1e-5)) noexcept {
 		return ((a - eps) <= b) && ((a + eps) >= b);
 	}
 	template<typename T>
@@ -26,11 +28,11 @@ namespace bla {
 		return a * a;
 	}
 	template<int width>
-	inline constexpr const int at(int y, int x) {
+	inline constexpr int at(int y, int x) {
 		return x + y * width;
 	}
 	template<size_t width>
-	inline constexpr const size_t at(size_t y, size_t x) {
+	inline constexpr size_t at(size_t y, size_t x) {
 		return x + y * width;
 	}
 	//This function does not handle limits well

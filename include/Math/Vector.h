@@ -3,7 +3,7 @@
 #pragma once
 #include <string>
 
-namespace bla {
+namespace Math {
 	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
 	template<typename Scalar> class Quaternion;
 
@@ -293,7 +293,7 @@ namespace bla {
 		}
 		inline Vec& normalize() noexcept {
 			Scalar inverseNorm = Scalar(1)/L2_norm();
-			for (int i = 0; i < m_data.size(); i++) {
+			for (size_t i = 0; i < m_data.size(); i++) {
 				m_data[i] *= inverseNorm;
 			}
 			return *this;

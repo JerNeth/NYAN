@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "LinAlg.h"
 #include <random>
-namespace bla {
+namespace Math {
     TEST(Linalg, Close) {
         double a = 1.0;
         double b = 1.0;
@@ -17,9 +17,10 @@ namespace bla {
     }
     TEST(Linalg, OperatorConversion) {
         std::array<float, 3> t;
-        t = bla::vec3{};
-        bla::vec3 v;
+        t = Math::vec3{};
+        Math::vec3 v;
         auto [x, y, z] = t;
+        x = 1;
     }
     TEST(Linalg, Min) {
         double a = 1.0;
@@ -32,7 +33,7 @@ namespace bla {
         EXPECT_EQ(c, max(a, c));
     }
     TEST(Vectors, Assignment) {
-        bla::vec4 test({ 0,0,0,0 });
+        Math::vec4 test({ 0,0,0,0 });
         test.x() = 5;
         test.y() -= 4;
         test[2] = 3;
@@ -41,9 +42,9 @@ namespace bla {
     }
     TEST(Vectors, Addition) {
        
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
         EXPECT_EQ(a2 + b2, b2);
         EXPECT_EQ(a3 + b3, b3);
         EXPECT_EQ(a4 + b4, b4);
@@ -53,9 +54,9 @@ namespace bla {
         EXPECT_EQ(b4 + b4, c4);
     }
     TEST(Vectors, Subtraction) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
 
         EXPECT_EQ(b2 - a2, b2);
         EXPECT_EQ(b3 - a3, b3);
@@ -66,9 +67,9 @@ namespace bla {
         EXPECT_EQ(b4 - b4, a4);
     }
     TEST(Vectors, Multiplication) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
 
         EXPECT_EQ(a2 * b2, a2);
         EXPECT_EQ(a3 * b3, a3);
@@ -83,9 +84,9 @@ namespace bla {
         EXPECT_EQ(b4 * c4, c4);
     }
     TEST(Vectors, Division) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
 
         EXPECT_EQ(c2 / 1, c2);
         EXPECT_EQ(c3 / 1, c3);
@@ -100,9 +101,9 @@ namespace bla {
         EXPECT_EQ(c4 / 2, b4);
     }
     TEST(Vectors, Pow) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
 
         EXPECT_EQ(b2 ^ 2, b2);
         EXPECT_EQ(b3 ^ 2, b3);
@@ -112,7 +113,7 @@ namespace bla {
         EXPECT_EQ(b3 ^ 0, b3);
         EXPECT_EQ(b4 ^ 0, b4);
 
-        EXPECT_EQ(c4 ^ c4, bla::vec4(4));
+        EXPECT_EQ(c4 ^ c4, Math::vec4(4));
 
         EXPECT_EQ(a2 ^ 0, b2);
         EXPECT_EQ(a3 ^ 0, b3);
@@ -126,15 +127,15 @@ namespace bla {
         EXPECT_EQ(c3 ^ 1, c3);
         EXPECT_EQ(c4 ^ 1, c4);
 
-        EXPECT_EQ(c2 ^ 2, bla::vec2(4));
-        EXPECT_EQ(c3 ^ 2, bla::vec3(4));
-        EXPECT_EQ(c4 ^ 2, bla::vec4(4));
+        EXPECT_EQ(c2 ^ 2, Math::vec2(4));
+        EXPECT_EQ(c3 ^ 2, Math::vec3(4));
+        EXPECT_EQ(c4 ^ 2, Math::vec4(4));
     }
 
     TEST(Vectors, Dot) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
 
         EXPECT_EQ(dot(b2, b2), 2);
         EXPECT_EQ(dot(b3, b3), 3);
@@ -161,29 +162,29 @@ namespace bla {
         EXPECT_EQ(c4.dot( c4), 16);
     }
     TEST(Vectors, Lerp) {
-        bla::vec2 a2(0), b2(1), c2(0.5);
-        bla::vec3 a3(0), b3(1), c3(0.5);
-        bla::vec4 a4(0), b4(1), c4(0.5);
+        Math::vec2 a2(0), b2(1), c2(0.5);
+        Math::vec3 a3(0), b3(1), c3(0.5);
+        Math::vec4 a4(0), b4(1), c4(0.5);
         float t = 0.5f;
-        EXPECT_EQ(bla::lerp(a2, b2, t), c2);
-        EXPECT_EQ(bla::lerp(a3, b3, t), c3);
-        EXPECT_EQ(bla::lerp(a4, b4, t), c4);
+        EXPECT_EQ(Math::lerp(a2, b2, t), c2);
+        EXPECT_EQ(Math::lerp(a3, b3, t), c3);
+        EXPECT_EQ(Math::lerp(a4, b4, t), c4);
 
     }
     TEST(Vectors, Broadcast) {
-        bla::vec2 a2(0), b2(1), c2(2);
-        bla::vec3 a3(0), b3(1), c3(2);
-        bla::vec4 a4(0), b4(1), c4(2);
+        Math::vec2 a2(0), b2(1), c2(2);
+        Math::vec3 a3(0), b3(1), c3(2);
+        Math::vec4 a4(0), b4(1), c4(2);
         auto fun = [](float a) { return a * 2; };
 
-        EXPECT_EQ(a2.apply_fun(fun), bla::vec2(0));
-        EXPECT_EQ(b4.apply_fun(fun), bla::vec4(2));
+        EXPECT_EQ(a2.apply_fun(fun), Math::vec2(0));
+        EXPECT_EQ(b4.apply_fun(fun), Math::vec4(2));
 
-        EXPECT_EQ(c4.apply_fun(fun), bla::vec4(4));
+        EXPECT_EQ(c4.apply_fun(fun), Math::vec4(4));
     }
 
     TEST(Vectors, Cross) {
-        bla::vec3 a({ 0, 0, 1 }), b({ 1, 0, 0 }), c({0, 1, 0});
+        Math::vec3 a({ 0, 0, 1 }), b({ 1, 0, 0 }), c({0, 1, 0});
 
         EXPECT_EQ(cross(a, b), c);
         EXPECT_EQ(cross(c, a), b);
@@ -194,7 +195,7 @@ namespace bla {
         EXPECT_EQ(cross(c, b), -a);
     }
     TEST(Vectors, Close) {
-        bla::vec3 a({ 0, 0, 1 }), b({ 0, 0, 1 }), c({ 0, 0, 1.001f }), d({ 0, 0, -1.0f }), e({0, 0, -1.001f});
+        Math::vec3 a({ 0, 0, 1 }), b({ 0, 0, 1 }), c({ 0, 0, 1.001f }), d({ 0, 0, -1.0f }), e({0, 0, -1.001f});
 
         EXPECT_TRUE(close(a, a));
         EXPECT_TRUE(close(a, b));

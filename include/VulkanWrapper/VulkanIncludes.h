@@ -15,18 +15,53 @@ constexpr bool debug = true;
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wnullability-completeness"
 	#pragma clang diagnostic ignored "-Wunused-variable"
+	#pragma clang diagnostic ignored "-Wdocumentation"
+	#pragma clang diagnostic ignored "-Wnullability-extension"
+#endif
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+	#pragma warning( disable : 26812 )
 #endif
 #include "vk_mem_alloc.h"
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
 
 
 #undef VMA_RECORDING_ENABLED
-
+#ifdef __clang__
+	#pragma clang diagnostic push
+#endif
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+	#pragma warning( disable : 26812 )
+#endif
+#include "vulkan\vulkan.h"
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
+#ifdef __clang__
+	#pragma clang diagnostic pop
+#endif
 #include "glfwIncludes.h"
 
 #include "MaxVals.h"
-#include "spirv_cross.hpp"
 
+#ifdef __clang__
+	#pragma clang diagnostic push
+#endif
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+	#pragma warning( disable : 26812 )
+#endif
+#include "spirv_cross.hpp"
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
+#ifdef __clang__
+	#pragma clang diagnostic pop
+#endif
 #endif// VKVULKANINCLUDES_H

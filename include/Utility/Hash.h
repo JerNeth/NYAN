@@ -1,10 +1,15 @@
 #pragma once
 #ifndef HASH_H
 #define HASH_H
-
+#include <cstdint>
 namespace Utility {
 	typedef uint64_t HashValue;
 	struct Hasher {
+		Hasher() : hash(0xcbf29ce484222325ull){
+		}
+		Hasher(HashValue init) : hash(init){
+
+		}
 		template<typename T>
 		HashValue operator()(const T& t) {
 			constexpr const HashValue prime = 0x100000001b3ull;

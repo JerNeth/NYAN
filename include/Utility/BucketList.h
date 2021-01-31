@@ -1,6 +1,7 @@
 #pragma once
 #ifndef BUCKETLIST_H
 #define BUCKETLIST_H
+#include <iostream>
 #include <bitset>
 namespace Utility {
 	template<typename T, size_t bucketSize>
@@ -14,22 +15,14 @@ namespace Utility {
 		ListBucket(ListBucket&) = delete;
 		ListBucket(ListBucket&& other) {
 			other.next.swap(next);
-			size = other.size;
 			bucket = other.bucket;
-			prev = other.prev;
-			other.size = 0;
 			other.bucket = nullptr;
-			other.prev = nullptr;
 		}
 		ListBucket& operator=(ListBucket&) = delete;
 		ListBucket& operator=(ListBucket&& other) {
 			other.next.swap(next);
-			size = other.size;
 			bucket = other.bucket;
-			prev = other.prev;
-			other.size = 0;
 			other.bucket = nullptr;
-			other.prev = nullptr;
 		}
 		~ListBucket() {
 			if (bucket) {
@@ -39,11 +32,22 @@ namespace Utility {
 				free(bucket);
 			}
 		}
-		size_t insert(T t) {
+		size_t insert(const T& t) {
 			size_t i;
 			for (i = 0; i < bucketSize; i++) {
 				if (!occupancy.test(i)) {
-					bucket[i] = t;
+					new (&bucket[i]) T(t);
+					occupancy.set(i);
+					return zero_id + i;
+				}
+			}
+			throw std::runtime_error("How?");
+		}
+		size_t insert(T&& t) {
+			size_t i;
+			for (i = 0; i < bucketSize; i++) {
+				if (!occupancy.test(i)) {
+					new (&bucket[i]) T(std::move(t));
 					occupancy.set(i);
 					return zero_id + i;
 				}
@@ -114,10 +118,18 @@ namespace Utility {
 		LinkedBucketList() {
 
 		}
+		LinkedBucketList(LinkedBucketList&& other) :
+			head(other.head.release())
+		{
+
+		}
+		~LinkedBucketList() {
+			head.reset(nullptr);
+		}
 		void destroy() {
 			head.reset(nullptr);
 		}
-		size_t insert(T t) {
+		size_t insert(const T& t) {
 			if (!head) {
 				head = std::make_unique< Bucket>(0);
 			}
@@ -126,6 +138,16 @@ namespace Utility {
 				current = current->get_next();
 			}
 			return current->insert(t);
+		}
+		size_t insert(T&& t) {
+			if (!head) {
+				head = std::make_unique< Bucket>(0);
+			}
+			Bucket* current = head.get();
+			while (current->full()) {
+				current = current->get_next();
+			}
+			return current->insert(std::move(t));
 		}
 		template<class... Args>
 		size_t emplace(Args&&... args) {

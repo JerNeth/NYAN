@@ -1,7 +1,7 @@
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
 Vulkan::DescriptorSetAllocator::DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout) :
-r_parent(parent)
+r_device(parent)
 {
 	
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -116,7 +116,7 @@ r_parent(parent)
 		.bindingCount = static_cast<uint32_t>(bindings.size()),
 		.pBindings = bindings.data()
 	};
-	if (auto result = vkCreateDescriptorSetLayout(r_parent.m_device, &createInfo, r_parent.m_allocator, &m_layout); result != VK_SUCCESS) {
+	if (auto result = vkCreateDescriptorSetLayout(r_device.m_device, &createInfo, r_device.m_allocator, &m_layout); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
 		}
@@ -133,7 +133,7 @@ r_parent(parent)
 Vulkan::DescriptorSetAllocator::~DescriptorSetAllocator()
 {
 	if (m_layout != VK_NULL_HANDLE)
-		vkDestroyDescriptorSetLayout(r_parent.m_device, m_layout, r_parent.m_allocator);
+		vkDestroyDescriptorSetLayout(r_device.m_device, m_layout, r_device.m_allocator);
 	clear();
 }
 
@@ -164,7 +164,7 @@ std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned t
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.empty() ? nullptr: poolSizes.data()
 	};
-	if (auto result = vkCreateDescriptorPool(r_parent.m_device, &createInfo, r_parent.m_allocator, &pool); result != VK_SUCCESS) {
+	if (auto result = vkCreateDescriptorPool(r_device.m_device, &createInfo, r_device.m_allocator, &pool); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorPool, out of host memory");
 		}
@@ -186,7 +186,7 @@ std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned t
 		.descriptorSetCount = MAX_SETS_PER_POOL,
 		.pSetLayouts = layouts.data()
 	};
-	if (auto result = vkAllocateDescriptorSets(r_parent.m_device, &allocateInfo, state.vacant.data()); result != VK_SUCCESS) {
+	if (auto result = vkAllocateDescriptorSets(r_device.m_device, &allocateInfo, state.vacant.data()); result != VK_SUCCESS) {
 		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 	}
 
@@ -210,8 +210,8 @@ void Vulkan::DescriptorSetAllocator::clear()
 		state->vacant.clear();
 		state->stale.clear();
 		for (auto& pool : state->pools) {
-			vkResetDescriptorPool(r_parent.m_device, pool, 0);
-			vkDestroyDescriptorPool(r_parent.m_device, pool, r_parent.m_allocator);
+			vkResetDescriptorPool(r_device.m_device, pool, 0);
+			vkDestroyDescriptorPool(r_device.m_device, pool, r_device.m_allocator);
 		}
 		state->pools.clear();
 	}

@@ -55,8 +55,8 @@ namespace glfww {
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 			
 			//TODO handle resizing
-			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
+			//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+			glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 			m_window = glfwCreateWindow(width, height, title, monitor, nullptr);
 			
 			if (!m_window) {

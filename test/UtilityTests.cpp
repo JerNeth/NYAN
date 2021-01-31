@@ -52,7 +52,23 @@ namespace Utility {
         }
         EXPECT_EQ(result, result2);
     }
-    
+    TEST(Utility, LinkedBucketListMove) {
+        struct T {
+            T() {
+
+            }
+            T(T&) = delete;
+            T(T&&) {
+                moved++;
+            }
+            int moved = 0;
+        };
+        LinkedBucketList<T> l;
+        T t2;
+        auto id2 = l.insert(std::move(t2));
+        EXPECT_EQ(l.get(id2)->moved, 1);
+    }
+
     TEST(Utility, linkedBucketList) {
         LinkedBucketList<uint32_t> l;
         auto id = l.insert(0);

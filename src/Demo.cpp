@@ -12,7 +12,7 @@
 #include <new>
 #include <thread>
 using namespace std;
-using namespace bla;
+using namespace Math;
 
 
 int main()
@@ -27,7 +27,6 @@ int main()
 	std::string applicationName{ "Demo" };
 	std::string engineName{ "NYAN" };
 	try {
-
 		glfww::Library library;
 		glfww::Window window(width, height, nullptr, nullptr, applicationName.c_str());
 		//auto window = glfww::Window::create_full_screen(width, height);
@@ -38,7 +37,7 @@ int main()
 		instance.setup_win32_surface(window.get_win32_window(), GetModuleHandle(nullptr));
 
 		Vulkan::LogicalDevice device = instance.setup_device();
-
+		device.demo_setup();
 		int texWidth, texHeight, texChannels;
 		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		device.create_texture_image(texWidth, texHeight, 4, reinterpret_cast<char*>(pixels));
@@ -61,6 +60,7 @@ int main()
 		auto end = chrono::steady_clock::now();
 		std::cout << "Average: "<< chrono::duration_cast<chrono::microseconds>(end - start).count()/frame << "microseconds\n";
 		device.wait_idle();
+		device.demo_teardown();
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;

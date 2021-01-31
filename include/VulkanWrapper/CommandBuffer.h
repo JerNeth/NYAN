@@ -19,7 +19,7 @@ namespace Vulkan {
 		/// *******************************************************************
 		/// Member variables
 		/// *******************************************************************
-		LogicalDevice& r_parent;
+		LogicalDevice& r_device;
 		VkCommandBuffer m_commandBuffer;
 		/// *******************************************************************
 		/// Private functions

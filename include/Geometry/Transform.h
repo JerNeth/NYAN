@@ -3,7 +3,7 @@
 
 class Transform {
 private:
-	bla::vec3 m_position;
-	bla::vec3 m_scale;
-	bla::quat m_orientation;
+	Math::vec3 m_position;
+	Math::vec3 m_scale;
+	Math::quat m_orientation;
 };

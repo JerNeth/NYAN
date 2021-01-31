@@ -20,12 +20,13 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	return buffer;
 }
 */
-Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_parent(parent), m_resourceLayout(layout) {
+Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_resourceLayout(layout) {
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
-	for (int i = 0; i < descriptorSets.size(); i++) {
-		m_descriptors[i] = r_parent.request_descriptor_set_allocator(layout.descriptors[i]);
+	for (size_t i = 0; i < descriptorSets.size(); i++) {
+		m_descriptors[i] = r_device.request_descriptor_set_allocator(layout.descriptors[i]);
 		descriptorSets[i] = m_descriptors[i]->get_layout();
 	}
+	
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = static_cast<uint32_t>(layout.used.count()),
@@ -34,7 +35,7 @@ Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout
 		.pPushConstantRanges = &layout.pushConstantRange
 	};
 
-	if (auto result = vkCreatePipelineLayout(r_parent.m_device, &pipelineLayoutCreateInfo, r_parent.m_allocator, &m_layout); result != VK_SUCCESS) {
+	if (auto result = vkCreatePipelineLayout(r_device.m_device, &pipelineLayoutCreateInfo, r_device.m_allocator, &m_layout); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
 		}
@@ -50,7 +51,7 @@ Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout
 Vulkan::PipelineLayout::~PipelineLayout()
 {
 	if (m_layout != VK_NULL_HANDLE)
-		vkDestroyPipelineLayout(r_parent.m_device, m_layout, r_parent.m_allocator);
+		vkDestroyPipelineLayout(r_device.m_device, m_layout, r_device.m_allocator);
 }
 
 const VkPipelineLayout& Vulkan::PipelineLayout::get_layout() const
@@ -63,8 +64,15 @@ const Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_resourceLayout() const
 	return m_resourceLayout;
 }
 
+const Vulkan::DescriptorSetAllocator* Vulkan::PipelineLayout::get_allocator(size_t set) const
+{
+	assert(set < MAX_DESCRIPTOR_SETS);
+	return m_descriptors[set];
+}
+
 const VkDescriptorUpdateTemplate& Vulkan::PipelineLayout::get_update_template(size_t set) const
 {
+	assert(set < MAX_DESCRIPTOR_SETS);
 	return m_updateTemplate[set];
 }
 
@@ -196,7 +204,7 @@ void Vulkan::PipelineLayout::create_update_template()
 			.pipelineLayout = m_layout,
 			.set = descriptorIdx,
 		};
-		if (auto result = vkCreateDescriptorUpdateTemplate(r_parent.m_device, &createInfo, r_parent.m_allocator, &m_updateTemplate[descriptorIdx]); result != VK_SUCCESS) {
+		if (auto result = vkCreateDescriptorUpdateTemplate(r_device.m_device, &createInfo, r_device.m_allocator, &m_updateTemplate[descriptorIdx]); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 				throw std::runtime_error("VK: could not create DescriptorUpdateTemplate, out of host memory");
 			}
@@ -211,7 +219,7 @@ void Vulkan::PipelineLayout::create_update_template()
 }
 
 Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile) :
-	r_parent(parent)
+	r_device(parent)
 {
 
 
@@ -326,7 +334,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.depthClampEnable = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode = static_cast<VkPolygonMode>(compile.state.wireframe),
-		.cullMode = VK_CULL_MODE_NONE,// static_cast<VkCullModeFlags>(compile.state.cull_mode),
+		.cullMode = static_cast<VkCullModeFlags>(compile.state.cull_mode),
 		.frontFace = static_cast<VkFrontFace>(compile.state.front_face),
 		.depthBiasEnable = compile.state.depth_bias_enable,
 		.depthBiasConstantFactor = 0.f,
@@ -361,7 +369,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.basePipelineIndex = -1
 	};
 
-	if (auto result = vkCreateGraphicsPipelines(r_parent.m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, r_parent.m_allocator, &m_pipeline);
+	if (auto result = vkCreateGraphicsPipelines(r_device.m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, r_device.m_allocator, &m_pipeline);
 		result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
@@ -381,11 +389,11 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 Vulkan::Pipeline::~Pipeline() noexcept
 {
 	if (m_pipeline != VK_NULL_HANDLE)
-		vkDestroyPipeline(r_parent.m_device, m_pipeline, r_parent.m_allocator);
+		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
 }
 
 Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) :
-	r_parent(other.r_parent)
+	r_device(other.r_device)
 {
 	this->m_pipeline = other.m_pipeline;
 	other.m_pipeline = VK_NULL_HANDLE;
@@ -393,7 +401,7 @@ Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) :
 
 //const Vulkan::Pipeline& Vulkan::Pipeline::operator=(Vulkan::Pipeline&& other)
 //{
-//	this->r_parent = other.r_parent;
+//	this->r_device = other.r_device;
 //	this->m_pipeline = other.m_pipeline;
 //	other.m_pipeline = VK_NULL_HANDLE;
 //}

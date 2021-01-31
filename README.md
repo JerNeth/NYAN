@@ -34,6 +34,10 @@ None, yet.
 	- [x] Pipeline abstraction
 	- [x] Renderpass abstraction
 	- [x] Descriptor abstraction
+	- [x] Swapchain abstraction
+	- [x] Framebuffer abstraction
+	- [x] Sampler abstraction
+	- [x] Descriptor set management 
 	- [ ] Command Buffer abstraction
 	- [ ] Buffer abstraction
 	- [ ] Image abstraction
@@ -41,7 +45,7 @@ None, yet.
 
 ## Requirements
 
-This engine depends on the following libraries:
+The engine depends on the following libraries:
 
 - [Vulkan SDK](https://vulkan.lunarg.com/): must be manually installed
 - [GLFW](https://github.com/glfw/glfw): automatically fetched

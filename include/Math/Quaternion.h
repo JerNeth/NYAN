@@ -1,8 +1,9 @@
 #ifndef QUATERNIONS_H
 #define QUATERNIONS_H
-
 #pragma once
-namespace bla {
+
+#include "Constants.h"
+namespace Math {
 	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
 	template<typename Scalar, size_t Size> class Vec;
 

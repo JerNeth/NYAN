@@ -25,8 +25,8 @@ Vulkan::LogicalDevice Vulkan::Instance::setup_device()
 		m_physicalDevice = *selectedDevice;
 		VkPhysicalDeviceProperties properties;
 		vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
-		auto [device, queueIndex] = setup_logical_device(*selectedDevice);
-		return LogicalDevice(*this, device, queueIndex, properties);
+		auto [device, graphicsQueueFamilyIndex, transferQueueFamilyIndex] = setup_logical_device(*selectedDevice);
+		return LogicalDevice(*this, device, graphicsQueueFamilyIndex, transferQueueFamilyIndex, properties);
 		
 	}
 	else {
@@ -62,6 +62,36 @@ uint32_t Vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropert
 			return i;
 	}
 	throw std::runtime_error("VK: Could not find suitable memory type");
+}
+
+std::vector<VkPresentModeKHR> Vulkan::Instance::get_present_modes() const
+{
+	uint32_t numModes;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, nullptr);
+	std::vector<VkPresentModeKHR> presentModes(numModes);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, presentModes.data());
+	return presentModes;
+}
+
+std::vector<VkSurfaceFormatKHR> Vulkan::Instance::get_surface_formats() const
+{
+	uint32_t numFormats;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, nullptr);
+	std::vector<VkSurfaceFormatKHR> surfaceFormats(numFormats);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, surfaceFormats.data());
+	return surfaceFormats;
+}
+
+VkSurfaceCapabilitiesKHR Vulkan::Instance::get_surface_capabilites() const
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
+	return capabilities;
+}
+
+VkSurfaceKHR Vulkan::Instance::get_surface() const
+{
+	return m_surface;
 }
 
 void Vulkan::Instance::create_instance()
@@ -313,24 +343,51 @@ uint32_t Vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevic
 	}
 	return graphicsQueueFamilyIndex;
 }
+uint32_t Vulkan::Instance::get_transfer_family_queue_index(const VkPhysicalDevice& device) const
+{
+	uint32_t numQueueFamilies = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilies(numQueueFamilies);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, queueFamilies.data());
+	uint32_t i = 0;
+	uint32_t transferQueueFamilyIndex = 0;
+	auto transferQueue = std::find_if(queueFamilies.cbegin(), queueFamilies.cend(),
+		[this, &device, &i, &transferQueueFamilyIndex](const auto& queueFamily) {
+		transferQueueFamilyIndex = i++;
+		return (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT  )&& !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+	});
+	if (transferQueue == queueFamilies.cend()) {
+		return ~0u;
+	}
+	return transferQueueFamilyIndex;
+}
 
-std::pair<VkDevice, uint32_t> Vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
+std::tuple<VkDevice, uint32_t, uint32_t> Vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
 {
 
 	auto graphicsQueueFamilyIndex = get_graphics_family_queue_index(device);
+	auto transferQueueFamilyIndex = get_transfer_family_queue_index(device);
 	float queuePriority = 1.0f;
-	VkDeviceQueueCreateInfo queueCreateInfo{
+	std::array< VkDeviceQueueCreateInfo, 2> queueCreateInfos{ 
+		 VkDeviceQueueCreateInfo {
 		.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 		.queueFamilyIndex = graphicsQueueFamilyIndex,
 		.queueCount = 1,
 		.pQueuePriorities = &queuePriority
+		},
+		VkDeviceQueueCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+		.queueFamilyIndex = transferQueueFamilyIndex,
+		.queueCount = 1,
+		.pQueuePriorities = &queuePriority
+		}
 	};
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 	VkDeviceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.queueCreateInfoCount = 1,
-		.pQueueCreateInfos = &queueCreateInfo,
+		.queueCreateInfoCount = (transferQueueFamilyIndex == ~0u )? 1u : 2u,
+		.pQueueCreateInfos = queueCreateInfos.data(),
 		.enabledLayerCount = static_cast<uint32_t>(m_layers.size()), //Ignored with vulkan 1.1
 		.ppEnabledLayerNames = m_layers.data(),
 		.enabledExtensionCount = static_cast<uint32_t>(m_requiredExtensions.size()),
@@ -365,5 +422,5 @@ std::pair<VkDevice, uint32_t> Vulkan::Instance::setup_logical_device(const VkPhy
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
-	return std::make_pair(logicalDevice, static_cast<uint32_t>(graphicsQueueFamilyIndex));
+	return { logicalDevice, static_cast<uint32_t>(graphicsQueueFamilyIndex), transferQueueFamilyIndex };
 }

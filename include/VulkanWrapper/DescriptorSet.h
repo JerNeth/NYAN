@@ -69,7 +69,7 @@ namespace Vulkan {
 		};
 		std::vector<std::unique_ptr<PerThread>> perThread;
 		std::vector<VkDescriptorPoolSize> poolSizes;
-		LogicalDevice& r_parent;
+		LogicalDevice& r_device;
 		VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
 		
 	};

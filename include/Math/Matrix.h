@@ -2,10 +2,11 @@
 #define MATRIX_H
 #pragma once
 #include "Util.h"
+#include "Constants.h"
 #include <string>
 #include <optional>
 
-namespace bla {
+namespace Math {
 	template<typename Scalar, size_t Size> class Vec;
 	template<typename Scalar> class Quaternion;
 
@@ -88,16 +89,16 @@ namespace bla {
 			}
 		}
 		explicit Mat(const Scalar(&list)[Size_x*Size_y]) : m_data() {
-			for (int y = 0; y < Size_y; y++) {
-				for (int x = 0; x < Size_x; x++) {
+			for (size_t y = 0; y < Size_y; y++) {
+				for (size_t x = 0; x < Size_x; x++) {
 					m_data[at<Size_x>(x, y)] = list[at<Size_x>(x, y)];
 				}
 			}
 		}
 		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other>
 		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other>& other) : m_data() {
-			for (int y = 0; y < min(Size_y, Size_y_other); y++) {
-				for (int x = 0; x < min(Size_x, Size_x_other); x++) {
+			for (size_t y = 0; y < min(Size_y, Size_y_other); y++) {
+				for (size_t x = 0; x < min(Size_x, Size_x_other); x++) {
 					m_data[at<Size_x>(x, y)] = other[at<Size_x_other>(x, y)];
 				}
 			}
@@ -207,7 +208,7 @@ namespace bla {
 			for (size_t y = 0; y < Size_y; y++) {
 				Vec<Scalar, Size_x> old_row = row(y);
 				for (size_t x = 0; x < Size_x; x++) {
-					m_data[y * Size_x + x] = old_row.dot(rhs.col(x));
+					m_data[at<Size_y>(y, x)] = old_row.dot(rhs.col(x));
 				}
 			}
 			return *this;
@@ -241,7 +242,7 @@ namespace bla {
 			if (Size_y <= index)
 				throw std::out_of_range("Index out of range");
 			for (size_t x = 0; x < Size_x; x++)
-				ret[x] = m_data[at<Size_x>(static_cast<int>(x), static_cast<int>(index))];
+				ret[x] = m_data[at<Size_x>(static_cast<int>(index), static_cast<int>(x))];
 			return ret;
 		}
 		inline Vec<Scalar, Size_y> col(const size_t index) const {
@@ -249,7 +250,7 @@ namespace bla {
 			if (Size_x <= index)
 				throw std::out_of_range("Index out of range");
 			for (size_t y = 0; y < Size_y; y++)
-				ret[y] = m_data[at<Size_x>(static_cast<int>(index), static_cast<int>(y))];
+				ret[y] = m_data[at<Size_x>(static_cast<int>(y), static_cast<int>(index))];
 			return ret;
 		}
 		inline const Scalar& operator[] (const size_t index) const {
@@ -268,13 +269,13 @@ namespace bla {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[at<Size_x>(x, y)];
+			return m_data[at<Size_x>(y, x)];
 		}
 		inline constexpr Scalar& operator()(const size_t x, const size_t y) {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[at<Size_x>(x, y)];
+			return m_data[at<Size_x>(y, x)];
 		}
 		//TODO, this is ugly
 		Mat<Scalar, Size_x - 1, Size_y - 1> cofactor(const size_t i, const size_t j) const {
@@ -294,9 +295,7 @@ namespace bla {
 			static_assert(Size_x == Size_y);
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = y+1; x < Size_x; x++) {
-					Scalar tmp = m_data[at<Size_x>(x, y)];
-					m_data[at<Size_x>(x, y)] = m_data[at<Size_x>(y, x)];
-					m_data[at<Size_x>(y, x)] = tmp;
+					std::swap(m_data[at<Size_x>(x, y)],m_data[at<Size_x>(y, x)]);
 				}
 			}
 			return *this;
@@ -531,18 +530,18 @@ namespace bla {
 			matrix.set_row(xAxis, 0);
 			matrix.set_row(yAxis, 1);
 			matrix.set_row(-zAxis, 2);
-			//matrix[bla::at<Size_x>(0, 0)] = xAxis.x();
-			//matrix[bla::at<Size_x>(1, 0)] = xAxis.y();
-			//matrix[bla::at<Size_x>(2, 0)] = xAxis.z();
-			//matrix[bla::at<Size_x>(0, 1)] = yAxis.x();
-			//matrix[bla::at<Size_x>(1, 1)] = yAxis.y();
-			//matrix[bla::at<Size_x>(2, 1)] = yAxis.z();
-			//matrix[bla::at<Size_x>(0, 2)] = -(zAxis.x());
-			//matrix[bla::at<Size_x>(1, 2)] = -(zAxis.y());
-			//matrix[bla::at<Size_x>(2, 2)] = -(zAxis.z());
-			matrix[bla::at<Size_x>(3, 0)] = -(xAxis.dot(eye));
-			matrix[bla::at<Size_x>(3, 1)] = -(yAxis.dot(eye));
-			matrix[bla::at<Size_x>(3, 2)] =  (zAxis.dot(eye));
+			//matrix[Math::at<Size_x>(0, 0)] = xAxis.x();
+			//matrix[Math::at<Size_x>(1, 0)] = xAxis.y();
+			//matrix[Math::at<Size_x>(2, 0)] = xAxis.z();
+			//matrix[Math::at<Size_x>(0, 1)] = yAxis.x();
+			//matrix[Math::at<Size_x>(1, 1)] = yAxis.y();
+			//matrix[Math::at<Size_x>(2, 1)] = yAxis.z();
+			//matrix[Math::at<Size_x>(0, 2)] = -(zAxis.x());
+			//matrix[Math::at<Size_x>(1, 2)] = -(zAxis.y());
+			//matrix[Math::at<Size_x>(2, 2)] = -(zAxis.z());
+			matrix[Math::at<Size_x>(3, 0)] = -(xAxis.dot(eye));
+			matrix[Math::at<Size_x>(3, 1)] = -(yAxis.dot(eye));
+			matrix[Math::at<Size_x>(3, 2)] =  (zAxis.dot(eye));
 			return matrix;
 		}
 		
@@ -555,11 +554,11 @@ namespace bla {
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix[bla::at<Size_x>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
-			matrix[bla::at<Size_x>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
-			matrix[bla::at<Size_x>(2, 2)] =  farPlane / (nearPlane  - farPlane);
-			matrix[bla::at<Size_x>(2, 3)] = -Scalar(1);
-			matrix[bla::at<Size_x>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix[Math::at<Size_x>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
+			matrix[Math::at<Size_x>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix[Math::at<Size_x>(2, 2)] =  farPlane / (nearPlane  - farPlane);
+			matrix[Math::at<Size_x>(2, 3)] = -Scalar(1);
+			matrix[Math::at<Size_x>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
 	private:
@@ -576,19 +575,19 @@ namespace bla {
 				return false;
 		return true;
 	}
-	/*
+	
 	template<typename Scalar, size_t rows, size_t equal, size_t cols>
 	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, rows, equal>& lhs, const Mat<Scalar, equal, cols>& rhs) {
 		Mat<Scalar, rows, cols> result;
 		for (size_t y = 0; y < cols; y++) {
 			Vec<Scalar, equal> old_col = lhs.row(y);
 			for (size_t x = 0; x < rows; x++) {
-				result[at<rows>(x, y)] = old_col.dot(rhs.col(x));
+				result[at<rows>(y, x)] = old_col.dot(rhs.col(x));
 			}
 		}
 		return result;
 	}
-	*/
+	/*
 	template<typename Scalar, size_t rows, size_t equal, size_t cols>
 	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, rows, equal>& lhs, const Mat<Scalar, equal, cols>& rhs) {
 		Mat<Scalar, rows, cols> result;
@@ -603,6 +602,6 @@ namespace bla {
 		}
 		return result;
 	}
-	
+	*/
 }
 #endif // !MATRIX_H

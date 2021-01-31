@@ -1,7 +1,8 @@
 #include "Renderpass.h"
+#include "Framebuffer.h"
 #include "LogicalDevice.h"
 
-Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo) : r_parent(parent)
+Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo) : r_device(parent)
 {
 	if (createInfo.subpassCount == 0) {
 		//TODO default subpass
@@ -11,7 +12,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	std::bitset<MAX_ATTACHMENTS> implicitBottomOfPipe;
 	const unsigned attachmentCount = createInfo.colorAttachmentsCount + (createInfo.usingDepth? 1: 0);
 	assert(!(createInfo.loadAttachments & createInfo.clearAttachments).any());
-	std::array<VkAttachmentDescription, MAX_ATTACHMENTS+1> attachmentDescriptions;
+	std::array<VkAttachmentDescription, MAX_ATTACHMENTS + 1> attachmentDescriptions{};
 
 	VkAttachmentLoadOp depthStencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	VkAttachmentStoreOp depthStencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -47,11 +48,11 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	};
 	for (uint32_t i = 0; i < createInfo.colorAttachmentsCount; i++) {
-		auto& info = createInfo.attachmentInfos[i];
-		colorAttachments[i] = info.format;
+		auto info = createInfo.colorAttachmentsViews[i];
+		colorAttachments[i] = info->get_format();
 		VkAttachmentDescription colorAttachment{
 			.format = colorAttachments[i],
-			.samples = info.samples,
+			.samples = info->get_image()->get_info().samples,
 			.loadOp = get_color_load_op(i),
 			.storeOp = get_color_store_op(i),
 			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
@@ -61,16 +62,16 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		};
 		//TODO
 		//Ignore transient for now
-		if (info.isSwapchainImage) {
+		if (info->get_image()->get_info().isSwapchainImage) {
 			if (colorAttachment.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
 				implicitBottomOfPipe.set(i);
-				colorAttachment.initialLayout = info.layout;
+				colorAttachment.initialLayout = info->get_image()->get_info().layout;
 			}
-			colorAttachment.finalLayout = info.layout;
+			colorAttachment.finalLayout = info->get_image()->get_info().layout;
 			implicitTransition.set(i);
 		}
 		else {
-			colorAttachment.initialLayout = info.layout;
+			colorAttachment.initialLayout = info->get_image()->get_info().layout;
 		}
 		attachmentDescriptions[i] = colorAttachment;
 	}
@@ -359,9 +360,9 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		assert(attachmentDescriptions[attachment].finalLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 	}
 	std::vector<uint32_t> preserveAttachments;
-	preserveAttachments.reserve(subpassCount* MAX_ATTACHMENTS);
+	preserveAttachments.reserve(static_cast<size_t>(subpassCount)* MAX_ATTACHMENTS);
 	for (uint32_t attachment = 0; attachment < attachmentCount; attachment++) {
-		preserves[attachment]&= (1u << lastSubpassForAttachment[attachment]) -1;
+		preserves[attachment]&= (1ull << lastSubpassForAttachment[attachment]) -1;
 	}
 	
 	for (uint32_t subpass = 0; subpass < subpassCount; subpass++) {
@@ -446,11 +447,11 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		dependency.dstSubpass = subpass;
 		dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-		if (colorAttachmentReadWrite.test(subpass - 1)) {
+		if (colorAttachmentReadWrite.test(subpass - 1u)) {
 			dependency.srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			dependency.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		}
-		if (depthStencilAttachmentWrite.test(subpass - 1)) {
+		if (depthStencilAttachmentWrite.test(subpass - 1u)) {
 			dependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 			dependency.srcAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		}
@@ -486,7 +487,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		memcpy(info.inputAttachmentReferences.data(), subpass.pInputAttachments, subpass.inputAttachmentCount * sizeof(VkAttachmentReference));
 		subpasses.push_back(info);
 	}
-	if (auto result = vkCreateRenderPass(r_parent.m_device, &renderPassCreateInfo, r_parent.m_allocator, &m_renderPass); result != VK_SUCCESS) {
+	if (auto result = vkCreateRenderPass(r_device.m_device, &renderPassCreateInfo, r_device.m_allocator, &m_renderPass); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create render pass, out of host memory");
 		}
@@ -500,13 +501,13 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	
 }
 
-//Vulkan::Renderpass::Renderpass(LogicalDevice& parent, VkRenderPass renderPass): r_parent(parent), m_renderPass(renderPass)
+//Vulkan::Renderpass::Renderpass(LogicalDevice& parent, VkRenderPass renderPass): r_device(parent), m_renderPass(renderPass)
 //{
 //}
 
 Vulkan::Renderpass::~Renderpass()
 {
-	vkDestroyRenderPass(r_parent.m_device, m_renderPass, r_parent.m_allocator);
+	vkDestroyRenderPass(r_device.m_device, m_renderPass, r_device.m_allocator);
 }
 
 bool Vulkan::Renderpass::has_depth_attachment(uint32_t subpass) const

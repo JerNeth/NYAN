@@ -70,7 +70,7 @@ namespace Vulkan {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
 		.blend_enable = VK_FALSE,
-		.cull_mode = VK_CULL_MODE_BACK_BIT,
+		.cull_mode = VK_CULL_MODE_FRONT_BIT,
 		.front_face = VK_FRONT_FACE_CLOCKWISE,
 		.depth_bias_enable = VK_FALSE,
 		.depth_compare = VK_COMPARE_OP_LESS,
@@ -108,11 +108,12 @@ namespace Vulkan {
 		~PipelineLayout();
 		const VkPipelineLayout& get_layout() const;
 		const ShaderLayout& get_resourceLayout() const;
+		const DescriptorSetAllocator* get_allocator(size_t set) const;
 		const VkDescriptorUpdateTemplate& get_update_template(size_t set) const;
 		
 	private:
 		void create_update_template();
-		LogicalDevice& r_parent;
+		LogicalDevice& r_device;
 		ShaderLayout m_resourceLayout;
 		std::array<DescriptorSetAllocator*, MAX_DESCRIPTOR_SETS> m_descriptors{};
 		std::array<VkDescriptorUpdateTemplate, MAX_DESCRIPTOR_SETS> m_updateTemplate{};
@@ -166,7 +167,7 @@ namespace Vulkan {
 	private:
 
 
-		LogicalDevice& r_parent;
+		LogicalDevice& r_device;
 
 		VkPipeline m_pipeline = VK_NULL_HANDLE;
 		static PipelineState s_pipelineState;

@@ -2,17 +2,13 @@
 #define VKRENDERPASS_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "Image.h"
 #include <array>
 #include <bitset>
 
 namespace Vulkan {
 	class LogicalDevice;
-	struct ImageInfo {
-		VkFormat format = VK_FORMAT_UNDEFINED;
-		VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
-		bool isSwapchainImage = false;
-		VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	};
+	class Framebuffer;
 	struct RenderpassCreateInfo {
 		enum class OpFlags {
 			DepthStencilClear = 0,
@@ -30,7 +26,8 @@ namespace Vulkan {
 		std::bitset<MAX_ATTACHMENTS + 1> loadAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> clearAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> storeAttachments;
-		std::array<ImageInfo, MAX_ATTACHMENTS> attachmentInfos;
+		std::array<ImageView*, MAX_ATTACHMENTS> colorAttachmentsViews;
+		ImageView* depthStencilAttachment = nullptr;
 		uint32_t colorAttachmentsCount = 0;
 		std::bitset<6> opFlags;
 
@@ -66,7 +63,7 @@ namespace Vulkan {
 		VkRenderPass get_render_pass() const;
 		const VkAttachmentReference& get_color_attachment(uint32_t subpass, uint32_t idx) const;
 	private:
-		LogicalDevice& r_parent;
+		LogicalDevice& r_device;
 		VkRenderPass m_renderPass = VK_NULL_HANDLE;
 
 		std::array<VkFormat, MAX_ATTACHMENTS> colorAttachments{};
