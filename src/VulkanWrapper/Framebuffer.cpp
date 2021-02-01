@@ -3,7 +3,7 @@
 
 Vulkan::Framebuffer::Framebuffer(LogicalDevice& parent, const RenderpassCreateInfo& renderpassInfo) :
     r_device(parent),
-	m_numAttachments(renderpassInfo.colorAttachmentsCount + (renderpassInfo.usingDepth ? 1 : 0))
+	m_numAttachments(renderpassInfo.colorAttachmentsCount + (renderpassInfo.depthStencilAttachment ? 1 : 0))
 {
 	auto rp = r_device.request_compatible_render_pass(renderpassInfo);
 	init_dimensions(renderpassInfo);
@@ -43,7 +43,7 @@ Vulkan::Framebuffer::Framebuffer(LogicalDevice& parent, const RenderpassCreateIn
 		for (uint32_t i = 0; i < renderpassInfo.colorAttachmentsCount; i++) {
 			attachments[i] = renderpassInfo.colorAttachmentsViews[i]->get_image_view();
 		}
-		if (renderpassInfo.usingDepth)
+		if (renderpassInfo.depthStencilAttachment)
 			attachments[renderpassInfo.colorAttachmentsCount] = renderpassInfo.depthStencilAttachment->get_image_view();
 		createInfo.pAttachments = attachments.data();
 	}
@@ -89,7 +89,7 @@ void Vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpass
 		}
 	}
 	
-	if (renderpassInfo.usingDepth) {
+	if (renderpassInfo.depthStencilAttachment) {
 		auto mip = renderpassInfo.depthStencilAttachment->get_base_mip_level();
 		m_width = Math::min(m_width, renderpassInfo.depthStencilAttachment->get_image()->get_width(mip));
 		m_height = Math::min(m_height, renderpassInfo.depthStencilAttachment->get_image()->get_height(mip));

@@ -35,6 +35,7 @@ namespace Vulkan {
 		void present_to_queue(VkQueue queue, const VkSemaphore* semaphores = nullptr, uint32_t semaphoreCount = 0);
 		ImageInfo get_swapchain_image_info() const noexcept;
 		ImageView* get_swapchain_image_view(uint32_t imageIdx) const noexcept;
+		ImageView* get_swapchain_image_view() const noexcept;
 	private:
 		void update_extent();
 		void create_swapchain();

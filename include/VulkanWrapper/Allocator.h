@@ -2,6 +2,9 @@
 #define VKALLOCATOR_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "Image.h"
+#include "Utility.h"
+#include <shared_mutex>
 
 namespace Vulkan {
 	class LogicalDevice;
@@ -22,6 +25,18 @@ namespace Vulkan {
 		void flush(VmaAllocation allocation, uint32_t offset, uint32_t size);
 	private:
 		VmaAllocator m_VmaHandle = VK_NULL_HANDLE;
+	};
+
+	class AttachmentAllocator {
+	public:
+		AttachmentAllocator(LogicalDevice& parent);
+		ImageView* request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, uint32_t samples = 1, uint32_t layers = 1);
+	private:
+		LogicalDevice& r_device;
+		std::unordered_map<Utility::HashValue, size_t> m_attachmentIds;
+		Utility::LinkedBucketList<ImageView> m_imageViewStorage;
+		Utility::LinkedBucketList<Image> m_imageStorage;
+		std::shared_mutex m_mutex;
 	};
 }
 

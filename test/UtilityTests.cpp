@@ -67,6 +67,8 @@ namespace Utility {
         T t2;
         auto id2 = l.insert(std::move(t2));
         EXPECT_EQ(l.get(id2)->moved, 1);
+        auto id3 = l.emplace(std::move(t2));
+        EXPECT_EQ(l.get(id3)->moved, 1);
     }
 
     TEST(Utility, linkedBucketList) {

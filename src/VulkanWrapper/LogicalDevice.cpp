@@ -16,6 +16,21 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
+Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties) : 
+	r_instance(parentInstance),
+	m_device(device, nullptr), 
+	m_graphicsFamilyQueueIndex(graphicsFamilyQueueIndex),
+	m_transferFamilyQueueIndex(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
+	m_physicalProperties(properties)
+{
+	vkGetDeviceQueue(m_device, m_graphicsFamilyQueueIndex, 0, &m_graphicsQueue);
+	vkGetDeviceQueue(m_device, m_transferFamilyQueueIndex, 0, &m_transferQueue);
+	create_vma_allocator();
+	create_default_sampler();		
+}
+Vulkan::LogicalDevice::~LogicalDevice()
+{
+}
 
 void Vulkan::LogicalDevice::demo_setup()
 {
@@ -36,7 +51,6 @@ void Vulkan::LogicalDevice::demo_setup()
 	create_descriptor_set_layout(std::array< VkDescriptorSetLayoutBinding, 2>{uboLayoutBinding, samplerLayoutBinding});
 	create_swapchain();
 	create_depth_resources();
-	create_render_pass();
 	create_program();
 	//auto vertName = "basic_vert.spv";
 	//auto fragName = "basic_frag.spv";
@@ -51,7 +65,6 @@ void Vulkan::LogicalDevice::demo_setup()
 
 	//create_texture_sampler();
 	
-	create_framebuffers();
 	create_uniform_buffers();
 	create_descriptor_pool();
 
@@ -71,7 +84,8 @@ void Vulkan::LogicalDevice::demo_teardown()
 		vkDestroySemaphore(m_device, semaphore, m_allocator);
 	for (auto fence : m_inFlightFences)
 		vkDestroyFence(m_device, fence, m_allocator);
-	vkDestroyCommandPool(m_device, m_commandPool, m_allocator);
+	for (uint32_t i = 0; i < m_swapchains[0]->get_image_count(); i++)
+		vkDestroyCommandPool(m_device, m_commandPool[i], m_allocator);
 }
 
 std::pair<VkBuffer, VmaAllocation> Vulkan::LogicalDevice::create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage)
@@ -98,9 +112,9 @@ void Vulkan::LogicalDevice::cleanup_swapchain()
 		vmaDestroyBuffer(m_vmaAllocator->get_handle(), m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
 	}
 	vkDestroyDescriptorPool(m_device, m_descriptorPool, m_allocator);
-	m_swapChainFramebuffers.clear();
 
-	vkFreeCommandBuffers(m_device, m_commandPool, static_cast<uint32_t>(m_commandBuffers.size()), m_commandBuffers.data());
+	for(uint32_t i=0; i < m_swapchains[0]->get_image_count(); i++)
+		vkFreeCommandBuffers(m_device, m_commandPool[i], 1, &m_commandBuffers[i]);
 	
 	//vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocator);
 	//vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocator);
@@ -197,7 +211,7 @@ Utility::HashValue Vulkan::LogicalDevice::hash_compatible_renderpass(const Rende
 		hasher(attachment->get_image()->get_info().layout);
 
 	}
-	if (info.usingDepth) {
+	if (info.depthStencilAttachment) {
 		//Ignore Optimal Layout for now
 		//if (info.depthStencilAttachment->get_image()->get_info().layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		//	optimalLayouts.set(info.colorAttachmentsCount);
@@ -229,7 +243,7 @@ VkCommandBuffer Vulkan::LogicalDevice::begin_single_time_commands()
 {
 	VkCommandBufferAllocateInfo allocateInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = m_commandPool,
+		.commandPool = m_commandPool[0],
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1
 	};
@@ -253,7 +267,7 @@ void Vulkan::LogicalDevice::end_single_time_commands(VkCommandBuffer commandBuff
 	};
 	vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(m_graphicsQueue);
-	vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
+	vkFreeCommandBuffers(m_device, m_commandPool[0], 1, &commandBuffer);
 }
 void Vulkan::LogicalDevice::create_texture_image_view()
 {
@@ -329,21 +343,6 @@ void Vulkan::LogicalDevice::create_swapchain()
 	m_swapchains.emplace_back(new Swapchain(*this, m_swapchains.size()));
 }
 
-Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties) : 
-	r_instance(parentInstance),
-	m_device(device, nullptr), 
-	m_graphicsFamilyQueueIndex(graphicsFamilyQueueIndex),
-	m_transferFamilyQueueIndex(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
-	m_physicalProperties(properties)
-{
-	vkGetDeviceQueue(m_device, m_graphicsFamilyQueueIndex, 0, &m_graphicsQueue);
-	vkGetDeviceQueue(m_device, m_transferFamilyQueueIndex, 0, &m_transferQueue);
-	create_vma_allocator();
-	create_default_sampler();		
-}
-Vulkan::LogicalDevice::~LogicalDevice()
-{
-}
 
 VkImageView Vulkan::LogicalDevice::create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect)
 {
@@ -381,73 +380,43 @@ VkImageView Vulkan::LogicalDevice::create_image_view(VkFormat format, VkImage im
 	return imageView;
 }
 
-void Vulkan::LogicalDevice::create_render_pass()
-{
-	if (m_testRenderPass)
-		m_testRenderPass.reset(nullptr);
-	m_createInfo.colorAttachmentsCount = 1;
-	m_createInfo.clearAttachments.set(0);
-	m_createInfo.storeAttachments.set(0);
-	m_createInfo.colorAttachmentsViews[0] = m_swapchains[0]->get_swapchain_image_view(0);
-
-	m_createInfo.usingDepth = true;
-	m_createInfo.depthStencilAttachment = m_depthView.get();
-	m_createInfo.subpassCount = 1;
-	m_createInfo.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
-
-	//createInfo.subpasses[0].colorAttachmentsCount = 1;
-	//createInfo.subpasses[0].colorAttachments[0] = 0;
-	//createInfo.subpasses[0].depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
-	m_createInfo.subpasses[0] = RenderpassCreateInfo::SubpassCreateInfo{
-		.colorAttachments {0},
-		.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite,
-		.colorAttachmentsCount = 1,
-		
-	};
-	m_testRenderPass = std::make_unique<Renderpass>(*this, m_createInfo);
-	m_renderPass = m_testRenderPass->get_render_pass();
-
-}
-
-void Vulkan::LogicalDevice::create_framebuffers()
-{
-	for (size_t i = 0; i < m_swapchains[0]->get_image_count(); i++) {
-		m_createInfo.colorAttachmentsViews[0] = m_swapchains[0]->get_swapchain_image_view(static_cast<uint32_t>(i));
-		m_swapChainFramebuffers.emplace_back(new Framebuffer(*this, m_createInfo));
-	}
-}
-
 void Vulkan::LogicalDevice::create_command_pool()
 {
-	VkCommandPoolCreateInfo commandPoolCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		.flags = 0,
-		.queueFamilyIndex = m_graphicsFamilyQueueIndex,
-	};
-	if (auto result = vkCreateCommandPool(m_device, &commandPoolCreateInfo, m_allocator, &m_commandPool); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create command pool, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create command pool, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+	m_commandPool.resize(m_swapchains[0]->get_image_count());
+	for (uint32_t i = 0; i < m_swapchains[0]->get_image_count(); i++) {
+		VkCommandPoolCreateInfo commandPoolCreateInfo{
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = 0,
+			.queueFamilyIndex = m_graphicsFamilyQueueIndex,
+		};
+		if (auto result = vkCreateCommandPool(m_device, &commandPoolCreateInfo, m_allocator, &m_commandPool[i]); result != VK_SUCCESS) {
+			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+				throw std::runtime_error("VK: could not create command pool, out of host memory");
+			}
+			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+				throw std::runtime_error("VK: could not create command pool, out of device memory");
+			}
+			else {
+				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			}
 		}
 	}
 }
 
-void Vulkan::LogicalDevice::create_command_buffers()
+void Vulkan::LogicalDevice::create_command_buffer(uint32_t image)
 {
-	m_commandBuffers.resize(m_swapchains[0]->get_image_count());
+	if (m_commandBuffers.size() != m_swapchains[0]->get_image_count())
+		m_commandBuffers.resize(m_swapchains[0]->get_image_count());
+	vkResetCommandPool(m_device, m_commandPool[image], 0);
+	vkFreeCommandBuffers(m_device, m_commandPool[image], 1, &m_commandBuffers[image]);
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = m_commandPool,
+		.commandPool = m_commandPool[image],
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = static_cast<uint32_t> (m_commandBuffers.size()),
+		.commandBufferCount = static_cast<uint32_t> (1),
 	};
-
-	if (auto result = vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, m_commandBuffers.data()); result != VK_SUCCESS) {
+	
+	if (auto result = vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_commandBuffers[image]); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not allocate command buffers, out of host memory");
 		}
@@ -458,81 +427,83 @@ void Vulkan::LogicalDevice::create_command_buffers()
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
-	for (size_t i = 0; i < m_commandBuffers.size(); i++) {
-		VkCommandBufferBeginInfo commandBufferBeginInfo{
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-			.flags = 0,
-			.pInheritanceInfo = nullptr,
-		};
-		if (auto result = vkBeginCommandBuffer(m_commandBuffers[i], &commandBufferBeginInfo); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not begin command buffer, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not begin command buffer, out of device memory");
-			}
-			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
+	VkCommandBufferBeginInfo commandBufferBeginInfo{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+		.pInheritanceInfo = nullptr,
+	};
+	if (auto result = vkBeginCommandBuffer(m_commandBuffers[image], &commandBufferBeginInfo); result != VK_SUCCESS) {
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not begin command buffer, out of host memory");
 		}
-		
-		VkViewport viewport{
-		.x = 0.0f,
-		.y = 0.0f,
-		.width = static_cast<float>(m_swapchains[0]->get_width()),
-		.height = static_cast<float>(m_swapchains[0]->get_height()),
-		.minDepth = 0.0f,
-		.maxDepth = 1.0f
-		};
-
-		VkRect2D scissor{
-			.offset = {0,0},
-			.extent = m_swapchains[0]->get_swapchain_extent()
-		};
-		static float degrees;
-		Math::mat44 model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees++) / 100));
-		model(3, 3) = 1;
-		std::array<VkClearValue, 2> clearColors{
-			VkClearValue{.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
-			VkClearValue{.depthStencil = {.depth = 1.0f, .stencil = 0}}
-		};
-		VkRenderPassBeginInfo renderPassBeginInfo{
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-			.renderPass = m_renderPass,
-			.framebuffer = m_swapChainFramebuffers[i]->get_handle(),
-			.renderArea = scissor,
-			.clearValueCount = static_cast<uint32_t>(clearColors.size()),
-			.pClearValues = clearColors.data(),
-		};
-		vkCmdBeginRenderPass(m_commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
-		vkCmdSetViewport(m_commandBuffers[i], 0, 1, &viewport);
-		vkCmdSetScissor(m_commandBuffers[i], 0, 1, &scissor);
-		VkBuffer vertexBuffers[]{ m_vertexBuffer };
-		VkDeviceSize offsets[]{ 0 };
-		vkCmdBindVertexBuffers(m_commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(m_commandBuffers[i], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		uint32_t offset[] = { 0,0 };
-		vkCmdBindDescriptorSets(m_commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[i],1, offset);
-		//vkCmdPushConstants(m_commandBuffers[i], m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Math::mat44), &model);
-		vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-		offset[0] = sizeof(Ubo);
-		vkCmdBindDescriptorSets(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[i], 1, offset);
-		vkCmdDrawIndexed(m_commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-		vkCmdEndRenderPass(m_commandBuffers[i]);
-		
-		if (auto result = vkEndCommandBuffer(m_commandBuffers[i]); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not end command buffer, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not end command buffer, out of device memory");
-			}
-			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not begin command buffer, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
+		
+	VkViewport viewport{
+	.x = 0.0f,
+	.y = 0.0f,
+	.width = static_cast<float>(m_swapchains[0]->get_width()),
+	.height = static_cast<float>(m_swapchains[0]->get_height()),
+	.minDepth = 0.0f,
+	.maxDepth = 1.0f
+	};
+
+	VkRect2D scissor{
+		.offset = {0,0},
+		.extent = m_swapchains[0]->get_swapchain_extent()
+	};
+	static float degrees;
+	Math::mat44 model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees++) / 100));
+	model(3, 3) = 1;
+	std::array<VkClearValue, 2> clearColors{
+		VkClearValue{.color = {{0.0f, 0.0f, 0.0f, 1.0f}}},
+		VkClearValue{.depthStencil = {.depth = 1.0f, .stencil = 0}}
+	};
+	const auto& info = request_swapchain_render_pass();
+	auto framebuffer = request_framebuffer(info);
+	auto renderpass = request_render_pass(info);
+	VkRenderPassBeginInfo renderPassBeginInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		.renderPass = renderpass->get_render_pass(),
+		.framebuffer = framebuffer->get_handle(),
+		.renderArea = scissor,
+		.clearValueCount = static_cast<uint32_t>(clearColors.size()),
+		.pClearValues = clearColors.data(),
+	};
+	vkCmdBeginRenderPass(m_commandBuffers[image], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(m_commandBuffers[image], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+	vkCmdSetViewport(m_commandBuffers[image], 0, 1, &viewport);
+	vkCmdSetScissor(m_commandBuffers[image], 0, 1, &scissor);
+	VkBuffer vertexBuffers[]{ m_vertexBuffer };
+	VkDeviceSize offsets[]{ 0 };
+	vkCmdBindVertexBuffers(m_commandBuffers[image], 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(m_commandBuffers[image], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	uint32_t offset[] = { 0,0 };
+	vkCmdBindDescriptorSets(m_commandBuffers[image],VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[image],1, offset);
+	//vkCmdPushConstants(m_commandBuffers[i], m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Math::mat44), &model);
+	vkCmdDrawIndexed(m_commandBuffers[image], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	offset[0] = sizeof(Ubo);
+	vkCmdBindDescriptorSets(m_commandBuffers[image], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[image], 1, offset);
+	vkCmdDrawIndexed(m_commandBuffers[image], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	vkCmdEndRenderPass(m_commandBuffers[image]);
+		
+	if (auto result = vkEndCommandBuffer(m_commandBuffers[image]); result != VK_SUCCESS) {
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not end command buffer, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not end command buffer, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+		}
+	}
+	
 }
 
 void Vulkan::LogicalDevice::create_sync_objects()
@@ -870,6 +841,48 @@ Vulkan::Renderpass* Vulkan::LogicalDevice::request_compatible_render_pass(const 
 	return m_renderpassStorage.get(renderpassId);
 }
 
+const Vulkan::RenderpassCreateInfo& Vulkan::LogicalDevice::request_swapchain_render_pass() noexcept
+{
+	m_swapChainRenderPassInfo.colorAttachmentsCount = 1;
+	m_swapChainRenderPassInfo.clearAttachments.set(0);
+	m_swapChainRenderPassInfo.storeAttachments.set(0);
+	m_swapChainRenderPassInfo.colorAttachmentsViews[0] = m_swapchains[0]->get_swapchain_image_view();
+
+	m_swapChainRenderPassInfo.depthStencilAttachment = m_depthView.get();
+	m_swapChainRenderPassInfo.subpassCount = 1;
+	m_swapChainRenderPassInfo.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
+
+	m_swapChainRenderPassInfo.subpasses[0] = RenderpassCreateInfo::SubpassCreateInfo{
+		.colorAttachments {0},
+		.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite,
+		.colorAttachmentsCount = 1,
+
+	};
+	return m_swapChainRenderPassInfo;
+}
+
+Vulkan::Framebuffer* Vulkan::LogicalDevice::request_framebuffer(const RenderpassCreateInfo& info)
+{
+	auto compatibleRenderpass = request_compatible_render_pass(info);
+	Utility::Hasher hasher;
+
+	for (uint32_t i = 0; i < info.colorAttachmentsCount; i++) {
+		assert(info.colorAttachmentsViews[i]);
+		hasher(info.colorAttachmentsViews[i]);
+	}
+	if (info.depthStencilAttachment)
+		hasher(info.depthStencilAttachment);
+
+	if (auto res = m_framebufferIds.find(hasher()); res != m_framebufferIds.end())
+		return m_framebufferStorage.get(res->second);
+
+	auto idx = m_framebufferStorage.emplace(*this, info);
+	m_framebufferIds.emplace(hasher(), idx);
+	return m_framebufferStorage.get(idx);
+}
+
+
+
 
 void Vulkan::LogicalDevice::create_program()
 {
@@ -888,7 +901,7 @@ void Vulkan::LogicalDevice::create_program()
 	m_pipelineLayout = program->get_pipeline_layout()->get_layout();
 	
 	//Renderpass dummy(*this,m_renderPass);
-	m_pipeline = std::make_unique<Pipeline>(Pipeline::request_pipeline(*this, program, m_testRenderPass.get(), 0));
+	m_pipeline = std::make_unique<Pipeline>(Pipeline::request_pipeline(*this, program, request_compatible_render_pass(request_swapchain_render_pass()), 0));
 	m_graphicsPipeline = m_pipeline->get_pipeline();
 }
 
@@ -1031,6 +1044,8 @@ void Vulkan::LogicalDevice::draw_frame()
 			}
 		}
 	}
+
+	create_command_buffer(imageIndex);
 	m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame];
 
 	VkSemaphore waitSemaphores[]{ m_imageAvailableSemaphores[m_currentFrame] };
@@ -1093,12 +1108,9 @@ void Vulkan::LogicalDevice::create_swap_chain()
 	
 
 	create_depth_resources();
-	create_render_pass();
-	create_framebuffers();
 	create_uniform_buffers();
 	create_descriptor_pool();
 	create_descriptor_sets();
-	create_command_buffers();
 }
 
 void Vulkan::LogicalDevice::recreate_swap_chain()

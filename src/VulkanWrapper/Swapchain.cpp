@@ -216,6 +216,11 @@ Vulkan::ImageView* Vulkan::Swapchain::get_swapchain_image_view(uint32_t imageIdx
 	return m_swapchainImageViews[imageIdx].get();
 }
 
+Vulkan::ImageView* Vulkan::Swapchain::get_swapchain_image_view() const noexcept
+{
+	return get_swapchain_image_view(imageIndex);
+}
+
 void Vulkan::Swapchain::update_extent()
 {
 	auto capabilities = r_device.r_instance.get_surface_capabilites();

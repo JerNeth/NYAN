@@ -10,7 +10,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	uint32_t subpassCount = createInfo.subpassCount;
 	std::bitset<MAX_ATTACHMENTS> implicitTransition;
 	std::bitset<MAX_ATTACHMENTS> implicitBottomOfPipe;
-	const unsigned attachmentCount = createInfo.colorAttachmentsCount + (createInfo.usingDepth? 1: 0);
+	const unsigned attachmentCount = createInfo.colorAttachmentsCount + (createInfo.depthStencilAttachment ? 1: 0);
 	assert(!(createInfo.loadAttachments & createInfo.clearAttachments).any());
 	std::array<VkAttachmentDescription, MAX_ATTACHMENTS + 1> attachmentDescriptions{};
 
@@ -27,7 +27,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 
 	VkImageLayout depthStencilLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	if (createInfo.usingDepth) {
+	if (createInfo.depthStencilAttachment) {
 		//TODO get depth layout
 		bool test = createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly));
 		depthStencilLayout = test ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -75,12 +75,12 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		}
 		attachmentDescriptions[i] = colorAttachment;
 	}
-	depthStencilAttachment = createInfo.usingDepth ? VK_FORMAT_D16_UNORM : VK_FORMAT_UNDEFINED;
+	depthStencilAttachment = createInfo.depthStencilAttachment ? createInfo.depthStencilAttachment->get_format() : VK_FORMAT_UNDEFINED;
 
-	if (createInfo.usingDepth) {
+	if (createInfo.depthStencilAttachment) {
 		VkAttachmentDescription depthAttachment{
 		.format = depthStencilAttachment,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.samples = createInfo.depthStencilAttachment->get_image()->get_info().samples,
 		.loadOp = depthStencilLoadOp,
 		.storeOp = depthStencilStoreOp,
 		//TODO Handle stencil
@@ -140,7 +140,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				resolves[j].layout = VK_IMAGE_LAYOUT_UNDEFINED;
 			}
 		}
-		if (createInfo.usingDepth && createInfo.subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::None) {
+		if (createInfo.depthStencilAttachment && createInfo.subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::None) {
 			depth->attachment = createInfo.colorAttachmentsCount;
 			depth->layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}

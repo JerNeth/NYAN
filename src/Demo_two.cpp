@@ -30,6 +30,7 @@ int main()
 		glfww::Library library;
 		glfww::Window window(width, height, nullptr, nullptr, applicationName.c_str());
 		//auto window = glfww::Window::create_full_screen(width, height);
+		//auto window = glfww::Window::create_full_screen(width, height);
 		uint32_t glfwExtensionCount = 0;
 		const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
@@ -47,18 +48,20 @@ int main()
 		device.create_sync_objects();
 		int frame = 0;
 		auto start = chrono::steady_clock::now();
+		auto total = start - start;
 		while (!window.should_close())
 		{
-			
+			start = chrono::steady_clock::now();
 			//window.swap_buffers();
 			glfwPollEvents();
-			if(!window.is_iconified())
+			if (!window.is_iconified()) {
 				device.draw_frame();
-			frame++;
-			
+				frame++;
+				total += chrono::steady_clock::now() - start;
+			}
 		}
 		auto end = chrono::steady_clock::now();
-		std::cout << "Average: "<< chrono::duration_cast<chrono::microseconds>(end - start).count()/frame << "microseconds\n";
+		std::cout << "Average: "<< chrono::duration_cast<chrono::microseconds>(total).count()/frame << "microseconds\n";
 		device.wait_idle();
 		device.demo_teardown();
 	}

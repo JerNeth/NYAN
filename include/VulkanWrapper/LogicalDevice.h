@@ -19,6 +19,7 @@
 #include "Allocator.h"
 namespace Vulkan {
 	class LogicalDevice;
+	class Instance;
 	//Important to delete the device after everything else
 	class DeviceWrapper {
 	public:
@@ -52,7 +53,9 @@ namespace Vulkan {
 		VkDevice m_vkHandle = VK_NULL_HANDLE;
 		const VkAllocationCallbacks* m_allocator;
 	};
-	class Instance; 
+	struct Frame {
+
+	};
 	struct Vertex {
 		std::array<float, 3> pos;
 		std::array<float, 3> color;
@@ -146,11 +149,11 @@ namespace Vulkan {
 		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
 		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
 		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
+		const RenderpassCreateInfo& request_swapchain_render_pass() noexcept;
+		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		void create_program();
 		void create_stuff() {
 			create_descriptor_sets();
-			create_command_buffers();
-
 		}
 		void demo_setup();
 		void demo_teardown();
@@ -178,10 +181,8 @@ namespace Vulkan {
 		void create_uniform_buffers();
 		void create_swapchain();
 		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
-		void create_render_pass();
-		void create_framebuffers();
 		void create_command_pool();
-		void create_command_buffers();
+		void create_command_buffer(uint32_t image);
 		void create_vma_allocator();
 		template<size_t numBindings>
 		void create_descriptor_set_layout(std::array<VkDescriptorSetLayoutBinding, numBindings> bindings);
@@ -210,10 +211,8 @@ namespace Vulkan {
 
 		std::vector<std::unique_ptr<Swapchain>> m_swapchains;
 		VkPipelineLayout m_pipelineLayout;
-		VkRenderPass m_renderPass;
 		VkPipeline m_graphicsPipeline;
-		std::vector<std::unique_ptr<Framebuffer>> m_swapChainFramebuffers;
-		VkCommandPool m_commandPool;
+		
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorPool m_descriptorPool;
 		std::vector<VkDescriptorSet> m_descriptorSets;
@@ -235,7 +234,7 @@ namespace Vulkan {
 
 		
 
-
+		std::vector<VkCommandPool> m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAvailableSemaphores;
 		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_renderFinishedSemaphores;
@@ -243,12 +242,13 @@ namespace Vulkan {
 		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
 
-		std::unique_ptr<Renderpass> m_testRenderPass = nullptr;
 		Program* m_program;
 		
-		RenderpassCreateInfo m_createInfo;
+		
 
 		std::unique_ptr<Pipeline> m_pipeline;
+
+		RenderpassCreateInfo m_swapChainRenderPassInfo;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
@@ -268,6 +268,9 @@ namespace Vulkan {
 		std::unordered_map<Utility::HashValue, size_t> m_renderpassIds;
 		std::unordered_map<Utility::HashValue, size_t> m_compatibleRenderpassIds;
 		Utility::LinkedBucketList<Renderpass> m_renderpassStorage;
+
+		std::unordered_map<Utility::HashValue, size_t> m_framebufferIds;
+		Utility::LinkedBucketList<Framebuffer> m_framebufferStorage;
 	};
 }
 #endif // VKLOGICALDEVICE_H

@@ -32,6 +32,14 @@ namespace Utility {
 				free(bucket);
 			}
 		}
+		void clear() {
+			for (size_t i = 0; i < bucketSize; i++)
+				if (occupancy[i])
+					bucket[i].~T();
+			occupancy.reset();
+			if(next)
+				next->clear();
+		}
 		size_t insert(const T& t) {
 			size_t i;
 			for (i = 0; i < bucketSize; i++) {
@@ -125,6 +133,13 @@ namespace Utility {
 		}
 		~LinkedBucketList() {
 			head.reset(nullptr);
+		}
+		/// <summary>
+		/// Clears the list without deallocating
+		/// </summary>
+		void clear() {
+			if (head)
+				head->clear();
 		}
 		void destroy() {
 			head.reset(nullptr);
