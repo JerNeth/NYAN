@@ -3,14 +3,11 @@
 
 //#include <imgui.h>
 #include "VkWrapper.h"
-#include <glfwWrapper.h>
+#include "glfwWrapper.h"
 #include <chrono>
 
 #include <stb_image.h>
 #include "LinAlg.h"
-#include "Transform.h"
-#include <new>
-#include <thread>
 using namespace std;
 using namespace Math;
 

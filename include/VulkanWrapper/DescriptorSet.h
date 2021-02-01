@@ -2,13 +2,7 @@
 #define VKDESCRIPTORSET_H
 #pragma once
 #include "VulkanIncludes.h"
-#include <Utility.h>
-#include <stdexcept>
-#include <string>
-#include <bitset>
-#include <array>
-#include <vector>
-
+#include "Utility.h"
 namespace Vulkan {
 	class LogicalDevice;
 	

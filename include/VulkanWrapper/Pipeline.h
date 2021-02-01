@@ -2,7 +2,6 @@
 #define VKPIPELINE_H
 #pragma once
 #include "VulkanIncludes.h"
-#include <vector>
 #include "Utility.h"
 #include "Shader.h"
 #include "Renderpass.h"

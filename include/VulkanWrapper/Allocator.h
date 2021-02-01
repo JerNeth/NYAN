@@ -4,7 +4,6 @@
 #include "VulkanIncludes.h"
 #include "Image.h"
 #include "Utility.h"
-#include <shared_mutex>
 
 namespace Vulkan {
 	class LogicalDevice;

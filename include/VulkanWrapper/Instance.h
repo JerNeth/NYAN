@@ -2,11 +2,6 @@
 #define VKINSTANCE_H
 #pragma once
 #include "VulkanIncludes.h"
-#include <bitset>
-#include <vector>
-#include <iostream>
-
-
 #include "LogicalDevice.h"
 
 namespace Vulkan {

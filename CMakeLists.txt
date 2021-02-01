@@ -86,6 +86,7 @@ target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)
 
+target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)

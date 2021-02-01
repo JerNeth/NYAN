@@ -2,7 +2,6 @@
 #define VKSHADER_H
 #pragma once
 #include "VulkanIncludes.h"
-#include <vector>
 #include "DescriptorSet.h"
 #include "Utility.h"
 

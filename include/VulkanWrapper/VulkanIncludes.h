@@ -64,4 +64,16 @@ constexpr bool debug = true;
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
+#include <array>
+#include <bitset>
+#include <vector>
+#include <fstream>
+#include <assert.h>
+#include <unordered_map>
+#include <shared_mutex>
+#include <stdexcept>
+#include <string>
+#include <iostream>
+#include <new>
+#include <thread>
 #endif// VKVULKANINCLUDES_H

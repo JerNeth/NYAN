@@ -2,11 +2,6 @@
 #define VKLOGICALDEVICE_H
 #pragma once
 #include "VulkanIncludes.h"
-#include <vector>
-#include <array>
-#include <fstream>
-#include <assert.h>
-#include <unordered_map>
 #include "Framebuffer.h"
 #include "Utility.h"
 #include "LinAlg.h"

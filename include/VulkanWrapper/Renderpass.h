@@ -3,8 +3,6 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "Image.h"
-#include <array>
-#include <bitset>
 
 namespace Vulkan {
 	class LogicalDevice;
