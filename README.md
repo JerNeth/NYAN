@@ -17,6 +17,8 @@ None, yet.
 - [ ] Utility
 	- [x] Hash
 	- [x] HashMap
+	- [x] LinkedBucketList
+	- [x] Pool
 - [x] Window management
 	- [x] Create a window
 	- [x] Get Vulkan Context

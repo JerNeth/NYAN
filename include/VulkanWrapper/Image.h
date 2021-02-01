@@ -89,7 +89,7 @@ namespace Vulkan {
 				.b = VK_COMPONENT_SWIZZLE_IDENTITY,
 				.a = VK_COMPONENT_SWIZZLE_IDENTITY
 		};
-		VkImageAspectFlags aspectMask;
+		VkImageAspectFlags aspectMask = 0;
 		uint32_t baseMipLevel = 0;
 		uint32_t levelCount = 1;
 		uint32_t baseArrayLayer = 0;

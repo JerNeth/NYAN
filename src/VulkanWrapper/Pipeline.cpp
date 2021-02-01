@@ -392,7 +392,7 @@ Vulkan::Pipeline::~Pipeline() noexcept
 		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
 }
 
-Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) :
+Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) noexcept :
 	r_device(other.r_device)
 {
 	this->m_pipeline = other.m_pipeline;

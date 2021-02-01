@@ -23,6 +23,11 @@ int main()
 	int width = 1920, height = 1080;
 	std::string applicationName{ "Demo" };
 	std::string engineName{ "NYAN" };
+	std::vector<int> t;
+	t.reserve(10);
+	std::cout << "Capacity: " << t.capacity() << '\n';
+	t.reserve(5);
+	std::cout << "Capacity: " << t.capacity() << '\n';
 	try {
 		glfww::Library library;
 		glfww::Window window(width, height, nullptr, nullptr, applicationName.c_str());

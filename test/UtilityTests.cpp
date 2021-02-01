@@ -52,13 +52,97 @@ namespace Utility {
         }
         EXPECT_EQ(result, result2);
     }
+    TEST(Utility, Pool) {
+        Utility::Pool<int> test;
+    }
+    TEST(Utility, PoolEmplace) {
+        Utility::Pool<int> test;
+        auto i0 = test.emplace(0);
+        auto i1 = test.emplace(1);
+        auto i2 = test.emplace(2);
+        auto i3 = test.emplace(3);
+        auto i4 = test.emplace(4);
+
+
+
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i2, 2);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+
+    }
+    TEST(Utility, PoolDelete) {
+        Utility::Pool<int> test;
+        auto i0 = test.emplace(0);
+        auto i1 = test.emplace(1);
+        auto i2 = test.emplace(2);
+        auto i3 = test.emplace(3);
+        auto i4 = test.emplace(4);
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i2, 2);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+
+        i2.remove();
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_ANY_THROW(*i2);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+    }
+    TEST(Utility, PoolDeleteAndReinsert) {
+        Utility::Pool<int> test;
+        auto i0 = test.emplace(0);
+        auto i1 = test.emplace(1);
+        auto i2 = test.emplace(2);
+        auto i3 = test.emplace(3);
+        auto i4 = test.emplace(4);
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i2, 2);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+
+        i2.remove();
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_ANY_THROW(*i2);
+        EXPECT_EQ(i2.operator->(), nullptr);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+
+        auto i5 = test.emplace(5);
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i5, 5);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+    }
+    TEST(Utility, PoolHandleCopy) {
+        Utility::Pool<int> test;
+        auto i0 = test.emplace(0);
+        auto i1 = test.emplace(1);
+        auto i1_copy = i1;
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i1_copy, 1);
+    }
     TEST(Utility, LinkedBucketListMove) {
         struct T {
             T() {
 
             }
             T(T&) = delete;
-            T(T&&) {
+            T(T&&) noexcept {
                 moved++;
             }
             int moved = 0;
@@ -94,7 +178,7 @@ namespace Utility {
         auto id5 = l.emplace(6969);
         EXPECT_EQ(6969, *l.get(id5));
         //l.print();
-        int iters = 1000;
+        int iters = 100;
         LinkedBucketList<uint32_t> other = std::move(l);
         
         {
@@ -104,7 +188,7 @@ namespace Utility {
                 p.emplace(i);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "List emplace took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "List emplace took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         
         {
@@ -114,19 +198,19 @@ namespace Utility {
                 p.insert(i);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "List insert took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "List insert took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
             start = std::chrono::steady_clock::now();
             for (int i = 0; i < iters; i++) {
                 p.delete_object(i);
             }
             end = std::chrono::steady_clock::now();
-            std::cout << "List delete took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "List delete took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
             start = std::chrono::steady_clock::now();
             for (int i = 0; i < iters; i++) {
                 p.insert(i);
             }
             end = std::chrono::steady_clock::now();
-            std::cout << "List reinsert took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "List reinsert took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         {
             auto start = std::chrono::steady_clock::now();
@@ -135,7 +219,7 @@ namespace Utility {
                 p.push_back(i);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "Vector push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "Vector push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         {
             auto start = std::chrono::steady_clock::now();
@@ -144,12 +228,12 @@ namespace Utility {
                 p.push_back(i);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "List push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "List push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
     }
     TEST(Utility, hashMap) {
         HashMap<int*> map;
-        int num_obj = 1000000;
+        int num_obj = 1000;
         std::vector<int> vec;
         for (int i = 0; i < num_obj; i++)
             vec.push_back(i);
@@ -162,7 +246,7 @@ namespace Utility {
         for (int i = num_obj; i < num_obj*2; i++) {
             EXPECT_FALSE(map.get(Hasher()(i)).has_value());
         }
-        int delNum = 10000;
+        int delNum = 100;
         for (int i = 0; i < delNum; i++) {
             map.remove(Hasher()(i));
             EXPECT_FALSE(map.get(Hasher()(i)).has_value());

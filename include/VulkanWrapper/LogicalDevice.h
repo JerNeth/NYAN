@@ -12,6 +12,7 @@
 #include "Sampler.h"
 #include "Swapchain.h"
 #include "Allocator.h"
+#include "CommandPool.h"
 namespace Vulkan {
 	class LogicalDevice;
 	class Instance;
@@ -49,7 +50,9 @@ namespace Vulkan {
 		const VkAllocationCallbacks* m_allocator;
 	};
 	struct Frame {
-
+		LogicalDevice& r_device;
+		
+		std::vector<CommandPool> m_commandPool;
 	};
 	struct Vertex {
 		std::array<float, 3> pos;
@@ -227,7 +230,6 @@ namespace Vulkan {
 		std::unique_ptr<ImageView> m_depthView;
 		std::unique_ptr<Image> m_depth;
 
-		
 
 		std::vector<VkCommandPool> m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;

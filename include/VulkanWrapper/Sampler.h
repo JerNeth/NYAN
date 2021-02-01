@@ -41,7 +41,7 @@ namespace Vulkan {
 		VkSampler get_handle() const noexcept { return m_vkHandle; }
 		~Sampler() noexcept;
 		Sampler(Sampler&) = delete;
-		Sampler(Sampler&& other);
+		Sampler(Sampler&& other) noexcept;
 		Sampler& operator=(Sampler&) = delete;
 		Sampler& operator=(Sampler&&) = delete;
 	private:

@@ -123,7 +123,7 @@ namespace Vulkan {
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
 		~Pipeline() noexcept;
 		Pipeline(Pipeline& other) = delete;
-		Pipeline(Pipeline&& other);
+		Pipeline(Pipeline&& other) noexcept;
 		const Pipeline& operator=(Pipeline& other) = delete;
 		const Pipeline& operator=(Pipeline&&) = delete;
 		VkPipeline get_pipeline() const noexcept;

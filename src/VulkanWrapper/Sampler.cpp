@@ -33,7 +33,7 @@ Vulkan::Sampler::~Sampler() noexcept{
 	}
 }
 
-Vulkan::Sampler::Sampler(Sampler&& other):
+Vulkan::Sampler::Sampler(Sampler&& other) noexcept:
 	parent(other.parent),
 	m_vkHandle(other.m_vkHandle),
 	m_createInfo(other.m_createInfo)

@@ -10,41 +10,29 @@ namespace Utility {
 	public:
 		ListBucket(size_t zero_id_) : zero_id(zero_id_)
 		{
-			bucket = reinterpret_cast<T*>(malloc(sizeof(T) * bucketSize));
 		}
 		ListBucket(ListBucket&) = delete;
-		ListBucket(ListBucket&& other) {
-			other.next.swap(next);
-			bucket = other.bucket;
-			other.bucket = nullptr;
-		}
+		//Should not be used since we do not want to invalidate any pointers
+		//Could be avoided with an extra allocation
+		ListBucket(ListBucket&& other) = delete;
 		ListBucket& operator=(ListBucket&) = delete;
-		ListBucket& operator=(ListBucket&& other) {
-			other.next.swap(next);
-			bucket = other.bucket;
-			other.bucket = nullptr;
-		}
+		ListBucket& operator=(ListBucket&& other) = delete;
 		~ListBucket() {
-			if (bucket) {
-				for (size_t i = 0; i < bucketSize; i++)
-					if (occupancy[i])
-						bucket[i].~T();
-				free(bucket);
-			}
+			for (size_t i = 0; i < bucketSize; i++)
+				if (occupancy[i])
+					reinterpret_cast<T*>(m_storage.data())[i].~T();
 		}
 		void clear() {
 			for (size_t i = 0; i < bucketSize; i++)
 				if (occupancy[i])
-					bucket[i].~T();
+					reinterpret_cast<T*>(m_storage.data())[i].~T();
 			occupancy.reset();
-			if(next)
-				next->clear();
 		}
 		size_t insert(const T& t) {
 			size_t i;
 			for (i = 0; i < bucketSize; i++) {
 				if (!occupancy.test(i)) {
-					new (&bucket[i]) T(t);
+					new (&reinterpret_cast<T*>(m_storage.data())[i]) T(t);
 					occupancy.set(i);
 					return zero_id + i;
 				}
@@ -55,7 +43,7 @@ namespace Utility {
 			size_t i;
 			for (i = 0; i < bucketSize; i++) {
 				if (!occupancy.test(i)) {
-					new (&bucket[i]) T(std::move(t));
+					new (&reinterpret_cast<T*>(m_storage.data())[i]) T(std::move(t));
 					occupancy.set(i);
 					return zero_id + i;
 				}
@@ -67,7 +55,7 @@ namespace Utility {
 			size_t i;
 			for (i = 0; i < bucketSize; i++) {
 				if (!occupancy.test(i)) {
-					new(bucket + i) T(std::forward<Args>(args)...);
+					new(reinterpret_cast<T*>(m_storage.data()) + i) T(std::forward<Args>(args)...);
 					occupancy.set(i);
 					return zero_id + i;
 				}
@@ -78,40 +66,57 @@ namespace Utility {
 			auto local_id = id - zero_id;
 			assert(local_id < bucketSize);
 			occupancy.reset(local_id);
-			bucket[local_id].~T();
-			std::memset(bucket + local_id, 0, sizeof(T));
+			reinterpret_cast<T*>(m_storage.data())[local_id].~T();
+			//std::memset(bucket + local_id, 0, sizeof(T));
 		}
-		T* get(size_t id) const {
+		const T* get(size_t id) const {
 			auto local_id = id - zero_id;
 			assert(local_id < bucketSize);
 			if (occupancy.test(local_id))
-				return &bucket[local_id];
+				return &reinterpret_cast<const T*>(m_storage.data())[local_id];
+			else
+				return nullptr;
+		}
+		T* get(size_t id) {
+			auto local_id = id - zero_id;
+			assert(local_id < bucketSize);
+			if (occupancy.test(local_id))
+				return &reinterpret_cast<T*>(m_storage.data())[local_id];
 			else
 				return nullptr;
 		}
 		bool full() {
 			return occupancy.all();
 		}
+		bool empty() {
+			return occupancy.none();
+		}
 		ListBucket* get_next() {
 			if (!next)
 				next = std::make_unique<Bucket>(zero_id + bucketSize);
 			return next.get();
 		}
-		const size_t zero_id;
+		ListBucket* get_next_non_filling() const {
+			return next.get();
+		}
+		
 		void print() {
 			std::cout << "[";
 			for (int i = 0; i < bucketSize; i++) {
 				if (!occupancy[i])
 					continue;
-				std::cout << i + zero_id << ": " << bucket[i] << " ";
+				std::cout << i + zero_id << ": " << reinterpret_cast<T*>(m_storage.data())[i] << " ";
 			}
 			std::cout << "]\n";
 			if (next)
 				next->print();
 		}
+	public:
+		const size_t zero_id;
 	private:
 		std::bitset<bucketSize> occupancy = 0;
-		T* bucket = nullptr;
+		static_assert(sizeof(std::byte) == 1u);
+		std::array<std::byte, sizeof(T)* bucketSize> m_storage;
 		std::unique_ptr<Bucket> next = nullptr;
 	};
 	/// <summary>
@@ -138,8 +143,11 @@ namespace Utility {
 		/// Clears the list without deallocating
 		/// </summary>
 		void clear() {
-			if (head)
-				head->clear();
+			Bucket* current = head.get();
+			while (current) {
+				current->clear();
+				current = current->get_next_non_filling();
+			}
 		}
 		void destroy() {
 			head.reset(nullptr);
@@ -206,5 +214,6 @@ namespace Utility {
 	private:
 		std::unique_ptr<Bucket> head = nullptr;
 	};
+	
 }
 #endif

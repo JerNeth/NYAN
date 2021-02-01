@@ -23,7 +23,7 @@ namespace Vulkan {
 		std::bitset<MAX_ATTACHMENTS + 1> loadAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> clearAttachments;
 		std::bitset<MAX_ATTACHMENTS + 1> storeAttachments;
-		std::array<ImageView*, MAX_ATTACHMENTS> colorAttachmentsViews;
+		std::array<ImageView*, MAX_ATTACHMENTS> colorAttachmentsViews{};
 		ImageView* depthStencilAttachment = nullptr;
 		uint32_t colorAttachmentsCount = 0;
 		std::bitset<6> opFlags;
