@@ -31,48 +31,54 @@ namespace Math
 	typedef Vec<float, 2> vec2;
 	typedef Vec<float, 3> vec3;
 	typedef Vec<float, 4> vec4;
-	typedef Vec<double, 2> vec2_d;
-	typedef Vec<double, 3> vec3_d;
-	typedef Vec<double, 4> vec4_d;
-	typedef Vec<int32_t, 2> vec2_i;
-	typedef Vec<int32_t, 3> vec3_i;
-	typedef Vec<int32_t, 4> vec4_i;
-	typedef Vec<int64_t, 2> vec2_l;
-	typedef Vec<int64_t, 3> vec3_l;
-	typedef Vec<int64_t, 4> vec4_l;
-	typedef Vec<int8_t, 3> vec2_b;
-	typedef Vec<int8_t, 3> vec3_b;
-	typedef Vec<int8_t, 4> vec4_b;
+	typedef Vec<double, 2> dvec2;
+	typedef Vec<double, 3> dvec3;
+	typedef Vec<double, 4> dvec4;
+	typedef Vec<int32_t, 2> ivec2;
+	typedef Vec<int32_t, 3> ivec3;
+	typedef Vec<int32_t, 4> ivec4;
+	typedef Vec<int64_t, 2> lvec2;
+	typedef Vec<int64_t, 3> lvec3;
+	typedef Vec<int64_t, 4> lvec4;
+	typedef Vec<int16_t, 2> svec2;
+	typedef Vec<int16_t, 3> svec3;
+	typedef Vec<int16_t, 4> svec4;
+	typedef Vec<int8_t, 3> bvec2;
+	typedef Vec<int8_t, 3> bvec3;
+	typedef Vec<int8_t, 4> bvec4;
 
-	/* Unsigned integer vectors do not really make that much sense right now
-	typedef Vec<uint32_t, 2> vec2_ui;
-	typedef Vec<uint32_t, 3> vec3_ui;
-	typedef Vec<uint32_t, 4> vec4_ui;
-	typedef Vec<uint64_t, 2> vec2_ul;
-	typedef Vec<uint64_t, 3> vec3_ul;
-	typedef Vec<uint64_t, 4> vec4_ul;
-	typedef Vec<uint8_t, 2> vec2_ub;
-	typedef Vec<uint8_t, 3> vec3_ub;
-	typedef Vec<uint8_t, 4> vec4_ub;
-	*/
+	// Unsigned integer vectors do not really make that much sense right now
+	typedef Vec<uint32_t, 2> uvec2;
+	typedef Vec<uint32_t, 3> uvec3;
+	typedef Vec<uint32_t, 4> uvec4;
+	typedef Vec<uint64_t, 2> ulvec2;
+	typedef Vec<uint64_t, 3> ulvec3;
+	typedef Vec<uint64_t, 4> ulvec4;
+	typedef Vec<uint16_t, 2> usvec2;
+	typedef Vec<uint16_t, 3> usvec3;
+	typedef Vec<uint16_t, 4> usvec4;
+	typedef Vec<uint8_t, 2> ubvec2;
+	typedef Vec<uint8_t, 3> ubvec3;
+	typedef Vec<uint8_t, 4> ubvec4;
+	
 
 
 	
 	typedef Mat<float, 2, 2> mat22;
 	typedef Mat<float, 3, 3> mat33;
 	typedef Mat<float, 4, 4> mat44;
-	typedef Mat<double, 2, 2> mat22_d;
-	typedef Mat<double, 3, 3> mat33_d;
-	typedef Mat<double, 4, 4> mat44_d;
-	typedef Mat<int32_t, 2, 2> mat22_i;
-	typedef Mat<int32_t, 3, 3> mat33_i;
-	typedef Mat<int32_t, 4, 4> mat44_i;
-	typedef Mat<int64_t, 2, 2> mat22_l;
-	typedef Mat<int64_t, 3, 3> mat33_l;
-	typedef Mat<int64_t, 4, 4> mat44_l;
-	typedef Mat<int8_t, 2, 2> mat22_b;
-	typedef Mat<int8_t, 3, 3> mat33_b;
-	typedef Mat<int8_t, 4, 4> mat44_b;
+	typedef Mat<double, 2, 2> dmat22;
+	typedef Mat<double, 3, 3> dmat33;
+	typedef Mat<double, 4, 4> dmat44;
+	typedef Mat<int32_t, 2, 2> imat22;
+	typedef Mat<int32_t, 3, 3> imat33;
+	typedef Mat<int32_t, 4, 4> imat44;
+	typedef Mat<int64_t, 2, 2> lmat22;
+	typedef Mat<int64_t, 3, 3> lmat33;
+	typedef Mat<int64_t, 4, 4> lmat44;
+	typedef Mat<int8_t, 2, 2> bmat22;
+	typedef Mat<int8_t, 3, 3> bmat33;
+	typedef Mat<int8_t, 4, 4> bmat44;
 	/* Unsigned integer matrices do not really make that much sense right now
 	typedef Mat<uint32_t, 2, 2> mat22_ui;
 	typedef Mat<uint32_t, 3, 3> mat33_ui;
