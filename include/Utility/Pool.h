@@ -48,7 +48,7 @@ namespace Utility {
 			}
 		}
 		template<class... Args>
-		PoolHandle<T> emplace(Args&&... args) noexcept {
+		[[nodiscard]] size_t emplace_intrusive(Args&&... args) noexcept {
 			size_t idx = 0;
 			if (m_size >= m_capacity) {
 				size_t new_capacity = m_capacity + 1;
@@ -62,14 +62,31 @@ namespace Utility {
 			new (m_data + idx) T(std::forward<Args>(args)...);
 			m_occupancy.set(idx);
 			m_size++;
-			return PoolHandle<T>(idx, *this);
+			return idx;
 		}
-
+		template<class... Args>
+		[[nodiscard]] PoolHandle<T> emplace(Args&&... args) noexcept {
+			return PoolHandle<T>(emplace_intrusive(std::forward<Args>(args)...), this);
+		}
+		
+		void clear() noexcept {
+			if (m_data) {
+				for (size_t i = 0; i < m_size; i++) {
+					if (m_occupancy.test(i)) {
+						m_data[i].~T();
+					}
+				}
+			}
+			m_size = 0;
+			m_occupancy.clear();
+		}
 		void remove(size_t idx) noexcept {
 			if (m_data) {
-				m_data[idx].~T();
-				m_occupancy.clear(idx);
-				m_size--;
+				if (m_occupancy.test(idx)) {
+					m_data[idx].~T();
+					m_occupancy.clear(idx);
+					m_size--;
+				}
 			}
 		}
 		T* get_ptr(size_t idx) noexcept {
@@ -100,6 +117,9 @@ namespace Utility {
 			}
 			throw std::exception("Invalid idx");
 		}
+		size_t size() const noexcept {
+			return m_size;
+		}
 	private:
 		T* m_data = nullptr;
 		DynamicBitset m_occupancy;
@@ -109,27 +129,93 @@ namespace Utility {
 	template<typename T>
 	class PoolHandle {
 		friend class Pool<T>;
-		PoolHandle(size_t id, Pool<T>& pool) : m_id(id), r_pool(pool) {
+		PoolHandle(size_t id, Pool<T>* pool) : m_id(id), ptr_pool(pool) {
 
 		}
 	public:
-		PoolHandle(PoolHandle&) = default;
-		PoolHandle(PoolHandle&&) = default;
+		~PoolHandle() {
+			if (ptr_count) {
+				// I don't like it but I don't have a better solution TODO
+				if (ptr_count == reinterpret_cast<size_t*>(~0ull))
+					return;
+				(*ptr_count)--;
+				if (*ptr_count == 0) {
+					delete ptr_count;
+					ptr_pool->remove(m_id);
+				}
+			}
+			else {
+				ptr_pool->remove(m_id);
+			}
+		}
+		PoolHandle(const PoolHandle& other) :
+			m_id(other.m_id),
+			ptr_pool(other.ptr_pool)
+		{
+			if (!other.ptr_count) {
+				other.ptr_count = new size_t(1);
+			}
+			ptr_count = other.ptr_count;
+			(*ptr_count)++;
+		}
+		PoolHandle(PoolHandle& other) :
+			m_id(other.m_id),
+			ptr_pool(other.ptr_pool)
+		{
+			if (!other.ptr_count) {
+				other.ptr_count = new size_t(1);
+			}
+			ptr_count = other.ptr_count;
+			(*ptr_count)++;
+		}
+		PoolHandle(PoolHandle&& other) :
+			m_id(other.m_id),
+			ptr_pool(other.ptr_pool),
+			ptr_count(other.ptr_count)
+		{
+			// I don't like it but I don't have a better solution TODO
+			if(this != &other)
+				other.ptr_count = reinterpret_cast<size_t*>(~0ull);
+		}
+		PoolHandle& operator=(PoolHandle& other)
+		{
+			if (this != &other) {
+				m_id=other.m_id;
+				ptr_pool = other.ptr_pool;
+				if (!other.ptr_count) {
+					other.ptr_count = new size_t(1);
+				}
+				ptr_count = other.ptr_count;
+				(*ptr_count)++;
+			}
+			return *this;
+		}
+		PoolHandle& operator=(PoolHandle&& other)
+		{
+			if (this != &other) {
+				m_id = other.m_id;
+				ptr_pool = other.ptr_pool;
+				ptr_count = other.ptr_count;
+				other.ptr_count = reinterpret_cast<size_t*>(~0ull);
+			}
+			return *this;
+		}
 		void remove() {
-			r_pool.remove(m_id);
+			ptr_pool->remove(m_id);
 		}
 		T* operator->() {
-			return r_pool.get_ptr(m_id);
+			return ptr_pool->get_ptr(m_id);
 		}
 		T& operator*() {
-			return r_pool.get(m_id);
+			return ptr_pool->get(m_id);
 		}
 		operator T* () {
-			return r_pool.get_ptr(m_id);
+			return ptr_pool->get_ptr(m_id);
 		}
 	private:
 		size_t m_id;
-		Pool<T>& r_pool; //List this handle refers to
+		Pool<T>* ptr_pool = nullptr; //List this handle refers to
+		mutable size_t* ptr_count = nullptr;
 	};
 }
 

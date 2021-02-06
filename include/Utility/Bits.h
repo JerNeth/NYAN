@@ -25,11 +25,35 @@ namespace Utility {
 		std::memcpy(&tmp, reinterpret_cast<const char*>(&ff) + sizeof(uint32_t), sizeof(uint32_t));
 		return (tmp >> 20) - 1023;
 	}
-	template <typename T, size_t num_bits>
-	inline void for_each_bit(std::bitset<num_bits> bitset, const T& func) {
-		for (uint32_t i = 0; i < num_bits; i++) {
+	template <typename T, typename C>
+	inline void for_each_bit(const C& bitset, const T& func) {
+		for (uint32_t i = 0; i < bitset.size(); i++) {
 			if (bitset.test(i))
 				func(i);
+		}
+	}
+
+	template <typename T, typename C>
+	inline void for_each_bitrange(const C& bitset, const T& func) {
+		if (bitset.all()) {
+			func(0, bitset.size());
+			return;
+		}
+		uint32_t first = 0;
+		bool ones = false;
+		for (size_t i = 0; i < bitset.size(); i++) {
+			if (bitset.test(i)) {
+				if (!ones) {
+					first = i;
+					ones = true;
+				}
+			}
+			else {
+				if (ones) {
+					ones = false;
+					func(first, i - first);
+				}
+			}
 		}
 	}
 

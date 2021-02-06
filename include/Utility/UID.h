@@ -4,17 +4,21 @@
 #include <cstdint>
 #include <atomic>
 namespace Utility {
-	class UID {
+	using UID = uint64_t;
+	class UIDC {
 	public:
-		UID() {
+		UIDC() {
+			static std::atomic<UID> s_counter;
 			m_id = s_counter++;
 		}
-		operator uint64_t() const {
+		operator UID() const noexcept {
+			return m_id;
+		}
+		UID get_id() const noexcept{
 			return m_id;
 		}
 	private:
-		uint64_t m_id = ~0Ui64;
-		static std::atomic<uint64_t> s_counter;
+		UID m_id = ~0Ui64;
 	};
 }
 

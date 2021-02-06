@@ -54,16 +54,13 @@ namespace Utility {
 	};
 	template<typename T>
 	struct VectorHash {
-		HashValue operator()(std::vector<T> data) const {
+		HashValue operator()(const std::vector<T>& data) const {
 			const HashValue prime = 0x100000001b3ull;
 			HashValue hash = 0xcbf29ce484222325ull;
-			for (size_t i = 0; i < data.size(); i++) {
-				size_t hashInner = std::hash<T>()(data[i]);
-				const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&hashInner);
-				for (size_t j = 0; j < sizeof(size_t); j++) {
-					hash ^= static_cast<HashValue>(bytes[j]);
-					hash *= prime;
-				}
+			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data.data());
+			for (size_t i = 0; i < data.size() * sizeof(T); i++) {
+				hash ^= static_cast<HashValue>(bytes[i]);
+				hash *= prime;
 			}
 			return hash;
 		}
