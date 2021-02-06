@@ -14,7 +14,7 @@ namespace Math {
 	{
 
 	public:
-		Vec() noexcept : m_data() {
+		constexpr Vec() noexcept : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = Scalar();
 		}
@@ -25,7 +25,7 @@ namespace Math {
 		//		m_data[i] = scalar;
 		//}
 		//Without explicit: Vec<int, 2> t = 2; would compile
-		explicit Vec(Scalar const& scalar) noexcept : m_data() {
+		constexpr explicit Vec(Scalar const& scalar) noexcept : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = scalar;
 		}
