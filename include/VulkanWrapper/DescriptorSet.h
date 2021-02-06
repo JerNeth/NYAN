@@ -5,17 +5,19 @@
 #include "Utility.h"
 namespace Vulkan {
 	class LogicalDevice;
-	
+	enum class DefaultSampler;
 	struct DescriptorSetLayout {
-		std::bitset<MAX_BINDINGS> imageSampler;
-		std::bitset<MAX_BINDINGS> sampledBuffer;
-		std::bitset<MAX_BINDINGS> storageImage;
-		std::bitset<MAX_BINDINGS> uniformBuffer;
-		std::bitset<MAX_BINDINGS> storageBuffer;
-		std::bitset<MAX_BINDINGS> inputAttachment;
-		std::bitset<MAX_BINDINGS> separateImage;
-		std::bitset<MAX_BINDINGS> seperateSampler;
-		std::bitset<MAX_BINDINGS> fp;
+		Utility::bitset<MAX_BINDINGS> imageSampler;
+		Utility::bitset<MAX_BINDINGS> sampledBuffer;
+		Utility::bitset<MAX_BINDINGS> storageImage;
+		Utility::bitset<MAX_BINDINGS> uniformBuffer;
+		Utility::bitset<MAX_BINDINGS> storageBuffer;
+		Utility::bitset<MAX_BINDINGS> inputAttachment;
+		Utility::bitset<MAX_BINDINGS> separateImage;
+		Utility::bitset<MAX_BINDINGS> seperateSampler;
+		Utility::bitset<MAX_BINDINGS> fp;
+		Utility::bitset<MAX_BINDINGS> immutableSampler;
+		Utility::bitarray<DefaultSampler, MAX_BINDINGS> immutableSamplers;
 		std::array<uint8_t, MAX_BINDINGS> arraySizes;
 		std::array<uint32_t, MAX_BINDINGS> stages{};
 		friend bool operator==(DescriptorSetLayout& left, DescriptorSetLayout& right) {

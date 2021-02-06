@@ -73,14 +73,14 @@ Vulkan::Framebuffer::Framebuffer(Framebuffer&& other) noexcept:
 Vulkan::Framebuffer::~Framebuffer() noexcept
 {
     if(m_vkHandle != VK_NULL_HANDLE) {
-        vkDestroyFramebuffer(r_device.get_device(), m_vkHandle, r_device.get_allocator());
+		r_device.queue_framebuffer_deletion(m_vkHandle);
     }
 }
 
 void Vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpassInfo) noexcept
 {
-	m_width = ~0;
-	m_height = ~0;
+	m_width = ~0u;
+	m_height = ~0u;
 	if (renderpassInfo.colorAttachmentsCount) {
 		for (uint32_t i = 0; i < renderpassInfo.colorAttachmentsCount; i++) {
 			auto mip = renderpassInfo.colorAttachmentsViews[0]->get_base_mip_level();
@@ -94,4 +94,36 @@ void Vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpass
 		m_width = Math::min(m_width, renderpassInfo.depthStencilAttachment->get_image()->get_width(mip));
 		m_height = Math::min(m_height, renderpassInfo.depthStencilAttachment->get_image()->get_height(mip));
 	}
+}
+
+Vulkan::FramebufferAllocator::FramebufferAllocator(LogicalDevice& device):
+	r_device(device)
+{
+}
+
+void Vulkan::FramebufferAllocator::clear()
+{
+	m_framebufferIds.clear();
+	m_framebufferStorage.clear();
+}
+
+Vulkan::Framebuffer* Vulkan::FramebufferAllocator::request_framebuffer(const RenderpassCreateInfo& info)
+{
+	auto compatibleRenderpass = r_device.request_compatible_render_pass(info);
+	Utility::Hasher hasher;
+
+	for (uint32_t i = 0; i < info.colorAttachmentsCount; i++) {
+		assert(info.colorAttachmentsViews[i]);
+		hasher(info.colorAttachmentsViews[i]);
+	}
+	if (info.depthStencilAttachment)
+		hasher(info.depthStencilAttachment);
+
+	auto hashVal = hasher();
+	if (auto res = m_framebufferIds.find(hasher()); res != m_framebufferIds.end())
+		return m_framebufferStorage.get(res->second);
+
+	auto idx = m_framebufferStorage.emplace(r_device, info);
+	m_framebufferIds.emplace(hasher(), idx);
+	return m_framebufferStorage.get(idx);
 }

@@ -4,10 +4,23 @@
 
 Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo) : r_device(parent)
 {
-	if (createInfo.subpassCount == 0) {
-		//TODO default subpass
-	}
+	std::tie(m_compatibleHashValue, m_hashValue) = createInfo.get_hash();
 	uint32_t subpassCount = createInfo.subpassCount;
+	auto s = createInfo.subpasses.data();
+	const RenderpassCreateInfo::SubpassCreateInfo* subpasses = createInfo.subpasses.data();
+	RenderpassCreateInfo::SubpassCreateInfo defaultPass;
+	if (subpassCount == 0) {
+		defaultPass.colorAttachmentsCount = createInfo.colorAttachmentsCount;
+		if (createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly)))
+			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::Read;
+		else
+			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
+		for (uint32_t i = 0; i < createInfo.colorAttachmentsCount; i++) {
+			defaultPass.colorAttachments[i] = i;
+		}
+		subpassCount = 1;
+		subpasses = &defaultPass;
+	}
 	std::bitset<MAX_ATTACHMENTS> implicitTransition;
 	std::bitset<MAX_ATTACHMENTS> implicitBottomOfPipe;
 	const unsigned attachmentCount = createInfo.colorAttachmentsCount + (createInfo.depthStencilAttachment ? 1: 0);
@@ -96,51 +109,52 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	std::vector<VkSubpassDescription> subpassDescriptions(subpassCount);
 	std::vector<VkSubpassDependency> externalDependencies;
 	for (uint32_t i = 0; i < subpassCount; i++) {
-		uint32_t j;
-		for (j = 0; j < createInfo.subpasses[i].colorAttachmentsCount; j++) references.emplace_back();
+
+		uint32_t k;
+		for (k = 0; k < subpasses[i].colorAttachmentsCount; k++) references.emplace_back();
 		VkAttachmentReference* colors = nullptr;
-		if(j) colors = &references[references.size() - j];
-		for (j = 0; j < createInfo.subpasses[i].inputAttachmentsCount; j++) references.emplace_back();
+		if(k) colors = &references[references.size() - k];
+		for (k = 0; k < subpasses[i].inputAttachmentsCount; k++) references.emplace_back();
 		VkAttachmentReference* inputs = nullptr;
-		if (j) inputs = &references[references.size() - j];
-		for (j = 0; j < createInfo.subpasses[i].resolveAttachmentsCount; j++) references.emplace_back();
+		if (k) inputs = &references[references.size() - k];
+		for (k = 0; k < subpasses[i].resolveAttachmentsCount; k++) references.emplace_back();
 		VkAttachmentReference* resolves = nullptr;
-		if(j) resolves = &references[references.size() - j];
+		if(k) resolves = &references[references.size() - k];
 		references.emplace_back();
 		auto* depth = &references[references.size() - 1];
 
 		VkSubpassDescription subpass{
 			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-			.inputAttachmentCount = createInfo.subpasses[i].inputAttachmentsCount,
+			.inputAttachmentCount = subpasses[i].inputAttachmentsCount,
 			.pInputAttachments = inputs,
-			.colorAttachmentCount = createInfo.subpasses[i].colorAttachmentsCount,
+			.colorAttachmentCount = subpasses[i].colorAttachmentsCount,
 			.pColorAttachments = colors,
 			.pDepthStencilAttachment = depth
 		};
 		
 		for (uint32_t j = 0; j < subpass.colorAttachmentCount; j++) {
-			auto attachment = createInfo.subpasses[i].colorAttachments[j];
+			auto attachment = subpasses[i].colorAttachments[j];
 			assert(attachment == VK_ATTACHMENT_UNUSED || (attachment < attachmentCount));
 			colors[j].attachment = attachment;
 			colors[j].layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
 		for (uint32_t j = 0; j < subpass.inputAttachmentCount; j++) {
-			auto attachment = createInfo.subpasses[i].inputAttachments[j];
+			auto attachment = subpasses[i].inputAttachments[j];
 			assert(attachment == VK_ATTACHMENT_UNUSED || (attachment < attachmentCount));
 			inputs[j].attachment = attachment;
 			inputs[j].layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
-		if (createInfo.subpasses[i].resolveAttachmentsCount) {
-			assert(createInfo.subpasses[i].resolveAttachmentsCount == createInfo.subpasses[i].colorAttachmentsCount);
+		if (subpasses[i].resolveAttachmentsCount) {
+			assert(subpasses[i].resolveAttachmentsCount == subpasses[i].colorAttachmentsCount);
 			subpass.pResolveAttachments = resolves;
 			for (uint32_t j = 0; j < subpass.colorAttachmentCount; j++) {
-				auto attachment = createInfo.subpasses[i].resolveAttachments[j];
+				auto attachment = subpasses[i].resolveAttachments[j];
 				assert(attachment == VK_ATTACHMENT_UNUSED || (attachment < attachmentCount));
 				resolves[j].attachment = attachment;
 				resolves[j].layout = VK_IMAGE_LAYOUT_UNDEFINED;
 			}
 		}
-		if (createInfo.depthStencilAttachment && createInfo.subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::None) {
+		if (createInfo.depthStencilAttachment && subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::None) {
 			depth->attachment = createInfo.colorAttachmentsCount;
 			depth->layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
@@ -291,8 +305,8 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				colorAttachmentReadWrite.set(subpass);
 			}
 			else if (depth && input) {
-				assert(createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
-				if (createInfo.subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
+				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
+				if (subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthSelfDependency.set(subpass);
 					currentLayout = VK_IMAGE_LAYOUT_GENERAL;
 					depthStencilAttachmentWrite.set(subpass);
@@ -317,8 +331,8 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				lastSubpassForAttachment[attachment] = subpass;
 			}
 			else if (depth) {
-				assert(createInfo.subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
-				if (createInfo.subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
+				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
+				if (subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthStencilAttachmentWrite.set(subpass);
 					if (currentLayout != VK_IMAGE_LAYOUT_GENERAL)
 						currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -485,7 +499,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		};
 		memcpy(info.colorAttachmentReferences.data(), subpass.pColorAttachments, subpass.colorAttachmentCount * sizeof(VkAttachmentReference));
 		memcpy(info.inputAttachmentReferences.data(), subpass.pInputAttachments, subpass.inputAttachmentCount * sizeof(VkAttachmentReference));
-		subpasses.push_back(info);
+		m_subpasses.push_back(info);
 	}
 	if (auto result = vkCreateRenderPass(r_device.m_device, &renderPassCreateInfo, r_device.m_allocator, &m_renderPass); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
@@ -512,15 +526,14 @@ Vulkan::Renderpass::~Renderpass()
 
 bool Vulkan::Renderpass::has_depth_attachment(uint32_t subpass) const
 {
-	assert(subpasses.size() > subpass);
-	return subpasses[subpass].depthStencilAttachmentReference.attachment != VK_ATTACHMENT_UNUSED;
+	assert(m_subpasses.size() > subpass);
+	return m_subpasses[subpass].depthStencilAttachmentReference.attachment != VK_ATTACHMENT_UNUSED;
 }
 
 uint32_t Vulkan::Renderpass::get_num_color_attachments(uint32_t subpass) const
 {
-	return 1;
-	assert(subpasses.size() > subpass);
-	return subpasses[subpass].colorAttachmentCount;
+	assert(m_subpasses.size() > subpass);
+	return m_subpasses[subpass].colorAttachmentCount;
 }
 
 VkRenderPass Vulkan::Renderpass::get_render_pass() const
@@ -528,9 +541,9 @@ VkRenderPass Vulkan::Renderpass::get_render_pass() const
 	return m_renderPass;
 }
 
-const VkAttachmentReference& Vulkan::Renderpass::get_color_attachment(uint32_t subpass, uint32_t idx) const
+const VkAttachmentReference& Vulkan::Renderpass::get_color_attachment(uint32_t idx, uint32_t subpass) const
 {
-	assert(subpasses.size() > subpass);
-	assert(subpasses[subpass].colorAttachmentCount > idx);
-	return subpasses[subpass].colorAttachmentReferences[idx];
+	assert(m_subpasses.size() > subpass);
+	assert(m_subpasses[subpass].colorAttachmentCount > idx);
+	return m_subpasses[subpass].colorAttachmentReferences[idx];
 }

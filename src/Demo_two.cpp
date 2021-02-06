@@ -14,7 +14,6 @@
 using namespace std;
 using namespace Math;
 
-
 int main()
 {
 	/*
@@ -45,7 +44,6 @@ int main()
 		stbi_image_free(pixels);
 		
 		device.create_stuff();
-		device.create_sync_objects();
 		int frame = 0;
 		auto start = chrono::steady_clock::now();
 		auto total = start - start;
@@ -55,7 +53,13 @@ int main()
 			//window.swap_buffers();
 			glfwPollEvents();
 			if (!window.is_iconified()) {
-				device.draw_frame();
+				device.next_frame();
+				device.update_uniform_buffer();
+				auto buf = device.request_command_buffer(Vulkan::CommandBuffer::Type::Generic);
+				device.demo_create_command_buffer(buf->get_handle());
+				buf->touch_swapchain();
+				device.submit(buf);
+				device.end_frame();
 				frame++;
 				total += chrono::steady_clock::now() - start;
 			}

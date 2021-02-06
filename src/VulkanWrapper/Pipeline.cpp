@@ -1,3 +1,5 @@
+#include "..\..\include\VulkanWrapper\Pipeline.h"
+#include "..\..\include\VulkanWrapper\Pipeline.h"
 #include "Pipeline.h"
 
 #include "LogicalDevice.h"
@@ -20,7 +22,8 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	return buffer;
 }
 */
-Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_resourceLayout(layout) {
+Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_shaderLayout(layout) {
+	m_hashValue = Utility::Hasher()(layout);
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
 	for (size_t i = 0; i < descriptorSets.size(); i++) {
 		m_descriptors[i] = r_device.request_descriptor_set_allocator(layout.descriptors[i]);
@@ -59,12 +62,17 @@ const VkPipelineLayout& Vulkan::PipelineLayout::get_layout() const
 	return m_layout;
 }
 
-const Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_resourceLayout() const
+const Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_shader_layout() const
 {
-	return m_resourceLayout;
+	return m_shaderLayout;
 }
 
 const Vulkan::DescriptorSetAllocator* Vulkan::PipelineLayout::get_allocator(size_t set) const
+{
+	assert(set < MAX_DESCRIPTOR_SETS);
+	return m_descriptors[set];
+}
+Vulkan::DescriptorSetAllocator* Vulkan::PipelineLayout::get_allocator(size_t set)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	return m_descriptors[set];
@@ -79,12 +87,12 @@ const VkDescriptorUpdateTemplate& Vulkan::PipelineLayout::get_update_template(si
 void Vulkan::PipelineLayout::create_update_template()
 {
 	for (uint32_t descriptorIdx = 0; descriptorIdx < MAX_DESCRIPTOR_SETS; descriptorIdx++) {
-		if (!m_resourceLayout.used.test(descriptorIdx))
+		if (!m_shaderLayout.used.test(descriptorIdx))
 			continue;
 		std::array<VkDescriptorUpdateTemplateEntry, MAX_BINDINGS> entries;
 		uint32_t updateCount{};
 
-		auto& descriptor = m_resourceLayout.descriptors[descriptorIdx];
+		auto& descriptor = m_shaderLayout.descriptors[descriptorIdx];
 		Utility::for_each_bit(descriptor.uniformBuffer, [&](uint32_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
@@ -218,8 +226,7 @@ void Vulkan::PipelineLayout::create_update_template()
 	}
 }
 
-Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile) :
-	r_device(parent)
+Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile)
 {
 
 
@@ -259,8 +266,8 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	for (uint32_t i = 0; i < colorBlendStateCreateInfo.attachmentCount; i++) {
 		auto& attachment = colorBlendAttachments[i];
 		attachment = {};
-		if (compile.compatibleRenderPass->get_color_attachment(compile.subpassIndex, i).attachment != VK_ATTACHMENT_UNUSED &&
-			compile.program->get_pipeline_layout()->get_resourceLayout().outputs.test(i)) {
+		if (compile.compatibleRenderPass->get_color_attachment(i, compile.subpassIndex).attachment != VK_ATTACHMENT_UNUSED &&
+			compile.program->get_pipeline_layout()->get_shader_layout().outputs.test(i)) {
 			attachment.colorWriteMask = (compile.state.color_write_mask >> (WRITE_MASK_BITS * i)) & ((1 << WRITE_MASK_BITS) - 1);
 			if (attachment.blendEnable = compile.state.blend_enable; attachment.blendEnable) {
 				attachment.srcColorBlendFactor = static_cast<VkBlendFactor>(compile.state.src_color_blend);
@@ -303,8 +310,35 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		}
 	}
 
-	auto bindingDescriptions = Vertex::get_binding_descriptions();
-	auto attributeDescriptions = Vertex::get_attribute_descriptions();
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	std::array<uint8_t, MAX_VERTEX_BINDINGS> offsets{};
+	std::bitset<MAX_VERTEX_BINDINGS> bindings{};
+	const auto& resourceLayout = compile.program->get_pipeline_layout()->get_shader_layout();// .attributeElementCounts;
+	attributeDescriptions.reserve(resourceLayout.inputs.count());
+	Utility::for_each_bit(resourceLayout.inputs, [&](uint32_t location) {
+		auto [format, binding] = compile.attributes[location];
+		assert(resourceLayout.attributeElementCounts[location] == format_element_count(format));
+		VkVertexInputAttributeDescription desc{
+					.location = location,
+					.binding = binding,
+					.format = format,
+					//This design assumes that the elements are ordered
+					.offset = offsets[binding]
+		};
+		bindings.set(binding);
+		offsets[binding] += format_bytesize(format);
+		attributeDescriptions.push_back(desc);
+	});
+	bindingDescriptions.reserve(bindings.count());
+	Utility::for_each_bit(bindings, [&](uint32_t binding) {
+		VkVertexInputBindingDescription desc{
+			.binding = binding,
+			.stride = offsets[binding],
+			.inputRate = compile.inputRates[binding]
+		};
+		bindingDescriptions.push_back(desc);
+	});
 
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -369,7 +403,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.basePipelineIndex = -1
 	};
 
-	if (auto result = vkCreateGraphicsPipelines(r_device.m_device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, r_device.m_allocator, &m_pipeline);
+	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
 		result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
@@ -386,18 +420,12 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	}
 }
 
-Vulkan::Pipeline::~Pipeline() noexcept
-{
-	if (m_pipeline != VK_NULL_HANDLE)
-		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
-}
+//Vulkan::Pipeline::~Pipeline() noexcept
+//{
+//	if (m_pipeline != VK_NULL_HANDLE)
+//		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
+//}
 
-Vulkan::Pipeline::Pipeline(Vulkan::Pipeline&& other) noexcept :
-	r_device(other.r_device)
-{
-	this->m_pipeline = other.m_pipeline;
-	other.m_pipeline = VK_NULL_HANDLE;
-}
 
 //const Vulkan::Pipeline& Vulkan::Pipeline::operator=(Vulkan::Pipeline&& other)
 //{
@@ -413,9 +441,9 @@ VkPipeline Vulkan::Pipeline::get_pipeline() const noexcept
 
 
 
-Vulkan::Pipeline Vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, uint32_t subpassIndex)
+Vulkan::Pipeline Vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
 {
-	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, subpassIndex });
+	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
 }
 
 void Vulkan::Pipeline::reset_static_pipeline()
@@ -590,4 +618,30 @@ void Vulkan::Pipeline::set_subgroup_max_size_log2(unsigned subgroupMaxSize)
 void Vulkan::Pipeline::set_conservative_raster(bool conservativeRaster)
 {
 	s_pipelineState.conservative_raster = conservativeRaster;
+}
+Vulkan::PipelineStorage::PipelineStorage(LogicalDevice& device) :
+	r_device(device)
+{
+}
+Vulkan::PipelineStorage::~PipelineStorage()
+{
+	for (const auto& [compile, pipeline] : m_hashMap) {
+		assert(pipeline.get_pipeline() != VK_NULL_HANDLE);
+		vkDestroyPipeline(r_device.get_device(), pipeline.get_pipeline(), r_device.get_allocator());
+	}
+}
+
+VkPipeline Vulkan::PipelineStorage::request_pipeline(const PipelineCompile& compile)
+{
+	
+	const auto &[ret,_] = m_hashMap.try_emplace(compile, r_device, compile);
+	return ret->second.get_pipeline();
+	//try emplace would work but would result in unnecessary construction;
+	/*if (const auto& ret = m_hashMap.find(compile); ret != m_hashMap.end()) {
+		const auto& [res, _] = m_hashMap.emplace(compile, Pipeline(r_device,compile).get_pipeline());
+		return res->second;
+	}
+	else {
+		return ret->second;
+	}*/
 }

@@ -37,6 +37,8 @@ namespace Vulkan {
 		Utility::LinkedBucketList<Image> m_imageStorage;
 		std::shared_mutex m_mutex;
 	};
+
+
 }
 
 #endif

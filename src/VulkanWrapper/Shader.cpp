@@ -4,6 +4,8 @@
 Vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
 	m_parent(parent)
 {
+	Utility::VectorHash<uint32_t> hasher;
+	m_hashValue = hasher(shaderCode);
 	create_module(shaderCode);
 	parse_stage( shaderCode);
 }
@@ -56,7 +58,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 	Compiler comp(shaderCode);
 	ShaderResources resources = comp.get_shader_resources();
 	
-
+	
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
 		layout.descriptors[set].uniformBuffer.set(binding);
@@ -124,8 +126,10 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 	}
 	for (auto& attrib : resources.stage_inputs) {
 		if (m_stage == Vulkan::ShaderStage::Vertex) {
+			auto& type = comp.get_type(attrib.type_id);
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			layout.inputs.set(location);
+			layout.attributeElementCounts[location] = type.vecsize;
+			layout.inputs.set(location); 
 		}
 	}
 	for (auto& attrib : resources.stage_outputs) {
@@ -150,6 +154,11 @@ VkPipelineShaderStageCreateInfo Vulkan::Shader::get_create_info()
 		.pName = "main"
 	};
 	return createInfo;
+}
+
+Utility::HashValue Vulkan::Shader::get_hash()
+{
+	return m_hashValue;
 }
 
 void Vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
@@ -178,9 +187,12 @@ void Vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 
 Vulkan::Program::Program(const std::vector<Shader*>& shaders)
 {
+	Utility::Hasher h;
 	for (auto shader : shaders) {
+		h(shader->get_hash());
 		set_shader(shader);
 	}
+	m_hashValue = h();
 }
 
 Vulkan::Shader* Vulkan::Program::get_shader(ShaderStage stage) const

@@ -16,20 +16,37 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties) : 
+Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex,
+					uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties) :
 	r_instance(parentInstance),
-	m_device(device, nullptr), 
+	m_device(device, nullptr),
 	m_graphicsFamilyQueueIndex(graphicsFamilyQueueIndex),
+	m_computeFamilyQueueIndex(computeFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
 	m_transferFamilyQueueIndex(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
-	m_physicalProperties(properties)
+	m_physicalProperties(properties),
+	m_framebufferAllocator(*this),
+	m_fenceManager(*this),
+	m_semaphoreManager(*this),
+	m_pipelineStorage(*this)
 {
 	vkGetDeviceQueue(m_device, m_graphicsFamilyQueueIndex, 0, &m_graphicsQueue);
+	vkGetDeviceQueue(m_device, m_computeFamilyQueueIndex, 0, &m_computeQueue);
 	vkGetDeviceQueue(m_device, m_transferFamilyQueueIndex, 0, &m_transferQueue);
 	create_vma_allocator();
-	create_default_sampler();		
+	create_default_sampler();	
+	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		m_frameResources.emplace_back(new FrameResource{*this});
+	}
 }
 Vulkan::LogicalDevice::~LogicalDevice()
 {
+	if (m_wsiState.aquire != VK_NULL_HANDLE) {
+		vkDestroySemaphore(get_device(), m_wsiState.aquire, get_allocator());
+	}
+	if (m_wsiState.present != VK_NULL_HANDLE) {
+		vkDestroySemaphore(get_device(), m_wsiState.present, get_allocator());
+	}
 }
 
 void Vulkan::LogicalDevice::demo_setup()
@@ -78,14 +95,189 @@ void Vulkan::LogicalDevice::demo_teardown()
 	vkDestroyDescriptorSetLayout(m_device, m_descriptorSetLayout, m_allocator);
 	m_vmaAllocator->destroy_buffer(m_vertexBuffer, m_vertexBufferAllocation);
 	m_vmaAllocator->destroy_buffer(m_indexBuffer, m_indexBufferAllocation);
-	for (auto semaphore : m_imageAvailableSemaphores)
-		vkDestroySemaphore(m_device, semaphore, m_allocator);
-	for (auto semaphore : m_renderFinishedSemaphores)
-		vkDestroySemaphore(m_device, semaphore, m_allocator);
-	for (auto fence : m_inFlightFences)
-		vkDestroyFence(m_device, fence, m_allocator);
 	for (uint32_t i = 0; i < m_swapchains[0]->get_image_count(); i++)
 		vkDestroyCommandPool(m_device, m_commandPool[i], m_allocator);
+}
+
+void Vulkan::LogicalDevice::next_frame()
+{
+
+	m_currentFrame++;
+	if (m_currentFrame >= m_frameResources.size())
+		m_currentFrame = 0;
+	frame().begin();
+	m_wsiState.swapchain_touched = false;
+	if (m_wsiState.aquire != VK_NULL_HANDLE)
+		frame().recycledSemaphores.push_back(m_wsiState.aquire);
+	m_wsiState.aquire = m_semaphoreManager.request_semaphore();
+	m_demoImage = m_swapchains[0]->aquire_next_image(m_wsiState.aquire);
+}
+
+void Vulkan::LogicalDevice::end_frame()
+{
+	if (!frame().submittedTransferCmds.empty()) {
+		FenceHandle fence(m_fenceManager);
+		submit_queue(CommandBuffer::Type::Transfer, &fence);
+		frame().waitForFences.emplace_back(std::move(fence));
+	}
+	if (!frame().submittedGraphicsCmds.empty()) {
+		FenceHandle fence(m_fenceManager);
+		submit_queue(CommandBuffer::Type::Generic, &fence);
+		frame().waitForFences.emplace_back(std::move(fence));
+	}
+	if (!frame().submittedComputeCmds.empty()) {
+		FenceHandle fence(m_fenceManager);
+		submit_queue(CommandBuffer::Type::Compute,&fence);
+		frame().waitForFences.emplace_back(std::move(fence));
+	}
+	m_swapchains[0]->present_queue();
+}
+
+void Vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* fence)
+{
+	auto& submissions = get_current_submissions(type);
+	//Split commands into pre and post swapchain commands
+	std::array<VkSubmitInfo, 2> submitInfos;
+	uint32_t submitCounts = 0;
+	std::vector<VkCommandBuffer> commands;
+	std::array<std::vector<VkSemaphore>, 2> waitSemaphores;
+	std::array<std::vector<VkFlags>, 2> waitStages;
+	std::array<std::vector<VkSemaphore>, 2> signalSemaphores;
+	commands.reserve(submissions.size());
+	uint32_t firstSubmissionCount = 0;
+	bool touched = false;
+	for (auto& submission : submissions) {
+		if (submission->swapchain_touched() && (firstSubmissionCount == 0) && !m_wsiState.swapchain_touched) {
+			if (!commands.empty()) {
+				VkSubmitInfo submitInfo{
+					.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+					.commandBufferCount = static_cast<uint32_t>(commands.size()),
+					.pCommandBuffers = commands.data(),
+				};
+				submitInfos[submitCounts++] = submitInfo;
+			}
+			firstSubmissionCount = static_cast<uint32_t>(commands.size());
+			touched = true;
+		}
+		commands.push_back(submission->get_handle());
+	}
+	if (!commands.empty()) {
+		VkSubmitInfo submitInfo{
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.commandBufferCount = static_cast<uint32_t>(commands.size()) - firstSubmissionCount,
+			.pCommandBuffers = &commands[firstSubmissionCount],
+		};
+		submitInfos[submitCounts++] = submitInfo;
+		if (touched && !m_wsiState.swapchain_touched) {
+			if (m_wsiState.aquire != VK_NULL_HANDLE) {
+				waitSemaphores[submitCounts - 1].push_back(m_wsiState.aquire);
+				waitStages[submitCounts - 1].push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+				frame().recycledSemaphores.push_back(m_wsiState.aquire);
+				m_wsiState.aquire = VK_NULL_HANDLE;
+			}
+			if (m_wsiState.present != VK_NULL_HANDLE)
+				frame().recycledSemaphores.push_back(m_wsiState.present);
+			m_wsiState.present = request_semaphore();
+			signalSemaphores[submitCounts - 1].push_back(m_wsiState.present);
+			m_wsiState.swapchain_touched = true;
+		}
+	}
+	if (fence)
+		*fence = m_fenceManager.request_fence();
+	for (uint32_t i = 0; i < submitCounts; i++) {
+		submitInfos[i].waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores[i].size());
+		submitInfos[i].pWaitSemaphores = waitSemaphores[i].data();
+		submitInfos[i].pWaitDstStageMask = waitStages[i].data(); 
+
+		submitInfos[i].signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores[i].size());
+		submitInfos[i].pSignalSemaphores = signalSemaphores[i].data();
+
+	}
+	VkFence localFence = fence ? *fence : VK_NULL_HANDLE;
+	if (auto result = vkQueueSubmit(m_graphicsQueue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not submit to Queue, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not submit to Queue, out of device memory");
+		}
+		if (result == VK_ERROR_DEVICE_LOST) {
+			throw std::runtime_error("VK: could not submit to Queue, device lost");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+		}
+	}
+	submissions.clear();
+}
+
+void Vulkan::LogicalDevice::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
+{
+	auto& curFrame = frame();
+	if (auto res = std::find(curFrame.deletedFramebuffer.cbegin(), curFrame.deletedFramebuffer.cend(), framebuffer); res == curFrame.deletedFramebuffer.cend())
+		frame().deletedFramebuffer.push_back(framebuffer);
+}
+
+void Vulkan::LogicalDevice::queue_image_deletion(VkImage image) noexcept
+{
+	frame().deletedImages.push_back(image);
+}
+
+void Vulkan::LogicalDevice::queue_image_deletion(VkImage image, VmaAllocation allocation) noexcept
+{
+	frame().deletedImageAllocations.push_back({ image, allocation });
+}
+
+void Vulkan::LogicalDevice::queue_image_view_deletion(VkImageView imageView) noexcept
+{
+	frame().deletedImageViews.push_back(imageView);
+}
+
+void Vulkan::LogicalDevice::queue_buffer_view_deletion(VkBufferView bufferView) noexcept
+{
+	frame().deletedBufferViews.push_back(bufferView);
+}
+
+void Vulkan::LogicalDevice::queue_buffer_deletion(VkBuffer buffer, VmaAllocation allocation) noexcept
+{
+	frame().deletedBufferAllocations.push_back({ buffer, allocation });
+}
+
+void Vulkan::LogicalDevice::submit(CommandBufferHandle cmd)
+{
+	auto type = cmd->get_type();
+	auto& submissions = get_current_submissions(type);
+	cmd->end();
+	submissions.push_back(cmd);
+}
+
+Vulkan::LogicalDevice::FrameResource& Vulkan::LogicalDevice::frame()
+{
+	return *m_frameResources[m_currentFrame];
+}
+
+std::vector<Vulkan::CommandBufferHandle>& Vulkan::LogicalDevice::get_current_submissions(CommandBuffer::Type type)
+{
+	switch (type) {
+	case CommandBuffer::Type::Generic:
+		return frame().submittedGraphicsCmds;
+	case CommandBuffer::Type::Transfer:
+		return frame().submittedTransferCmds;
+	case CommandBuffer::Type::Compute:
+		return frame().submittedComputeCmds;
+	}
+}
+
+Vulkan::CommandPool& Vulkan::LogicalDevice::get_pool(uint32_t threadId, CommandBuffer::Type type)
+{
+	switch (type) {
+	case CommandBuffer::Type::Compute:
+		return frame().computePool[threadId];
+	case CommandBuffer::Type::Generic:
+		return frame().graphicsPool[threadId];
+	case CommandBuffer::Type::Transfer:
+		return frame().transferPool[threadId];
+	}
 }
 
 std::pair<VkBuffer, VmaAllocation> Vulkan::LogicalDevice::create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage)
@@ -113,8 +305,6 @@ void Vulkan::LogicalDevice::cleanup_swapchain()
 	}
 	vkDestroyDescriptorPool(m_device, m_descriptorPool, m_allocator);
 
-	for(uint32_t i=0; i < m_swapchains[0]->get_image_count(); i++)
-		vkFreeCommandBuffers(m_device, m_commandPool[i], 1, &m_commandBuffers[i]);
 	
 	//vkDestroyPipeline(m_device, m_graphicsPipeline, m_allocator);
 	//vkDestroyPipelineLayout(m_device, m_pipelineLayout, m_allocator);
@@ -194,50 +384,6 @@ void Vulkan::LogicalDevice::copy_buffer_to_image(VkBuffer buffer, VkImage image,
 	};
 	vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	end_single_time_commands(commandBuffer);
-}
-Utility::HashValue Vulkan::LogicalDevice::hash_compatible_renderpass(const RenderpassCreateInfo& info)
-{
-	Utility::Hasher hasher;
-	//std::bitset<MAX_ATTACHMENTS + 1> optimalLayouts;
-
-	hasher(info.colorAttachmentsCount);
-	for (uint32_t i = 0; i < info.colorAttachmentsCount; i++) {
-		auto attachment = info.colorAttachmentsViews[i];
-		hasher(attachment->get_format());
-		//Ignore Optimal Layout for now
-		//if (attachment->get_image()->get_info().layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		//	optimalLayouts.set(i);
-
-		hasher(attachment->get_image()->get_info().layout);
-
-	}
-	if (info.depthStencilAttachment) {
-		//Ignore Optimal Layout for now
-		//if (info.depthStencilAttachment->get_image()->get_info().layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		//	optimalLayouts.set(info.colorAttachmentsCount);
-		hasher(info.depthStencilAttachment->get_format());
-	}
-	else {
-		hasher(VK_FORMAT_UNDEFINED);
-	}
-
-
-	//Ignore Multiview for now
-	hasher(info.subpassCount);
-	for (uint32_t i = 0; i < info.subpassCount; i++) {
-		const auto& subpass = info.subpasses[i];
-		hasher(subpass.colorAttachmentsCount);
-		hasher(subpass.inputAttachmentsCount);
-		hasher(subpass.resolveAttachmentsCount);
-		hasher(subpass.depthStencil);
-		for (uint32_t j = 0; j < subpass.colorAttachmentsCount; j++)
-			hasher(subpass.colorAttachments[j]);
-		for (uint32_t j = 0; j < subpass.inputAttachmentsCount; j++)
-			hasher(subpass.inputAttachments[j]);
-		for (uint32_t j = 0; j < subpass.resolveAttachmentsCount; j++)
-			hasher(subpass.resolveAttachments[j]);
-	}
-	return hasher();
 }
 VkCommandBuffer Vulkan::LogicalDevice::begin_single_time_commands()
 {
@@ -403,46 +549,9 @@ void Vulkan::LogicalDevice::create_command_pool()
 	}
 }
 
-void Vulkan::LogicalDevice::create_command_buffer(uint32_t image)
+void Vulkan::LogicalDevice::demo_create_command_buffer(VkCommandBuffer buf)
 {
-	if (m_commandBuffers.size() != m_swapchains[0]->get_image_count())
-		m_commandBuffers.resize(m_swapchains[0]->get_image_count());
-	vkResetCommandPool(m_device, m_commandPool[image], 0);
-	vkFreeCommandBuffers(m_device, m_commandPool[image], 1, &m_commandBuffers[image]);
-	VkCommandBufferAllocateInfo commandBufferAllocateInfo{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.commandPool = m_commandPool[image],
-		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandBufferCount = static_cast<uint32_t> (1),
-	};
 	
-	if (auto result = vkAllocateCommandBuffers(m_device, &commandBufferAllocateInfo, &m_commandBuffers[image]); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not allocate command buffers, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not allocate command buffers, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-	VkCommandBufferBeginInfo commandBufferBeginInfo{
-		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-		.pInheritanceInfo = nullptr,
-	};
-	if (auto result = vkBeginCommandBuffer(m_commandBuffers[image], &commandBufferBeginInfo); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not begin command buffer, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not begin command buffer, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
 		
 	VkViewport viewport{
 	.x = 0.0f,
@@ -475,84 +584,26 @@ void Vulkan::LogicalDevice::create_command_buffer(uint32_t image)
 		.clearValueCount = static_cast<uint32_t>(clearColors.size()),
 		.pClearValues = clearColors.data(),
 	};
-	vkCmdBeginRenderPass(m_commandBuffers[image], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-	vkCmdBindPipeline(m_commandBuffers[image], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
-	vkCmdSetViewport(m_commandBuffers[image], 0, 1, &viewport);
-	vkCmdSetScissor(m_commandBuffers[image], 0, 1, &scissor);
+	vkCmdBindIndexBuffer(buf, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 	VkBuffer vertexBuffers[]{ m_vertexBuffer };
 	VkDeviceSize offsets[]{ 0 };
-	vkCmdBindVertexBuffers(m_commandBuffers[image], 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(m_commandBuffers[image], m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindVertexBuffers(buf, 0, 1, vertexBuffers, offsets);
+	vkCmdBeginRenderPass(buf, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
+	vkCmdSetViewport(buf, 0, 1, &viewport);
+	vkCmdSetScissor(buf, 0, 1, &scissor);
 	uint32_t offset[] = { 0,0 };
-	vkCmdBindDescriptorSets(m_commandBuffers[image],VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[image],1, offset);
+	vkCmdBindDescriptorSets(buf,VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_demoImage],1, offset);
 	//vkCmdPushConstants(m_commandBuffers[i], m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Math::mat44), &model);
-	vkCmdDrawIndexed(m_commandBuffers[image], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 	offset[0] = sizeof(Ubo);
-	vkCmdBindDescriptorSets(m_commandBuffers[image], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[image], 1, offset);
-	vkCmdDrawIndexed(m_commandBuffers[image], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-	vkCmdEndRenderPass(m_commandBuffers[image]);
+	vkCmdBindDescriptorSets(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_demoImage], 1, offset);
+	vkCmdDrawIndexed(buf, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	vkCmdEndRenderPass(buf);
 		
-	if (auto result = vkEndCommandBuffer(m_commandBuffers[image]); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not end command buffer, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not end command buffer, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
 	
 }
 
-void Vulkan::LogicalDevice::create_sync_objects()
-{
-	VkSemaphoreCreateInfo semaphoreCreateInfo{
-		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-	};
-	VkFenceCreateInfo fenceCreateInfo{
-		.sType =VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-		.flags = VK_FENCE_CREATE_SIGNALED_BIT
-	};
-	m_imagesInFlight.resize(m_swapchains[0]->get_image_count(), VK_NULL_HANDLE);
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		
-		if (auto result = vkCreateSemaphore(m_device, &semaphoreCreateInfo, m_allocator, &m_imageAvailableSemaphores[i]); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of device memory");
-			}
-			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
-		}
-		if (auto result = vkCreateSemaphore(m_device, &semaphoreCreateInfo, m_allocator, &m_renderFinishedSemaphores[i]); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of device memory");
-			}
-			else {
-				throw std::runtime_error("VK: error "+ std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
-		}
-		if (auto result = vkCreateFence(m_device, &fenceCreateInfo, m_allocator, &m_inFlightFences[i]); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not create fence, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not create fence, out of device memory");
-			}
-			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
-		}
-	}
-}
 
 void Vulkan::LogicalDevice::create_vma_allocator()
 {
@@ -779,6 +830,7 @@ Vulkan::Shader* Vulkan::LogicalDevice::request_shader(const std::string& shaderN
 
 Vulkan::Program* Vulkan::LogicalDevice::request_program(const std::vector<Shader*>& shaders)
 {
+	
 	if (!m_programIds.contains(shaders)) {
 		m_programIds.emplace(shaders, m_programStorage.emplace(shaders));
 	}
@@ -796,19 +848,12 @@ Vulkan::PipelineLayout* Vulkan::LogicalDevice::request_pipeline_layout(const Sha
 
 Vulkan::Renderpass* Vulkan::LogicalDevice::request_render_pass(const RenderpassCreateInfo& info)
 {
-	auto compatibleHash = hash_compatible_renderpass(info);
-	Utility::Hasher hasher(compatibleHash);
-	
-	hasher(info.opFlags.to_ulong());
-	hasher(info.loadAttachments.to_ulong());
-	hasher(info.clearAttachments.to_ulong());
-	hasher(info.storeAttachments.to_ulong());
-
-	auto result = m_renderpassIds.find(hasher());
+	auto [compatibleHash, actualHash] = info.get_hash();
+	auto result = m_renderpassIds.find(actualHash);
 	size_t renderpassId = 0;
 	if (result == m_renderpassIds.end()) {
 		renderpassId = m_renderpassStorage.emplace(*this, info);
-		m_renderpassIds[hasher()] = renderpassId;
+		m_renderpassIds[actualHash] = renderpassId;
 		if (m_compatibleRenderpassIds.find(compatibleHash) == m_compatibleRenderpassIds.end())
 			m_compatibleRenderpassIds[compatibleHash] = renderpassId;
 	}
@@ -820,7 +865,7 @@ Vulkan::Renderpass* Vulkan::LogicalDevice::request_render_pass(const RenderpassC
 
 Vulkan::Renderpass* Vulkan::LogicalDevice::request_compatible_render_pass(const RenderpassCreateInfo& info)
 {
-	auto compatibleHash = hash_compatible_renderpass(info);
+	auto [compatibleHash, actualHash] = info.get_hash();
 
 	auto result = m_compatibleRenderpassIds.find(compatibleHash);
 	size_t renderpassId = 0;
@@ -828,17 +873,17 @@ Vulkan::Renderpass* Vulkan::LogicalDevice::request_compatible_render_pass(const 
 		renderpassId = m_renderpassStorage.emplace(*this, info);
 		m_compatibleRenderpassIds[compatibleHash] = renderpassId;
 
-		Utility::Hasher hasher(compatibleHash);
-		hasher(info.opFlags.to_ulong());
-		hasher(info.loadAttachments.to_ulong());
-		hasher(info.clearAttachments.to_ulong());
-		hasher(info.storeAttachments.to_ulong());
-		m_renderpassIds[hasher()] = renderpassId;
+		m_renderpassIds[actualHash] = renderpassId;
 	}
 	else {
 		renderpassId = result->second;
 	}
 	return m_renderpassStorage.get(renderpassId);
+}
+
+VkPipeline Vulkan::LogicalDevice::request_pipeline(const PipelineCompile& compile) noexcept
+{
+	return m_pipelineStorage.request_pipeline(compile);
 }
 
 const Vulkan::RenderpassCreateInfo& Vulkan::LogicalDevice::request_swapchain_render_pass() noexcept
@@ -849,40 +894,52 @@ const Vulkan::RenderpassCreateInfo& Vulkan::LogicalDevice::request_swapchain_ren
 	m_swapChainRenderPassInfo.colorAttachmentsViews[0] = m_swapchains[0]->get_swapchain_image_view();
 
 	m_swapChainRenderPassInfo.depthStencilAttachment = m_depthView.get();
-	m_swapChainRenderPassInfo.subpassCount = 1;
 	m_swapChainRenderPassInfo.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
 
-	m_swapChainRenderPassInfo.subpasses[0] = RenderpassCreateInfo::SubpassCreateInfo{
-		.colorAttachments {0},
-		.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite,
-		.colorAttachmentsCount = 1,
-
-	};
 	return m_swapChainRenderPassInfo;
 }
 
 Vulkan::Framebuffer* Vulkan::LogicalDevice::request_framebuffer(const RenderpassCreateInfo& info)
 {
-	auto compatibleRenderpass = request_compatible_render_pass(info);
-	Utility::Hasher hasher;
+	return m_framebufferAllocator.request_framebuffer(info);
+}
 
-	for (uint32_t i = 0; i < info.colorAttachmentsCount; i++) {
-		assert(info.colorAttachmentsViews[i]);
-		hasher(info.colorAttachmentsViews[i]);
-	}
-	if (info.depthStencilAttachment)
-		hasher(info.depthStencilAttachment);
+VkSemaphore Vulkan::LogicalDevice::request_semaphore()
+{
+	return m_semaphoreManager.request_semaphore();
+}
 
-	if (auto res = m_framebufferIds.find(hasher()); res != m_framebufferIds.end())
-		return m_framebufferStorage.get(res->second);
-
-	auto idx = m_framebufferStorage.emplace(*this, info);
-	m_framebufferIds.emplace(hasher(), idx);
-	return m_framebufferStorage.get(idx);
+Vulkan::CommandBufferHandle Vulkan::LogicalDevice::request_command_buffer(CommandBuffer::Type type)
+{
+	auto cmd = get_pool(get_thread_index(),type).request_command_buffer();
+	VkCommandBufferBeginInfo beginInfo{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+	};
+	vkBeginCommandBuffer(cmd, &beginInfo);
+	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
 
 
+
+VkSemaphore Vulkan::LogicalDevice::get_present_semaphore()
+{
+	auto tempSem = m_wsiState.present;
+	m_wsiState.present = VK_NULL_HANDLE;
+	frame().recycledSemaphores.push_back(tempSem);
+	return tempSem;
+}
+
+bool Vulkan::LogicalDevice::swapchain_touched()  const noexcept
+{
+	return m_wsiState.swapchain_touched;
+}
+
+VkQueue Vulkan::LogicalDevice::get_graphics_queue()  const noexcept
+{
+	return m_graphicsQueue;
+}
 
 void Vulkan::LogicalDevice::create_program()
 {
@@ -901,16 +958,30 @@ void Vulkan::LogicalDevice::create_program()
 	m_pipelineLayout = program->get_pipeline_layout()->get_layout();
 	
 	//Renderpass dummy(*this,m_renderPass);
-	m_pipeline = std::make_unique<Pipeline>(Pipeline::request_pipeline(*this, program, request_compatible_render_pass(request_swapchain_render_pass()), 0));
-	m_graphicsPipeline = m_pipeline->get_pipeline();
+	Attributes attributes{};
+	attributes.formats[0] = get_format<Math::vec3>();
+	attributes.formats[1] = get_format<Math::vec3>();
+	attributes.formats[2] = get_format<Math::vec2>();
+	InputRates inputRates{};
+	inputRates.set(0, VK_VERTEX_INPUT_RATE_VERTEX);
+	PipelineCompile compile{
+		.state = defaultPipelineState,
+		.program = program,
+		.compatibleRenderPass = request_compatible_render_pass(request_swapchain_render_pass()),
+		.attributes = attributes,
+		.inputRates = inputRates,
+		.subpassIndex = 0
+	};
+	m_graphicsPipeline = m_pipelineStorage.request_pipeline(compile);
+
 }
 
 
 
 
-void Vulkan::LogicalDevice::update_uniform_buffer(uint32_t currentImage)
+void Vulkan::LogicalDevice::update_uniform_buffer()
 {
-
+	auto currentImage = m_demoImage;
 	Ubo ubo[2]{ {
 		Math::mat44::identity(),
 		Math::mat44::identity(),
@@ -981,7 +1052,6 @@ void Vulkan::LogicalDevice::create_default_sampler()
 			createInfo.minFilter = VK_FILTER_NEAREST;
 			break;
 		}
-
 		switch (type) {
 		case DefaultSampler::LinearShadow:
 		case DefaultSampler::NearestShadow:
@@ -1011,93 +1081,6 @@ Vulkan::Sampler* Vulkan::LogicalDevice::get_default_sampler(DefaultSampler sampl
 	return m_defaultSampler[static_cast<size_t>(samplerType)].get();
 }
 
-void Vulkan::LogicalDevice::draw_frame()
-{
-	if (auto result = vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not wait for fence(s), out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not wait for fence(s), out of device memory");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not wait for fence(s), device lost");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-	uint32_t imageIndex = m_swapchains[0]->aquire_next_image(m_imageAvailableSemaphores[m_currentFrame]);
-	if (m_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-		if (auto result = vkWaitForFences(m_device, 1, &m_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not wait for fence(s), out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not wait for fence(s), out of device memory");
-			}
-			if (result == VK_ERROR_DEVICE_LOST) {
-				throw std::runtime_error("VK: could not wait for fence(s), device lost");
-			}
-			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
-		}
-	}
-
-	create_command_buffer(imageIndex);
-	m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame];
-
-	VkSemaphore waitSemaphores[]{ m_imageAvailableSemaphores[m_currentFrame] };
-	VkPipelineStageFlags waitStages[]{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	VkSemaphore signalSemaphores[]{ m_renderFinishedSemaphores[m_currentFrame] };
-
-	update_uniform_buffer(imageIndex);
-	VkSubmitInfo submitInfo{
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = waitSemaphores,
-		.pWaitDstStageMask = waitStages,
-		.commandBufferCount = 1,
-		.pCommandBuffers = &m_commandBuffers[imageIndex],
-		.signalSemaphoreCount = 1,
-		.pSignalSemaphores = signalSemaphores
-	};
-
-	if (auto result = vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not reset fence(s), out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not reset fence(s), out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-
-	if (auto result = vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_inFlightFences[m_currentFrame]); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not submit Queue, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not submit Queue, out of device memory");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not submit Queue, device lost");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-	m_swapchains[0]->present_to_queue(m_graphicsQueue, signalSemaphores, 1);
-	
-	m_currentFrame++;
-	if (m_currentFrame == MAX_FRAMES_IN_FLIGHT)
-		m_currentFrame = 0;
-	//vkQueueWaitIdle(m_graphicsQueue);
-}
-
 void Vulkan::LogicalDevice::wait_idle()
 {
 	vkDeviceWaitIdle(m_device);
@@ -1123,3 +1106,66 @@ void Vulkan::LogicalDevice::recreate_swap_chain()
 
 }
 
+Vulkan::LogicalDevice::FrameResource::~FrameResource()
+{
+	begin();
+}
+
+void Vulkan::LogicalDevice::FrameResource::begin()
+{
+	if (!waitForFences.empty()) {
+		std::vector<VkFence> fences;
+		fences.reserve(waitForFences.size());
+		for (auto &fence : waitForFences)
+			fences.push_back(fence);
+		vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
+		waitForFences.clear();
+	}
+	for (auto& pool : graphicsPool) {
+		pool.reset();
+	}
+	for (auto& pool : computePool) {
+		pool.reset();
+	}
+	for (auto& pool : transferPool) {
+		pool.reset();
+	}
+	for (auto fb : deletedFramebuffer) {
+		vkDestroyFramebuffer(r_device.get_device(), fb, r_device.get_allocator());
+	}
+	deletedFramebuffer.clear();
+
+	for (auto semaphore : deletedSemaphores) {
+		vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
+	}
+	deletedSemaphores.clear();
+
+	for (auto semaphore : recycledSemaphores) {
+		r_device.m_semaphoreManager.recycle_semaphore(semaphore);
+	}
+	recycledSemaphores.clear();
+
+	for (auto [buffer, allocation] : deletedBufferAllocations) {
+		vmaDestroyBuffer(r_device.get_vma_allocator(), buffer, allocation);
+	}
+	deletedBufferAllocations.clear();
+	for (auto [image, allocation] : deletedImageAllocations) {
+		vmaDestroyImage(r_device.get_vma_allocator(), image, allocation);
+	}
+	deletedImageAllocations.clear();
+
+	for (auto image : deletedImages) {
+		vkDestroyImage(r_device.get_device(), image, r_device.get_allocator());
+	}
+	deletedImages.clear();
+
+	for (auto imageView : deletedImageViews) {
+		vkDestroyImageView(r_device.get_device(), imageView, r_device.get_allocator());
+	}
+	deletedImageViews.clear();
+
+	for (auto bufferView : deletedBufferViews) {
+		vkDestroyBufferView(r_device.get_device(), bufferView, r_device.get_allocator());
+	}
+	deletedBufferViews.clear();
+}

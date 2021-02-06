@@ -64,7 +64,7 @@ Vulkan::Image::Image(LogicalDevice& parent, const ImageInfo& info, VmaMemoryUsag
 			.height = info.height,
 			.depth = info.depth
 		},
-		.mipLevels = info.mipLevels,
+		.mipLevels = info.mipLevels == 0? calculate_mip_levels(info.width, info.height, info.depth):info.mipLevels,
 		.arrayLayers = info.arrayLayers,
 		.samples = info.samples,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -95,7 +95,76 @@ Vulkan::Image::Image(Image&& other) noexcept :
 
 Vulkan::Image::~Image() noexcept
 {
-	if (m_vmaAllocation != VK_NULL_HANDLE) {
-		vmaDestroyImage(r_device.get_vma_allocator(), m_vkHandle, m_vmaAllocation);
+
+	
+	if (m_ownsAllocation && m_ownsImage) {
+		if (m_vmaAllocation != VK_NULL_HANDLE && m_vkHandle != VK_NULL_HANDLE) {
+			r_device.queue_image_deletion(m_vkHandle, m_vmaAllocation);
+		}
+	}
+	else if (m_ownsImage) {
+		r_device.queue_image_deletion(m_vkHandle);
+	}
+	else if (m_ownsAllocation) {
+		assert(false);
+	}
+}
+
+uint32_t Vulkan::Image::calculate_mip_levels(uint32_t width, uint32_t height, uint32_t depth)
+{
+	uint32_t size = Math::max(Math::max(width, height), depth);
+	uint32_t mipLevels =0;
+	while (size)
+	{
+		mipLevels++;
+		size >>= 1;
+	}
+	return mipLevels;
+}
+
+inline VkPipelineStageFlags Vulkan::Image::possible_stages_from_image_usage(VkImageUsageFlags usage)
+{
+	VkPipelineStageFlags flags{};
+	
+	if (usage & (VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+		flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	if (usage & (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+		flags |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	}
+	if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+		flags |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	if (usage & (VK_IMAGE_USAGE_STORAGE_BIT)) {
+		flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	}
+	if (usage & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
+		flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+		flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	}
+	return flags;
+}
+
+inline VkAccessFlags Vulkan::Image::possible_access_from_image_layout(VkImageLayout layout)
+{
+	switch (layout) {
+	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+		return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+		return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+		return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+		return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		return VK_ACCESS_TRANSFER_WRITE_BIT;
+	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+		return VK_ACCESS_TRANSFER_READ_BIT;
+
+	default:
+		return ~0u;
 	}
 }

@@ -52,9 +52,38 @@ namespace Utility {
         }
         EXPECT_EQ(result, result2);
     }
+    TEST(Utility, bitset) {
+        enum class Test {
+            A,
+            B,
+            C,
+            Size
+        };
+        using enum Test;
+        Utility::bitset<static_cast<size_t>(Test::Size), Test> bitset;
+        bitset.set(A);
+        EXPECT_TRUE(bitset.test(A));
+        EXPECT_FALSE(bitset.test(B));
+        EXPECT_FALSE(bitset.test(C));
+        auto r = bitset.get_and_clear(Test::A);
+        //The following mustn't compile
+        //auto l = bitset.get_and_clear(0);
+        EXPECT_TRUE(r.test(A));
+        EXPECT_FALSE(bitset.test(A));
+        EXPECT_FALSE(bitset.test(B));
+        EXPECT_FALSE(bitset.test(C));
+        bitset.set(C);
+        r = bitset.get_and_clear(A, B);
+        EXPECT_FALSE(bitset.test(A));
+        EXPECT_FALSE(bitset.test(B));
+        EXPECT_TRUE(bitset.test(C));
+
+
+    }
     TEST(Utility, Pool) {
         Utility::Pool<int> test;
     }
+
     TEST(Utility, PoolEmplace) {
         Utility::Pool<int> test;
         auto i0 = test.emplace(0);
@@ -135,6 +164,98 @@ namespace Utility {
         EXPECT_EQ(*i0, 0);
         EXPECT_EQ(*i1, 1);
         EXPECT_EQ(*i1_copy, 1);
+    }
+    TEST(Utility, PoolExtreme) {
+        Utility::Pool<int> test;
+        {
+            std::vector<PoolHandle<int>> handles;
+            auto iters = 10000;
+            for (int i = 0; i < iters; i++) {
+                handles.emplace_back(test.emplace(i));
+            }
+            EXPECT_EQ(test.size(), iters);
+            for (int i = 0; i < iters; i++) {
+                EXPECT_EQ(*handles[i], i);
+                //handles[i].remove();
+            }
+        }
+        EXPECT_EQ(test.size(), 0);
+    }
+    TEST(Utility, OwningHashMap) {
+        Utility::OwningHashMap<int> test;
+
+    }
+    TEST(Utility, OwningHashMapEmplace) {
+        Utility::OwningHashMap<int> test;
+        auto i0 = test.emplace(Hash<int>()(0), 0);
+        auto i1 = test.emplace(Hash<int>()(1), 1);
+        auto i2 = test.emplace(Hash<int>()(2), 2);
+        auto i3 = test.emplace(Hash<int>()(3), 3);
+        auto i4 = test.emplace(Hash<int>()(4), 4);
+
+
+        EXPECT_EQ(*i0, 0);
+        EXPECT_EQ(*i1, 1);
+        EXPECT_EQ(*i2, 2);
+        EXPECT_EQ(*i3, 3);
+        EXPECT_EQ(*i4, 4);
+
+    }
+
+    TEST(Utility, OwningHashMapHandle) {
+        Utility::OwningHashMap<int> test;
+        {
+            auto i0 = test.emplace(Hash<int>()(0), 0);
+            auto i1 = test.emplace(Hash<int>()(1), 1);
+            auto i2 = test.emplace(Hash<int>()(2), 2);
+            auto i3 = test.emplace(Hash<int>()(3), 3);
+            auto i4 = test.emplace(Hash<int>()(4), 4);
+
+
+            EXPECT_EQ(*i0, 0);
+            EXPECT_EQ(*i1, 1);
+            EXPECT_EQ(*i2, 2);
+            EXPECT_EQ(*i3, 3);
+            EXPECT_EQ(*i4, 4);
+        }
+        EXPECT_EQ(test.size(), 0);
+    }
+    TEST(Utility, OwningHashMapHandleCopy) {
+        OwningHashMapHandle<int> a;
+        Utility::OwningHashMap<int> test;
+        {
+            auto i0 = test.emplace(Hash<int>()(0), 0);
+            auto i1 = test.emplace(Hash<int>()(1), 1);
+            auto i2 = test.emplace(Hash<int>()(2), 2);
+            auto i3 = test.emplace(Hash<int>()(3), 3);
+            auto i4 = test.emplace(Hash<int>()(4), 4);
+
+
+            EXPECT_EQ(*i0, 0);
+            EXPECT_EQ(*i1, 1);
+            EXPECT_EQ(*i2, 2);
+            EXPECT_EQ(*i3, 3);
+            EXPECT_EQ(*i4, 4);
+            a = i1;
+        }
+        EXPECT_EQ(test.size(), 1);
+        EXPECT_EQ(*a, 1);
+    }
+    TEST(Utility, OwningHashMapExtreme) {
+        Utility::OwningHashMap<int> test;
+        {
+            std::vector<OwningHashMapHandle<int>> handles;
+            auto iters = 10000;
+            for (int i = 0; i < iters; i++) {
+                handles.emplace_back(test.emplace(Hash<int>()(i),i));
+            }
+            EXPECT_EQ(test.size(), iters);
+            for (int i = 0; i < iters; i++) {
+                EXPECT_EQ(*handles[i], i);
+                //handles[i].remove();
+            }
+        }
+        EXPECT_EQ(test.size(), 0);
     }
     TEST(Utility, LinkedBucketListMove) {
         struct T {
@@ -229,34 +350,6 @@ namespace Utility {
             }
             auto end = std::chrono::steady_clock::now();
             //std::cout << "List push back took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
-        }
-    }
-    TEST(Utility, hashMap) {
-        HashMap<int*> map;
-        int num_obj = 1000;
-        std::vector<int> vec;
-        for (int i = 0; i < num_obj; i++)
-            vec.push_back(i);
-        for(int i = 0; i < num_obj; i++)
-            map.insert(Hasher()(i), &vec[i]);
-        for (int i = 0; i < num_obj; i++) {
-            EXPECT_TRUE(map.get(Hasher()(i)).has_value());
-            EXPECT_EQ(**map.get(Hasher()(i)), vec[i]);
-        }
-        for (int i = num_obj; i < num_obj*2; i++) {
-            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
-        }
-        int delNum = 100;
-        for (int i = 0; i < delNum; i++) {
-            map.remove(Hasher()(i));
-            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
-        }
-        for (int i = 0; i < delNum; i++) {
-            EXPECT_FALSE(map.get(Hasher()(i)).has_value());
-        }
-        for (int i = delNum; i < num_obj; i++) {
-            EXPECT_TRUE(map.get(Hasher()(i)).has_value());
-            EXPECT_EQ(**map.get(Hasher()(i)), vec[i]);
         }
     }
 }

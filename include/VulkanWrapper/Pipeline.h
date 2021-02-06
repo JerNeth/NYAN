@@ -64,7 +64,7 @@ namespace Vulkan {
 			return std::memcmp(&left, &right, sizeof(PipelineState))== 0;
 		}
 	};
-	static_assert(sizeof(PipelineState) == 16);
+	static_assert(sizeof(PipelineState) == 16, "Somehting wrong with PipelineState");
 	constexpr PipelineState defaultPipelineState {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
@@ -94,40 +94,104 @@ namespace Vulkan {
 		.conservative_raster = 0,
 		.padding {}
 	};
+	struct Attributes {
+		std::array<VkFormat, MAX_VERTEX_ATTRIBUTES> formats;
+		std::array<uint8_t, MAX_VERTEX_ATTRIBUTES> bindings;
+		std::pair<VkFormat, uint8_t> operator[](size_t idx) {
+			assert(idx < MAX_VERTEX_ATTRIBUTES);
+			return {formats[idx], bindings[idx]};
+		}
+
+		std::pair<VkFormat, uint8_t> operator[](size_t idx) const {
+			assert(idx < MAX_VERTEX_ATTRIBUTES);
+			return { formats[idx], bindings[idx] };
+		}
+		friend bool operator==(const Attributes& lhs, const Attributes& rhs) {
+			return lhs.formats == rhs.formats && lhs.bindings == rhs.bindings;
+		}
+	};
+	struct InputRates {
+		void set(size_t idx, VkVertexInputRate rate) {
+			if(rate == VkVertexInputRate::VK_VERTEX_INPUT_RATE_INSTANCE)
+				rates.set(idx);
+			else
+				rates.reset(idx);
+		}
+		VkVertexInputRate operator[](size_t idx) const {
+			return static_cast<VkVertexInputRate>(rates.test(idx));
+		}
+		friend bool operator==(const InputRates& lhs, const InputRates& rhs) {
+			return lhs.rates == rhs.rates;
+		}
+	private:
+		std::bitset<MAX_VERTEX_BINDINGS> rates;
+	};
 	struct PipelineCompile {
 		PipelineState state;
 		Program* program;
 		Renderpass* compatibleRenderPass;
+		Attributes attributes;
+		InputRates inputRates;
 
 		uint32_t subpassIndex;
+		friend bool operator==(const PipelineCompile& lhs, const PipelineCompile& rhs) {
+			if (!lhs.program || !rhs.program)
+				return false;
+			if (!lhs.compatibleRenderPass || !rhs.compatibleRenderPass)
+				return false;
+			return (lhs.program->get_hash() == rhs.program->get_hash()) &&
+					(lhs.compatibleRenderPass->get_compatible_hash() == rhs.compatibleRenderPass->get_compatible_hash()) &&
+					(lhs.attributes == rhs.attributes) &&
+					(lhs.inputRates == rhs.inputRates) &&
+					(lhs.subpassIndex == rhs.subpassIndex);
+		}
+	};
+	struct PipelineCompileHasher {
+		size_t operator()(const PipelineCompile& compile) const {
+			Utility::Hasher h;
+			h(compile.state);
+			h(compile.program->get_hash());
+			h(compile.compatibleRenderPass->get_compatible_hash());
+			h(compile.subpassIndex);
+			h(compile.attributes);
+			h(compile.inputRates);
+			//Dont't hash pipeline layout since it depends entirely on the shaders, which we already hashed
+
+			return h();
+		}
 	};
 	class PipelineLayout {
 	public:
 		PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout);
 		~PipelineLayout();
 		const VkPipelineLayout& get_layout() const;
-		const ShaderLayout& get_resourceLayout() const;
+		const ShaderLayout& get_shader_layout() const;
 		const DescriptorSetAllocator* get_allocator(size_t set) const;
+		DescriptorSetAllocator* get_allocator(size_t set);
 		const VkDescriptorUpdateTemplate& get_update_template(size_t set) const;
+		Utility::HashValue get_hash() const noexcept {
+			return m_hashValue;
+		}
 		
 	private:
 		void create_update_template();
 		LogicalDevice& r_device;
-		ShaderLayout m_resourceLayout;
+		ShaderLayout m_shaderLayout;
 		std::array<DescriptorSetAllocator*, MAX_DESCRIPTOR_SETS> m_descriptors{};
 		std::array<VkDescriptorUpdateTemplate, MAX_DESCRIPTOR_SETS> m_updateTemplate{};
 		VkPipelineLayout m_layout = VK_NULL_HANDLE;
+		Utility::HashValue m_hashValue;
 	};
 	class Pipeline {
 	public:
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
-		~Pipeline() noexcept;
-		Pipeline(Pipeline& other) = delete;
-		Pipeline(Pipeline&& other) noexcept;
-		const Pipeline& operator=(Pipeline& other) = delete;
-		const Pipeline& operator=(Pipeline&&) = delete;
+		//~Pipeline() noexcept;
+		Pipeline(Pipeline& other) = default;
+		Pipeline(Pipeline&& other) = default;
+		Pipeline& operator=(const Pipeline& other) = default;
+		Pipeline& operator=(Pipeline&& other) = default;
 		VkPipeline get_pipeline() const noexcept;
-		static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, uint32_t subpassIndex);
+		static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex);
 		static void reset_static_pipeline();
 		static void set_depth_write(bool depthWrite);
 		static void set_depth_test(bool depthTest);
@@ -164,13 +228,22 @@ namespace Vulkan {
 		static void set_conservative_raster(bool conservativeRaster);
 
 	private:
-
-
-		LogicalDevice& r_device;
-
 		VkPipeline m_pipeline = VK_NULL_HANDLE;
 		static PipelineState s_pipelineState;
 		
+	};
+	class PipelineStorage {
+	public:
+		PipelineStorage(LogicalDevice& device);
+		PipelineStorage(PipelineStorage&) = delete;
+		PipelineStorage(PipelineStorage&&) = delete;
+		PipelineStorage& operator=(PipelineStorage&) = delete;
+		PipelineStorage& operator=(PipelineStorage&&) = delete;
+		~PipelineStorage();
+		VkPipeline request_pipeline(const PipelineCompile& compile);
+	private:
+		LogicalDevice& r_device;
+		std::unordered_map<PipelineCompile, Pipeline, PipelineCompileHasher> m_hashMap;
 	};
 }
 

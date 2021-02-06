@@ -53,6 +53,7 @@ Vulkan::ImageView* Vulkan::AttachmentAllocator::request_attachment(uint32_t widt
 	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
 		return m_imageViewStorage.get(res->second);
 	ImageInfo info = ImageInfo::render_target(width, height, format);
+	info.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	m_imageStorage.emplace(r_device,info, VMA_MEMORY_USAGE_GPU_ONLY);
 	return nullptr;
 }

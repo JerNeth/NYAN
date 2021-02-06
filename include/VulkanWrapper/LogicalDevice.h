@@ -13,6 +13,9 @@
 #include "Swapchain.h"
 #include "Allocator.h"
 #include "CommandPool.h"
+#include "CommandBuffer.h"
+#include "Manager.h"
+#include "Buffer.h"
 namespace Vulkan {
 	class LogicalDevice;
 	class Instance;
@@ -49,48 +52,17 @@ namespace Vulkan {
 		VkDevice m_vkHandle = VK_NULL_HANDLE;
 		const VkAllocationCallbacks* m_allocator;
 	};
-	struct Frame {
-		LogicalDevice& r_device;
-		
-		std::vector<CommandPool> m_commandPool;
-	};
+	
 	struct Vertex {
 		std::array<float, 3> pos;
 		std::array<float, 3> color;
 		std::array<float, 2> texcoords;
-		static std::array<VkVertexInputBindingDescription, 1> get_binding_descriptions() {
-			std::array<VkVertexInputBindingDescription, 1> bindingDescriptions{ 
-				VkVertexInputBindingDescription{
-					.binding = 0,
-					.stride = sizeof(Vertex),
-					.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
-				}
-			};
-			return bindingDescriptions;
-		}
-		static std::array<VkVertexInputAttributeDescription, 3> get_attribute_descriptions() {
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{
-				VkVertexInputAttributeDescription{
-					.location = 0,
-					.binding = 0,
-					.format = VK_FORMAT_R32G32B32_SFLOAT,
-					.offset = offsetof(Vertex, pos)
-				},
-				VkVertexInputAttributeDescription{
-					.location = 1,
-					.binding = 0,
-					.format = VK_FORMAT_R32G32B32_SFLOAT,
-					.offset = offsetof(Vertex, color)
-				},
-				VkVertexInputAttributeDescription{
-					.location = 2,
-					.binding = 0,
-					.format = VK_FORMAT_R32G32_SFLOAT,
-					.offset = offsetof(Vertex, texcoords)
-				},
-			};
-			return attributeDescriptions;
-		}
+	};
+	struct WSIState {
+		VkSemaphore aquire = VK_NULL_HANDLE;
+		VkSemaphore present = VK_NULL_HANDLE;
+		bool swapchain_touched = false;
+		uint32_t index = 0;
 	};
 	constexpr std::array<Vertex, 8> vertices{
 		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
@@ -104,7 +76,7 @@ namespace Vulkan {
 		Vertex{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
 		*/
 	};
-	constexpr std::array<uint16_t, 12> indices = {
+	constexpr std::array<uint16_t, 6> indices = {
 		0, 1, 2, 2, 3, 0,
 		//4, 5, 6, 6, 7, 4
 	};
@@ -115,6 +87,52 @@ namespace Vulkan {
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
+		struct FrameResource {
+			FrameResource(LogicalDevice& device) : r_device(device){
+				/*commandPool.reserve(device.get_thread_count());
+				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+					commandPool.emplace_back(device, device.m_graphicsFamilyQueueIndex);
+				}*/
+				graphicsPool.reserve(device.get_thread_count());
+				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+					graphicsPool.emplace_back(device, device.m_graphicsFamilyQueueIndex);
+				}
+				computePool.reserve(device.get_thread_count());
+				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+					computePool.emplace_back(device, device.m_computeFamilyQueueIndex);
+				}
+				transferPool.reserve(device.get_thread_count());
+				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+					transferPool.emplace_back(device, device.m_transferFamilyQueueIndex);
+				}
+			}
+			LogicalDevice& r_device;
+			uint32_t frameIndex;
+
+			~FrameResource();
+
+			//std::vector<CommandPool> commandPool;
+			std::vector<CommandPool> graphicsPool;
+			std::vector<CommandPool> computePool;
+			std::vector<CommandPool> transferPool;
+			//std::vector<CommandBufferHandle> submittedCmds;
+			std::vector<CommandBufferHandle> submittedGraphicsCmds;
+			std::vector<CommandBufferHandle> submittedComputeCmds;
+			std::vector<CommandBufferHandle> submittedTransferCmds;
+
+			std::vector<VkBufferView> deletedBufferViews;
+			std::vector<VkImageView> deletedImageViews;
+			std::vector<VkImage> deletedImages;
+			std::vector<std::pair<VkImage, VmaAllocation>> deletedImageAllocations;
+			std::vector<std::pair<VkBuffer, VmaAllocation>> deletedBufferAllocations;
+			std::vector<VkFramebuffer> deletedFramebuffer;
+			std::vector<VkSemaphore> deletedSemaphores;
+			std::vector<VkSemaphore> recycledSemaphores;
+
+			std::vector<FenceHandle> waitForFences;
+
+			void begin();
+		};
 		friend class Swapchain;
 		friend class DeviceWrapper;
 		friend class Sampler;
@@ -127,16 +145,14 @@ namespace Vulkan {
 		
 	public:
 
-		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties);
+		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex , uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
 		LogicalDevice(LogicalDevice&&) = delete;
 		LogicalDevice& operator=(LogicalDevice&&) = delete;
-		void draw_frame();
 		void wait_idle();
 		void create_swap_chain();
-		void create_sync_objects();
 		void recreate_swap_chain();
 		void create_texture_image(uint32_t width, uint32_t height, uint32_t channels, char* imageData);
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
@@ -147,8 +163,20 @@ namespace Vulkan {
 		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
 		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
 		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
+		VkPipeline request_pipeline(const PipelineCompile& compile) noexcept;
 		const RenderpassCreateInfo& request_swapchain_render_pass() noexcept;
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
+		VkSemaphore request_semaphore();
+		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
+		uint32_t get_thread_index() {
+			return 0;
+		}
+		uint32_t get_thread_count() {
+			return 1;
+		}
+		VkSemaphore get_present_semaphore();
+		bool swapchain_touched() const noexcept;
+		VkQueue get_graphics_queue()  const noexcept;
 		void create_program();
 		void create_stuff() {
 			create_descriptor_sets();
@@ -164,7 +192,33 @@ namespace Vulkan {
 		VmaAllocator get_vma_allocator() const noexcept {
 			return m_vmaAllocator->get_handle();
 		}
+		void next_frame();
+		void end_frame();
+		void submit_queue(CommandBuffer::Type type, FenceHandle* fence);
+		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
+		void queue_image_deletion(VkImage image) noexcept;
+		void queue_image_deletion(VkImage image, VmaAllocation allocation) noexcept;
+		void queue_image_view_deletion(VkImageView imageView) noexcept;
+		void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
+		void queue_image_sampler_deletion(VkSampler sampler) noexcept;
+		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
+		void queue_buffer_deletion(VkBuffer buffer, VmaAllocation allocation) noexcept;
+		void submit(CommandBufferHandle cmd);
+
+		void demo_create_command_buffer(VkCommandBuffer buf);
+		FrameResource& frame();
+		uint32_t get_swapchain_image_index() const noexcept {
+			return m_wsiState.index;
+		}
+		uint32_t get_swapchain_image_count() const noexcept {
+			return m_wsiState.index;
+		}
+		void update_uniform_buffer();
+
+		Sampler* get_default_sampler(DefaultSampler samplerType);
 	private:
+		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
+		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);
 		std::pair<VkBuffer, VmaAllocation> create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage);
 		void cleanup_swapchain();
 		void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -180,7 +234,6 @@ namespace Vulkan {
 		void create_swapchain();
 		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
 		void create_command_pool();
-		void create_command_buffer(uint32_t image);
 		void create_vma_allocator();
 		template<size_t numBindings>
 		void create_descriptor_set_layout(std::array<VkDescriptorSetLayoutBinding, numBindings> bindings);
@@ -189,9 +242,7 @@ namespace Vulkan {
 		std::pair< VkImage, VmaAllocation> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags flags, VmaMemoryUsage memoryUsage);
 		
 		Utility::HashValue hash_compatible_renderpass(const RenderpassCreateInfo& info);
-		void update_uniform_buffer(uint32_t currentImage);
 		void create_default_sampler();
-		Sampler* get_default_sampler(DefaultSampler samplerType);
 
 		/// *******************************************************************
 		/// Member variables
@@ -201,11 +252,24 @@ namespace Vulkan {
 		DeviceWrapper m_device;
 		VkAllocationCallbacks* m_allocator = NULL;
 		std::unique_ptr<Allocator> m_vmaAllocator;
+
+		
+		WSIState m_wsiState;
+		Utility::Pool<Image> m_imagePool;
+		Utility::Pool<CommandBuffer> m_commandBufferPool;
+		FenceManager m_fenceManager;
+		SemaphoreManager m_semaphoreManager;
+
+		std::vector<std::unique_ptr<FrameResource>> m_frameResources;
+		FramebufferAllocator m_framebufferAllocator;
 		const uint32_t m_graphicsFamilyQueueIndex;
+		const uint32_t m_computeFamilyQueueIndex;
 		const uint32_t m_transferFamilyQueueIndex;
 		VkQueue m_graphicsQueue;
+		VkQueue m_computeQueue;
 		VkQueue m_transferQueue;
 		VkPhysicalDeviceProperties m_physicalProperties;
+
 
 		std::vector<std::unique_ptr<Swapchain>> m_swapchains;
 		VkPipelineLayout m_pipelineLayout;
@@ -226,6 +290,7 @@ namespace Vulkan {
 		VmaAllocation m_imageAllocation;
 		VkImageView m_imageView;
 		VkSampler m_imageSampler;
+		uint32_t m_demoImage = 0;
 
 		std::unique_ptr<ImageView> m_depthView;
 		std::unique_ptr<Image> m_depth;
@@ -233,17 +298,10 @@ namespace Vulkan {
 
 		std::vector<VkCommandPool> m_commandPool;
 		std::vector<VkCommandBuffer> m_commandBuffers;
-		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAvailableSemaphores;
-		std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_renderFinishedSemaphores;
-		std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_inFlightFences;
-		std::vector<VkFence> m_imagesInFlight;
 		size_t m_currentFrame = 0;
 
 		Program* m_program;
 		
-		
-
-		std::unique_ptr<Pipeline> m_pipeline;
 
 		RenderpassCreateInfo m_swapChainRenderPassInfo;
 
@@ -266,8 +324,12 @@ namespace Vulkan {
 		std::unordered_map<Utility::HashValue, size_t> m_compatibleRenderpassIds;
 		Utility::LinkedBucketList<Renderpass> m_renderpassStorage;
 
-		std::unordered_map<Utility::HashValue, size_t> m_framebufferIds;
-		Utility::LinkedBucketList<Framebuffer> m_framebufferStorage;
+		PipelineStorage m_pipelineStorage;
+
+		
+		
+
+		uint32_t m_frameIndex = 0;
 	};
 }
 #endif // VKLOGICALDEVICE_H

@@ -40,8 +40,9 @@ namespace Vulkan {
 		bool device_swapchain_suitable(const VkPhysicalDevice& device) const;
 		bool is_device_suitable(const VkPhysicalDevice& device) const;
 		uint32_t get_graphics_family_queue_index(const VkPhysicalDevice& device) const;
+		uint32_t get_compute_family_queue_index(const VkPhysicalDevice& device) const;
 		uint32_t get_transfer_family_queue_index(const VkPhysicalDevice& device) const;
-		std::tuple<VkDevice, uint32_t, uint32_t> setup_logical_device(const VkPhysicalDevice& device) const;
+		std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> setup_logical_device(const VkPhysicalDevice& device) const;
 
 		/// *******************************************************************
 		/// Member variables

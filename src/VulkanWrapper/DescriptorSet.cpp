@@ -5,13 +5,14 @@ r_device(parent)
 {
 	
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < r_device.get_thread_count(); i++)
 		perThread.emplace_back(new PerThread());
 
 
 	for (uint32_t i = 0; i < MAX_BINDINGS; i++) {
 		if (layout.stages[i]) {
 			uint32_t poolSize = layout.arraySizes[i] * MAX_SETS_PER_POOL;
+			VkSampler immutableSampler = layout.immutableSampler.test(i)? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
 			if (layout.imageSampler.test(i)) {
 				bindings.push_back(VkDescriptorSetLayoutBinding
 					{
@@ -19,7 +20,7 @@ r_device(parent)
 						.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 						.descriptorCount = layout.arraySizes[i],
 						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
-						.pImmutableSamplers = nullptr
+						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
 					}
 				);
 				poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolSize});
@@ -103,7 +104,7 @@ r_device(parent)
 						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
 						.descriptorCount = layout.arraySizes[i],
 						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
-						.pImmutableSamplers = nullptr
+						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
 					}
 				); 
 				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_SAMPLER, poolSize });
@@ -214,5 +215,6 @@ void Vulkan::DescriptorSetAllocator::clear()
 			vkDestroyDescriptorPool(r_device.m_device, pool, r_device.m_allocator);
 		}
 		state->pools.clear();
+
 	}
 }

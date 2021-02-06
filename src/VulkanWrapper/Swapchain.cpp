@@ -135,7 +135,7 @@ uint32_t Vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fen
 {
 	VkResult result{};
 	do {
-		if (result = vkAcquireNextImageKHR(r_device.m_device, m_vkHandle, timeout, semaphore, fence, &imageIndex); result != VK_SUCCESS) {
+		if (result = vkAcquireNextImageKHR(r_device.get_device(), m_vkHandle, timeout, semaphore, fence, &imageIndex); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 				throw std::runtime_error("VK: could not acquire next image, out of host memory");
 			}
@@ -157,7 +157,7 @@ uint32_t Vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fen
 			if (result == VK_SUBOPTIMAL_KHR) {
 				recreate_swapchain();
 			}
-			else {
+			else if (result != VK_NOT_READY){
 				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 			}
 		}
@@ -165,19 +165,23 @@ uint32_t Vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fen
 	return imageIndex;
 }
 
-void Vulkan::Swapchain::present_to_queue(VkQueue queue, const VkSemaphore* semaphores, uint32_t semaphoreCount)
+void Vulkan::Swapchain::present_queue()
 {
+	//if (!r_device.swapchain_touched())
+	//	return;
+
+	auto semaphore = r_device.get_present_semaphore();
 	VkPresentInfoKHR presentInfo{
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-		.waitSemaphoreCount = semaphoreCount,
-		.pWaitSemaphores = semaphores,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &semaphore,
 		.swapchainCount = 1,
 		.pSwapchains = &m_vkHandle,
 		.pImageIndices = &imageIndex,
 		.pResults = NULL
 	};
 
-	if (auto result = vkQueuePresentKHR(queue, &presentInfo); result != VK_SUCCESS) {
+	if (auto result = vkQueuePresentKHR(r_device.get_graphics_queue(), &presentInfo); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not present, out of host memory");
 		}
@@ -332,8 +336,10 @@ void Vulkan::Swapchain::create_images()
 		.type = VK_IMAGE_TYPE_2D,
 		.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
-	for (auto image : images)
+	for (auto image : images) {
 		m_swapchainImages.emplace_back(new Image(r_device, image, info));
+		m_swapchainImages.back()->disown();
+	}
 }
 
 void Vulkan::Swapchain::create_image_views()

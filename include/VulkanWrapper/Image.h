@@ -129,6 +129,7 @@ namespace Vulkan {
 		Image& operator=(Image&) = delete;
 		Image& operator=(Image&&) = delete;
 		~Image() noexcept;
+
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.width >> mipLevel);
 		}
@@ -144,10 +145,39 @@ namespace Vulkan {
 		const ImageInfo& get_info() const {
 			return m_info;
 		}
+		void disown_image() noexcept {
+			m_ownsImage = false;
+		}
+		void disown_allocation() noexcept {
+			m_ownsAllocation = false;
+		}
+		void disown() noexcept {
+			disown_image();
+			disown_allocation();
+		}
+		VkPipelineStageFlags get_stage_flags() const noexcept {
+			return m_stageFlags;
+		}
+		VkAccessFlags get_access_flags() const noexcept {
+			return m_accessFlags;
+		}
+		void set_stage_flags(VkPipelineStageFlags flags)  noexcept {
+			m_stageFlags =flags;
+		}
+		void set_access_flags(VkAccessFlags flags) noexcept {
+			m_accessFlags =flags;
+		}
+		static inline uint32_t calculate_mip_levels(uint32_t width, uint32_t height = 0, uint32_t depth = 0);
+		static inline VkPipelineStageFlags possible_stages_from_image_usage(VkImageUsageFlags usage);
+		static inline VkAccessFlags possible_access_from_image_layout(VkImageLayout layout);
 	private:
 		LogicalDevice& r_device;
+		bool m_ownsImage = true;
+		bool m_ownsAllocation = true;
 		VkImage m_vkHandle = VK_NULL_HANDLE;
 		VmaAllocation m_vmaAllocation = VK_NULL_HANDLE;
+		VkPipelineStageFlags m_stageFlags{};
+		VkAccessFlags m_accessFlags{};
 		ImageInfo m_info;
 	};
 }

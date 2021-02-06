@@ -2,6 +2,7 @@
 #define VKSAMPLER_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "Utility.h"
 
 namespace Vulkan {
 
@@ -34,7 +35,7 @@ namespace Vulkan {
 		VkBorderColor borderColor;
 		VkBool32 unnormalizedCoordinates;
 	};
-	class Sampler {
+	class Sampler : public Utility::UIDC{
 	public:
 		Sampler(LogicalDevice& parent, const SamplerCreateInfo& createInfo);
 		explicit operator VkSampler() const noexcept { return m_vkHandle; }
