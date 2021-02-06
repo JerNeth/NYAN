@@ -19,6 +19,7 @@ None, yet.
 	- [x] HashMap
 	- [x] LinkedBucketList
 	- [x] Pool
+	- [ ] ...
 - [x] Window management
 	- [x] Create a window
 	- [x] Get Vulkan Context
@@ -40,9 +41,10 @@ None, yet.
 	- [x] Framebuffer abstraction
 	- [x] Sampler abstraction
 	- [x] Descriptor set management 
+	- [ ] Command Pool abstraction
 	- [ ] Command Buffer abstraction
-	- [ ] Buffer abstraction
-	- [ ] Image abstraction
+	- [x] Buffer abstraction
+	- [x] Image abstraction
 - [ ] Scene representation
 
 ## Requirements
@@ -53,5 +55,6 @@ The engine depends on the following libraries:
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
+- [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross): automatically fetched
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): included in this repository
 - [stb](https://github.com/nothings/stb): included in this repository
