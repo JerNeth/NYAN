@@ -88,14 +88,16 @@ target_link_libraries(Demo2 Engine)
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
+target_compile_options(Engine PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall>)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)
     target_compile_options(Demo PRIVATE /WX)
-    target_compile_options(Engine PRIVATE /WX)
     target_compile_options(Third-Party-Dependencies PRIVATE /w)
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     target_compile_options(Demo PRIVATE -W4)
-    target_compile_options(Engine PRIVATE -W4)
     target_compile_options(Third-Party-Dependencies PRIVATE -Wno-everything)
     #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
 endif()
