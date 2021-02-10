@@ -386,6 +386,8 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logic
 	auto graphicsQueueFamilyIndex = get_graphics_family_queue_index(device);
 	auto computeQueueFamilyIndex = get_compute_family_queue_index(device);
 	auto transferQueueFamilyIndex = get_transfer_family_queue_index(device);
+	//uint32_t computeQueueFamilyIndex = ~0u;
+	//uint32_t transferQueueFamilyIndex = ~0u;
 	float queuePriority = 1.0f;
 
 	std::vector< VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -396,7 +398,7 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logic
 		.queueCount = 1,
 		.pQueuePriorities = &queuePriority
 		});
-	if (computeQueueFamilyIndex != ~0) {
+	if (computeQueueFamilyIndex != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = computeQueueFamilyIndex,
@@ -404,7 +406,7 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logic
 			.pQueuePriorities = &queuePriority
 			});
 	}
-	if (transferQueueFamilyIndex != ~0) {
+	if (transferQueueFamilyIndex != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = transferQueueFamilyIndex,

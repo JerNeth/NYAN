@@ -147,7 +147,7 @@ std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned t
 		state.stale.clear();
 		state.removeStale = false;
 	}
-	if (auto r = state.hashMap.get(hash); r) {
+	if (auto r = state.hashMap.get(hash); r.has_value()) {
 		state.stale.push_back(hash);
 		return {*r, true};
 	}
@@ -190,7 +190,7 @@ std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned t
 	if (auto result = vkAllocateDescriptorSets(r_device.m_device, &allocateInfo, state.vacant.data()); result != VK_SUCCESS) {
 		throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 	}
-
+	state.pools.push_back(pool);
 	state.stale.push_back(hash);
 	auto r = state.vacant.back();
 	state.vacant.pop_back();

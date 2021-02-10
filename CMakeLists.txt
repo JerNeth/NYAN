@@ -43,7 +43,7 @@ include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 
 # Imgui
-#include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
+include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 
 # SDL2
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
@@ -73,10 +73,10 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # Executables
 # ---------------------------------------------------------------------------
 
-add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC})
+add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC} ${IMGUI_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC})
 
-add_executable(Demo ${DEMO_SRC})# ${IMGUI_SRC})
+add_executable(Demo ${DEMO_SRC})# )
 add_executable(Demo2 ${DEMO2_SRC})
 add_dependencies(Demo shaders)
 add_dependencies(Demo2 shaders)

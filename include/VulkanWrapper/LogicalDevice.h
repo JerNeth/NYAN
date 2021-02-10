@@ -58,12 +58,7 @@ namespace Vulkan {
 		std::array<float, 3> color;
 		std::array<float, 2> texcoords;
 	};
-	struct WSIState {
-		VkSemaphore aquire = VK_NULL_HANDLE;
-		VkSemaphore present = VK_NULL_HANDLE;
-		bool swapchain_touched = false;
-		uint32_t index = 0;
-	};
+	
 	constexpr std::array<Vertex, 8> vertices{
 		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
 		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
@@ -87,6 +82,27 @@ namespace Vulkan {
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
+		struct WSIState {
+			VkSemaphore aquire = VK_NULL_HANDLE;
+			VkSemaphore present = VK_NULL_HANDLE;
+			std::vector<ImageHandle> swapchainImages;
+			bool swapchain_touched = false;
+			uint32_t index = 0;
+		};
+		struct Queue {
+			Queue() = default;
+			Queue(uint32_t family) : familyIndex(family) {}
+			std::vector<VkSemaphore> waitSemaphores;
+			std::vector<VkPipelineStageFlags> waitStages;
+			bool needsFence = false;
+
+			const uint32_t familyIndex = 0;
+			VkQueue queue = VK_NULL_HANDLE;
+		};
+		struct ImageBuffer {
+			BufferHandle buffer;
+			std::vector<VkBufferImageCopy> blits;
+		};
 		struct FrameResource {
 			FrameResource(LogicalDevice& device) : r_device(device){
 				/*commandPool.reserve(device.get_thread_count());
@@ -95,15 +111,15 @@ namespace Vulkan {
 				}*/
 				graphicsPool.reserve(device.get_thread_count());
 				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					graphicsPool.emplace_back(device, device.m_graphicsFamilyQueueIndex);
+					graphicsPool.emplace_back(device, device.m_graphics.familyIndex);
 				}
 				computePool.reserve(device.get_thread_count());
 				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					computePool.emplace_back(device, device.m_computeFamilyQueueIndex);
+					computePool.emplace_back(device, device.m_compute.familyIndex);
 				}
 				transferPool.reserve(device.get_thread_count());
 				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					transferPool.emplace_back(device, device.m_transferFamilyQueueIndex);
+					transferPool.emplace_back(device, device.m_transfer.familyIndex);
 				}
 			}
 			LogicalDevice& r_device;
@@ -122,6 +138,7 @@ namespace Vulkan {
 
 			std::vector<VkBufferView> deletedBufferViews;
 			std::vector<VkImageView> deletedImageViews;
+			std::vector<VkSampler> deletedSampler;
 			std::vector<VkImage> deletedImages;
 			std::vector<std::pair<VkImage, VmaAllocation>> deletedImageAllocations;
 			std::vector<std::pair<VkBuffer, VmaAllocation>> deletedBufferAllocations;
@@ -152,49 +169,41 @@ namespace Vulkan {
 		LogicalDevice(LogicalDevice&&) = delete;
 		LogicalDevice& operator=(LogicalDevice&&) = delete;
 		void wait_idle();
-		void create_swap_chain();
-		void recreate_swap_chain();
-		void create_texture_image(uint32_t width, uint32_t height, uint32_t channels, char* imageData);
+
+
+		BufferHandle create_buffer(const BufferInfo& info, const void * initialData = nullptr);
+		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
+		ImageHandle create_image(const ImageInfo& info, const void* data = nullptr, uint32_t rowLength = 0, uint32_t height = 0);
+
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
-		void register_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
-		Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
-		Shader* request_shader(const std::string& shaderName) const;
+		size_t register_shader(const std::vector<uint32_t>& shaderCode);
+		//Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
+		//Shader* request_shader(const std::string& shaderName) noexcept;
+		Shader* request_shader(size_t id);
 		Program* request_program(const std::vector<Shader*>& shaders);
 		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
 		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
 		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
 		VkPipeline request_pipeline(const PipelineCompile& compile) noexcept;
-		const RenderpassCreateInfo& request_swapchain_render_pass() noexcept;
+		RenderpassCreateInfo request_swapchain_render_pass() noexcept;
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
-		uint32_t get_thread_index() {
-			return 0;
-		}
-		uint32_t get_thread_count() {
-			return 1;
-		}
+		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
+		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
+		
 		VkSemaphore get_present_semaphore();
 		bool swapchain_touched() const noexcept;
 		VkQueue get_graphics_queue()  const noexcept;
-		void create_program();
-		void create_stuff() {
-			create_descriptor_sets();
-		}
-		void demo_setup();
-		void demo_teardown();
-		VkDevice get_device() const noexcept{
-			return m_device;
-		}
-		VkAllocationCallbacks* get_allocator() const noexcept {
-			return m_allocator;
-		}
-		VmaAllocator get_vma_allocator() const noexcept {
-			return m_vmaAllocator->get_handle();
-		}
+		void set_acquire_semaphore(uint32_t index, VkSemaphore semaphore) noexcept;
+
+		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format);
+		const ImageView* get_swapchain_image_view() const noexcept;
+		ImageView* get_swapchain_image_view() noexcept;
+
 		void next_frame();
 		void end_frame();
-		void submit_queue(CommandBuffer::Type type, FenceHandle* fence);
+		void submit_queue(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr);
 		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
 		void queue_image_deletion(VkImage image) noexcept;
 		void queue_image_deletion(VkImage image, VmaAllocation allocation) noexcept;
@@ -203,45 +212,61 @@ namespace Vulkan {
 		void queue_image_sampler_deletion(VkSampler sampler) noexcept;
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
 		void queue_buffer_deletion(VkBuffer buffer, VmaAllocation allocation) noexcept;
-		void submit(CommandBufferHandle cmd);
+		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
+		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
+		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr);
+		void wait_no_lock() noexcept;
+		void clear_semaphores() noexcept;
 
 		void demo_create_command_buffer(VkCommandBuffer buf);
 		FrameResource& frame();
+		uint32_t get_thread_index() const noexcept {
+			return 0;
+		}
+		uint32_t get_thread_count() const noexcept {
+			return 1;
+		}
+		VkDevice get_device() const noexcept {
+			return m_device;
+		}
+		VkAllocationCallbacks* get_allocator() const noexcept {
+			return m_allocator;
+		}
+		Allocator* get_vma_allocator() const noexcept {
+			return m_vmaAllocator.get();
+		}
+
 		uint32_t get_swapchain_image_index() const noexcept {
 			return m_wsiState.index;
 		}
 		uint32_t get_swapchain_image_count() const noexcept {
-			return m_wsiState.index;
+			return static_cast<uint32_t>(m_wsiState.swapchainImages.size());
 		}
+		uint32_t get_swapchain_width() const noexcept {
+			return get_swapchain_image_view()->get_image()->get_width();
+		}
+		uint32_t get_swapchain_height() const noexcept {
+			return get_swapchain_image_view()->get_image()->get_height();
+		}
+		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 		void update_uniform_buffer();
 
-		Sampler* get_default_sampler(DefaultSampler samplerType);
 	private:
+		Queue& get_queue(CommandBuffer::Type type) noexcept {
+			switch (type) {
+			case CommandBuffer::Type::Generic:
+				return m_graphics;
+			case CommandBuffer::Type::Compute:
+				return m_compute;
+			case CommandBuffer::Type::Transfer:
+				return m_transfer;
+			}
+		}
+		ImageBuffer create_staging_buffer(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height);
+		ImageHandle create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData);
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
 		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);
-		std::pair<VkBuffer, VmaAllocation> create_buffer(VkDeviceSize size, VkBufferUsageFlags  usage, VmaMemoryUsage memoryUsage);
-		void cleanup_swapchain();
-		void copy_buffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-		void transition_image_layout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-		void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-		VkCommandBuffer begin_single_time_commands();
-		void end_single_time_commands(VkCommandBuffer commandBuffer);
-		void create_texture_image_view();
-		void create_depth_resources();
-		void create_vertex_buffer();
-		void create_index_buffer();
-		void create_uniform_buffers();
-		void create_swapchain();
-		VkImageView create_image_view(VkFormat format, VkImage image, VkImageAspectFlags aspect);
-		void create_command_pool();
 		void create_vma_allocator();
-		template<size_t numBindings>
-		void create_descriptor_set_layout(std::array<VkDescriptorSetLayoutBinding, numBindings> bindings);
-		void create_descriptor_sets();
-		void create_descriptor_pool();
-		std::pair< VkImage, VmaAllocation> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags flags, VmaMemoryUsage memoryUsage);
-		
-		Utility::HashValue hash_compatible_renderpass(const RenderpassCreateInfo& info);
 		void create_default_sampler();
 
 		/// *******************************************************************
@@ -254,24 +279,26 @@ namespace Vulkan {
 		std::unique_ptr<Allocator> m_vmaAllocator;
 
 		
-		WSIState m_wsiState;
-		Utility::Pool<Image> m_imagePool;
-		Utility::Pool<CommandBuffer> m_commandBufferPool;
 		FenceManager m_fenceManager;
 		SemaphoreManager m_semaphoreManager;
 
 		std::vector<std::unique_ptr<FrameResource>> m_frameResources;
+
+		Utility::Pool<CommandBuffer> m_commandBufferPool;
+		Utility::Pool<Buffer> m_bufferPool;
+		Utility::LinkedBucketList<ImageView> m_imageViewPool;
+		Utility::LinkedBucketList<Image> m_imagePool;
+		WSIState m_wsiState;
+
+		AttachmentAllocator m_attachmentAllocator;
 		FramebufferAllocator m_framebufferAllocator;
-		const uint32_t m_graphicsFamilyQueueIndex;
-		const uint32_t m_computeFamilyQueueIndex;
-		const uint32_t m_transferFamilyQueueIndex;
-		VkQueue m_graphicsQueue;
-		VkQueue m_computeQueue;
-		VkQueue m_transferQueue;
+		Queue m_graphics;
+		Queue m_compute;
+		Queue m_transfer;
 		VkPhysicalDeviceProperties m_physicalProperties;
 
 
-		std::vector<std::unique_ptr<Swapchain>> m_swapchains;
+		//std::vector<std::unique_ptr<Swapchain>> m_swapchains;
 		VkPipelineLayout m_pipelineLayout;
 		VkPipeline m_graphicsPipeline;
 		
@@ -286,14 +313,6 @@ namespace Vulkan {
 		VmaAllocation m_vertexBufferAllocation;
 		VkBuffer m_indexBuffer;
 		VmaAllocation m_indexBufferAllocation;
-		VkImage m_image;
-		VmaAllocation m_imageAllocation;
-		VkImageView m_imageView;
-		VkSampler m_imageSampler;
-		uint32_t m_demoImage = 0;
-
-		std::unique_ptr<ImageView> m_depthView;
-		std::unique_ptr<Image> m_depth;
 
 
 		std::vector<VkCommandPool> m_commandPool;
@@ -309,7 +328,7 @@ namespace Vulkan {
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
 
 		//TODO use other data structures
-		std::unordered_map< std::string, size_t> m_shaderIds;
+		//std::unordered_map< std::string, size_t> m_shaderIds;
 		Utility::LinkedBucketList<Shader> m_shaderStorage;
 
 		std::unordered_map< std::vector<Shader*>, size_t, Utility::VectorHash<Shader*>> m_programIds;
@@ -325,11 +344,6 @@ namespace Vulkan {
 		Utility::LinkedBucketList<Renderpass> m_renderpassStorage;
 
 		PipelineStorage m_pipelineStorage;
-
-		
-		
-
-		uint32_t m_frameIndex = 0;
 	};
 }
 #endif // VKLOGICALDEVICE_H

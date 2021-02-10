@@ -61,6 +61,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 	
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
+		layout.used.set(set);
 		layout.descriptors[set].uniformBuffer.set(binding);
 		array_info(layout.descriptors, type, set, binding);
 	}

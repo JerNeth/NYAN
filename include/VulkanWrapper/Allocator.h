@@ -4,6 +4,7 @@
 #include "VulkanIncludes.h"
 #include "Image.h"
 #include "Utility.h"
+#include <unordered_map>
 
 namespace Vulkan {
 	class LogicalDevice;
@@ -25,16 +26,47 @@ namespace Vulkan {
 	private:
 		VmaAllocator m_VmaHandle = VK_NULL_HANDLE;
 	};
-
+	template<typename T>
+	class MappedMemoryHandle {
+	public:
+		MappedMemoryHandle(Allocator* allocator, VmaAllocation allocation) : 
+			m_allocation(allocation),
+			m_allocator(allocator)
+		{
+			m_allocator->map_memory(m_allocation, reinterpret_cast<void**>(&m_ptr));
+		}
+		~MappedMemoryHandle() {
+			if(m_allocator)
+				m_allocator->unmap_memory(m_allocation);
+		}
+		MappedMemoryHandle(MappedMemoryHandle&) = delete;
+		MappedMemoryHandle(MappedMemoryHandle&& other) noexcept : 
+			m_ptr(other.m_ptr),
+			m_allocation(other.m_allocation),
+			m_allocator(other.m_allocator)
+		{
+			other.m_allocator = nullptr;
+		}
+		MappedMemoryHandle& operator=(const MappedMemoryHandle&) = delete;
+		MappedMemoryHandle& operator=(MappedMemoryHandle&&) = delete;
+		T* get() {
+			return m_ptr;
+		}
+	private:
+		T* m_ptr;
+		VmaAllocation m_allocation;
+		Allocator* m_allocator;
+	};
 	class AttachmentAllocator {
 	public:
 		AttachmentAllocator(LogicalDevice& parent);
-		ImageView* request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, uint32_t samples = 1, uint32_t layers = 1);
+		void clear() noexcept {
+			m_attachmentIds.clear();
+		}
+		ImageView* request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
 	private:
 		LogicalDevice& r_device;
-		std::unordered_map<Utility::HashValue, size_t> m_attachmentIds;
-		Utility::LinkedBucketList<ImageView> m_imageViewStorage;
-		Utility::LinkedBucketList<Image> m_imageStorage;
+		std::unordered_map<Utility::HashValue, ImageHandle> m_attachmentIds;
 		std::shared_mutex m_mutex;
 	};
 

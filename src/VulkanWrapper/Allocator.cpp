@@ -1,4 +1,5 @@
 #include "Allocator.h"
+#include "LogicalDevice.h"
 
 Vulkan::Allocator::Allocator(VmaAllocator handle) :
 	m_VmaHandle(handle)
@@ -41,19 +42,17 @@ Vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent)
 {
 }
-Vulkan::ImageView* Vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, uint32_t samples, uint32_t layers)
+Vulkan::ImageView* Vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples)
 {
 	Utility::Hasher hasher;
 	hasher(width);
 	hasher(height);
 	hasher(format);
 	hasher(index);
-	hasher(samples);
-	auto hash = hasher(layers);
+	auto hash = hasher(samples);
 	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
-		return m_imageViewStorage.get(res->second);
+		return res->second->get_view();
 	ImageInfo info = ImageInfo::render_target(width, height, format);
 	info.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	m_imageStorage.emplace(r_device,info, VMA_MEMORY_USAGE_GPU_ONLY);
-	return nullptr;
+	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second->get_view();
 }

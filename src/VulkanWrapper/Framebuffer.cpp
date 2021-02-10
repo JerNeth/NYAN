@@ -121,9 +121,9 @@ Vulkan::Framebuffer* Vulkan::FramebufferAllocator::request_framebuffer(const Ren
 
 	auto hashVal = hasher();
 	if (auto res = m_framebufferIds.find(hasher()); res != m_framebufferIds.end())
-		return m_framebufferStorage.get(res->second);
+		return m_framebufferStorage.get_ptr(res->second);
 
-	auto idx = m_framebufferStorage.emplace(r_device, info);
+	auto idx = m_framebufferStorage.emplace_intrusive(r_device, info);
 	m_framebufferIds.emplace(hasher(), idx);
-	return m_framebufferStorage.get(idx);
+	return m_framebufferStorage.get_ptr(idx);
 }

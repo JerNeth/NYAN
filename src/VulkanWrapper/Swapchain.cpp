@@ -5,44 +5,7 @@ Vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id) :
 	r_device(parent),
 	m_id(id)
 {
-	{
-		auto surfaceFormats = r_device.r_instance.get_surface_formats();
-		m_state.surfaceFormat = surfaceFormats[0];
-		if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
-			[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
-			_surfaceFormat != surfaceFormats.cend())
-			m_state.surfaceFormat = *_surfaceFormat;
-	}
-	{
-		auto presentModes = r_device.r_instance.get_present_modes();
-		m_state.presentMode = VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR;
-		if (std::find(presentModes.cbegin(), presentModes.cend(), VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR) != presentModes.cend()) {
-			m_state.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-		}
-	}
-	{
-		auto capabilities = r_device.r_instance.get_surface_capabilites();
-		m_state.minImageCount = capabilities.minImageCount + 1;
-		if (capabilities.maxImageCount > 0 && m_state.minImageCount > capabilities.maxImageCount) {
-			m_state.minImageCount = capabilities.maxImageCount;
-		}
-		m_state.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
-			m_state.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-		}
-		if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
-			m_state.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		}
-		if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
-			m_state.compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
-		}
-		if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
-			m_state.compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
-		}
-		m_state.transform = capabilities.currentTransform;
-	}
-	update_extent();
-	create_swapchain();
+	
 	
 }
 
@@ -133,42 +96,14 @@ uint32_t Vulkan::Swapchain::get_height() const
 
 uint32_t Vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fence, uint64_t timeout)
 {
-	VkResult result{};
-	do {
-		if (result = vkAcquireNextImageKHR(r_device.get_device(), m_vkHandle, timeout, semaphore, fence, &imageIndex); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not acquire next image, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not acquire next image, out of device memory");
-			}
-			if (result == VK_ERROR_DEVICE_LOST) {
-				throw std::runtime_error("VK: could not acquire next image, device lost");
-			}
-			if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-				recreate_swapchain();
-			}
-			if (result == VK_ERROR_SURFACE_LOST_KHR) {
-				throw std::runtime_error("VK: could not acquire next image, surface lost");
-			}
-			if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
-				throw std::runtime_error("VK: could not acquire next image, fullscreen exclusive mode lost");
-			}
-			if (result == VK_SUBOPTIMAL_KHR) {
-				recreate_swapchain();
-			}
-			else if (result != VK_NOT_READY){
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-			}
-		}
-	} while (result != VK_SUCCESS);
+	
 	return imageIndex;
 }
 
 void Vulkan::Swapchain::present_queue()
 {
-	//if (!r_device.swapchain_touched())
-	//	return;
+	if (!r_device.swapchain_touched())
+		return;
 
 	auto semaphore = r_device.get_present_semaphore();
 	VkPresentInfoKHR presentInfo{
@@ -238,53 +173,7 @@ void Vulkan::Swapchain::create_swapchain()
 {
 
 	//assert(m_vkHandle == VK_NULL_HANDLE);
-	VkSwapchainKHR old = m_vkHandle;
-	VkSwapchainCreateInfoKHR createInfo{
-		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface = r_device.r_instance.get_surface(),
-		.minImageCount = m_state.minImageCount,
-		.imageFormat = m_state.surfaceFormat.format,
-		.imageColorSpace = m_state.surfaceFormat.colorSpace,
-		.imageExtent = m_state.swapchainExtent,
-		.imageArrayLayers = 1,
-		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-		.queueFamilyIndexCount = 0,
-		.pQueueFamilyIndices = nullptr,
-		.preTransform = m_state.transform,
-		.compositeAlpha = m_state.compositeAlpha,
-		.presentMode = m_state.presentMode,
-		.clipped = VK_TRUE,
-		.oldSwapchain = old
-	};
-	if (auto result = vkCreateSwapchainKHR(r_device.m_device, &createInfo, r_device.m_allocator, &m_vkHandle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, native window in use");
-		}
-		if (result == VK_ERROR_INITIALIZATION_FAILED) {
-			throw std::runtime_error("VK: could not create swapchain, initialization failed");
-		}
-		if (result == VK_ERROR_SURFACE_LOST_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, surface lost");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not create swapchain, device lost");
-		}
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
 	
-	m_dirtyState = false;
-	if (old != VK_NULL_HANDLE) {
-		vkDestroySwapchainKHR(r_device.m_device, old, r_device.m_allocator);
-	}
 	create_images();
 	create_image_views();
 }

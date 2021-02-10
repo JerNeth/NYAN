@@ -46,7 +46,7 @@ namespace Vulkan {
 		Sampler& operator=(Sampler&) = delete;
 		Sampler& operator=(Sampler&&) = delete;
 	private:
-		LogicalDevice& parent;
+		LogicalDevice& r_device;
 		VkSampler m_vkHandle = VK_NULL_HANDLE;
 		SamplerCreateInfo m_createInfo;
 	};

@@ -74,6 +74,14 @@ namespace Utility {
 			}
 			return idx;
 		}
+		size_t count() const noexcept {
+			size_t ret = 0;
+			assert(m_occupancy);
+			for (size_t bucket = 0; bucket < m_size; bucket++) {
+				ret += std::popcount(m_occupancy[bucket]);
+			}
+			return ret;
+		}
 		void clear() noexcept {
 			for (size_t bucket = 0; bucket < m_size; bucket++) {
 				m_occupancy[bucket] = size_t(0);
@@ -129,6 +137,19 @@ namespace Utility {
 			auto& word = m_data[idx / bitsPerWord];
 			const auto bit = 1u << idx % bitsPerWord;
 			return static_cast<decltype(bit)>(word) & bit;
+		}
+		template<class Head, class... Tail>
+		using are_same = std::conjunction<std::is_same<Head, Tail>...>;
+		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
+		bool any_of(Tail... args) const noexcept {
+			bitset flags;
+			flags = (flags | ... | args);
+			for (size_t i = 0; i < typeSize; i++) {
+				bitType tmp = flags.m_data[i] & m_data[i];
+				if (tmp != 0)
+					return true;
+			}
+			return false;
 		}
 		template<class Head, class... Tail>
 		using are_same = std::conjunction<std::is_same<Head, Tail>...>;

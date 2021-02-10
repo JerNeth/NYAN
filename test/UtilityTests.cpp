@@ -168,7 +168,7 @@ namespace Utility {
     TEST(Utility, PoolExtreme) {
         Utility::Pool<int> test;
         {
-            std::vector<PoolHandle<int>> handles;
+            std::vector<ObjectHandle<int, Pool<int>>> handles;
             auto iters = 10000;
             for (int i = 0; i < iters; i++) {
                 handles.emplace_back(test.emplace(i));
@@ -271,33 +271,33 @@ namespace Utility {
         LinkedBucketList<T> l;
         T t2;
         auto id2 = l.insert(std::move(t2));
-        EXPECT_EQ(l.get(id2)->moved, 1);
-        auto id3 = l.emplace(std::move(t2));
-        EXPECT_EQ(l.get(id3)->moved, 1);
+        EXPECT_EQ(l.get_ptr(id2)->moved, 1);
+        auto id3 = l.emplace_intrusive(std::move(t2));
+        EXPECT_EQ(l.get_ptr(id3)->moved, 1);
     }
 
     TEST(Utility, linkedBucketList) {
         LinkedBucketList<uint32_t> l;
         auto id = l.insert(0);
         EXPECT_EQ(id, 0);
-        EXPECT_EQ(0, *l.get(id));
+        EXPECT_EQ(0, *l.get_ptr(id));
         auto id2 = l.insert(55);
         EXPECT_EQ(id2, 1);
-        EXPECT_EQ(55, *l.get(id2));
+        EXPECT_EQ(55, *l.get_ptr(id2));
         for (int i = 0; i < 55; i++) {
             l.insert(i);
         }
         //constexpr int i = sizeof(ListBucket<uint32_t, 16>);
-        auto id3 = l.emplace(696969);
-        auto id4 = l.emplace(6969699);
+        auto id3 = l.emplace_intrusive(696969);
+        auto id4 = l.emplace_intrusive(6969699);
         //l.print();
-        EXPECT_EQ(696969, *l.get(id3));
-        EXPECT_EQ(6969699, *l.get(id4));
-        l.delete_object(id3);
-        EXPECT_EQ(nullptr, l.get(id3));
-        EXPECT_EQ(6969699, *l.get(id4));
-        auto id5 = l.emplace(6969);
-        EXPECT_EQ(6969, *l.get(id5));
+        EXPECT_EQ(696969, *l.get_ptr(id3));
+        EXPECT_EQ(6969699, *l.get_ptr(id4));
+        l.remove(id3);
+        EXPECT_EQ(nullptr, l.get_ptr(id3));
+        EXPECT_EQ(6969699, *l.get_ptr(id4));
+        auto id5 = l.emplace_intrusive(6969);
+        EXPECT_EQ(6969, *l.get_ptr(id5));
         //l.print();
         int iters = 100;
         LinkedBucketList<uint32_t> other = std::move(l);
@@ -322,7 +322,7 @@ namespace Utility {
             //std::cout << "List insert took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
             start = std::chrono::steady_clock::now();
             for (int i = 0; i < iters; i++) {
-                p.delete_object(i);
+                p.remove(i);
             }
             end = std::chrono::steady_clock::now();
             //std::cout << "List delete took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";

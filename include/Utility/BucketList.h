@@ -4,6 +4,8 @@
 #include <iostream>
 #include <bitset>
 namespace Utility {
+	template<typename T, typename Container>
+	class ObjectHandle;
 	template<typename T, size_t bucketSize>
 	class ListBucket {
 		using Bucket = ListBucket<T, bucketSize>;
@@ -62,14 +64,14 @@ namespace Utility {
 			}
 			throw std::runtime_error("How?");
 		}
-		void delete_object(size_t id) {
+		void remove(size_t id) {
 			auto local_id = id - zero_id;
 			assert(local_id < bucketSize);
 			occupancy.reset(local_id);
 			reinterpret_cast<T*>(m_storage.data())[local_id].~T();
 			//std::memset(bucket + local_id, 0, sizeof(T));
 		}
-		const T* get(size_t id) const {
+		const T* get_ptr(size_t id) const {
 			auto local_id = id - zero_id;
 			assert(local_id < bucketSize);
 			if (occupancy.test(local_id))
@@ -77,13 +79,29 @@ namespace Utility {
 			else
 				return nullptr;
 		}
-		T* get(size_t id) {
+		T* get_ptr(size_t id) {
 			auto local_id = id - zero_id;
 			assert(local_id < bucketSize);
 			if (occupancy.test(local_id))
 				return &reinterpret_cast<T*>(m_storage.data())[local_id];
 			else
 				return nullptr;
+		}
+		const T& get(size_t id) const {
+			auto local_id = id - zero_id;
+			assert(local_id < bucketSize);
+			if (occupancy.test(local_id))
+				return reinterpret_cast<const T*>(m_storage.data())[local_id];
+			else
+				throw std::runtime_error("invalid id");
+		}
+		T& get(size_t id) {
+			auto local_id = id - zero_id;
+			assert(local_id < bucketSize);
+			if (occupancy.test(local_id))
+				return reinterpret_cast<T*>(m_storage.data())[local_id];
+			else
+				throw std::runtime_error("invalid id");
 		}
 		bool full() {
 			return occupancy.all();
@@ -112,7 +130,7 @@ namespace Utility {
 				next->print();
 		}
 	public:
-		const size_t zero_id;
+		const size_t zero_id = 0;
 	private:
 		std::bitset<bucketSize> occupancy = 0;
 		static_assert(sizeof(std::byte) == 1u);
@@ -136,8 +154,12 @@ namespace Utility {
 		{
 
 		}
+		LinkedBucketList& operator=(const LinkedBucketList& other) = delete;
+		LinkedBucketList& operator=(LinkedBucketList&& other) {
+			head = other.head.release();
+		}
 		~LinkedBucketList() {
-			head.reset(nullptr);
+
 		}
 		/// <summary>
 		/// Clears the list without deallocating
@@ -173,7 +195,7 @@ namespace Utility {
 			return current->insert(std::move(t));
 		}
 		template<class... Args>
-		size_t emplace(Args&&... args) {
+		[[nodiscard]] size_t emplace_intrusive(Args&&... args) {
 			if (!head) {
 				head = std::make_unique< Bucket>(0);
 			}
@@ -183,7 +205,11 @@ namespace Utility {
 			}
 			return current->emplace(std::forward<Args>(args)...);
 		}
-		void delete_object(size_t id) {
+		template<class... Args>
+		[[nodiscard]] ObjectHandle<T, LinkedBucketList<T>> emplace(Args&&... args) {
+			return ObjectHandle<T, LinkedBucketList<T>>(emplace_intrusive(std::forward<Args>(args)...), this);
+		}
+		void remove(size_t id) {
 			if (!head)
 				return;
 			Bucket* current = head.get();
@@ -192,9 +218,9 @@ namespace Utility {
 				if (current == nullptr)
 					return;
 			}
-			current->delete_object(id);
+			current->remove(id);
 		}
-		T* get(size_t id) const {
+		const T* get_ptr(size_t id) const {
 			if (!head)
 				return nullptr;
 			Bucket* current = head.get();
@@ -202,6 +228,39 @@ namespace Utility {
 				current = current->get_next();
 				if (current == nullptr)
 					return nullptr;
+			}
+			return current->get_ptr(id);
+		}
+		T* get_ptr(size_t id) {
+			if (!head)
+				return nullptr;
+			Bucket* current = head.get();
+			while (id >= (current->zero_id + bucketSize)) {
+				current = current->get_next();
+				if (current == nullptr)
+					return nullptr;
+			}
+			return current->get_ptr(id);
+		}
+		const T& get(size_t id) const {
+			if (!head)
+				throw std::runtime_error("invalid id");
+			Bucket* current = head.get();
+			while (id >= (current->zero_id + bucketSize)) {
+				current = current->get_next();
+				if (current == nullptr)
+					throw std::runtime_error("invalid id");
+			}
+			return current->get(id);
+		}
+		T& get(size_t id) {
+			if (!head)
+				throw std::runtime_error("invalid id");
+			Bucket* current = head.get();
+			while (id >= (current->zero_id + bucketSize)) {
+				current = current->get_next();
+				if (current == nullptr)
+					throw std::runtime_error("invalid id");
 			}
 			return current->get(id);
 		}

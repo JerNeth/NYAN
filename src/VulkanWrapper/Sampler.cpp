@@ -1,7 +1,7 @@
 #include "Sampler.h"
 #include "LogicalDevice.h"
-Vulkan::Sampler::Sampler(Vulkan::LogicalDevice& parent, const Vulkan::SamplerCreateInfo& createInfo):
-	parent(parent),
+Vulkan::Sampler::Sampler(Vulkan::LogicalDevice& device, const Vulkan::SamplerCreateInfo& createInfo):
+	r_device(device),
 	m_createInfo(createInfo)
 {
 	VkSamplerCreateInfo vkCreateInfo{
@@ -22,19 +22,19 @@ Vulkan::Sampler::Sampler(Vulkan::LogicalDevice& parent, const Vulkan::SamplerCre
 		.borderColor = m_createInfo.borderColor,
 		.unnormalizedCoordinates = m_createInfo.unnormalizedCoordinates,
 	};
-	if (auto result = vkCreateSampler(parent.m_device, &vkCreateInfo, parent.m_allocator, &m_vkHandle); result != VK_SUCCESS) {
+	if (auto result = vkCreateSampler(r_device.get_device(), &vkCreateInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
 		throw std::runtime_error("Could not create sampler");
 	}
 }
 Vulkan::Sampler::~Sampler() noexcept{
 	if (m_vkHandle != VK_NULL_HANDLE) {
-		vkDestroySampler(parent.m_device, m_vkHandle, parent.m_allocator);
+		r_device.queue_image_sampler_deletion(m_vkHandle);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
 Vulkan::Sampler::Sampler(Sampler&& other) noexcept:
-	parent(other.parent),
+	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
 	m_createInfo(other.m_createInfo)
 {

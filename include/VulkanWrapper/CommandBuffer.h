@@ -83,26 +83,109 @@ namespace Vulkan {
 		void flush_descriptor_sets();
 		void flush_descriptor_set(uint32_t set);
 		void rebind_descriptor_set(uint32_t set);
+		void copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size);
+		void copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount);
+		void copy_buffer(const Buffer& dst, const Buffer& src);
+		void blit_image(const Image& dst, const Image& src, const VkOffset3D &dstOffset, const VkOffset3D &dstExtent,
+						const VkOffset3D &srcOffset, const VkOffset3D &srcExtent, uint32_t dstLevel, uint32_t srcLevel,
+						uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter);
+		void generate_mips(const Image& image);
+		void copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy *blits);
+		void mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier);
+		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount,
+			const VkMemoryBarrier * globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
+			uint32_t imageBarrierCounts, const VkImageMemoryBarrier *imageBarriers);
+		void barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess);
+		void image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout,
+			VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags,
+			VkPipelineStageFlags dstStages,VkAccessFlags dstAccessFlags);
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 		void draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
-		void bind_uniform_buffer(uint32_t set, uint32_t binding, VkDeviceSize offset, VkDeviceSize size); //TODO: Add Buffer to bind
-		void bind_texture(uint32_t set, uint32_t binding); // TODO: Add Sampler and Image
+		 //TODO: Add Buffer to bind
+		void push_constants(const void* data, VkDeviceSize offset, VkDeviceSize range);
 		void bind_index_buffer(IndexState indexState);
 		void init_viewport_and_scissor(const RenderpassCreateInfo& info);
 		void begin_render_pass(const RenderpassCreateInfo& renderpassInfo, VkSubpassContents contents= VK_SUBPASS_CONTENTS_INLINE);
 		void end_render_pass();
 		void submit_secondary_command_buffer(const CommandBuffer& secondary);
+		void set_vertex_attribute(uint32_t location, uint32_t binding, VkFormat format);
+		void set_scissor(VkRect2D scissor);
+		VkRect2D get_scissor() const;
 		void bind_program(Program* program);
 		void next_subpass(VkSubpassContents subpass);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
+		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, const Sampler* sampler);
+		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, DefaultSampler sampler);
 		void bind_sampler(uint32_t set, uint32_t binding, const Sampler* sampler);
 		void bind_sampler(uint32_t set, uint32_t binding, DefaultSampler sampler);
 		void bind_texture(uint32_t set, uint32_t binding, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
+		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
+		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer);
+		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate);
 		VkCommandBuffer get_handle() const noexcept;
 		void end();
 		Type get_type() const noexcept {
 			return m_type;
+		}
+		void set_depth_test(VkBool32 enabled) noexcept {
+			if (m_pipelineState.state.depth_test != enabled) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.depth_test = enabled;
+			}
+		}
+		void set_depth_write(VkBool32 enabled) noexcept {
+			if (m_pipelineState.state.depth_write != enabled) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.depth_write = enabled;
+			}
+		}
+		void set_cull_mode(VkCullModeFlags cullMode) noexcept {
+			if (m_pipelineState.state.cull_mode != cullMode) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.cull_mode = cullMode;
+			}
+		}
+		void set_blend_enable(VkBool32 enabled) noexcept {
+			if (m_pipelineState.state.blend_enable != enabled) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.blend_enable = enabled;
+			}
+		}
+		void set_src_color_blend(VkBlendFactor blendFactor) noexcept {
+			if (m_pipelineState.state.src_color_blend != blendFactor) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.src_color_blend = blendFactor;
+			}
+		}
+		void set_dst_color_blend(VkBlendFactor blendFactor) noexcept {
+			if (m_pipelineState.state.dst_color_blend != blendFactor) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.dst_color_blend = blendFactor;
+			}
+		}
+		void set_src_alpha_blend(VkBlendFactor blendFactor) noexcept {
+			if (m_pipelineState.state.src_alpha_blend != blendFactor) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.src_alpha_blend = blendFactor;
+			}
+		}
+		void set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept {
+			if (m_pipelineState.state.dst_alpha_blend != blendFactor) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.dst_alpha_blend = blendFactor;
+			}
+		}
+		void disable_depth() noexcept {
+			set_depth_test(VK_FALSE);
+			set_depth_write(VK_FALSE);
+		}
+		void enable_alpha() noexcept {
+			set_blend_enable(VK_TRUE);
+			set_src_color_blend(VK_BLEND_FACTOR_SRC_ALPHA);
+			set_dst_color_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
+			set_src_alpha_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
+			set_dst_alpha_blend(VK_BLEND_FACTOR_ZERO);
 		}
 	private:
 		/// *******************************************************************
@@ -114,6 +197,7 @@ namespace Vulkan {
 		/// *******************************************************************
 		LogicalDevice& r_device;
 		VkCommandBuffer m_vkHandle;
+		bool m_isSecondary = false;
 		bool m_swapchainTouched = false;
 		bool m_isCompute = true;
 		VkSubpassContents m_currentContents = VK_SUBPASS_CONTENTS_INLINE;
@@ -136,6 +220,6 @@ namespace Vulkan {
 		ResourceBindings m_resourceBindings;
 		Type m_type;
 	};
-	using CommandBufferHandle = Utility::PoolHandle<CommandBuffer>;
+	using CommandBufferHandle = Utility::ObjectHandle<CommandBuffer ,Utility::Pool<CommandBuffer>>;
 }
 #endif //VKCOMMANDBUFFER_H

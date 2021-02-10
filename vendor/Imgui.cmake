@@ -12,5 +12,9 @@ set(IMGUI_SRC
 	${imgui_SOURCE_DIR}/imgui_draw.cpp
 	${imgui_SOURCE_DIR}/imgui_demo.cpp
 	${imgui_SOURCE_DIR}/imgui_widgets.cpp
+	${imgui_SOURCE_DIR}/imgui_tables.cpp
+
 	)
 include_directories(${imgui_SOURCE_DIR})
+#message(${imgui_SOURCE_DIR})
+#message(${IMGUI_SRC})

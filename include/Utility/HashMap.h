@@ -6,13 +6,17 @@
 #include "Hash.h"
 #include "Pool.h"
 namespace Utility {
-	//TODO destructor
 	template<typename T, size_t bucketSize = (std::hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
 	struct alignas(std::hardware_constructive_interference_size) HashBucket {
 		HashBucket() {
 			std::memset(data.data(), 0, data.size() * sizeof(std::pair<HashValue, T>));
 		}
-		
+		~HashBucket() {
+			for (size_t i = 0; i < data.size(); i++) {
+				if ((data[i].first == 0x0ull) && (data[i].second == 0x0ull))
+					data[i].second.~T();
+			}
+		}
 		std::array<std::pair<HashValue, T>, bucketSize> data;
 		size_t get_first_empty() const{
 			for (size_t i = 0; i < data.size(); i++) {
@@ -81,7 +85,7 @@ namespace Utility {
 			size_t idx = mod(hash);
 			return data[idx].get(hash);
 		}
-		bool try_insert(HashValue hash, T value) {
+		bool try_insert(HashValue hash, const T& value) {
 			size_t idx = mod(hash);
 			if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
 				data[idx][bucket_idx] = std::make_pair(hash, value);
@@ -89,9 +93,10 @@ namespace Utility {
 			}
 			return false;
 		}
-		void insert(HashValue hash, T value){
+		
+		void insert(HashValue hash, const T& value) {
 			//Check if bucket is full
-			if(!try_insert(hash, value)) {
+			if (!try_insert(hash, value)) {
 				bool succeded = true;
 				auto oldSize = size;
 				do {
@@ -102,14 +107,14 @@ namespace Utility {
 							auto [tmpHash, tmpData] = oldData[i][j];
 							if ((tmpHash != 0ull) || (tmpData != 0ull)) {
 								succeded &= try_insert(tmpHash, tmpData);
-								if(!succeded)
+								if (!succeded)
 									goto cleanup;
 							}
 						}
 					}
 					succeded &= try_insert(hash, value);
 					if (!succeded) {
-						cleanup:
+					cleanup:
 						delete[] data;
 						data = oldData;
 					}

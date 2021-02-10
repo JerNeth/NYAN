@@ -41,7 +41,7 @@ namespace Vulkan {
 			uint32_t inputAttachmentsCount = 0;
 			uint32_t resolveAttachmentsCount = 0;
 		};
-		VkRect2D renderArea;
+		VkRect2D renderArea{ .offset{.x = 0, .y = 0 },.extent{.width = UINT32_MAX, .height = UINT32_MAX} };
 		//TODO either dynamic array or other solution for magic number
 		std::array<SubpassCreateInfo, 8> subpasses;
 		uint32_t subpassCount = 0;

@@ -3,8 +3,8 @@
 #pragma once
 #include "DynamicBitset.h"
 namespace Utility {
-	template<typename T>
-	class PoolHandle;
+	template<typename T, typename Container>
+	class ObjectHandle;
 	template<typename T>
 	class Pool {
 	public:
@@ -65,8 +65,8 @@ namespace Utility {
 			return idx;
 		}
 		template<class... Args>
-		[[nodiscard]] PoolHandle<T> emplace(Args&&... args) noexcept {
-			return PoolHandle<T>(emplace_intrusive(std::forward<Args>(args)...), this);
+		[[nodiscard]] ObjectHandle<T, Pool<T>> emplace(Args&&... args) noexcept {
+			return ObjectHandle<T, Pool<T>>(emplace_intrusive(std::forward<Args>(args)...), this);
 		}
 		
 		void clear() noexcept {
@@ -126,95 +126,126 @@ namespace Utility {
 		size_t m_size = 0;
 		size_t m_capacity = 0;
 	};
-	template<typename T>
-	class PoolHandle {
-		friend class Pool<T>;
-		PoolHandle(size_t id, Pool<T>* pool) : m_id(id), ptr_pool(pool) {
-
+	template<typename T, typename Container>
+	class ObjectHandle {
+	public:
+		ObjectHandle() {
+			//I don't like having invalid invariants, but otherwise pretty uncomfortable to use
+		}
+		ObjectHandle(size_t id, Container* container) : m_id(id), ptr_container(container) {
+			assert(ptr_container);
 		}
 	public:
-		~PoolHandle() {
-			if (ptr_count) {
-				// I don't like it but I don't have a better solution TODO
-				if (ptr_count == reinterpret_cast<size_t*>(~0ull))
-					return;
-				(*ptr_count)--;
-				if (*ptr_count == 0) {
-					delete ptr_count;
-					ptr_pool->remove(m_id);
-				}
-			}
-			else {
-				ptr_pool->remove(m_id);
-			}
+		~ObjectHandle() {
+			destructor();
 		}
-		PoolHandle(const PoolHandle& other) :
+		ObjectHandle(const ObjectHandle& other) :
 			m_id(other.m_id),
-			ptr_pool(other.ptr_pool)
+			ptr_container(other.ptr_container)
 		{
 			if (!other.ptr_count) {
 				other.ptr_count = new size_t(1);
 			}
 			ptr_count = other.ptr_count;
+			assert(ptr_count != nullptr);
 			(*ptr_count)++;
 		}
-		PoolHandle(PoolHandle& other) :
+		ObjectHandle(ObjectHandle& other) :
 			m_id(other.m_id),
-			ptr_pool(other.ptr_pool)
+			ptr_container(other.ptr_container)
 		{
 			if (!other.ptr_count) {
 				other.ptr_count = new size_t(1);
 			}
 			ptr_count = other.ptr_count;
+
+			assert(ptr_count != nullptr);
 			(*ptr_count)++;
 		}
-		PoolHandle(PoolHandle&& other) :
+		ObjectHandle(ObjectHandle&& other) noexcept :
 			m_id(other.m_id),
-			ptr_pool(other.ptr_pool),
+			ptr_container(other.ptr_container),
 			ptr_count(other.ptr_count)
 		{
-			// I don't like it but I don't have a better solution TODO
-			if(this != &other)
-				other.ptr_count = reinterpret_cast<size_t*>(~0ull);
+			if (this != &other) {
+				other.ptr_container = nullptr;
+				other.ptr_count = nullptr;
+			}
 		}
-		PoolHandle& operator=(PoolHandle& other)
+		ObjectHandle& operator=(const ObjectHandle& other)
 		{
 			if (this != &other) {
+				destructor();
 				m_id=other.m_id;
-				ptr_pool = other.ptr_pool;
+				ptr_container = other.ptr_container;
 				if (!other.ptr_count) {
 					other.ptr_count = new size_t(1);
 				}
 				ptr_count = other.ptr_count;
+
+				assert(ptr_count != nullptr);
 				(*ptr_count)++;
 			}
 			return *this;
 		}
-		PoolHandle& operator=(PoolHandle&& other)
+		ObjectHandle& operator=(ObjectHandle&& other)
 		{
 			if (this != &other) {
+				destructor();
 				m_id = other.m_id;
-				ptr_pool = other.ptr_pool;
+				ptr_container = other.ptr_container;
 				ptr_count = other.ptr_count;
-				other.ptr_count = reinterpret_cast<size_t*>(~0ull);
+				other.ptr_container = nullptr;
+				other.ptr_count = nullptr;
 			}
 			return *this;
 		}
+		bool is_valid() const {
+			return ptr_container != nullptr;
+		}
 		void remove() {
-			ptr_pool->remove(m_id);
+			assert(ptr_container);
+			ptr_container->remove(m_id);
 		}
 		T* operator->() {
-			return ptr_pool->get_ptr(m_id);
+			assert(ptr_container);
+			return ptr_container->get_ptr(m_id);
 		}
 		T& operator*() {
-			return ptr_pool->get(m_id);
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
+		const T* operator->() const {
+			assert(ptr_container);
+			return ptr_container->get_ptr(m_id);
+		}
+		const T& operator*() const {
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
+		operator bool() const {
+			return ptr_container != nullptr;
 		}
 		operator T* () {
-			return ptr_pool->get_ptr(m_id);
+			assert(ptr_container);
+			return ptr_container->get_ptr(m_id);
 		}
 	private:
+		void destructor() {
+			if (ptr_count != nullptr) {
+				(*ptr_count)--;
+				if (*ptr_count == 0) {
+					delete ptr_count;
+					ptr_container->remove(m_id);
+				}
+			}
+			else {
+				if (ptr_container)
+					ptr_container->remove(m_id);
+			}
+		}
 		size_t m_id;
-		Pool<T>* ptr_pool = nullptr; //List this handle refers to
+		Container* ptr_container = nullptr; //List this handle refers to
 		mutable size_t* ptr_count = nullptr;
 	};
 }

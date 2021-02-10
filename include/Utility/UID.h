@@ -8,7 +8,7 @@ namespace Utility {
 	class UIDC {
 	public:
 		UIDC() {
-			static std::atomic<UID> s_counter;
+			static std::atomic<UID> s_counter{ 1 };
 			m_id = s_counter++;
 		}
 		operator UID() const noexcept {

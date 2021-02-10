@@ -1,5 +1,3 @@
-#include "..\..\include\VulkanWrapper\Pipeline.h"
-#include "..\..\include\VulkanWrapper\Pipeline.h"
 #include "Pipeline.h"
 
 #include "LogicalDevice.h"
@@ -54,7 +52,11 @@ Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout
 Vulkan::PipelineLayout::~PipelineLayout()
 {
 	if (m_layout != VK_NULL_HANDLE)
-		vkDestroyPipelineLayout(r_device.m_device, m_layout, r_device.m_allocator);
+		vkDestroyPipelineLayout(r_device.get_device(), m_layout, r_device.get_allocator());
+	for (uint32_t i = 0; i < MAX_DESCRIPTOR_SETS; i++) {
+		if (m_updateTemplate[i] != VK_NULL_HANDLE)
+			vkDestroyDescriptorUpdateTemplate(r_device.get_device(), m_updateTemplate[i], r_device.get_allocator());
+	}
 }
 
 const VkPipelineLayout& Vulkan::PipelineLayout::get_layout() const
@@ -140,8 +142,8 @@ void Vulkan::PipelineLayout::create_update_template()
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = descriptor.fp.test(binding) ?offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.offset = (descriptor.fp.test(binding) ?offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;
@@ -154,8 +156,8 @@ void Vulkan::PipelineLayout::create_update_template()
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;
@@ -181,8 +183,8 @@ void Vulkan::PipelineLayout::create_update_template()
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;
@@ -195,8 +197,8 @@ void Vulkan::PipelineLayout::create_update_template()
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-				.offset = descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding,
+				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
+					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;

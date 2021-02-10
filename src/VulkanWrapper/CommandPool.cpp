@@ -42,6 +42,7 @@ Vulkan::CommandPool::~CommandPool() noexcept
 VkCommandBuffer Vulkan::CommandPool::request_command_buffer()
 {
 	if (m_primaryBufferIdx < m_primaryBuffers.size()) {
+		//std::cout << "Requested (Reuse) Cmd Buffer: " << m_primaryBuffers[m_primaryBufferIdx] << "\n";
 		return m_primaryBuffers[m_primaryBufferIdx++];
 	}
 	else {
@@ -64,6 +65,7 @@ VkCommandBuffer Vulkan::CommandPool::request_command_buffer()
 			}
 		}
 		m_primaryBuffers.push_back(buffer);
+		//std::cout << "Requested (Create) Cmd Buffer: " << m_primaryBuffers[m_primaryBufferIdx] << "\n";
 		m_primaryBufferIdx++;
 		return buffer;
 	}
