@@ -17,24 +17,50 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	return buffer;
 }
 Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex,
-					uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties) :
+					uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDevice physicalDevice) :
 	r_instance(parentInstance),
 	m_device(device, nullptr),
+	m_physicalDevice(physicalDevice),
 	m_graphics(graphicsFamilyQueueIndex),
 	m_compute(computeFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
 	m_transfer(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
-	m_physicalProperties(properties),
 	m_framebufferAllocator(*this),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
 	m_pipelineStorage(*this),
 	m_attachmentAllocator(*this)
 {
+	volkLoadDevice(device);
 	vkGetDeviceQueue(m_device, m_graphics.familyIndex, 0, &m_graphics.queue);
 	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
 	vkGetDeviceQueue(m_device, m_transfer.familyIndex, 0, &m_transfer.queue);
 	create_vma_allocator();
 	create_default_sampler();	
+	VkPhysicalDeviceProperties properties;
+	vkGetPhysicalDeviceProperties(m_physicalDevice, &m_physicalProperties);
+	uint32_t count;
+	vkEnumerateDeviceExtensionProperties(physicalDevice,nullptr, &count, nullptr);
+	std::vector<VkExtensionProperties> extensions(count);
+	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensions.data());
+	for (auto& extension : extensions) {
+		
+		if (strcmp(extension.extensionName, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.descriptor_update_template = 1;
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.swapchain = 1;
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.timeline_semaphore = 1;
+		}
+		else if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.fullscreen_exclusive = 1;
+		}
+		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.extended_dynamic_state = 1;
+		}
+	}
+	assert(m_supportedExtensions.swapchain);
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_frameResources.emplace_back(new FrameResource{*this});

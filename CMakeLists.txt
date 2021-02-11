@@ -22,7 +22,6 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
 endif()
 
-
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
@@ -49,6 +48,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
 # Would work, but why use it instead of GLFW
 
+# Volk
+include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
+
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -73,6 +75,7 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # Executables
 # ---------------------------------------------------------------------------
 
+
 add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC} ${IMGUI_SRC})
 add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC})
 
@@ -81,7 +84,7 @@ add_executable(Demo2 ${DEMO2_SRC})
 add_dependencies(Demo shaders)
 add_dependencies(Demo2 shaders)
 
-target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan)
+target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk)
 target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)

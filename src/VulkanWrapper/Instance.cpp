@@ -23,10 +23,9 @@ Vulkan::LogicalDevice Vulkan::Instance::setup_device()
 	if (auto selectedDevice = std::find_if(devices.cbegin(), devices.cend(),
 		[this](const auto& device) {return this->is_device_suitable(device); }); selectedDevice != devices.cend()) {
 		m_physicalDevice = *selectedDevice;
-		VkPhysicalDeviceProperties properties;
-		vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
+		
 		auto [device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex] = setup_logical_device(*selectedDevice);
-		return LogicalDevice(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, properties);
+		return LogicalDevice(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, *selectedDevice);
 		
 	}
 	else {
@@ -107,7 +106,7 @@ void Vulkan::Instance::create_instance()
 
 	if constexpr (debug) {
 		m_extensions.push_back("VK_EXT_debug_report");
-		m_layers.push_back("VK_LAYER_LUNARG_standard_validation");
+		m_layers.push_back("VK_LAYER_KHRONOS_validation");
 	}
 	VkInstanceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -140,6 +139,7 @@ void Vulkan::Instance::create_instance()
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
+	volkLoadInstance(m_instance);
 	if constexpr (debug) {
 		auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugReportCallbackEXT");
 		if (vkCreateDebugReportCallbackEXT == NULL) {
@@ -414,19 +414,49 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logic
 			.pQueuePriorities = &queuePriority
 			});
 	}
+	VkPhysicalDeviceFeatures2 deviceFeatures2;
+	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState;
+	deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	dynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+	deviceFeatures2.pNext = &dynamicState;
+	dynamicState.pNext = nullptr;
 
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
+	uint32_t count;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+	std::vector<VkExtensionProperties> extensions(count);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+	std::vector<const char*> usedExtensions(m_requiredExtensions);
+	for (auto& extension : extensions) {
+		if (strcmp(extension.extensionName, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME) == 0) {
+			usedExtensions.push_back(VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME);
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
+			usedExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
+			usedExtensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+		}
+		//else if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
+		//	usedExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+		//}
+		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+			usedExtensions.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+		}
+	}
+	
 	VkDeviceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.pNext = &deviceFeatures2,
 		.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
 		.pQueueCreateInfos = queueCreateInfos.data(),
 		.enabledLayerCount = static_cast<uint32_t>(m_layers.size()), //Ignored with vulkan 1.1
 		.ppEnabledLayerNames = m_layers.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(m_requiredExtensions.size()),
-		.ppEnabledExtensionNames = m_requiredExtensions.data(),
-		.pEnabledFeatures = &deviceFeatures,
+		.enabledExtensionCount = static_cast<uint32_t>(usedExtensions.size()),
+		.ppEnabledExtensionNames = usedExtensions.data(),
+		.pEnabledFeatures = NULL,
 	};
+
 	//std::vector<std::pair<VkFormat, VkFormatProperties>> formatProperties;
 	//for (auto format = VK_FORMAT_UNDEFINED; format != VK_FORMAT_ASTC_12x12_SRGB_BLOCK; format = static_cast<VkFormat>(static_cast<size_t>(format) + 1)) {
 	//	VkFormatProperties pFormatProperties;

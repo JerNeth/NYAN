@@ -9,58 +9,75 @@
 namespace Vulkan {
 	class Renderpass;
 	class LogicalDevice;
-	constexpr unsigned BLEND_FACTOR_BITS = Utility::bit_width(VK_BLEND_FACTOR_END_RANGE);
-	constexpr unsigned BLEND_OP_BITS = Utility::bit_width(VK_BLEND_OP_END_RANGE);
+	constexpr unsigned BLEND_FACTOR_BITS = Utility::bit_width(VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA);
+	constexpr unsigned BLEND_OP_BITS = Utility::bit_width(VK_BLEND_OP_MAX);
 	constexpr unsigned WRITE_MASK_BITS = Utility::bit_width(VK_COLOR_COMPONENT_A_BIT);
 	constexpr unsigned CULL_MODE_BITS = Utility::bit_width(VK_CULL_MODE_FRONT_AND_BACK);
-	constexpr unsigned FRONT_FACE_BITS = Utility::bit_width(VK_FRONT_FACE_END_RANGE);
-	constexpr unsigned COMPARE_OP_BITS = Utility::bit_width(VK_COMPARE_OP_END_RANGE);
-	constexpr unsigned STENCIL_OP_BITS = Utility::bit_width(VK_STENCIL_OP_END_RANGE);
+	constexpr unsigned FRONT_FACE_BITS = Utility::bit_width(VK_FRONT_FACE_CLOCKWISE);
+	constexpr unsigned COMPARE_OP_BITS = Utility::bit_width(VK_COMPARE_OP_ALWAYS);
+	constexpr unsigned STENCIL_OP_BITS = Utility::bit_width(VK_STENCIL_OP_DECREMENT_AND_WRAP);
+	constexpr unsigned TOPOLOGY_BITS = Utility::bit_width(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
 	class Shader;
 	struct PipelineState {
 		unsigned depth_write : 1;
 		unsigned depth_test : 1;
 		unsigned blend_enable : 1;
-
 		unsigned cull_mode : CULL_MODE_BITS;
 		unsigned front_face : FRONT_FACE_BITS;
 		unsigned depth_bias_enable : 1;
-
+		
+		unsigned dynamic_cull_mode : 1;
+		unsigned dynamic_front_face : 1;
+		unsigned dynamic_primitive_topology : 1;
+		unsigned dynamic_vertex_input_binding_stride : 1;
+		unsigned dynamic_depth_test : 1;
+		unsigned dynamic_depth_write : 1;
+		unsigned dynamic_depth_compare : 1;
+		unsigned dynamic_depth_bounds_test : 1;
+		unsigned dynamic_stencil_test : 1;
+		unsigned dynamic_stencil_op : 1;
 		unsigned depth_compare : COMPARE_OP_BITS;
-
+		
 		unsigned stencil_test : 1;
 		unsigned stencil_front_fail : STENCIL_OP_BITS;
 		unsigned stencil_front_pass : STENCIL_OP_BITS;
 		unsigned stencil_front_depth_fail : STENCIL_OP_BITS;
+		unsigned alpha_to_coverage : 1;
+		//32
 		unsigned stencil_front_compare_op : COMPARE_OP_BITS;
 		unsigned stencil_back_fail : STENCIL_OP_BITS;
 		unsigned stencil_back_pass : STENCIL_OP_BITS;
 		unsigned stencil_back_depth_fail : STENCIL_OP_BITS;
 		unsigned stencil_back_compare_op : COMPARE_OP_BITS;
-
-		unsigned alpha_to_coverage : 1;
+		
 		unsigned alpha_to_one : 1;
-		unsigned sample_shading : 1;
-
+		
 		unsigned src_color_blend : BLEND_FACTOR_BITS;
 		unsigned dst_color_blend : BLEND_FACTOR_BITS;
 		unsigned color_blend_op : BLEND_OP_BITS;
+		unsigned sample_shading : 1;
+		//64
+
 		unsigned src_alpha_blend : BLEND_FACTOR_BITS;
 		unsigned dst_alpha_blend : BLEND_FACTOR_BITS;
-		unsigned alpha_blend_op : BLEND_OP_BITS;
-		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
-
+		unsigned alpha_blend_op : BLEND_OP_BITS;		
 		unsigned primitive_restart : 1;
-		unsigned topology : Utility::bit_width(VK_PRIMITIVE_TOPOLOGY_END_RANGE);
+		unsigned topology : TOPOLOGY_BITS;	
 
+		
 		unsigned wireframe : 1;
 		unsigned subgroup_control_size : 1;
 		unsigned subgroup_full_group : 1;
 		unsigned subgroup_min_size_log2 : 3;
 		unsigned subgroup_max_size_log2 : 3;
 		unsigned conservative_raster : 1;
-		unsigned padding : 17{};
+
+		unsigned padding : 4{};
+		//96
+		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
+		//
 		friend bool operator==(const PipelineState& left, const PipelineState& right) {
+			assert(left.padding == 0 && right.padding == 0);
 			return std::memcmp(&left, &right, sizeof(PipelineState))== 0;
 		}
 	};
@@ -77,14 +94,13 @@ namespace Vulkan {
 		.stencil_test = VK_FALSE,
 		.alpha_to_coverage = VK_FALSE,
 		.alpha_to_one = VK_FALSE,
-		.sample_shading = VK_TRUE,
 		.src_color_blend = VK_BLEND_FACTOR_ONE,
 		.dst_color_blend = VK_BLEND_FACTOR_ZERO,
 		.color_blend_op = VK_BLEND_OP_ADD,
+		.sample_shading = VK_TRUE,
 		.src_alpha_blend = VK_BLEND_FACTOR_ONE,
 		.dst_alpha_blend = VK_BLEND_FACTOR_ZERO,
 		.alpha_blend_op = VK_BLEND_OP_ADD,
-		.color_write_mask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
 		.primitive_restart = VK_FALSE,
 		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 		.wireframe = VK_POLYGON_MODE_FILL,
@@ -93,7 +109,8 @@ namespace Vulkan {
 		.subgroup_min_size_log2 = 0,
 		.subgroup_max_size_log2 = 0,
 		.conservative_raster = 0,
-		.padding {}
+		.padding {},
+		.color_write_mask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
 	};
 	struct Attributes {
 		std::array<VkFormat, MAX_VERTEX_ATTRIBUTES> formats;

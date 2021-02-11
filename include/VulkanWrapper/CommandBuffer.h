@@ -50,7 +50,23 @@ namespace Vulkan {
 		uint32_t backCompareMask = 0;
 		uint32_t backWriteMask = 0;
 		uint32_t backReference = 0;
-
+		unsigned cull_mode : CULL_MODE_BITS;
+		unsigned front_face : FRONT_FACE_BITS;
+		unsigned topology : TOPOLOGY_BITS;
+		unsigned depth_write : 1;
+		unsigned depth_test : 1;
+		unsigned depth_compare : COMPARE_OP_BITS;
+		unsigned depth_bound_test : 1;
+		unsigned stencil_test : 1;
+		unsigned stencil_front_fail : STENCIL_OP_BITS;
+		unsigned stencil_front_pass : STENCIL_OP_BITS;
+		unsigned stencil_front_depth_fail : STENCIL_OP_BITS;
+		unsigned stencil_back_fail : STENCIL_OP_BITS;
+		unsigned stencil_back_pass : STENCIL_OP_BITS;
+		unsigned stencil_back_depth_fail : STENCIL_OP_BITS;
+		unsigned stencil_front_compare_op : COMPARE_OP_BITS;
+		unsigned stencil_back_compare_op : COMPARE_OP_BITS;
+		std::array< VkDeviceSize, MAX_VERTEX_BINDINGS> vertexStrides;
 	};
 	class CommandBuffer {
 	public:
@@ -69,6 +85,15 @@ namespace Vulkan {
 			Scissor,
 			DepthBias,
 			Stencil,
+			CullMode,
+			FrontFace,
+			PrimitiveTopology,
+			DepthTest,
+			DepthWrite,
+			DepthCompare,
+			DepthBoundsTest,
+			StencilTest,
+			StencilOp,
 			Size
 		};
 	public:
@@ -122,28 +147,94 @@ namespace Vulkan {
 		void bind_texture(uint32_t set, uint32_t binding, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
 		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
 		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer);
-		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate);
+		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate, VkDeviceSize vertexStride = 0);
 		VkCommandBuffer get_handle() const noexcept;
 		void end();
 		Type get_type() const noexcept {
 			return m_type;
 		}
 		void set_depth_test(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.depth_test != enabled) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.depth_test = enabled;
+			if (m_pipelineState.state.dynamic_depth_test) {
+				if (m_dynamicState.depth_test != enabled) {
+					m_dynamicState.depth_test = enabled;
+					m_invalidFlags.set(InvalidFlags::DepthTest);
+				}
+			}
+			else {
+				if (m_pipelineState.state.depth_test != enabled) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.depth_test = enabled;
+				}
 			}
 		}
 		void set_depth_write(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.depth_write != enabled) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.depth_write = enabled;
+			if (m_pipelineState.state.dynamic_depth_write) {
+				if (m_dynamicState.depth_write != enabled) {
+					m_dynamicState.depth_write = enabled;
+					m_invalidFlags.set(InvalidFlags::DepthWrite);
+				}
+			}
+			else {
+				if (m_pipelineState.state.depth_write != enabled) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.depth_write = enabled;
+				}
+			}
+		}
+		void set_depth_compare(VkCompareOp compare) noexcept {
+			if (m_pipelineState.state.dynamic_depth_compare) {
+				if (m_dynamicState.depth_compare != compare) {
+					m_dynamicState.depth_compare = compare;
+					m_invalidFlags.set(InvalidFlags::DepthCompare);
+				}
+			}
+			else {
+				if (m_pipelineState.state.depth_compare != compare) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.depth_compare = compare;
+				}
 			}
 		}
 		void set_cull_mode(VkCullModeFlags cullMode) noexcept {
-			if (m_pipelineState.state.cull_mode != cullMode) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.cull_mode = cullMode;
+			if (m_pipelineState.state.dynamic_cull_mode) {
+				if (m_dynamicState.cull_mode != cullMode) {
+					m_dynamicState.cull_mode = cullMode;
+					m_invalidFlags.set(InvalidFlags::CullMode);
+				}
+			}
+			else {
+				if (m_pipelineState.state.cull_mode != cullMode) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.cull_mode = cullMode;
+				}
+			}
+		}
+		void set_front_face(VkFrontFace frontFace) noexcept {
+			if (m_pipelineState.state.dynamic_front_face) {
+				if (m_dynamicState.front_face != frontFace) {
+					m_dynamicState.front_face = frontFace;
+					m_invalidFlags.set(InvalidFlags::FrontFace);
+				}
+			}
+			else {
+				if (m_pipelineState.state.front_face != frontFace) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.front_face = frontFace;
+				}
+			}
+		}
+		void set_topology(VkPrimitiveTopology topology) noexcept {
+			if (m_pipelineState.state.dynamic_primitive_topology) {
+				if (m_dynamicState.topology != topology) {
+					m_dynamicState.topology = topology;
+					m_invalidFlags.set(InvalidFlags::FrontFace);
+				}
+			}
+			else {
+				if (m_pipelineState.state.topology != topology) {
+					m_invalidFlags.set(InvalidFlags::StaticPipeline);
+					m_pipelineState.state.topology = topology;
+				}
 			}
 		}
 		void set_blend_enable(VkBool32 enabled) noexcept {

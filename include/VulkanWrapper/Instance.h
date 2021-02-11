@@ -9,6 +9,7 @@ namespace Vulkan {
 	class Instance {
 	public:
 		Instance(const char** extensions, uint32_t extensionCount, std::string applicationName = "", std::string engineName = "") : m_applicationName(applicationName), m_engineName(engineName) {
+			volkInitialize();
 			m_extensions.assign(extensions, extensions + extensionCount);
 			create_instance();
 
@@ -48,7 +49,7 @@ namespace Vulkan {
 		/// Member variables
 		/// *******************************************************************
 		std::optional<std::bitset<64>> m_requiredFeatures = std::nullopt;
-		const std::vector<const char*> m_requiredExtensions = {
+		std::vector<const char*> m_requiredExtensions = {
 				VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		};
 		VkInstance m_instance;

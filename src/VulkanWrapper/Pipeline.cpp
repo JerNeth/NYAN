@@ -237,7 +237,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.viewportCount = 1,
 		.scissorCount = 1
 	};
-	VkDynamicState dynamicStates[7]{
+	std::array<VkDynamicState, 19> dynamicStates{
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
 		VK_DYNAMIC_STATE_LINE_WIDTH
@@ -245,7 +245,7 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 		.dynamicStateCount = 3,
-		.pDynamicStates = dynamicStates
+		.pDynamicStates = dynamicStates.data()
 	};
 	if (compile.state.depth_bias_enable) {
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
@@ -254,7 +254,38 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
-
+	}
+	if (parent.get_supported_extensions().extended_dynamic_state) {
+		if (compile.state.dynamic_cull_mode) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
+		}
+		if (compile.state.dynamic_front_face) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
+		}
+		if (compile.state.dynamic_primitive_topology) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT;
+		}
+		if (compile.state.dynamic_vertex_input_binding_stride) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
+		}
+		if (compile.state.dynamic_depth_test) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT;
+		}
+		if (compile.state.dynamic_depth_write) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT;
+		}
+		if (compile.state.dynamic_depth_compare) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT;
+		}
+		if (compile.state.dynamic_depth_bounds_test) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT;
+		}
+		if (compile.state.dynamic_stencil_test) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
+		}
+		if (compile.state.dynamic_stencil_op) {
+			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
+		}
 	}
 	VkPipelineColorBlendAttachmentState colorBlendAttachments[MAX_ATTACHMENTS];
 	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{

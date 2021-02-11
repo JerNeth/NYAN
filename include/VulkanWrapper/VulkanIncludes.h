@@ -6,8 +6,23 @@ constexpr bool debug = false;
 #define VMA_RECORDING_ENABLED 1
 constexpr bool debug = true;
 #endif
-#define GLFW_INCLUDE_VULKAN
-#define VK_USE_PLATFORM_WIN32_KHR
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#endif
+#ifdef _MSC_VER
+#pragma warning(push, 0)
+#pragma warning( disable : 26812 )
+#endif
+#include "volk.h"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+#define VK_NO_PROTOTYPES
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #define NOMINMAX
@@ -32,17 +47,7 @@ constexpr bool debug = true;
 
 
 #undef VMA_RECORDING_ENABLED
-#ifdef __clang__
-	#pragma clang diagnostic push
-#endif
-#ifdef _MSC_VER
-	#pragma warning(push, 0)
-	#pragma warning( disable : 26812 )
-#endif
-#include "vulkan\vulkan.h"
-#ifdef _MSC_VER
-	#pragma warning(pop)
-#endif
+
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif

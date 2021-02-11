@@ -82,6 +82,13 @@ namespace Vulkan {
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	class LogicalDevice {
+		struct Extensions {
+			unsigned descriptor_update_template : 1;
+			unsigned swapchain : 1;
+			unsigned timeline_semaphore : 1;
+			unsigned fullscreen_exclusive : 1;
+			unsigned extended_dynamic_state : 1;
+		};
 		struct WSIState {
 			VkSemaphore aquire = VK_NULL_HANDLE;
 			VkSemaphore present = VK_NULL_HANDLE;
@@ -162,7 +169,7 @@ namespace Vulkan {
 		
 	public:
 
-		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex , uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDeviceProperties& properties);
+		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex , uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDevice physicalDevice);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
@@ -220,6 +227,10 @@ namespace Vulkan {
 
 		void demo_create_command_buffer(VkCommandBuffer buf);
 		FrameResource& frame();
+
+		const Extensions& get_supported_extensions() const noexcept {
+			return m_supportedExtensions;
+		}
 		uint32_t get_thread_index() const noexcept {
 			return 0;
 		}
@@ -275,6 +286,8 @@ namespace Vulkan {
 		//Last to destroy
 		const Instance& r_instance;
 		DeviceWrapper m_device;
+		VkPhysicalDevice m_physicalDevice;
+		Extensions m_supportedExtensions{};
 		VkAllocationCallbacks* m_allocator = NULL;
 		std::unique_ptr<Allocator> m_vmaAllocator;
 

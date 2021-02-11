@@ -71,15 +71,17 @@ int main()
 			Math::mat44::identity()
 		} };
 		float degrees = 0;
+		float fov = 90.f;
+		float aspect = static_cast<float>(1080.f / 1920.f);
 		ubo_data[0].model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees)));
 		ubo_data[0].model(3, 3) = 1;
 		ubo_data[0].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		ubo_data[0].proj = Math::mat44::perspective(0.01f, 10.f, 45.0f, static_cast<float>(1920.f / 1080.f));
+		ubo_data[0].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
 		ubo_data[1].model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees)));
 		ubo_data[1].model(3, 3) = 1;
 		ubo_data[1].model = ubo_data[1].model * Math::mat44::translation_matrix(Math::vec3({ 0.0f, 0.0f, -0.5f }));
 		ubo_data[1].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		ubo_data[1].proj = Math::mat44::perspective(0.01f, 10.f, 45.0f, static_cast<float>(1920.f / 1080.f));
+		ubo_data[1].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
 
 		buffInfo.size = sizeof(Vulkan::Ubo) * 2;
 		buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -106,15 +108,20 @@ int main()
 				ubo_data[1].model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees)));
 				ubo_data[1].model(3, 3) = 1;
 				ubo_data[1].model = ubo_data[1].model * Math::mat44::translation_matrix(Math::vec3({ 0.0f, 0.0f, -0.5f }));
+				ubo_data[0].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
+				ubo_data[1].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
 				{
 					auto mapped = ubo->map_data();
 					std::memcpy(mapped.get(), ubo_data, sizeof(ubo_data));
 				}
+
 				wsi.begin_frame();
 				imgui.next_frame();
 				//device.update_uniform_buffer();
 				ImGui::Begin("Interaction");
-				ImGui::SliderFloat("rotation", &degrees, 0.0f, 360.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+				ImGui::SliderFloat("rotation", &degrees, 0.0f, 360.0f); 
+				ImGui::SliderFloat("fov", &fov, 0.0f, 360.0f);
+				ImGui::SliderFloat("aspect", &aspect, 0.0f, 2.0f);
 				ImGui::End();
 				auto rp = device.request_swapchain_render_pass();
 				auto cmd = device.request_command_buffer(Vulkan::CommandBuffer::Type::Generic);

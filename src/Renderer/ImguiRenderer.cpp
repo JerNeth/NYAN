@@ -27,10 +27,6 @@ void Vulkan::Imgui::next_frame()
 	ImGui::NewFrame();
 	ImGui::Begin("Metrics");                          // Create a window called "Hello, world!" and append into it.
 
-	ImGui::Text("This is some useful text.");
-
-
-
 	values_offset = (values_offset + 1) % IM_ARRAYSIZE(values);
 
 	// Plots can display overlay texts
@@ -46,12 +42,13 @@ void Vulkan::Imgui::next_frame()
 		average /= (float)IM_ARRAYSIZE(values);
 		char overlay[32];
 		sprintf_s(overlay, "avg %f", average);
-		ImGui::PlotLines("Lines", values, IM_ARRAYSIZE(values), values_offset, overlay, 0.0f, max * 1.2f, ImVec2(0, 80.0f));
+		ImGui::PlotLines("Frame Times", values, IM_ARRAYSIZE(values), values_offset, overlay, 0.0f, max * 1.2f, ImVec2(0, 80.0f));
 	}
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
+	ImGui::ShowDemoWindow();
 }
 
 void Vulkan::Imgui::end_frame(CommandBufferHandle& cmd)

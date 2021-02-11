@@ -548,14 +548,14 @@ namespace Math {
 		static inline Mat<Scalar, 4, 4> perspective(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
 			//Right handed, zero to one
 			Mat<Scalar, 4, 4> matrix;
-			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
+			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
 			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
 			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix[Math::at<Size_x>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
-			matrix[Math::at<Size_x>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix[Math::at<Size_x>(0, 0)] = static_cast<Scalar>(1) / (tanHalfFovx);
+			matrix[Math::at<Size_x>(1, 1)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
 			matrix[Math::at<Size_x>(2, 2)] =  farPlane / (nearPlane  - farPlane);
 			matrix[Math::at<Size_x>(2, 3)] = -Scalar(1);
 			matrix[Math::at<Size_x>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);

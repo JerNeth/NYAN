@@ -143,7 +143,34 @@ namespace glfww {
 			#if defined(_WIN32)
 			io.ImeWindowHandle = (void*)glfwGetWin32Window(m_window);
 			#endif
-			
+			glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods) { 
+				ImGuiIO& io = ImGui::GetIO();
+				if (action == GLFW_PRESS)
+					io.KeysDown[key] = true;
+				if (action == GLFW_RELEASE)
+					io.KeysDown[key] = false;
+
+				// Modifiers are not reliable across systems
+				io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
+				io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
+				io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
+				#ifdef _WIN32
+				io.KeySuper = false;
+				#else
+				io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+				#endif
+			});
+			glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xoffset, double yoffset)
+			{
+				ImGuiIO& io = ImGui::GetIO();
+				io.MouseWheelH += (float)xoffset;
+				io.MouseWheel += (float)yoffset;
+			});
+			glfwSetCharCallback(m_window, [](GLFWwindow* window, unsigned int c)
+			{
+				ImGuiIO& io = ImGui::GetIO();
+				io.AddInputCharacter(c);
+			});
 		}
 		void imgui_update_mouse_keyboard() {
 			ImGuiIO& io = ImGui::GetIO();

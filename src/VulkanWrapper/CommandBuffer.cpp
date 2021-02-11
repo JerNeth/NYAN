@@ -7,6 +7,12 @@ Vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 	m_type(type)
 {
 	m_pipelineState.state = defaultPipelineState;
+	if (r_device.get_supported_extensions().extended_dynamic_state) {
+		//m_pipelineState.state.dynamic_vertex_input_binding_stride = 1;
+		m_pipelineState.state.dynamic_depth_test = 1;
+		m_pipelineState.state.dynamic_depth_write = 1;
+		m_pipelineState.state.dynamic_cull_mode = 1;
+	}
 	m_resourceBindings.bindings = {};
 }
 
@@ -82,6 +88,38 @@ bool Vulkan::CommandBuffer::flush_graphics()
 		vkCmdSetStencilCompareMask(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, m_dynamicState.backCompareMask);
 		vkCmdSetStencilReference(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, m_dynamicState.backReference);
 		vkCmdSetStencilWriteMask(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, m_dynamicState.backWriteMask);
+	}
+	if (m_pipelineState.state.dynamic_cull_mode && m_invalidFlags.get_and_clear(InvalidFlags::CullMode)) {
+		vkCmdSetCullModeEXT(m_vkHandle, m_dynamicState.cull_mode);
+	}
+	if (m_pipelineState.state.dynamic_front_face && m_invalidFlags.get_and_clear(InvalidFlags::FrontFace)) {
+		vkCmdSetFrontFaceEXT(m_vkHandle, static_cast<VkFrontFace>(m_dynamicState.front_face));
+	}
+	if (m_pipelineState.state.dynamic_primitive_topology && m_invalidFlags.get_and_clear(InvalidFlags::PrimitiveTopology)) {
+		vkCmdSetPrimitiveTopologyEXT(m_vkHandle, static_cast<VkPrimitiveTopology>(m_dynamicState.topology));
+	}
+	if (m_pipelineState.state.dynamic_depth_test && m_invalidFlags.get_and_clear(InvalidFlags::DepthTest)) {
+		vkCmdSetDepthTestEnableEXT(m_vkHandle, m_dynamicState.depth_test);
+	}
+	if (m_pipelineState.state.dynamic_depth_write && m_invalidFlags.get_and_clear(InvalidFlags::DepthWrite)) {
+		vkCmdSetDepthWriteEnableEXT(m_vkHandle, m_dynamicState.depth_write);
+	}
+	if (m_pipelineState.state.dynamic_depth_compare && m_invalidFlags.get_and_clear(InvalidFlags::DepthCompare)) {
+		vkCmdSetDepthCompareOpEXT(m_vkHandle, static_cast<VkCompareOp>(m_dynamicState.depth_compare));
+	}
+	if (m_pipelineState.state.dynamic_depth_bounds_test && m_invalidFlags.get_and_clear(InvalidFlags::DepthBoundsTest)) {
+		vkCmdSetDepthBoundsTestEnableEXT(m_vkHandle, m_dynamicState.depth_bound_test);
+	}
+	if (m_pipelineState.state.dynamic_stencil_test && m_invalidFlags.get_and_clear(InvalidFlags::StencilTest)) {
+		vkCmdSetStencilTestEnableEXT(m_vkHandle, m_dynamicState.stencil_test);
+	}
+	if (m_pipelineState.state.dynamic_stencil_op && m_invalidFlags.get_and_clear(InvalidFlags::StencilOp)) {
+		vkCmdSetStencilOpEXT(m_vkHandle, VK_STENCIL_FACE_FRONT_BIT, static_cast<VkStencilOp>(m_dynamicState.stencil_front_fail),
+			static_cast<VkStencilOp>(m_dynamicState.stencil_front_pass),static_cast<VkStencilOp>( m_dynamicState.stencil_front_depth_fail), 
+			static_cast<VkCompareOp>(m_dynamicState.stencil_front_compare_op));
+		vkCmdSetStencilOpEXT(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, static_cast<VkStencilOp>(m_dynamicState.stencil_back_fail),
+			static_cast<VkStencilOp>(m_dynamicState.stencil_back_pass), static_cast<VkStencilOp>(m_dynamicState.stencil_back_depth_fail),
+			static_cast<VkCompareOp>(m_dynamicState.stencil_back_compare_op));
 	}
 	bind_vertex_buffers();
 	return true;
@@ -506,13 +544,18 @@ void Vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, 
 	bind_uniform_buffer(set, binding, buffer, 0, buffer.get_info().size);
 }
 
-void Vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate)
+void Vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate, VkDeviceSize vertexStride)
 {
 	assert(binding < MAX_VERTEX_BINDINGS);
 	assert(m_currentFramebuffer);
 
+	
 	if (buffer.get_handle() != m_vertexState.buffers[binding] || m_vertexState.offsets[binding] != offset)
 		m_vertexState.dirty.set(binding);
+	
+	
+	if (m_pipelineState.state.dynamic_vertex_input_binding_stride)
+		m_dynamicState.vertexStrides[binding] = inputRate;
 	if (m_pipelineState.inputRates[binding] != inputRate)
 		m_invalidFlags.set(InvalidFlags::StaticVertex);
 	m_vertexState.buffers[binding] = buffer.get_handle();
@@ -547,7 +590,10 @@ void Vulkan::CommandBuffer::bind_vertex_buffers() noexcept
 		for (uint32_t i = binding; i < binding + range; i++)
 			assert(m_vertexState.buffers[i] != VK_NULL_HANDLE);
 		auto [buffers, offsets] = m_vertexState[binding];
-		vkCmdBindVertexBuffers(m_vkHandle,binding, range, buffers, offsets);
+		if (m_pipelineState.state.dynamic_vertex_input_binding_stride)
+			vkCmdBindVertexBuffers2EXT(m_vkHandle, binding, range, buffers, offsets, nullptr, m_dynamicState.vertexStrides.data() + binding);
+		else
+			vkCmdBindVertexBuffers(m_vkHandle,binding, range, buffers, offsets);
 	});
 	m_vertexState.update(updateMask);
 }
