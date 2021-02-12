@@ -2,7 +2,7 @@
 #define VKMAXVALS_H
 #pragma once
 
-namespace Vulkan {
+namespace vulkan {
 	constexpr uint8_t MAX_BINDINGS = 16u;
 	constexpr uint8_t MAX_DESCRIPTOR_SETS = 8u;
 	constexpr uint8_t MAX_ATTACHMENTS = 8u;

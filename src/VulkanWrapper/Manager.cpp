@@ -3,13 +3,13 @@
 #include "Manager.h"
 #include "LogicalDevice.h"
 
-Vulkan::FenceManager::~FenceManager() noexcept {
+vulkan::FenceManager::~FenceManager() noexcept {
 	for (auto fence : m_fences) {
 		vkDestroyFence(r_device.get_device(), fence, r_device.get_allocator());
 	}
 }
 
-Vulkan::FenceHandle Vulkan::FenceManager::request_fence()
+vulkan::FenceHandle vulkan::FenceManager::request_fence()
 {
 	if (m_fences.empty()) {
 		VkFence fence;
@@ -27,21 +27,21 @@ Vulkan::FenceHandle Vulkan::FenceManager::request_fence()
 	
 }
 
-void Vulkan::FenceManager::reset_fence(VkFence fence) {
+void vulkan::FenceManager::reset_fence(VkFence fence) {
 	if (fence == VK_NULL_HANDLE)
 		return;
 	auto fence_ = fence;
 	vkResetFences(r_device.get_device(), 1, &fence_);
 	m_fences.push_back(fence_);
 }
-Vulkan::SemaphoreManager::~SemaphoreManager() noexcept
+vulkan::SemaphoreManager::~SemaphoreManager() noexcept
 {
 	for (auto semaphore : m_semaphores) {
 		vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
 	}
 }
 
-VkSemaphore Vulkan::SemaphoreManager::request_semaphore()
+VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 {
 	if (m_semaphores.empty()) {
 		VkSemaphore semaphore;
@@ -68,7 +68,7 @@ VkSemaphore Vulkan::SemaphoreManager::request_semaphore()
 	}
 }
 
-void Vulkan::SemaphoreManager::recycle_semaphore(VkSemaphore semaphore)
+void vulkan::SemaphoreManager::recycle_semaphore(VkSemaphore semaphore)
 {
 	if (semaphore == VK_NULL_HANDLE)
 		return;

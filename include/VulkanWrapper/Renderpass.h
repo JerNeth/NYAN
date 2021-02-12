@@ -5,50 +5,50 @@
 #include "Utility.h"
 #include "Image.h"
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Framebuffer;
 	struct RenderpassCreateInfo {
-		enum class OpFlags {
+		enum class OpFlags : uint8_t {
 			DepthStencilClear = 0,
 			DepthStencilLoad = 1,
 			DepthStencilStore = 2,
 			DepthStencilReadOnly = 3
 		};
-		enum class DepthStencil {
+		enum class DepthStencil : uint8_t {
 			None,
 			Read,
 			ReadWrite
 		};
 		//Last is depth
-		std::bitset<MAX_ATTACHMENTS + 1> loadAttachments;
-		std::bitset<MAX_ATTACHMENTS + 1> clearAttachments;
-		std::bitset<MAX_ATTACHMENTS + 1> storeAttachments;
+		Utility::bitset<MAX_ATTACHMENTS + 1> loadAttachments;
+		Utility::bitset<MAX_ATTACHMENTS + 1> clearAttachments;
+		Utility::bitset<MAX_ATTACHMENTS + 1> storeAttachments;
 		std::array<ImageView*, MAX_ATTACHMENTS> colorAttachmentsViews{};
 		ImageView* depthStencilAttachment = nullptr;
-		uint32_t colorAttachmentsCount = 0;
-		std::bitset<6> opFlags;
+		uint8_t colorAttachmentsCount = 0;
+		Utility::bitset<6, OpFlags> opFlags;
 		std::array<VkClearColorValue, MAX_ATTACHMENTS> clearColors;
 		VkClearDepthStencilValue clearDepthStencil;
 
 		
 		struct SubpassCreateInfo {
-			std::array<uint32_t, MAX_ATTACHMENTS> colorAttachments{};
-			std::array<uint32_t, MAX_ATTACHMENTS> inputAttachments{};
-			std::array<uint32_t, MAX_ATTACHMENTS> resolveAttachments{};
+			std::array<uint8_t, MAX_ATTACHMENTS> colorAttachments{};
+			std::array<uint8_t, MAX_ATTACHMENTS> inputAttachments{};
+			std::array<uint8_t, MAX_ATTACHMENTS> resolveAttachments{};
 			DepthStencil depthStencil = DepthStencil::ReadWrite;
-			uint32_t colorAttachmentsCount = 0;
-			uint32_t inputAttachmentsCount = 0;
-			uint32_t resolveAttachmentsCount = 0;
+			uint8_t colorAttachmentsCount = 0;
+			uint8_t inputAttachmentsCount = 0;
+			uint8_t resolveAttachmentsCount = 0;
 		};
 		VkRect2D renderArea{ .offset{.x = 0, .y = 0 },.extent{.width = UINT32_MAX, .height = UINT32_MAX} };
 		//TODO either dynamic array or other solution for magic number
 		std::array<SubpassCreateInfo, 8> subpasses;
-		uint32_t subpassCount = 0;
+		uint8_t subpassCount = 0;
 		std::pair<Utility::HashValue, Utility::HashValue> get_hash() const noexcept {
 			Utility::Hasher hasher;
 			//std::bitset<MAX_ATTACHMENTS + 1> optimalLayouts;
-
+			sizeof(SubpassCreateInfo);
 			hasher(colorAttachmentsCount);
 			for (uint32_t i = 0; i < colorAttachmentsCount; i++) {
 				auto attachment = colorAttachmentsViews[i];
@@ -106,11 +106,13 @@ namespace Vulkan {
 	public:
 		Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo);
 		//Renderpass(LogicalDevice& parent, VkRenderPass renderPass);
-		~Renderpass();
-		bool has_depth_attachment(uint32_t subpass) const;
-		uint32_t get_num_color_attachments(uint32_t subpass) const;
-		VkRenderPass get_render_pass() const;
-		const VkAttachmentReference& get_color_attachment(uint32_t idx, uint32_t subpass = 0) const;
+		~Renderpass() noexcept;
+		bool has_depth_attachment(uint32_t subpass) const noexcept;
+		uint32_t get_num_input_attachments(uint32_t subpass) const noexcept;
+		uint32_t get_num_color_attachments(uint32_t subpass) const noexcept;
+		VkRenderPass get_render_pass() const noexcept;
+		const VkAttachmentReference& get_input_attachment(uint32_t idx, uint32_t subpass = 0) const noexcept;
+		const VkAttachmentReference& get_color_attachment(uint32_t idx, uint32_t subpass = 0) const noexcept;
 		Utility::HashValue get_compatible_hash() const noexcept {
 			return m_compatibleHashValue;
 		}

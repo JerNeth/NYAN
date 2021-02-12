@@ -4,7 +4,7 @@
 #include "VulkanIncludes.h"
 #include "Pipeline.h"
 #include "Utility.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Framebuffer;
 	class Renderpass;
@@ -140,6 +140,7 @@ namespace Vulkan {
 		void next_subpass(VkSubpassContents subpass);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
+		void bind_input_attachment(uint32_t set, uint32_t startBinding);
 		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, const Sampler* sampler);
 		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, DefaultSampler sampler);
 		void bind_sampler(uint32_t set, uint32_t binding, const Sampler* sampler);
@@ -150,6 +151,8 @@ namespace Vulkan {
 		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate, VkDeviceSize vertexStride = 0);
 		VkCommandBuffer get_handle() const noexcept;
 		void end();
+		void begin_region(const char* name, const float* color = nullptr);
+		void end_region();
 		Type get_type() const noexcept {
 			return m_type;
 		}
@@ -265,6 +268,12 @@ namespace Vulkan {
 			if (m_pipelineState.state.dst_alpha_blend != blendFactor) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
 				m_pipelineState.state.dst_alpha_blend = blendFactor;
+			}
+		}
+		void reset_pipeline_state() noexcept {
+			if (m_pipelineState.state != defaultPipelineState) {
+				m_pipelineState.state = defaultPipelineState;
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
 			}
 		}
 		void disable_depth() noexcept {

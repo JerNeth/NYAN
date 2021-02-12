@@ -9,7 +9,12 @@
 	return VK_FALSE;
 }
 
-Vulkan::LogicalDevice Vulkan::Instance::setup_device() 
+//vulkan::LogicalDevice vulkan::Instance::setup_device_direct()
+//{
+//	return *setup_device().release();
+//}
+
+std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device()
 {
 	uint32_t numDevices;
 	std::vector<VkPhysicalDevice> devices;
@@ -25,7 +30,7 @@ Vulkan::LogicalDevice Vulkan::Instance::setup_device()
 		m_physicalDevice = *selectedDevice;
 		
 		auto [device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex] = setup_logical_device(*selectedDevice);
-		return LogicalDevice(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, *selectedDevice);
+		return std::make_unique<LogicalDevice>(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, *selectedDevice);
 		
 	}
 	else {
@@ -33,7 +38,7 @@ Vulkan::LogicalDevice Vulkan::Instance::setup_device()
 	}
 }
 
-void Vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
+void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 	VkWin32SurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 		.hinstance = hinstance,
@@ -52,7 +57,7 @@ void Vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 	}
 }
 
-uint32_t Vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties)const 
+uint32_t vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties)const 
 {
 	VkPhysicalDeviceMemoryProperties memoryProperties;
 	vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
@@ -63,7 +68,7 @@ uint32_t Vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropert
 	throw std::runtime_error("VK: Could not find suitable memory type");
 }
 
-std::vector<VkPresentModeKHR> Vulkan::Instance::get_present_modes() const
+std::vector<VkPresentModeKHR> vulkan::Instance::get_present_modes() const
 {
 	uint32_t numModes;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, nullptr);
@@ -72,7 +77,7 @@ std::vector<VkPresentModeKHR> Vulkan::Instance::get_present_modes() const
 	return presentModes;
 }
 
-std::vector<VkSurfaceFormatKHR> Vulkan::Instance::get_surface_formats() const
+std::vector<VkSurfaceFormatKHR> vulkan::Instance::get_surface_formats() const
 {
 	uint32_t numFormats;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, nullptr);
@@ -81,19 +86,19 @@ std::vector<VkSurfaceFormatKHR> Vulkan::Instance::get_surface_formats() const
 	return surfaceFormats;
 }
 
-VkSurfaceCapabilitiesKHR Vulkan::Instance::get_surface_capabilites() const
+VkSurfaceCapabilitiesKHR vulkan::Instance::get_surface_capabilites() const
 {
 	VkSurfaceCapabilitiesKHR capabilities;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
 	return capabilities;
 }
 
-VkSurfaceKHR Vulkan::Instance::get_surface() const
+VkSurfaceKHR vulkan::Instance::get_surface() const
 {
 	return m_surface;
 }
 
-void Vulkan::Instance::create_instance()
+void vulkan::Instance::create_instance()
 {
 	VkApplicationInfo applicationInfo{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -106,6 +111,7 @@ void Vulkan::Instance::create_instance()
 
 	if constexpr (debug) {
 		m_extensions.push_back("VK_EXT_debug_report");
+		m_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		m_layers.push_back("VK_LAYER_KHRONOS_validation");
 	}
 	VkInstanceCreateInfo createInfo{
@@ -158,7 +164,7 @@ void Vulkan::Instance::create_instance()
 }
 
 
-bool Vulkan::Instance::device_supports_features(const VkPhysicalDevice& device) const
+bool vulkan::Instance::device_supports_features(const VkPhysicalDevice& device) const
 {
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
@@ -277,7 +283,7 @@ bool Vulkan::Instance::device_supports_features(const VkPhysicalDevice& device) 
 	return true;
 }
 
-bool Vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
+bool vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
 {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -295,14 +301,14 @@ bool Vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device
 	return true;
 }
 
-bool Vulkan::Instance::device_has_properties(const VkPhysicalDevice& device) const
+bool vulkan::Instance::device_has_properties(const VkPhysicalDevice& device) const
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 	return true;
 }
 
-bool Vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
+bool vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
 {
 	uint32_t numFormats;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &numFormats, nullptr);
@@ -318,12 +324,12 @@ bool Vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device)
 }
 
 
-bool Vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
+bool vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
 {
 	return device_supports_extensions(device) && device_supports_features(device) && device_has_properties(device) && device_swapchain_suitable(device);
 }
 
-uint32_t Vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
+uint32_t vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
 {
 	uint32_t numQueueFamilies = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
@@ -343,7 +349,7 @@ uint32_t Vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevic
 	}
 	return graphicsQueueFamilyIndex;
 }
-uint32_t Vulkan::Instance::get_compute_family_queue_index(const VkPhysicalDevice& device) const
+uint32_t vulkan::Instance::get_compute_family_queue_index(const VkPhysicalDevice& device) const
 {
 	uint32_t numQueueFamilies = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
@@ -361,7 +367,7 @@ uint32_t Vulkan::Instance::get_compute_family_queue_index(const VkPhysicalDevice
 	}
 	return computeQueueFamily;
 }
-uint32_t Vulkan::Instance::get_transfer_family_queue_index(const VkPhysicalDevice& device) const
+uint32_t vulkan::Instance::get_transfer_family_queue_index(const VkPhysicalDevice& device) const
 {
 	uint32_t numQueueFamilies = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
@@ -380,7 +386,7 @@ uint32_t Vulkan::Instance::get_transfer_family_queue_index(const VkPhysicalDevic
 	return transferQueueFamilyIndex;
 }
 
-std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
+std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
 {
 
 	auto graphicsQueueFamilyIndex = get_graphics_family_queue_index(device);
@@ -442,6 +448,14 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> Vulkan::Instance::setup_logic
 		//}
 		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
 			usedExtensions.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+		}
+		if constexpr (debug) {
+			if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
+				usedExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+			}
+			//else if (strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+			//	usedExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			//}
 		}
 	}
 	

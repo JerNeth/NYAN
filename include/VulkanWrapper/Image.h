@@ -4,9 +4,11 @@
 #include "VulkanIncludes.h"
 #include "Utility.h"
 #include "LinAlg.h"
+#include <optional>
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
+	class Allocation;
 	class Image;
 	class ImageView;
 	inline size_t format_block_size(VkFormat format) {
@@ -291,7 +293,7 @@ namespace Vulkan {
 			size = offset;
 		}
 	};
-
+	using AllocationHandle = Utility::ObjectHandle<Allocation, Utility::Pool<Allocation>>;
 	using ImageHandle = Utility::ObjectHandle<Image, Utility::LinkedBucketList<Image>>;
 	using ImageViewHandle = Utility::ObjectHandle<ImageView, Utility::LinkedBucketList<ImageView>>;
 	struct ImageInfo {
@@ -505,7 +507,7 @@ namespace Vulkan {
 	};
 	class Image : public Utility::UIDC {
 	public:
-		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, VmaAllocation allocation = VK_NULL_HANDLE);
+		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, std::optional< AllocationHandle> allocation);
 		Image(Image&) = delete;
 		Image(Image&&) noexcept;
 		Image& operator=(Image&) = delete;
@@ -513,11 +515,12 @@ namespace Vulkan {
 		~Image() noexcept;
 
 		ImageView* get_view() noexcept {
-			return &(*get_view_handle());
+			return &(*m_view);
 		}
 		const ImageView* get_view() const noexcept {
-			return &(*get_view_handle());
+			return &(*m_view);
 		}
+
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.width >> mipLevel);
 		}
@@ -545,15 +548,11 @@ namespace Vulkan {
 		void disown_image() noexcept {
 			m_ownsImage = false;
 		}
-		void disown_allocation() noexcept {
-			m_ownsAllocation = false;
-		}
 		void set_layout(VkImageLayout format) noexcept {
 			m_info.layout = format;
 		}
 		void disown() noexcept {
 			disown_image();
-			disown_allocation();
 		}
 		VkPipelineStageFlags get_stage_flags() const noexcept {
 			return m_stageFlags;
@@ -637,25 +636,16 @@ namespace Vulkan {
 		}
 
 	private:
-		ImageViewHandle& get_view_handle() noexcept {
-			ImageViewHandle* m_view = reinterpret_cast<ImageViewHandle*>(m_viewStorage.data());
-			return *m_view;
-		}
-		const ImageViewHandle& get_view_handle() const noexcept {
-			const ImageViewHandle* m_view = reinterpret_cast<const ImageViewHandle*>(m_viewStorage.data());
-			return *m_view;
-		}
-		
 		LogicalDevice& r_device;
 		bool m_optimal = true;
 		bool m_ownsImage = true;
 		bool m_ownsAllocation = true;
 		VkImage m_vkHandle = VK_NULL_HANDLE;
-		VmaAllocation m_vmaAllocation = VK_NULL_HANDLE;
 		VkPipelineStageFlags m_stageFlags{};
 		VkAccessFlags m_accessFlags{};
 		ImageInfo m_info;
-		std::array<std::byte, sizeof(ImageViewHandle)>m_viewStorage{};
+		std::optional<AllocationHandle> m_allocation;
+		ImageViewHandle m_view;
 	};
 }
 

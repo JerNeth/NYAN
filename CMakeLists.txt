@@ -77,12 +77,11 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
 add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC} ${IMGUI_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC})
+add_dependencies(Engine shaders)
 
 add_executable(Demo ${DEMO_SRC})# )
 add_executable(Demo2 ${DEMO2_SRC})
-add_dependencies(Demo shaders)
-add_dependencies(Demo2 shaders)
 
 target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk)
 target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)

@@ -4,7 +4,7 @@
 #include "VulkanIncludes.h"
 #include "LogicalDevice.h"
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Instance {
 	public:
@@ -25,7 +25,8 @@ namespace Vulkan {
 		}
 		Instance(Instance&) = delete;
 		Instance& operator=(Instance&) = delete;
-		LogicalDevice setup_device();
+		//LogicalDevice setup_device_direct();
+		std::unique_ptr<LogicalDevice> setup_device();
 		void setup_win32_surface(HWND hwnd, HINSTANCE hinstance);
 		uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 		std::vector<VkPresentModeKHR> get_present_modes() const;

@@ -2,7 +2,7 @@
 #define RDSHADERMANAGER_H
 #pragma once
 #include "VkWrapper.h"
-namespace Vulkan {
+namespace vulkan {
 	class ShaderManager {
 	public:
 		ShaderManager(LogicalDevice& device);

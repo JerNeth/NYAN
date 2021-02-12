@@ -4,7 +4,7 @@
 #include "VulkanIncludes.h"
 #include "Utility.h"
 #include "Allocator.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	struct BufferInfo {
 		VkDeviceSize size = 0;
@@ -89,13 +89,17 @@ namespace Vulkan {
 			std::swap(m_allocation, other.m_allocation); 
 			std::swap(m_info, other.m_info);*/
 		}
-		MappedMemoryHandle<uint8_t> map_data() const noexcept;
+		//MappedMemoryHandle<uint8_t> map_data() const noexcept;
+		void* map_data() noexcept;
+		void unmap_data() noexcept;
+		void flush(uint32_t offset = 0, uint32_t size = ~0Ui32);
 		~Buffer();
 	private:
 		LogicalDevice& r_device;
 		VkBuffer m_vkHandle;
 		VmaAllocation m_allocation;
 		BufferInfo m_info;
+		void* maped = nullptr;
 	};
 	using BufferHandle = Utility::ObjectHandle<Buffer, Utility::Pool<Buffer>>;
 }

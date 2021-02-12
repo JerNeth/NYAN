@@ -39,6 +39,19 @@ namespace Utility {
 			return hash;
 		}
 	};
+	template<>
+	struct Hash<std::string> {
+		HashValue operator()(const std::string& string) const {
+			const HashValue prime = 0x100000001b3ull;
+			HashValue hash = 0xcbf29ce484222325ull;
+			const char* bytes = string.data();
+			for (size_t i = 0; i < string.size(); i++) {
+				hash ^= static_cast<HashValue>(bytes[i]);
+				hash *= prime;
+			}
+			return hash;
+		}
+	};
 	template<typename T>
 	struct DataHash {
 		HashValue operator()(const T* t, size_t size) const {

@@ -2,7 +2,7 @@
 #include "LogicalDevice.h"
 #include "Instance.h"
 
-Vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Instance& instance)
+vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Instance& instance)
 	:r_device(device),
 	r_instance(instance)
 {
@@ -10,15 +10,42 @@ Vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Inst
 	r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
 }
 
-Vulkan::WindowSystemInterface::~WindowSystemInterface()
+vulkan::WindowSystemInterface::~WindowSystemInterface()
 {
 	if(m_vkHandle)
 		vkDestroySwapchainKHR(r_device.get_device(), m_vkHandle, r_device.get_allocator());
 }
 
-void Vulkan::WindowSystemInterface::begin_frame()
+void vulkan::WindowSystemInterface::drain_swapchain()
+{
+	r_device.set_acquire_semaphore(0, VK_NULL_HANDLE);
+	r_device.wait_idle();
+}
+
+void vulkan::WindowSystemInterface::destroy_swapchain()
+{
+	drain_swapchain();
+	if (m_vkHandle != VK_NULL_HANDLE)
+		vkDestroySwapchainKHR(r_device.get_device(), m_vkHandle, r_device.get_allocator());
+	m_vkHandle = VK_NULL_HANDLE;
+	m_swapchainImageAcquired = false;
+}
+
+void vulkan::WindowSystemInterface::update_swapchain()
+{
+	drain_swapchain();
+
+	if(init_swapchain());
+		r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
+}
+
+void vulkan::WindowSystemInterface::begin_frame()
 {
 	r_device.next_frame();
+	if (m_vkHandle == VK_NULL_HANDLE)
+		update_swapchain();
+	if (m_swapchainImageAcquired)
+		return;
 	VkResult result{};
 	do {
 		auto semaphore = r_device.request_semaphore();
@@ -32,19 +59,14 @@ void Vulkan::WindowSystemInterface::begin_frame()
 			if (result == VK_ERROR_DEVICE_LOST) {
 				throw std::runtime_error("VK: could not acquire next image, device lost");
 			}
-			if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-				//recreate_swapchain();
-				assert(false);
+			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+				update_swapchain();
 			}
 			if (result == VK_ERROR_SURFACE_LOST_KHR) {
 				throw std::runtime_error("VK: could not acquire next image, surface lost");
 			}
 			if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
 				throw std::runtime_error("VK: could not acquire next image, fullscreen exclusive mode lost");
-			}
-			if (result == VK_SUBOPTIMAL_KHR) {
-				assert(false);
-				//recreate_swapchain();
 			}
 			else if (result != VK_NOT_READY) {
 				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
@@ -57,7 +79,7 @@ void Vulkan::WindowSystemInterface::begin_frame()
 	} while (result != VK_SUCCESS);
 }
 
-void Vulkan::WindowSystemInterface::end_frame()
+void vulkan::WindowSystemInterface::end_frame()
 {
 	r_device.end_frame();
 	if (!r_device.swapchain_touched())
@@ -91,8 +113,7 @@ void Vulkan::WindowSystemInterface::end_frame()
 			throw std::runtime_error("VK: could not present, fullscreen exclusive mode lost");
 		}
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-			//recreate_swapchain();
-			assert(false);
+			destroy_swapchain();
 		}
 		else {
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
@@ -100,7 +121,7 @@ void Vulkan::WindowSystemInterface::end_frame()
 	}
 }
 
-bool Vulkan::WindowSystemInterface::init_swapchain()
+bool vulkan::WindowSystemInterface::init_swapchain()
 {
 
 	auto surfaceFormats = r_instance.get_surface_formats();
@@ -212,4 +233,5 @@ bool Vulkan::WindowSystemInterface::init_swapchain()
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
+	return true;
 }

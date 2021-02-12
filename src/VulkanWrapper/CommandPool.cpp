@@ -1,6 +1,6 @@
 #include "CommandPool.h"
 #include "LogicalDevice.h"
-Vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyIndex) :
+vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyIndex) :
 	r_device(parent)
 {
 	VkCommandPoolCreateInfo commandPoolCreateInfo{
@@ -21,7 +21,7 @@ Vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyInde
 	}
 }
 
-Vulkan::CommandPool::CommandPool(CommandPool&& other) noexcept :
+vulkan::CommandPool::CommandPool(CommandPool&& other) noexcept :
 	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
 	m_primaryBuffers(other.m_primaryBuffers),
@@ -32,14 +32,14 @@ Vulkan::CommandPool::CommandPool(CommandPool&& other) noexcept :
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
 
-Vulkan::CommandPool::~CommandPool() noexcept
+vulkan::CommandPool::~CommandPool() noexcept
 {
 	if (m_vkHandle != VK_NULL_HANDLE) {
 		vkDestroyCommandPool(r_device.get_device(), m_vkHandle, r_device.get_allocator());
 	}
 }
 
-VkCommandBuffer Vulkan::CommandPool::request_command_buffer()
+VkCommandBuffer vulkan::CommandPool::request_command_buffer()
 {
 	if (m_primaryBufferIdx < m_primaryBuffers.size()) {
 		//std::cout << "Requested (Reuse) Cmd Buffer: " << m_primaryBuffers[m_primaryBufferIdx] << "\n";
@@ -71,7 +71,7 @@ VkCommandBuffer Vulkan::CommandPool::request_command_buffer()
 	}
 }
 
-VkCommandBuffer Vulkan::CommandPool::request_secondary_command_buffer()
+VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 {
 	if (m_secondaryBufferIdx < m_secondaryBuffers.size()) {
 		return m_secondaryBuffers[m_secondaryBufferIdx++];
@@ -102,7 +102,7 @@ VkCommandBuffer Vulkan::CommandPool::request_secondary_command_buffer()
 }
 
 
-void Vulkan::CommandPool::reset()
+void vulkan::CommandPool::reset()
 {
 	if (m_primaryBufferIdx > 0 || m_secondaryBufferIdx > 0)
 		vkResetCommandPool(r_device.get_device(), m_vkHandle, 0);

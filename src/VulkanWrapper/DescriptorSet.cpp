@@ -1,6 +1,6 @@
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
-Vulkan::DescriptorSetAllocator::DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout) :
+vulkan::DescriptorSetAllocator::DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout) :
 r_device(parent)
 {
 	
@@ -131,14 +131,14 @@ r_device(parent)
 }
 
 
-Vulkan::DescriptorSetAllocator::~DescriptorSetAllocator()
+vulkan::DescriptorSetAllocator::~DescriptorSetAllocator()
 {
 	if (m_layout != VK_NULL_HANDLE)
 		vkDestroyDescriptorSetLayout(r_device.m_device, m_layout, r_device.m_allocator);
 	clear();
 }
 
-std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned threadId, Utility::HashValue hash)
+std::pair<VkDescriptorSet, bool> vulkan::DescriptorSetAllocator::find(unsigned threadId, Utility::HashValue hash)
 {
 	auto& state = *perThread[threadId];
 	if (state.removeStale) {
@@ -199,12 +199,12 @@ std::pair<VkDescriptorSet, bool> Vulkan::DescriptorSetAllocator::find(unsigned t
 }
 
 
-VkDescriptorSetLayout Vulkan::DescriptorSetAllocator::get_layout() const noexcept
+VkDescriptorSetLayout vulkan::DescriptorSetAllocator::get_layout() const noexcept
 {
 	return m_layout;
 }
 
-void Vulkan::DescriptorSetAllocator::clear()
+void vulkan::DescriptorSetAllocator::clear()
 {
 	for (auto& state : perThread) {
 		state->hashMap.clear();

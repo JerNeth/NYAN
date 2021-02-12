@@ -6,7 +6,7 @@
 #include "Utility.h"
 #include "LinAlg.h"
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class PipelineLayout;
 	struct ResourceBinding {

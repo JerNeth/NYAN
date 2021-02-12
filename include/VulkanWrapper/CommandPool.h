@@ -2,7 +2,7 @@
 #define VKCOMMANDPOOL_H
 #pragma once
 #include "VulkanIncludes.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class CommandPool {
 	public:

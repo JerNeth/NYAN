@@ -3,7 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "Image.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	struct SwapchainState {
 		VkPresentModeKHR presentMode;

@@ -16,10 +16,10 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-Vulkan::ShaderManager::ShaderManager(LogicalDevice& device) : r_device(device) {
+vulkan::ShaderManager::ShaderManager(LogicalDevice& device) : r_device(device) {
 
 }
-Vulkan::Shader* Vulkan::ShaderManager::request_shader(const std::string& filename, ShaderLayout& layout)
+vulkan::Shader* vulkan::ShaderManager::request_shader(const std::string& filename, ShaderLayout& layout)
 {
 	//Utility::DataHash<const char> hasher;
 	//auto hash = hasher(filename.data(), filename.size());

@@ -6,7 +6,7 @@
 #include "Utility.h"
 #include <unordered_map>
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Allocator {
 	public:
@@ -23,8 +23,22 @@ namespace Vulkan {
 		void unmap_memory(VmaAllocation allocation);
 		void destroy_buffer(VkBuffer buffer, VmaAllocation allocation);
 		void flush(VmaAllocation allocation, uint32_t offset, uint32_t size);
+		void free_allocation(VmaAllocation allocation) const noexcept {
+			vmaFreeMemory(m_VmaHandle, allocation);
+		}
 	private:
 		VmaAllocator m_VmaHandle = VK_NULL_HANDLE;
+	};
+	class Allocation {
+	public:
+		Allocation(LogicalDevice& device, VmaAllocation handle);
+		VmaAllocation get_handle() const noexcept {
+			return m_VmaHandle;
+		}
+		~Allocation();
+	private:
+		LogicalDevice& r_device;
+		VmaAllocation m_VmaHandle = VK_NULL_HANDLE;
 	};
 	template<typename T>
 	class MappedMemoryHandle {

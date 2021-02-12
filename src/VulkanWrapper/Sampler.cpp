@@ -1,6 +1,6 @@
 #include "Sampler.h"
 #include "LogicalDevice.h"
-Vulkan::Sampler::Sampler(Vulkan::LogicalDevice& device, const Vulkan::SamplerCreateInfo& createInfo):
+vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const vulkan::SamplerCreateInfo& createInfo):
 	r_device(device),
 	m_createInfo(createInfo)
 {
@@ -26,14 +26,14 @@ Vulkan::Sampler::Sampler(Vulkan::LogicalDevice& device, const Vulkan::SamplerCre
 		throw std::runtime_error("Could not create sampler");
 	}
 }
-Vulkan::Sampler::~Sampler() noexcept{
+vulkan::Sampler::~Sampler() noexcept{
 	if (m_vkHandle != VK_NULL_HANDLE) {
 		r_device.queue_image_sampler_deletion(m_vkHandle);
 		m_vkHandle = VK_NULL_HANDLE;
 	}
 }
 
-Vulkan::Sampler::Sampler(Sampler&& other) noexcept:
+vulkan::Sampler::Sampler(Sampler&& other) noexcept:
 	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
 	m_createInfo(other.m_createInfo)

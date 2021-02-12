@@ -2,7 +2,7 @@
 
 #include "LogicalDevice.h"
 
-Vulkan::PipelineState Vulkan::Pipeline::s_pipelineState = Vulkan::defaultPipelineState;
+vulkan::PipelineState vulkan::Pipeline::s_pipelineState = vulkan::defaultPipelineState;
 /*
 static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 
@@ -20,7 +20,7 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	return buffer;
 }
 */
-Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_shaderLayout(layout) {
+vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_shaderLayout(layout) {
 	m_hashValue = Utility::Hasher()(layout);
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
 	for (size_t i = 0; i < descriptorSets.size(); i++) {
@@ -49,7 +49,7 @@ Vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout
 	}
 	create_update_template();
 }
-Vulkan::PipelineLayout::~PipelineLayout()
+vulkan::PipelineLayout::~PipelineLayout()
 {
 	if (m_layout != VK_NULL_HANDLE)
 		vkDestroyPipelineLayout(r_device.get_device(), m_layout, r_device.get_allocator());
@@ -59,34 +59,34 @@ Vulkan::PipelineLayout::~PipelineLayout()
 	}
 }
 
-const VkPipelineLayout& Vulkan::PipelineLayout::get_layout() const
+const VkPipelineLayout& vulkan::PipelineLayout::get_layout() const
 {
 	return m_layout;
 }
 
-const Vulkan::ShaderLayout& Vulkan::PipelineLayout::get_shader_layout() const
+const vulkan::ShaderLayout& vulkan::PipelineLayout::get_shader_layout() const
 {
 	return m_shaderLayout;
 }
 
-const Vulkan::DescriptorSetAllocator* Vulkan::PipelineLayout::get_allocator(size_t set) const
+const vulkan::DescriptorSetAllocator* vulkan::PipelineLayout::get_allocator(size_t set) const
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	return m_descriptors[set];
 }
-Vulkan::DescriptorSetAllocator* Vulkan::PipelineLayout::get_allocator(size_t set)
+vulkan::DescriptorSetAllocator* vulkan::PipelineLayout::get_allocator(size_t set)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	return m_descriptors[set];
 }
 
-const VkDescriptorUpdateTemplate& Vulkan::PipelineLayout::get_update_template(size_t set) const
+const VkDescriptorUpdateTemplate& vulkan::PipelineLayout::get_update_template(size_t set) const
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	return m_updateTemplate[set];
 }
 
-void Vulkan::PipelineLayout::create_update_template()
+void vulkan::PipelineLayout::create_update_template()
 {
 	for (uint32_t descriptorIdx = 0; descriptorIdx < MAX_DESCRIPTOR_SETS; descriptorIdx++) {
 		if (!m_shaderLayout.used.test(descriptorIdx))
@@ -228,7 +228,7 @@ void Vulkan::PipelineLayout::create_update_template()
 	}
 }
 
-Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile)
+vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile)
 {
 
 
@@ -453,210 +453,210 @@ Vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	}
 }
 
-//Vulkan::Pipeline::~Pipeline() noexcept
+//vulkan::Pipeline::~Pipeline() noexcept
 //{
 //	if (m_pipeline != VK_NULL_HANDLE)
 //		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
 //}
 
 
-//const Vulkan::Pipeline& Vulkan::Pipeline::operator=(Vulkan::Pipeline&& other)
+//const vulkan::Pipeline& vulkan::Pipeline::operator=(vulkan::Pipeline&& other)
 //{
 //	this->r_device = other.r_device;
 //	this->m_pipeline = other.m_pipeline;
 //	other.m_pipeline = VK_NULL_HANDLE;
 //}
 
-VkPipeline Vulkan::Pipeline::get_pipeline() const noexcept
+VkPipeline vulkan::Pipeline::get_pipeline() const noexcept
 {
 	return m_pipeline;
 }
 
 
 
-Vulkan::Pipeline Vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
+vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
 {
 	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
 }
 
-void Vulkan::Pipeline::reset_static_pipeline()
+void vulkan::Pipeline::reset_static_pipeline()
 {
 	s_pipelineState = defaultPipelineState;
 }
 
-void Vulkan::Pipeline::set_depth_write(bool depthWrite)
+void vulkan::Pipeline::set_depth_write(bool depthWrite)
 {
 	s_pipelineState.depth_write = depthWrite;
 }
 
 
-void Vulkan::Pipeline::set_depth_test(bool depthTest)
+void vulkan::Pipeline::set_depth_test(bool depthTest)
 {
 	s_pipelineState.depth_test = depthTest;
 }
 
-void Vulkan::Pipeline::set_blend_enabled(bool blendEnabled)
+void vulkan::Pipeline::set_blend_enabled(bool blendEnabled)
 {
 	s_pipelineState.blend_enable = blendEnabled;
 }
 
-void Vulkan::Pipeline::set_cull_mode(VkCullModeFlags cullMode)
+void vulkan::Pipeline::set_cull_mode(VkCullModeFlags cullMode)
 {
 	s_pipelineState.cull_mode = cullMode;
 }
 
-void Vulkan::Pipeline::set_front_face(VkFrontFace frontFace)
+void vulkan::Pipeline::set_front_face(VkFrontFace frontFace)
 {
 	s_pipelineState.front_face = frontFace;
 }
 
-void Vulkan::Pipeline::set_depth_bias_enabled(bool depthBiasEnabled)
+void vulkan::Pipeline::set_depth_bias_enabled(bool depthBiasEnabled)
 {
 	s_pipelineState.depth_bias_enable = depthBiasEnabled;
 }
 
-void Vulkan::Pipeline::set_stencil_test_enabled(bool stencilTestEnabled)
+void vulkan::Pipeline::set_stencil_test_enabled(bool stencilTestEnabled)
 {
 	s_pipelineState.stencil_test = stencilTestEnabled;
 }
 
-void Vulkan::Pipeline::set_stencil_front_fail(VkStencilOp frontFail)
+void vulkan::Pipeline::set_stencil_front_fail(VkStencilOp frontFail)
 {
 	s_pipelineState.stencil_front_fail = frontFail;
 }
 
-void Vulkan::Pipeline::set_stencil_front_pass(VkStencilOp frontPass)
+void vulkan::Pipeline::set_stencil_front_pass(VkStencilOp frontPass)
 {
 	s_pipelineState.stencil_front_pass = frontPass;
 }
 
-void Vulkan::Pipeline::set_stencil_front_depth_fail(VkStencilOp frontDepthFail)
+void vulkan::Pipeline::set_stencil_front_depth_fail(VkStencilOp frontDepthFail)
 {
 	s_pipelineState.stencil_front_depth_fail = frontDepthFail;
 }
 
-void Vulkan::Pipeline::set_stencil_front_compare_op(VkCompareOp frontCompareOp)
+void vulkan::Pipeline::set_stencil_front_compare_op(VkCompareOp frontCompareOp)
 {
 	s_pipelineState.stencil_front_compare_op = frontCompareOp;
 }
 
-void Vulkan::Pipeline::set_stencil_back_fail(VkStencilOp backFail)
+void vulkan::Pipeline::set_stencil_back_fail(VkStencilOp backFail)
 {
 	s_pipelineState.stencil_back_fail = backFail;
 }
 
-void Vulkan::Pipeline::set_stencil_back_pass(VkStencilOp backPass)
+void vulkan::Pipeline::set_stencil_back_pass(VkStencilOp backPass)
 {
 	s_pipelineState.stencil_back_pass = backPass;
 }
 
-void Vulkan::Pipeline::set_stencil_back_depth_fail(VkStencilOp backDepthFail)
+void vulkan::Pipeline::set_stencil_back_depth_fail(VkStencilOp backDepthFail)
 {
 	s_pipelineState.stencil_back_depth_fail = backDepthFail;
 }
 
-void Vulkan::Pipeline::set_stencil_back_compare_op(VkCompareOp backCompareOp)
+void vulkan::Pipeline::set_stencil_back_compare_op(VkCompareOp backCompareOp)
 {
 	s_pipelineState.stencil_back_compare_op = backCompareOp;
 }
 
-void Vulkan::Pipeline::set_alpha_to_coverage(bool alphaToCoverage)
+void vulkan::Pipeline::set_alpha_to_coverage(bool alphaToCoverage)
 {
 	s_pipelineState.alpha_to_coverage = alphaToCoverage;
 }
 
-void Vulkan::Pipeline::set_alpha_to_one(bool alphaToOne)
+void vulkan::Pipeline::set_alpha_to_one(bool alphaToOne)
 {
 	s_pipelineState.alpha_to_one = alphaToOne;
 }
 
-void Vulkan::Pipeline::set_sample_shading(bool sampleShading)
+void vulkan::Pipeline::set_sample_shading(bool sampleShading)
 {
 	s_pipelineState.sample_shading = sampleShading;
 }
 
-void Vulkan::Pipeline::set_src_color_blend(VkBlendFactor srcColorBlend)
+void vulkan::Pipeline::set_src_color_blend(VkBlendFactor srcColorBlend)
 {
 	s_pipelineState.src_color_blend = srcColorBlend;
 }
 
-void Vulkan::Pipeline::set_dst_color_blend(VkBlendFactor dstColorBlend)
+void vulkan::Pipeline::set_dst_color_blend(VkBlendFactor dstColorBlend)
 {
 	s_pipelineState.dst_color_blend = dstColorBlend;
 }
 
-void Vulkan::Pipeline::set_color_blend_op(VkBlendOp colorBlendOp)
+void vulkan::Pipeline::set_color_blend_op(VkBlendOp colorBlendOp)
 {
 	s_pipelineState.color_blend_op = colorBlendOp;
 }
 
-void Vulkan::Pipeline::set_src_alpha_blend(VkBlendFactor srcAlphaBlend)
+void vulkan::Pipeline::set_src_alpha_blend(VkBlendFactor srcAlphaBlend)
 {
 	s_pipelineState.src_alpha_blend = srcAlphaBlend;
 }
 
-void Vulkan::Pipeline::set_dst_alpha_blend(VkBlendFactor dstAlphaBlend)
+void vulkan::Pipeline::set_dst_alpha_blend(VkBlendFactor dstAlphaBlend)
 {
 	s_pipelineState.dst_alpha_blend = dstAlphaBlend;
 }
 
-void Vulkan::Pipeline::set_alpha_blend_op(VkBlendOp alphaBlendOp)
+void vulkan::Pipeline::set_alpha_blend_op(VkBlendOp alphaBlendOp)
 {
 	s_pipelineState.alpha_blend_op = alphaBlendOp;
 }
 
-void Vulkan::Pipeline::set_color_write_mask(VkColorComponentFlags writeMask, uint32_t colorAttachment)
+void vulkan::Pipeline::set_color_write_mask(VkColorComponentFlags writeMask, uint32_t colorAttachment)
 {
 	s_pipelineState.color_write_mask &= ~(((1 << WRITE_MASK_BITS) - 1)<<(colorAttachment*WRITE_MASK_BITS));
 	s_pipelineState.color_write_mask |= writeMask << (colorAttachment*WRITE_MASK_BITS);
 }
 
-void Vulkan::Pipeline::set_primitive_restart(bool primitiveRestart)
+void vulkan::Pipeline::set_primitive_restart(bool primitiveRestart)
 {
 	s_pipelineState.primitive_restart = primitiveRestart;
 }
 
-void Vulkan::Pipeline::set_topology(VkPrimitiveTopology primitiveTopology)
+void vulkan::Pipeline::set_topology(VkPrimitiveTopology primitiveTopology)
 {
 	s_pipelineState.topology = primitiveTopology;
 }
 
-void Vulkan::Pipeline::set_wireframe(VkPolygonMode wireframe)
+void vulkan::Pipeline::set_wireframe(VkPolygonMode wireframe)
 {
 	s_pipelineState.wireframe = wireframe;
 }
 
-void Vulkan::Pipeline::set_subgroup_control_size(bool controlSize)
+void vulkan::Pipeline::set_subgroup_control_size(bool controlSize)
 {
 	s_pipelineState.subgroup_control_size = controlSize;
 }
 
-void Vulkan::Pipeline::set_subgroup_full_group(bool fullGroup)
+void vulkan::Pipeline::set_subgroup_full_group(bool fullGroup)
 {
 	s_pipelineState.subgroup_full_group = fullGroup;
 }
 
-void Vulkan::Pipeline::set_subgroup_min_size_log2(unsigned subgroupMinSize)
+void vulkan::Pipeline::set_subgroup_min_size_log2(unsigned subgroupMinSize)
 {
 	assert(subgroupMinSize < (1 << 3));
 	s_pipelineState.subgroup_min_size_log2 = subgroupMinSize;
 }
 
-void Vulkan::Pipeline::set_subgroup_max_size_log2(unsigned subgroupMaxSize)
+void vulkan::Pipeline::set_subgroup_max_size_log2(unsigned subgroupMaxSize)
 {
 	assert(subgroupMaxSize < (1 << 3));
 	s_pipelineState.subgroup_max_size_log2 = subgroupMaxSize;
 }
 
-void Vulkan::Pipeline::set_conservative_raster(bool conservativeRaster)
+void vulkan::Pipeline::set_conservative_raster(bool conservativeRaster)
 {
 	s_pipelineState.conservative_raster = conservativeRaster;
 }
-Vulkan::PipelineStorage::PipelineStorage(LogicalDevice& device) :
+vulkan::PipelineStorage::PipelineStorage(LogicalDevice& device) :
 	r_device(device)
 {
 }
-Vulkan::PipelineStorage::~PipelineStorage()
+vulkan::PipelineStorage::~PipelineStorage()
 {
 	for (const auto& [compile, pipeline] : m_hashMap) {
 		assert(pipeline.get_pipeline() != VK_NULL_HANDLE);
@@ -664,7 +664,7 @@ Vulkan::PipelineStorage::~PipelineStorage()
 	}
 }
 
-VkPipeline Vulkan::PipelineStorage::request_pipeline(const PipelineCompile& compile)
+VkPipeline vulkan::PipelineStorage::request_pipeline(const PipelineCompile& compile)
 {
 	
 	const auto &[ret,_] = m_hashMap.try_emplace(compile, r_device, compile);

@@ -1,7 +1,7 @@
 #include "Shader.h"
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
-Vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
+vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
 	m_parent(parent)
 {
 	Utility::VectorHash<uint32_t> hasher;
@@ -10,18 +10,18 @@ Vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shade
 	parse_stage( shaderCode);
 }
 
-Vulkan::Shader::~Shader()
+vulkan::Shader::~Shader()
 {
 	if(m_module != VK_NULL_HANDLE)
 		vkDestroyShaderModule(m_parent.m_device, m_module, m_parent.m_allocator);
 }
 
-Vulkan::ShaderStage Vulkan::Shader::get_stage()
+vulkan::ShaderStage vulkan::Shader::get_stage()
 {
 	return m_stage;
 }
 
-inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> Vulkan::Shader::get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const
+inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> vulkan::Shader::get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const
 {
 	auto set = comp.get_decoration(resource.id, spv::DecorationDescriptorSet);
 	auto binding = comp.get_decoration(resource.id, spv::DecorationBinding);
@@ -29,7 +29,7 @@ inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> Vulkan::Shad
 	return std::make_tuple(set, binding, type);
 }
 
-inline void Vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
+inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
 {
 	layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
 	auto& size = layouts[set].arraySizes[binding];
@@ -42,7 +42,7 @@ inline void Vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCR
 	}
 }
 
-void Vulkan::Shader::parse_stage(const std::vector<uint32_t>& shaderCode)
+void vulkan::Shader::parse_stage(const std::vector<uint32_t>& shaderCode)
 {
 	using namespace spirv_cross;
 	Compiler comp(shaderCode);
@@ -51,7 +51,7 @@ void Vulkan::Shader::parse_stage(const std::vector<uint32_t>& shaderCode)
 		throw std::runtime_error("Unsupported Shadertype");
 	m_stage = static_cast<ShaderStage>(executionModel);
 }
-void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32_t>& shaderCode) const
+void vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32_t>& shaderCode) const
 {
 	using namespace spirv_cross;
 	//bool usesBinding = false;
@@ -126,7 +126,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 		array_info(layout.descriptors, type, set, binding);
 	}
 	for (auto& attrib : resources.stage_inputs) {
-		if (m_stage == Vulkan::ShaderStage::Vertex) {
+		if (m_stage == vulkan::ShaderStage::Vertex) {
 			auto& type = comp.get_type(attrib.type_id);
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
 			layout.attributeElementCounts[location] = type.vecsize;
@@ -134,7 +134,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 		}
 	}
 	for (auto& attrib : resources.stage_outputs) {
-		if (m_stage == Vulkan::ShaderStage::Fragment) {
+		if (m_stage == vulkan::ShaderStage::Fragment) {
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
 			layout.outputs.set(location);
 		}
@@ -145,7 +145,7 @@ void Vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32
 	}
 }
 
-VkPipelineShaderStageCreateInfo Vulkan::Shader::get_create_info()
+VkPipelineShaderStageCreateInfo vulkan::Shader::get_create_info()
 {
 	assert(m_module != VK_NULL_HANDLE);
 	VkPipelineShaderStageCreateInfo createInfo{
@@ -157,12 +157,12 @@ VkPipelineShaderStageCreateInfo Vulkan::Shader::get_create_info()
 	return createInfo;
 }
 
-Utility::HashValue Vulkan::Shader::get_hash()
+Utility::HashValue vulkan::Shader::get_hash()
 {
 	return m_hashValue;
 }
 
-void Vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
+void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 {
 	VkShaderModuleCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -186,7 +186,7 @@ void Vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 	
 }
 
-Vulkan::Program::Program(const std::vector<Shader*>& shaders)
+vulkan::Program::Program(const std::vector<Shader*>& shaders)
 {
 	Utility::Hasher h;
 	for (auto shader : shaders) {
@@ -196,23 +196,23 @@ Vulkan::Program::Program(const std::vector<Shader*>& shaders)
 	m_hashValue = h();
 }
 
-Vulkan::Shader* Vulkan::Program::get_shader(ShaderStage stage) const
+vulkan::Shader* vulkan::Program::get_shader(ShaderStage stage) const
 {
 	assert(static_cast<uint32_t>(stage) < NUM_SHADER_STAGES);
 	return m_shaders[static_cast<uint32_t>(stage)];
 }
 
-void Vulkan::Program::set_pipeline_layout(PipelineLayout* layout)
+void vulkan::Program::set_pipeline_layout(PipelineLayout* layout)
 {
 	m_layout = layout;
 }
 
-Vulkan::PipelineLayout* Vulkan::Program::get_pipeline_layout() const
+vulkan::PipelineLayout* vulkan::Program::get_pipeline_layout() const
 {
 	return m_layout;
 }
 
-void Vulkan::Program::set_shader(Shader* shader)
+void vulkan::Program::set_shader(Shader* shader)
 {
 	assert(shader);
 	assert(static_cast<uint32_t>(shader->get_stage()) < NUM_SHADER_STAGES);

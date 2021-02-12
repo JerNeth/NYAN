@@ -16,7 +16,7 @@
 #include "CommandBuffer.h"
 #include "Manager.h"
 #include "Buffer.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Instance;
 	//Important to delete the device after everything else
@@ -81,13 +81,20 @@ namespace Vulkan {
 		Math::mat44 proj;
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
+	enum class SwapchainRenderpassType {
+		Color,
+		Depth
+	};
 	class LogicalDevice {
+		
 		struct Extensions {
 			unsigned descriptor_update_template : 1;
 			unsigned swapchain : 1;
 			unsigned timeline_semaphore : 1;
 			unsigned fullscreen_exclusive : 1;
 			unsigned extended_dynamic_state : 1;
+			unsigned debug_utils : 1;
+			unsigned debug_marker : 1;
 		};
 		struct WSIState {
 			VkSemaphore aquire = VK_NULL_HANDLE;
@@ -130,7 +137,7 @@ namespace Vulkan {
 				}
 			}
 			LogicalDevice& r_device;
-			uint32_t frameIndex;
+			uint32_t frameIndex = 0;
 
 			~FrameResource();
 
@@ -147,8 +154,8 @@ namespace Vulkan {
 			std::vector<VkImageView> deletedImageViews;
 			std::vector<VkSampler> deletedSampler;
 			std::vector<VkImage> deletedImages;
-			std::vector<std::pair<VkImage, VmaAllocation>> deletedImageAllocations;
-			std::vector<std::pair<VkBuffer, VmaAllocation>> deletedBufferAllocations;
+			std::vector<VkBuffer> deletedBuffer;
+			std::vector<VmaAllocation> deletedAllocations;
 			std::vector<VkFramebuffer> deletedFramebuffer;
 			std::vector<VkSemaphore> deletedSemaphores;
 			std::vector<VkSemaphore> recycledSemaphores;
@@ -192,7 +199,7 @@ namespace Vulkan {
 		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
 		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
 		VkPipeline request_pipeline(const PipelineCompile& compile) noexcept;
-		RenderpassCreateInfo request_swapchain_render_pass() noexcept;
+		RenderpassCreateInfo request_swapchain_render_pass(SwapchainRenderpassType type) noexcept;
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
@@ -213,12 +220,12 @@ namespace Vulkan {
 		void submit_queue(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr);
 		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
 		void queue_image_deletion(VkImage image) noexcept;
-		void queue_image_deletion(VkImage image, VmaAllocation allocation) noexcept;
 		void queue_image_view_deletion(VkImageView imageView) noexcept;
 		void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
 		void queue_image_sampler_deletion(VkSampler sampler) noexcept;
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
-		void queue_buffer_deletion(VkBuffer buffer, VmaAllocation allocation) noexcept;
+		void queue_buffer_deletion(VkBuffer buffer) noexcept;
+		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr);
@@ -246,6 +253,7 @@ namespace Vulkan {
 		Allocator* get_vma_allocator() const noexcept {
 			return m_vmaAllocator.get();
 		}
+		
 
 		uint32_t get_swapchain_image_index() const noexcept {
 			return m_wsiState.index;
@@ -299,6 +307,7 @@ namespace Vulkan {
 
 		Utility::Pool<CommandBuffer> m_commandBufferPool;
 		Utility::Pool<Buffer> m_bufferPool;
+		Utility::Pool<Allocation> m_allocationPool;
 		Utility::LinkedBucketList<ImageView> m_imageViewPool;
 		Utility::LinkedBucketList<Image> m_imagePool;
 		WSIState m_wsiState;
@@ -350,7 +359,7 @@ namespace Vulkan {
 		std::unordered_map< ShaderLayout, size_t, Utility::Hash<ShaderLayout>> m_pipelineLayoutIds;
 		Utility::LinkedBucketList<PipelineLayout> m_pipelineLayoutStorage;
 
-		std::array<std::unique_ptr<Sampler>, static_cast<size_t>(Vulkan::DefaultSampler::Size)> m_defaultSampler;
+		std::array<std::unique_ptr<Sampler>, static_cast<size_t>(vulkan::DefaultSampler::Size)> m_defaultSampler;
 
 		std::unordered_map<Utility::HashValue, size_t> m_renderpassIds;
 		std::unordered_map<Utility::HashValue, size_t> m_compatibleRenderpassIds;

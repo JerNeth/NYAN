@@ -129,6 +129,27 @@ namespace Utility {
 			if (next)
 				next->print();
 		}
+		size_t first() const noexcept {
+			for (uint32_t i = 0; i < bucketSize; i++) {
+				if (occupancy.test(i))
+					return zero_id+ i;
+			}
+			return last();
+		}
+		size_t last() const noexcept {
+			return zero_id + bucketSize;
+		}
+		bool contains(size_t id) const noexcept {
+			auto local_id = id - zero_id;
+			return occupancy.test(local_id);
+		}
+		template<typename Functor>
+		void for_each(Functor functor) {
+			for (uint32_t i = 0; i < bucketSize; i++) {
+				if (occupancy.test(i))
+					functor(get(i));
+			}
+		}
 	public:
 		const size_t zero_id = 0;
 	private:
@@ -146,6 +167,30 @@ namespace Utility {
 
 		using Bucket = ListBucket<T, bucketSize>;
 	public:
+		//template<typename T, size_t bucketSize = 16>
+		//struct Iterator {
+		//	using iterator_category = std::forward_iterator_tag;
+		//	using difference_type = size_t;
+		//	using value_type = T;
+		//	using pointer = T*;
+		//	using reference = T&; 
+		//	Iterator(size_t id, LinkedBucketList<T, bucketSize> parent) : m_id(id), r_parent(parent) {
+
+		//	}
+		//	size_t m_id;
+		//	mutable LinkedBucketList<T, bucketSize> r_parent;
+		//	reference operator*() const { return r_parent.get(m_id); }
+		//	pointer operator->() { return r_parent.get_ptr(m_id); }
+
+		//	// Prefix increment
+		//	Iterator& operator++() { auto last = r_parent.last(); while (!r_parent.contains(++m_id)&& m_id != last); return *this; }
+
+		//	// Postfix increment
+		//	Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+
+		//	friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_id == b.m_id; };
+		//	friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_id != b.m_id; };
+		//};
 		LinkedBucketList() {
 
 		}
@@ -214,7 +259,7 @@ namespace Utility {
 				return;
 			Bucket* current = head.get();
 			while (id >= (current->zero_id + bucketSize)) {
-				current = current->get_next();
+				current = current->get_next_non_filling();
 				if (current == nullptr)
 					return;
 			}
@@ -225,7 +270,7 @@ namespace Utility {
 				return nullptr;
 			Bucket* current = head.get();
 			while (id >= (current->zero_id + bucketSize)) {
-				current = current->get_next();
+				current = current->get_next_non_filling();
 				if (current == nullptr)
 					return nullptr;
 			}
@@ -236,7 +281,7 @@ namespace Utility {
 				return nullptr;
 			Bucket* current = head.get();
 			while (id >= (current->zero_id + bucketSize)) {
-				current = current->get_next();
+				current = current->get_next_non_filling();
 				if (current == nullptr)
 					return nullptr;
 			}
@@ -247,7 +292,7 @@ namespace Utility {
 				throw std::runtime_error("invalid id");
 			Bucket* current = head.get();
 			while (id >= (current->zero_id + bucketSize)) {
-				current = current->get_next();
+				current = current->get_next_non_filling();
 				if (current == nullptr)
 					throw std::runtime_error("invalid id");
 			}
@@ -258,7 +303,7 @@ namespace Utility {
 				throw std::runtime_error("invalid id");
 			Bucket* current = head.get();
 			while (id >= (current->zero_id + bucketSize)) {
-				current = current->get_next();
+				current = current->get_next_non_filling();
 				if (current == nullptr)
 					throw std::runtime_error("invalid id");
 			}
@@ -269,6 +314,57 @@ namespace Utility {
 			if (head)
 				head->print();
 			std::cout << "]" << '\n';
+		}
+		bool contains(size_t id) const noexcept {
+			if (!head)
+				return false;
+			Bucket* current = head.get();
+			while (id >= (current->zero_id + bucketSize)) {
+				current = current->get_next_non_filling();
+				if (current == nullptr)
+					return false;
+			}
+			return current->contains(id);
+		}
+		/*size_t first() const noexcept {
+			if (!head)
+				return 1;
+			Bucket* current = head.get();
+			while (current != nullptr) {
+				if (auto val = current->first(); val != current->last())
+					return val;
+				current = current->get_next();
+				if (current == nullptr)
+					return current->zero_id + bucketSize;
+			}
+		}
+		size_t last() const noexcept {
+			if (!head)
+				return 1;
+			Bucket* current = head.get();
+			while (current != nullptr) {
+				Bucket* prev = current;
+				current = current->get_next();
+				if (current == nullptr)
+					return prev->zero_id + bucketSize;
+			}
+		}*/
+		/*Iterator<T, bucketSize> begin() {
+			return Iterator<T, bucketSize>(first(), *this);
+		}
+		Iterator<T, bucketSize> end() {
+			return Iterator<T, bucketSize>(last(), *this);
+		}*/
+		template<typename Functor>
+		void for_each(Functor functor) {
+			if (!head)
+				return;
+			Bucket* current = head.get();
+			while (current != nullptr) {
+				current->for_each(functor);
+				current = current->get_next_non_filling();
+			}
+			return;
 		}
 	private:
 		std::unique_ptr<Bucket> head = nullptr;

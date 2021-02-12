@@ -3,26 +3,27 @@
 #pragma once
 #include "VkWrapper.h"
 #include "imgui.h"
+#include "Renderer.h"
 #include <chrono>
-namespace Vulkan {
-	class Imgui {
+namespace nyan {
+	class ImguiRenderer : public Renderer {
 	public:
-		Imgui(LogicalDevice& device);
-		~Imgui();
+		ImguiRenderer(vulkan::LogicalDevice& device);
+		~ImguiRenderer();
 		void next_frame();
-		void end_frame(CommandBufferHandle& cmd);
+		void end_frame();
 	private:
-		void create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd);
+		void create_cmds(ImDrawData* draw_data, vulkan::CommandBufferHandle& cmd);
 		void prep_buffer(ImDrawData* draw_data);
 		void set_up_program();
 		void set_up_font();
-		LogicalDevice& r_device;
-		Program* m_program;
+		vulkan::LogicalDevice& r_device;
+		vulkan::Program* m_program;
 		std::chrono::high_resolution_clock::time_point start;
 
-		ImageHandle m_font;
-		BufferHandle m_vbo;
-		BufferHandle m_ibo;
+		vulkan::ImageHandle m_font;
+		vulkan::BufferHandle m_vbo;
+		vulkan::BufferHandle m_ibo;
 		float values[230] = {};
 		int values_offset = 0;
 		//BufferHandle m_ubo;

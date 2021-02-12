@@ -1,7 +1,8 @@
 #include "Image.h"
 #include "LogicalDevice.h"
+#include "Allocator.h"
 
-Vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& info) :
+vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& info) :
 	r_device(parent),
 	m_info(info)
 {
@@ -33,23 +34,23 @@ Vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& i
 }
 
 
-Vulkan::ImageView::ImageView(ImageView&& other) noexcept:
+vulkan::ImageView::ImageView(ImageView&& other) noexcept:
     r_device(other.r_device),
     m_vkHandle(other.m_vkHandle)
 {
     other.m_vkHandle = VK_NULL_HANDLE;
 }
-Vulkan::ImageView::~ImageView() noexcept {
+vulkan::ImageView::~ImageView() noexcept {
     if(m_vkHandle != VK_NULL_HANDLE) {
         r_device.queue_image_view_deletion(m_vkHandle);
     }
 }
 
-Vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, VmaAllocation allocation) :
+vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, std::optional< AllocationHandle> allocation) :
 	r_device(parent),
 	m_vkHandle(image),
 	m_info(info),
-	m_vmaAllocation(allocation)
+	m_allocation(allocation)
 {
 	ImageViewCreateInfo createInfo;
 	createInfo.image = this;
@@ -60,34 +61,23 @@ Vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info
 	createInfo.baseArrayLayer = 0;
 	createInfo.layerCount = info.arrayLayers;
 	createInfo.aspectMask = ImageInfo::format_to_aspect_mask(info.format);
-	get_view_handle() = r_device.create_image_view(createInfo);
-	auto* view = &*get_view_handle();
+	m_view = r_device.create_image_view(createInfo);
 }
 
-Vulkan::Image::Image(Image&& other) noexcept :
+vulkan::Image::Image(Image&& other) noexcept :
 	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
-	m_vmaAllocation(other.m_vmaAllocation),
-	m_info(other.m_info)
+	m_info(other.m_info),
+	m_allocation(other.m_allocation),
+	m_view(other.m_view)
 {
-	get_view_handle() = std::move(other.get_view_handle());
-	other.m_vmaAllocation = VK_NULL_HANDLE;
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
 
-Vulkan::Image::~Image() noexcept
-{
-	get_view_handle().~ObjectHandle();
-	if (m_ownsAllocation && m_ownsImage) {
-		if (m_vmaAllocation != VK_NULL_HANDLE && m_vkHandle != VK_NULL_HANDLE) {
-			r_device.queue_image_deletion(m_vkHandle, m_vmaAllocation);
-		}
-
-	}
-	else if (m_ownsImage) {
-		r_device.queue_image_deletion(m_vkHandle);
-	}
-	else if (m_ownsAllocation) {
-		assert(false);
-	}
+vulkan::Image::~Image() noexcept
+{			
+	if (m_ownsImage)
+		if (m_vkHandle != VK_NULL_HANDLE)
+			r_device.queue_image_deletion(m_vkHandle);
+	
 }

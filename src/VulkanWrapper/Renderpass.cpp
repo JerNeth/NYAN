@@ -2,7 +2,7 @@
 #include "Framebuffer.h"
 #include "LogicalDevice.h"
 
-Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo) : r_device(parent)
+vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo& createInfo) : r_device(parent)
 {
 	std::tie(m_compatibleHashValue, m_hashValue) = createInfo.get_hash();
 	uint32_t subpassCount = createInfo.subpassCount;
@@ -11,7 +11,7 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	RenderpassCreateInfo::SubpassCreateInfo defaultPass;
 	if (subpassCount == 0) {
 		defaultPass.colorAttachmentsCount = createInfo.colorAttachmentsCount;
-		if (createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly)))
+		if (createInfo.opFlags.test(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly))
 			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::Read;
 		else
 			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
@@ -30,19 +30,19 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	VkAttachmentLoadOp depthStencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	VkAttachmentStoreOp depthStencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	
-	if (createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear)))
+	if (createInfo.opFlags.test(RenderpassCreateInfo::OpFlags::DepthStencilClear))
 		depthStencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	else if (createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilLoad)))
+	else if (createInfo.opFlags.test(RenderpassCreateInfo::OpFlags::DepthStencilLoad))
 		depthStencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 
-	if (createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilStore)))
+	if (createInfo.opFlags.test(RenderpassCreateInfo::OpFlags::DepthStencilStore))
 		depthStencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
 
 	VkImageLayout depthStencilLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	if (createInfo.depthStencilAttachment) {
 		//TODO get depth layout
-		bool test = createInfo.opFlags.test(static_cast<size_t>(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly));
+		bool test = createInfo.opFlags.test(RenderpassCreateInfo::OpFlags::DepthStencilReadOnly);
 		depthStencilLayout = test ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 
@@ -84,7 +84,10 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			implicitTransition.set(i);
 		}
 		else {
-			colorAttachment.initialLayout = info->get_image()->get_info().layout;
+			if (colorAttachment.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
+				implicitBottomOfPipe.set(i);
+				colorAttachment.initialLayout = info->get_image()->get_info().layout;
+			}
 		}
 		attachmentDescriptions[i] = colorAttachment;
 	}
@@ -515,33 +518,46 @@ Vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 	
 }
 
-//Vulkan::Renderpass::Renderpass(LogicalDevice& parent, VkRenderPass renderPass): r_device(parent), m_renderPass(renderPass)
+//vulkan::Renderpass::Renderpass(LogicalDevice& parent, VkRenderPass renderPass): r_device(parent), m_renderPass(renderPass)
 //{
 //}
 
-Vulkan::Renderpass::~Renderpass()
+vulkan::Renderpass::~Renderpass() noexcept
 {
 	vkDestroyRenderPass(r_device.m_device, m_renderPass, r_device.m_allocator);
 }
 
-bool Vulkan::Renderpass::has_depth_attachment(uint32_t subpass) const
+bool vulkan::Renderpass::has_depth_attachment(uint32_t subpass) const noexcept
 {
 	assert(m_subpasses.size() > subpass);
 	return m_subpasses[subpass].depthStencilAttachmentReference.attachment != VK_ATTACHMENT_UNUSED;
 }
 
-uint32_t Vulkan::Renderpass::get_num_color_attachments(uint32_t subpass) const
+uint32_t vulkan::Renderpass::get_num_input_attachments(uint32_t subpass) const noexcept
+{
+	assert(m_subpasses.size() > subpass);
+	return m_subpasses[subpass].inputAttachmentCount;
+}
+
+uint32_t vulkan::Renderpass::get_num_color_attachments(uint32_t subpass) const noexcept
 {
 	assert(m_subpasses.size() > subpass);
 	return m_subpasses[subpass].colorAttachmentCount;
 }
 
-VkRenderPass Vulkan::Renderpass::get_render_pass() const
+VkRenderPass vulkan::Renderpass::get_render_pass() const noexcept
 {
 	return m_renderPass;
 }
 
-const VkAttachmentReference& Vulkan::Renderpass::get_color_attachment(uint32_t idx, uint32_t subpass) const
+const VkAttachmentReference& vulkan::Renderpass::get_input_attachment(uint32_t idx, uint32_t subpass) const noexcept
+{
+	assert(m_subpasses.size() > subpass);
+	assert(m_subpasses[subpass].inputAttachmentCount > idx);
+	return m_subpasses[subpass].inputAttachmentReferences[idx];
+}
+
+const VkAttachmentReference& vulkan::Renderpass::get_color_attachment(uint32_t idx, uint32_t subpass) const noexcept
 {
 	assert(m_subpasses.size() > subpass);
 	assert(m_subpasses[subpass].colorAttachmentCount > idx);

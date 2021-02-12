@@ -1,6 +1,8 @@
 #ifndef CONTEXT_INIT_H
 #define CONTEXT_INIT_H
 #pragma once
+
+#include "imgui.h"
 #include <vector>
 
 namespace glfww {
@@ -25,6 +27,15 @@ namespace glfww {
 			if (glfwInit() == GLFW_FALSE)
 				throw std::runtime_error("GLFW could not be initiated");
 		}
+		[[nodiscard]] std::vector<const char*> get_required_extensions() const {
+			uint32_t glfwExtensionCount = 0;
+			const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+			std::vector<const char*> ret;
+			ret.reserve(glfwExtensionCount);
+			for (uint32_t i = 0; i < glfwExtensionCount; i++)
+				ret.push_back(glfwExtensions[i]);
+			return ret;
+		}
 		~Library() {
 			glfwTerminate();
 		}
@@ -34,6 +45,58 @@ namespace glfww {
 		Library& operator=(const Library&) = delete;
 		Library& operator=(Library&& other) = delete;
 	};
+	enum class WindowMode {
+		Windowed,
+		FullscreenWindowed,
+		Fullscreen,
+		Size
+	};
+	class Monitor {
+	public:
+		Monitor() : m_monitor(glfwGetPrimaryMonitor()) {
+			int count;
+			auto l = glfwGetVideoModes(m_monitor, &count);
+			m_modes.reserve(count);
+			for (int i = 0; i < count; i++) {
+				m_modes.push_back(l[i]);
+			}
+			m_defaultMode = *glfwGetVideoMode(m_monitor);
+			m_name = glfwGetMonitorName(m_monitor);
+		}
+		Monitor(GLFWmonitor* monitor) : m_monitor(monitor){
+			int count;
+			auto l = glfwGetVideoModes(m_monitor, &count);
+			m_modes.reserve(count);
+			for (int i = 0; i < count; i++) {
+				m_modes.push_back(l[i]);
+			}
+			m_defaultMode = *glfwGetVideoMode(m_monitor);
+			m_name = glfwGetMonitorName(m_monitor);
+		}
+		const GLFWvidmode* get_default_mode() const {
+			return &m_defaultMode;
+		}
+		operator GLFWmonitor* () const {
+			return m_monitor;
+		}
+		std::pair<int, int> get_default_extent() const {
+			return {m_defaultMode.width, m_defaultMode.height};
+		}
+	private:
+		GLFWmonitor* m_monitor = nullptr;
+		std::string m_name;
+		std::vector<GLFWvidmode> m_modes;
+		GLFWvidmode m_defaultMode;
+	};
+	static std::vector<Monitor> get_monitors() {
+		int count;
+		std::vector<Monitor> monit;
+		auto monitors = glfwGetMonitors(&count);
+		for (int i = 0; i < count; i++) {
+			monit.emplace_back(monitors[i]);
+		}
+		return monit;
+	}
 	class Window {
 		static const char* ImGui_ImplGlfw_GetClipboardText(void* user_data)
 		{
@@ -47,32 +110,93 @@ namespace glfww {
 
 	public:
 		Window() = delete;
-		Window(int width = 800, int height = 600,GLFWmonitor* monitor = nullptr, const GLFWvidmode* mode = nullptr, const char* title = "Simple Engine") {
-			if (mode != nullptr) {
-				width = mode->width;
-				height = mode->height;
-				glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-				glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-				glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-				glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-				//glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+		Window(int width, int height, const Monitor& monitor, WindowMode mode, const std::string& windowTitle) {
+			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+			ptr_monitor = &monitor;
+			m_mode = mode;
+			switch (mode) {
+			case WindowMode::Windowed: {
+				m_width = width;
+				m_height = height;
+				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), nullptr, nullptr);
+				break;
+			}
+			case WindowMode::FullscreenWindowed: {
+				auto mode_ = monitor.get_default_mode();
+				m_width = mode_->width;
+				m_height = mode_->height;
+				glfwWindowHint(GLFW_RED_BITS, mode_->redBits);
+				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
+				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
+				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), monitor, nullptr);
+				break;
+			}
+			case WindowMode::Fullscreen: {
+				m_width = width;
+				m_height = height;
+				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), monitor, nullptr);
+				break;
+			}
 			}
 			if (!glfwVulkanSupported())
 			{
 				throw std::runtime_error("GLFW: Vulkan not supported");
 			}
-			//Because we are using vulkan
-			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-			
-			//TODO handle resizing
-			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-			//glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-			m_window = glfwCreateWindow(width, height, title, monitor, nullptr);
 			
 			if (!m_window) {
 				const char* error_msg;
 				glfwGetError(&error_msg);
 				throw std::runtime_error(error_msg);
+			}
+		}
+		void change_mode(WindowMode mode) {
+			//assert(false); //
+			if (mode == m_mode)
+				return;
+			m_mode = mode;
+			switch (mode) {
+			case WindowMode::Windowed: {
+				auto [width, height] = ptr_monitor->get_default_extent();
+				auto x = (width - m_width) / 2;
+				auto y = (height - m_height) / 2;
+				glfwSetWindowMonitor(m_window, nullptr, x, y, m_width, m_height, GLFW_DONT_CARE);
+				break;
+			}
+			case WindowMode::FullscreenWindowed: {
+				auto mode_ = ptr_monitor->get_default_mode();
+				glfwWindowHint(GLFW_RED_BITS, mode_->redBits);
+				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
+				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
+				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				glfwSetWindowMonitor(m_window, *ptr_monitor, 0, 0, mode_->width, mode_->height, mode_->refreshRate);
+				break;
+			}
+			case WindowMode::Fullscreen: {
+				glfwSetWindowMonitor(m_window, *ptr_monitor, 0, 0, m_width, m_height, GLFW_DONT_CARE);
+				break;
+				}
+			}
+		}
+		void resize(int width, int height) {
+			//assert(false);
+			m_width = width;
+			m_height = height;
+			switch (m_mode) {
+			case WindowMode::Windowed:
+				m_width = width;
+				m_height = height;
+				glfwSetWindowSize(m_window, m_width, m_height);
+				break;
+			case WindowMode::FullscreenWindowed:
+				assert(false);
+				break;
+			case WindowMode::Fullscreen:
+				m_width = width;
+				m_height = height;
+				glfwSetWindowSize(m_window, m_width, m_height);
+				break;
 			}
 		}
 		bool is_iconified() {
@@ -196,16 +320,12 @@ namespace glfww {
 				}
 			}
 		}
-
-		static Window create_full_screen(int width, int height) {
-			return Window(width, height, glfwGetPrimaryMonitor());
-		}
-		static Window create_windowed_full_screen() {
-			return Window(0, 0, nullptr, glfwGetVideoMode(glfwGetPrimaryMonitor()));
-		}
 	private:
-		//No unique ptr because I'm not really sure what exactely this struct is
 		GLFWwindow* m_window = nullptr;
+		const Monitor* ptr_monitor = nullptr;
+		int m_width = 0;
+		int m_height = 0;
+		WindowMode m_mode;
 	};
 
 }

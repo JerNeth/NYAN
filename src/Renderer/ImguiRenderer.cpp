@@ -1,7 +1,9 @@
 #include "ImguiRenderer.h"
 #include "ShaderManager.h"
 
-Vulkan::Imgui::Imgui(LogicalDevice& device) : r_device(device) {
+using namespace vulkan;
+
+nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device) : r_device(device) {
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -13,17 +15,22 @@ Vulkan::Imgui::Imgui(LogicalDevice& device) : r_device(device) {
 	set_up_font();
 }
 
-Vulkan::Imgui::~Imgui()
+nyan::ImguiRenderer::~ImguiRenderer()
 {
 	ImGui::DestroyContext();
 }
 
-void Vulkan::Imgui::next_frame()
+void nyan::ImguiRenderer::next_frame()
 {
+
 	std::chrono::duration<float> delta = std::chrono::high_resolution_clock::now() - start;
 	values[values_offset] = delta.count();
 	start = std::chrono::high_resolution_clock::now();
-	ImGui::GetIO().DeltaTime = delta.count();
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = delta.count();
+	io.DisplaySize.x = r_device.get_swapchain_width();
+	io.DisplaySize.y = r_device.get_swapchain_height();
 	ImGui::NewFrame();
 	ImGui::Begin("Metrics");                          // Create a window called "Hello, world!" and append into it.
 
@@ -51,18 +58,25 @@ void Vulkan::Imgui::next_frame()
 	ImGui::ShowDemoWindow();
 }
 
-void Vulkan::Imgui::end_frame(CommandBufferHandle& cmd)
+void nyan::ImguiRenderer::end_frame()
 {
+	auto rp = r_device.request_swapchain_render_pass(vulkan::SwapchainRenderpassType::Color);
+	rp.clearAttachments.reset();
+	rp.loadAttachments.set(0);
+	auto cmd = r_device.request_command_buffer(vulkan::CommandBuffer::Type::Generic);
 	ImGui::Render();
+	cmd->begin_render_pass(rp);
 	ImDrawData* drawData = ImGui::GetDrawData();
 	if (drawData->TotalVtxCount > 0)
 	{
 		prep_buffer(drawData);
 		create_cmds(drawData, cmd);
 	}
+	cmd->end_render_pass();
+	r_device.submit(cmd, 0, nullptr);
 }
 
-void Vulkan::Imgui::create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd)
+void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd)
 {
 	cmd->bind_program(m_program);
 	cmd->set_cull_mode(VK_CULL_MODE_NONE);
@@ -143,7 +157,7 @@ void Vulkan::Imgui::create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd)
 	cmd->set_scissor(oldScissor);
 }
 
-void Vulkan::Imgui::prep_buffer(ImDrawData* drawData)
+void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 {
 	auto vertSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
 	auto idxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
@@ -173,20 +187,20 @@ void Vulkan::Imgui::prep_buffer(ImDrawData* drawData)
 	for (int n = 0; n < drawData->CmdListsCount; n++)
 	{
 		const ImDrawList* cmd_list = drawData->CmdLists[n];
-		memcpy(vertMap.get() + vertOffset, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-		memcpy(idxMap.get() + idxOffset, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+		memcpy(reinterpret_cast<char*>(vertMap) + vertOffset, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+		memcpy(reinterpret_cast<char*>(idxMap) + idxOffset, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
 		vertOffset += cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
 		idxOffset += cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
 	}
 }
 
-void Vulkan::Imgui::set_up_program()
+void nyan::ImguiRenderer::set_up_program()
 {
 	ShaderManager s(r_device);
 	m_program = s.request_program("imgui_vert.spv", "imgui_frag.spv");
 }
 
-void Vulkan::Imgui::set_up_font()
+void nyan::ImguiRenderer::set_up_font()
 {
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->AddFontDefault();

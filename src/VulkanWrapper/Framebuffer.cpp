@@ -1,7 +1,7 @@
 #include "Framebuffer.h"
 #include "LogicalDevice.h"
 
-Vulkan::Framebuffer::Framebuffer(LogicalDevice& parent, const RenderpassCreateInfo& renderpassInfo) :
+vulkan::Framebuffer::Framebuffer(LogicalDevice& parent, const RenderpassCreateInfo& renderpassInfo) :
     r_device(parent),
 	m_numAttachments(renderpassInfo.colorAttachmentsCount + (renderpassInfo.depthStencilAttachment ? 1 : 0))
 {
@@ -60,7 +60,7 @@ Vulkan::Framebuffer::Framebuffer(LogicalDevice& parent, const RenderpassCreateIn
 	}
 }
 
-Vulkan::Framebuffer::Framebuffer(Framebuffer&& other) noexcept: 
+vulkan::Framebuffer::Framebuffer(Framebuffer&& other) noexcept: 
 	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
 	m_width(other.m_width),
@@ -70,14 +70,14 @@ Vulkan::Framebuffer::Framebuffer(Framebuffer&& other) noexcept:
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
 
-Vulkan::Framebuffer::~Framebuffer() noexcept
+vulkan::Framebuffer::~Framebuffer() noexcept
 {
     if(m_vkHandle != VK_NULL_HANDLE) {
 		r_device.queue_framebuffer_deletion(m_vkHandle);
     }
 }
 
-void Vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpassInfo) noexcept
+void vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpassInfo) noexcept
 {
 	m_width = ~0u;
 	m_height = ~0u;
@@ -96,18 +96,18 @@ void Vulkan::Framebuffer::init_dimensions(const RenderpassCreateInfo& renderpass
 	}
 }
 
-Vulkan::FramebufferAllocator::FramebufferAllocator(LogicalDevice& device):
+vulkan::FramebufferAllocator::FramebufferAllocator(LogicalDevice& device):
 	r_device(device)
 {
 }
 
-void Vulkan::FramebufferAllocator::clear()
+void vulkan::FramebufferAllocator::clear()
 {
 	m_framebufferIds.clear();
 	m_framebufferStorage.clear();
 }
 
-Vulkan::Framebuffer* Vulkan::FramebufferAllocator::request_framebuffer(const RenderpassCreateInfo& info)
+vulkan::Framebuffer* vulkan::FramebufferAllocator::request_framebuffer(const RenderpassCreateInfo& info)
 {
 	auto compatibleRenderpass = r_device.request_compatible_render_pass(info);
 	Utility::Hasher hasher;

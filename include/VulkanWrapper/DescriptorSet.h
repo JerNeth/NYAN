@@ -3,7 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "Utility.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	enum class DefaultSampler;
 	struct DescriptorSetLayout {

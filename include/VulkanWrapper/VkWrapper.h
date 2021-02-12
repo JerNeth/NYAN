@@ -6,7 +6,7 @@
 #include "LogicalDevice.h"
 #include "Instance.h"
 #include "WindowSystemInterface.h"
-namespace Vulkan {
+namespace vulkan {
 	
 }
 

@@ -4,7 +4,7 @@
 #include "VulkanIncludes.h"
 #include "Renderpass.h"
 #include "Utility.h"
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class Framebuffer {
 	public:

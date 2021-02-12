@@ -3,7 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 
-namespace Vulkan {
+namespace vulkan {
 	class LogicalDevice;
 	class FenceHandle;
 	class FenceManager {

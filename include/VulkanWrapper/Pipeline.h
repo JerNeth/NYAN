@@ -6,7 +6,7 @@
 #include "Shader.h"
 #include "Renderpass.h"
 
-namespace Vulkan {
+namespace vulkan {
 	class Renderpass;
 	class LogicalDevice;
 	constexpr unsigned BLEND_FACTOR_BITS = Utility::bit_width(VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA);
@@ -86,8 +86,8 @@ namespace Vulkan {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
 		.blend_enable = VK_FALSE,
-		//.cull_mode = VK_CULL_MODE_FRONT_BIT,
 		.cull_mode = VK_CULL_MODE_FRONT_BIT,
+		//.cull_mode = VK_CULL_MODE_NONE,
 		.front_face = VK_FRONT_FACE_CLOCKWISE,
 		.depth_bias_enable = VK_FALSE,
 		.depth_compare = VK_COMPARE_OP_LESS,

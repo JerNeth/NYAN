@@ -1,7 +1,7 @@
 #include "Swapchain.h"
 #include "LogicalDevice.h"
 
-Vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id) : 
+vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id) : 
 	r_device(parent),
 	m_id(id)
 {
@@ -9,7 +9,7 @@ Vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id) :
 	
 }
 
-Vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id, SwapchainState& state) :
+vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id, SwapchainState& state) :
 	r_device(parent),
 	m_id(id),
 	m_state(state)
@@ -17,12 +17,12 @@ Vulkan::Swapchain::Swapchain(LogicalDevice& parent, uint64_t id, SwapchainState&
 	create_swapchain();
 }
 
-Vulkan::Swapchain::~Swapchain() noexcept
+vulkan::Swapchain::~Swapchain() noexcept
 {
 	destroy_swapchain();
 }
 
-Vulkan::Swapchain::Swapchain(Swapchain&& other) noexcept :
+vulkan::Swapchain::Swapchain(Swapchain&& other) noexcept :
 	r_device(other.r_device),
 	m_id(other.m_id),
 	m_vkHandle(other.m_vkHandle),
@@ -36,7 +36,7 @@ Vulkan::Swapchain::Swapchain(Swapchain&& other) noexcept :
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
 
-void Vulkan::Swapchain::recreate_swapchain()
+void vulkan::Swapchain::recreate_swapchain()
 {
 	r_device.wait_idle();
 	update_extent();
@@ -45,12 +45,12 @@ void Vulkan::Swapchain::recreate_swapchain()
 }
 
 
-uint32_t Vulkan::Swapchain::get_image_count() const
+uint32_t vulkan::Swapchain::get_image_count() const
 {
 	return imageCount;
 }
 
-void Vulkan::Swapchain::enable_vsync() noexcept
+void vulkan::Swapchain::enable_vsync() noexcept
 {
 	if (m_state.presentMode != VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR) {
 		m_state.presentMode = VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR;
@@ -58,7 +58,7 @@ void Vulkan::Swapchain::enable_vsync() noexcept
 	}
 }
 
-void Vulkan::Swapchain::disable_vsync() noexcept
+void vulkan::Swapchain::disable_vsync() noexcept
 {
 	if (m_state.presentMode != VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR) {
 		auto presentModes = r_device.r_instance.get_present_modes();
@@ -69,38 +69,38 @@ void Vulkan::Swapchain::disable_vsync() noexcept
 	}
 }
 
-VkFormat Vulkan::Swapchain::get_swapchain_format() const
+VkFormat vulkan::Swapchain::get_swapchain_format() const
 {
 	return m_state.surfaceFormat.format;
 }
 
-const std::vector<std::unique_ptr<Vulkan::Image>>& Vulkan::Swapchain::get_swapchain_images() const
+const std::vector<std::unique_ptr<vulkan::Image>>& vulkan::Swapchain::get_swapchain_images() const
 {
 	return m_swapchainImages;
 }
 
-VkExtent2D Vulkan::Swapchain::get_swapchain_extent() const
+VkExtent2D vulkan::Swapchain::get_swapchain_extent() const
 {
 	return m_state.swapchainExtent;
 }
 
-uint32_t Vulkan::Swapchain::get_width() const
+uint32_t vulkan::Swapchain::get_width() const
 {
 	return m_state.swapchainExtent.width;
 }
 
-uint32_t Vulkan::Swapchain::get_height() const
+uint32_t vulkan::Swapchain::get_height() const
 {
 	return m_state.swapchainExtent.height;
 }
 
-uint32_t Vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fence, uint64_t timeout)
+uint32_t vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fence, uint64_t timeout)
 {
 	
 	return imageIndex;
 }
 
-void Vulkan::Swapchain::present_queue()
+void vulkan::Swapchain::present_queue()
 {
 	if (!r_device.swapchain_touched())
 		return;
@@ -140,7 +140,7 @@ void Vulkan::Swapchain::present_queue()
 		}
 	}
 }
-Vulkan::ImageInfo Vulkan::Swapchain::get_swapchain_image_info() const noexcept
+vulkan::ImageInfo vulkan::Swapchain::get_swapchain_image_info() const noexcept
 {
 	ImageInfo info;
 	info.format = get_swapchain_format();
@@ -149,18 +149,18 @@ Vulkan::ImageInfo Vulkan::Swapchain::get_swapchain_image_info() const noexcept
 	info.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	return info;
 }
-Vulkan::ImageView* Vulkan::Swapchain::get_swapchain_image_view(uint32_t imageIdx) const noexcept
+vulkan::ImageView* vulkan::Swapchain::get_swapchain_image_view(uint32_t imageIdx) const noexcept
 {
 	assert(imageIdx < imageCount);
 	return m_swapchainImageViews[imageIdx].get();
 }
 
-Vulkan::ImageView* Vulkan::Swapchain::get_swapchain_image_view() const noexcept
+vulkan::ImageView* vulkan::Swapchain::get_swapchain_image_view() const noexcept
 {
 	return get_swapchain_image_view(imageIndex);
 }
 
-void Vulkan::Swapchain::update_extent()
+void vulkan::Swapchain::update_extent()
 {
 	auto capabilities = r_device.r_instance.get_surface_capabilites();
 	m_state.swapchainExtent = capabilities.currentExtent;
@@ -169,7 +169,7 @@ void Vulkan::Swapchain::update_extent()
 	}
 }
 
-void Vulkan::Swapchain::create_swapchain()
+void vulkan::Swapchain::create_swapchain()
 {
 
 	//assert(m_vkHandle == VK_NULL_HANDLE);
@@ -178,7 +178,7 @@ void Vulkan::Swapchain::create_swapchain()
 	create_image_views();
 }
 
-void Vulkan::Swapchain::destroy_swapchain() noexcept
+void vulkan::Swapchain::destroy_swapchain() noexcept
 {
 	if (m_vkHandle != VK_NULL_HANDLE) {
 		vkDestroySwapchainKHR(r_device.m_device, m_vkHandle, r_device.m_allocator);
@@ -186,7 +186,7 @@ void Vulkan::Swapchain::destroy_swapchain() noexcept
 	}
 }
 
-void Vulkan::Swapchain::create_images()
+void vulkan::Swapchain::create_images()
 {
 	m_swapchainImages.clear();
 	if (auto result = vkGetSwapchainImagesKHR(r_device.m_device, m_vkHandle, &imageCount, nullptr); result != VK_SUCCESS) {
@@ -226,12 +226,12 @@ void Vulkan::Swapchain::create_images()
 		.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 	for (auto image : images) {
-		m_swapchainImages.emplace_back(new Image(r_device, image, info));
-		m_swapchainImages.back()->disown();
+		std::optional< AllocationHandle> opt = std::nullopt;
+		m_swapchainImages.emplace_back(new Image(r_device, image, info, opt));
 	}
 }
 
-void Vulkan::Swapchain::create_image_views()
+void vulkan::Swapchain::create_image_views()
 {
 	m_swapchainImageViews.clear();
 

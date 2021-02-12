@@ -16,7 +16,7 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex,
+vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex,
 					uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDevice physicalDevice) :
 	r_instance(parentInstance),
 	m_device(device, nullptr),
@@ -59,6 +59,12 @@ Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkD
 		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.extended_dynamic_state = 1;
 		}
+		else if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.debug_marker = 1;
+		}
+		else if (strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+			m_supportedExtensions.debug_utils = 1;
+		}
 	}
 	assert(m_supportedExtensions.swapchain);
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
@@ -66,7 +72,7 @@ Vulkan::LogicalDevice::LogicalDevice(const Vulkan::Instance& parentInstance, VkD
 		m_frameResources.emplace_back(new FrameResource{*this});
 	}
 }
-Vulkan::LogicalDevice::~LogicalDevice()
+vulkan::LogicalDevice::~LogicalDevice()
 {
 	if (m_wsiState.aquire != VK_NULL_HANDLE) {
 		vkDestroySemaphore(get_device(), m_wsiState.aquire, get_allocator());
@@ -76,14 +82,16 @@ Vulkan::LogicalDevice::~LogicalDevice()
 	}
 }
 
-void Vulkan::LogicalDevice::set_acquire_semaphore(uint32_t index, VkSemaphore semaphore) noexcept
+void vulkan::LogicalDevice::set_acquire_semaphore(uint32_t index, VkSemaphore semaphore) noexcept
 {
+	if (m_wsiState.aquire != VK_NULL_HANDLE)
+		frame().recycledSemaphores.push_back(m_wsiState.aquire);
 	m_wsiState.aquire = semaphore;
 	m_wsiState.swapchain_touched = false;
 	m_wsiState.index = index;
 }
 
-void Vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format)
+void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format)
 {
 	m_wsiState.swapchainImages.clear();
 	wait_idle();
@@ -96,7 +104,7 @@ void Vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 	m_wsiState.index = 0u;
 
 	for (const auto image : swapchainImages) {
-		auto handle = m_imagePool.emplace(*this, image, info);
+		auto handle = m_imagePool.emplace(*this, image, info, std::nullopt);
 		handle->disown();
 		handle->set_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		m_wsiState.swapchainImages.emplace_back(handle);
@@ -104,17 +112,17 @@ void Vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 
 }
 
-const Vulkan::ImageView* Vulkan::LogicalDevice::get_swapchain_image_view() const noexcept
+const vulkan::ImageView* vulkan::LogicalDevice::get_swapchain_image_view() const noexcept
 {
 	return m_wsiState.swapchainImages[m_wsiState.index]->get_view();
 }
 
-Vulkan::ImageView* Vulkan::LogicalDevice::get_swapchain_image_view() noexcept
+vulkan::ImageView* vulkan::LogicalDevice::get_swapchain_image_view() noexcept
 {
 	return m_wsiState.swapchainImages[m_wsiState.index]->get_view();
 }
 
-void Vulkan::LogicalDevice::next_frame()
+void vulkan::LogicalDevice::next_frame()
 {
 	end_frame();
 
@@ -129,7 +137,7 @@ void Vulkan::LogicalDevice::next_frame()
 	//m_demoImage = m_swapchains[0]->aquire_next_image(m_wsiState.aquire);
 }
 
-void Vulkan::LogicalDevice::end_frame()
+void vulkan::LogicalDevice::end_frame()
 {
 	if (!frame().submittedTransferCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
@@ -152,7 +160,7 @@ void Vulkan::LogicalDevice::end_frame()
 	//m_swapchains[0]->present_queue();
 }
 
-void Vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
+void vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
 {
 	auto& queue = get_queue(type);
 	auto& submissions = get_current_submissions(type);
@@ -252,44 +260,44 @@ void Vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* 
 	submissions.clear();
 }
 
-void Vulkan::LogicalDevice::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
+void vulkan::LogicalDevice::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
 {
 	auto& curFrame = frame();
 	if (auto res = std::find(curFrame.deletedFramebuffer.cbegin(), curFrame.deletedFramebuffer.cend(), framebuffer); res == curFrame.deletedFramebuffer.cend())
 		curFrame.deletedFramebuffer.push_back(framebuffer);
 }
 
-void Vulkan::LogicalDevice::queue_image_deletion(VkImage image) noexcept
+void vulkan::LogicalDevice::queue_image_deletion(VkImage image) noexcept
 {
 	frame().deletedImages.push_back(image);
 }
 
-void Vulkan::LogicalDevice::queue_image_deletion(VkImage image, VmaAllocation allocation) noexcept
-{
-	frame().deletedImageAllocations.push_back({ image, allocation });
-}
-
-void Vulkan::LogicalDevice::queue_image_view_deletion(VkImageView imageView) noexcept
+void vulkan::LogicalDevice::queue_image_view_deletion(VkImageView imageView) noexcept
 {
 	frame().deletedImageViews.push_back(imageView);
 }
 
-void Vulkan::LogicalDevice::queue_buffer_view_deletion(VkBufferView bufferView) noexcept
+void vulkan::LogicalDevice::queue_buffer_view_deletion(VkBufferView bufferView) noexcept
 {
 	frame().deletedBufferViews.push_back(bufferView);
 }
 
-void Vulkan::LogicalDevice::queue_image_sampler_deletion(VkSampler sampler) noexcept
+void vulkan::LogicalDevice::queue_image_sampler_deletion(VkSampler sampler) noexcept
 {
 	frame().deletedSampler.push_back(sampler);
 }
 
-void Vulkan::LogicalDevice::queue_buffer_deletion(VkBuffer buffer, VmaAllocation allocation) noexcept
+void vulkan::LogicalDevice::queue_buffer_deletion(VkBuffer buffer) noexcept
 {
-	frame().deletedBufferAllocations.push_back({ buffer, allocation });
+	frame().deletedBuffer.push_back(buffer);
 }
 
-void Vulkan::LogicalDevice::add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush)
+void vulkan::LogicalDevice::queue_allocation_deletion(VmaAllocation allocation) noexcept
+{
+	frame().deletedAllocations.push_back(allocation);
+}
+
+void vulkan::LogicalDevice::add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush)
 {
 	assert(stages != 0);
 	auto& queue = get_queue(type);
@@ -298,7 +306,7 @@ void Vulkan::LogicalDevice::add_wait_semaphore(CommandBuffer::Type type, VkSemap
 	queue.needsFence = true;
 }
 
-void Vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush)
+void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush)
 {
 	auto access = BufferInfo::buffer_usage_to_possible_access(usage);
 	auto stages = BufferInfo::buffer_usage_to_possible_stages(usage);
@@ -353,7 +361,7 @@ void Vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 	}
 }
 
-void Vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores)
+void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores)
 {
 	auto type = cmd->get_type();
 	auto& submissions = get_current_submissions(type);
@@ -364,7 +372,7 @@ void Vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCo
 	}
 }
 
-void Vulkan::LogicalDevice::wait_no_lock() noexcept
+void vulkan::LogicalDevice::wait_no_lock() noexcept
 {
 	if (!m_frameResources.empty())
 		end_frame();
@@ -374,6 +382,7 @@ void Vulkan::LogicalDevice::wait_no_lock() noexcept
 	clear_semaphores();
 	m_framebufferAllocator.clear();
 	m_attachmentAllocator.clear();
+
 	
 	for (auto& frame : m_frameResources) {
 		frame->waitForFences.clear();
@@ -381,7 +390,7 @@ void Vulkan::LogicalDevice::wait_no_lock() noexcept
 	}
 }
 
-void Vulkan::LogicalDevice::clear_semaphores() noexcept
+void vulkan::LogicalDevice::clear_semaphores() noexcept
 {
 	for (auto& sem : m_graphics.waitSemaphores)
 		vkDestroySemaphore(m_device, sem, m_allocator);
@@ -398,11 +407,11 @@ void Vulkan::LogicalDevice::clear_semaphores() noexcept
 
 }
 
-Vulkan::LogicalDevice::FrameResource& Vulkan::LogicalDevice::frame()
+vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
 {
 	return *m_frameResources[m_currentFrame];
 }
-Vulkan::LogicalDevice::ImageBuffer Vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
+vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
 {
 	uint32_t copyLevels;
 	if (info.generate_mips())
@@ -450,17 +459,18 @@ Vulkan::LogicalDevice::ImageBuffer Vulkan::LogicalDevice::create_staging_buffer(
 		assert(level == 0);
 
 		for (uint32_t y = 0; y < mip.blockCountY; y++)
-			std::memcpy(map.get()+y *rowSize, reinterpret_cast<const uint8_t*>(data) + y * rowSize, rowSize);
+			std::memcpy(reinterpret_cast<char*>(map)+y *rowSize, reinterpret_cast<const uint8_t*>(data) + y * rowSize, rowSize);
 		
 	}
 	return { buffer, blits };
 }
-Vulkan::ImageHandle Vulkan::LogicalDevice::create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData)
+vulkan::ImageHandle vulkan::LogicalDevice::create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData)
 {
 
 	std::array<uint32_t, 3> queueFamilyIndices;
 	VkImageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.flags = info.flags,
 		.imageType = info.type,
 		.format = info.format,
 		.extent {
@@ -468,7 +478,7 @@ Vulkan::ImageHandle Vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 			.height = info.height,
 			.depth = info.depth
 		},
-		.mipLevels = info.generate_mips()? calculate_mip_levels(info.width, info.height, info.depth) : info.mipLevels,
+		.mipLevels = info.generate_mips() ? calculate_mip_levels(info.width, info.height, info.depth) : info.mipLevels,
 		.arrayLayers = info.arrayLayers,
 		.samples = info.samples,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -494,7 +504,7 @@ Vulkan::ImageHandle Vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentAsyncTransfer) &&
 			(!(createInfo.queueFamilyIndexCount != 0) || (m_graphics.familyIndex != m_transfer.familyIndex)))
 			queueFamilyIndices[createInfo.queueFamilyIndexCount++] = m_transfer.familyIndex;
-		if(createInfo.queueFamilyIndexCount == 1)
+		if (createInfo.queueFamilyIndexCount == 1)
 			createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 	VmaAllocation allocation;
@@ -503,10 +513,10 @@ Vulkan::ImageHandle Vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 		throw std::runtime_error("Vk: error creating image");
 	}
 	bool needsView = (createInfo.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-									VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
 	auto tmp = info;
 	tmp.mipLevels = createInfo.mipLevels;
-	auto handle(m_imagePool.emplace(*this, image, tmp, allocation));
+	auto handle(m_imagePool.emplace(*this, image, tmp, m_allocationPool.emplace(*this, allocation)));
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
 	if (initialData) {
@@ -579,7 +589,7 @@ Vulkan::ImageHandle Vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 	}
 	return handle;
 }
-std::vector<Vulkan::CommandBufferHandle>& Vulkan::LogicalDevice::get_current_submissions(CommandBuffer::Type type)
+std::vector<vulkan::CommandBufferHandle>& vulkan::LogicalDevice::get_current_submissions(CommandBuffer::Type type)
 {
 	switch (type) {
 	case CommandBuffer::Type::Generic:
@@ -591,7 +601,7 @@ std::vector<Vulkan::CommandBufferHandle>& Vulkan::LogicalDevice::get_current_sub
 	}
 }
 
-Vulkan::CommandPool& Vulkan::LogicalDevice::get_pool(uint32_t threadId, CommandBuffer::Type type)
+vulkan::CommandPool& vulkan::LogicalDevice::get_pool(uint32_t threadId, CommandBuffer::Type type)
 {
 	switch (type) {
 	case CommandBuffer::Type::Compute:
@@ -604,7 +614,7 @@ Vulkan::CommandPool& Vulkan::LogicalDevice::get_pool(uint32_t threadId, CommandB
 }
 
 
-void Vulkan::LogicalDevice::create_vma_allocator()
+void vulkan::LogicalDevice::create_vma_allocator()
 {
 	#ifdef VMA_RECORDING_ENABLED
 	VmaRecordSettings vmaRecordSettings{
@@ -632,7 +642,7 @@ void Vulkan::LogicalDevice::create_vma_allocator()
 	m_vmaAllocator = std::make_unique<Allocator>(allocator);
 }
 
-Vulkan::BufferHandle Vulkan::LogicalDevice::create_buffer(const BufferInfo& info,const void* initialData)
+vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info,const void* initialData)
 {
 	assert(info.memoryUsage != VMA_MEMORY_USAGE_UNKNOWN);
 	VkBuffer buffer;
@@ -675,18 +685,18 @@ Vulkan::BufferHandle Vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 	else if (initialData != nullptr) {
 		//No staging needed
 		auto map = handle->map_data();
-		std::memcpy(map.get(), initialData, info.size);
+		std::memcpy(reinterpret_cast<char*>(map), initialData, info.size);
 	}
 	return handle;
 }
 
 
-Vulkan::ImageViewHandle Vulkan::LogicalDevice::create_image_view(const ImageViewCreateInfo& info)
+vulkan::ImageViewHandle vulkan::LogicalDevice::create_image_view(const ImageViewCreateInfo& info)
 {
 	return m_imageViewPool.emplace(*this,info);
 }
 
-Vulkan::ImageHandle Vulkan::LogicalDevice::create_image(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
+vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
 {
 	if (data) {
 		auto buf = create_staging_buffer(info, data, rowLength, height);
@@ -699,7 +709,7 @@ Vulkan::ImageHandle Vulkan::LogicalDevice::create_image(const ImageInfo& info, c
 
 
 
-Vulkan::DescriptorSetAllocator* Vulkan::LogicalDevice::request_descriptor_set_allocator(const DescriptorSetLayout& layout)
+vulkan::DescriptorSetAllocator* vulkan::LogicalDevice::request_descriptor_set_allocator(const DescriptorSetLayout& layout)
 {
 
 	//std::hash <std::pair < DescriptorSetLayout, std::array<uint32_t, MAX_BINDINGS>>> h{};
@@ -711,18 +721,18 @@ Vulkan::DescriptorSetAllocator* Vulkan::LogicalDevice::request_descriptor_set_al
 	return m_descriptorAllocatorsStorage.get_ptr(m_descriptorAllocatorIds.at(layout));
 }
 
-size_t Vulkan::LogicalDevice::register_shader(const std::vector<uint32_t>& shaderCode)
+size_t vulkan::LogicalDevice::register_shader(const std::vector<uint32_t>& shaderCode)
 {
 	return m_shaderStorage.emplace_intrusive(*this, shaderCode);
 }
 
 
-Vulkan::Shader* Vulkan::LogicalDevice::request_shader(size_t id)
+vulkan::Shader* vulkan::LogicalDevice::request_shader(size_t id)
 {
 	return m_shaderStorage.get_ptr(id);
 }
 
-Vulkan::Program* Vulkan::LogicalDevice::request_program(const std::vector<Shader*>& shaders)
+vulkan::Program* vulkan::LogicalDevice::request_program(const std::vector<Shader*>& shaders)
 {
 	
 	if (!m_programIds.contains(shaders)) {
@@ -731,7 +741,7 @@ Vulkan::Program* Vulkan::LogicalDevice::request_program(const std::vector<Shader
 	return m_programStorage.get_ptr(m_programIds.at(shaders));
 }
 
-Vulkan::PipelineLayout* Vulkan::LogicalDevice::request_pipeline_layout(const ShaderLayout& layout)
+vulkan::PipelineLayout* vulkan::LogicalDevice::request_pipeline_layout(const ShaderLayout& layout)
 {
 	
 	if (!m_pipelineLayoutIds.contains(layout)) {
@@ -740,7 +750,7 @@ Vulkan::PipelineLayout* Vulkan::LogicalDevice::request_pipeline_layout(const Sha
 	return m_pipelineLayoutStorage.get_ptr(m_pipelineLayoutIds.at(layout));
 }
 
-Vulkan::Renderpass* Vulkan::LogicalDevice::request_render_pass(const RenderpassCreateInfo& info)
+vulkan::Renderpass* vulkan::LogicalDevice::request_render_pass(const RenderpassCreateInfo& info)
 {
 	auto [compatibleHash, actualHash] = info.get_hash();
 	auto result = m_renderpassIds.find(actualHash);
@@ -757,7 +767,7 @@ Vulkan::Renderpass* Vulkan::LogicalDevice::request_render_pass(const RenderpassC
 	return m_renderpassStorage.get_ptr(renderpassId);
 }
 
-Vulkan::Renderpass* Vulkan::LogicalDevice::request_compatible_render_pass(const RenderpassCreateInfo& info)
+vulkan::Renderpass* vulkan::LogicalDevice::request_compatible_render_pass(const RenderpassCreateInfo& info)
 {
 	auto [compatibleHash, actualHash] = info.get_hash();
 
@@ -775,12 +785,12 @@ Vulkan::Renderpass* Vulkan::LogicalDevice::request_compatible_render_pass(const 
 	return m_renderpassStorage.get_ptr(renderpassId);
 }
 
-VkPipeline Vulkan::LogicalDevice::request_pipeline(const PipelineCompile& compile) noexcept
+VkPipeline vulkan::LogicalDevice::request_pipeline(const PipelineCompile& compile) noexcept
 {
 	return m_pipelineStorage.request_pipeline(compile);
 }
 
-Vulkan::RenderpassCreateInfo Vulkan::LogicalDevice::request_swapchain_render_pass() noexcept
+vulkan::RenderpassCreateInfo vulkan::LogicalDevice::request_swapchain_render_pass(SwapchainRenderpassType type) noexcept
 {
 	RenderpassCreateInfo info;
 	auto* swapchainView = get_swapchain_image_view();
@@ -791,28 +801,30 @@ Vulkan::RenderpassCreateInfo Vulkan::LogicalDevice::request_swapchain_render_pas
 	info.clearColors[0] = VkClearColorValue{
 		.float32 = {0.0f, 0.0f, 0.0f, 1.0f}
 	};
-	info.clearDepthStencil = VkClearDepthStencilValue{
-		.depth = 1.0f, .stencil = 0
-	};
-	uint32_t width = swapchainView->get_image()->get_width();
-	uint32_t height = swapchainView->get_image()->get_height();
-	info.depthStencilAttachment = request_render_target(width, height, VK_FORMAT_D16_UNORM);
-	info.opFlags.set(static_cast<uint32_t>(RenderpassCreateInfo::OpFlags::DepthStencilClear));
+	if (type == SwapchainRenderpassType::Depth) {
+		info.clearDepthStencil = VkClearDepthStencilValue{
+			.depth = 1.0f, .stencil = 0
+		};
+		uint32_t width = swapchainView->get_image()->get_width();
+		uint32_t height = swapchainView->get_image()->get_height();
+		info.depthStencilAttachment = request_render_target(width, height, VK_FORMAT_D16_UNORM);
+		info.opFlags.set(RenderpassCreateInfo::OpFlags::DepthStencilClear);
+	}
 
 	return info;
 }
 
-Vulkan::Framebuffer* Vulkan::LogicalDevice::request_framebuffer(const RenderpassCreateInfo& info)
+vulkan::Framebuffer* vulkan::LogicalDevice::request_framebuffer(const RenderpassCreateInfo& info)
 {
 	return m_framebufferAllocator.request_framebuffer(info);
 }
 
-VkSemaphore Vulkan::LogicalDevice::request_semaphore()
+VkSemaphore vulkan::LogicalDevice::request_semaphore()
 {
 	return m_semaphoreManager.request_semaphore();
 }
 
-Vulkan::CommandBufferHandle Vulkan::LogicalDevice::request_command_buffer(CommandBuffer::Type type)
+vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(CommandBuffer::Type type)
 {
 	auto cmd = get_pool(get_thread_index(),type).request_command_buffer();
 	VkCommandBufferBeginInfo beginInfo{
@@ -823,12 +835,12 @@ Vulkan::CommandBufferHandle Vulkan::LogicalDevice::request_command_buffer(Comman
 	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
-Vulkan::ImageView* Vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits sampleCount)
+vulkan::ImageView* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits sampleCount)
 {
 	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount);
 }
 
-void Vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)
+void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)
 {
 	auto info = buffer.get_info();
 	info.size = newSize;
@@ -844,7 +856,7 @@ void Vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, 
 
 
 
-VkSemaphore Vulkan::LogicalDevice::get_present_semaphore()
+VkSemaphore vulkan::LogicalDevice::get_present_semaphore()
 {
 	auto tempSem = m_wsiState.present;
 	m_wsiState.present = VK_NULL_HANDLE;
@@ -852,18 +864,18 @@ VkSemaphore Vulkan::LogicalDevice::get_present_semaphore()
 	return tempSem;
 }
 
-bool Vulkan::LogicalDevice::swapchain_touched()  const noexcept
+bool vulkan::LogicalDevice::swapchain_touched()  const noexcept
 {
 	return m_wsiState.swapchain_touched;
 }
 
-VkQueue Vulkan::LogicalDevice::get_graphics_queue()  const noexcept
+VkQueue vulkan::LogicalDevice::get_graphics_queue()  const noexcept
 {
 	return m_graphics.queue;
 }
 
 
-void Vulkan::LogicalDevice::update_uniform_buffer()
+void vulkan::LogicalDevice::update_uniform_buffer()
 {
 	auto currentImage = get_swapchain_image_index();
 	Ubo ubo[2]{ {
@@ -892,7 +904,7 @@ void Vulkan::LogicalDevice::update_uniform_buffer()
 	m_vmaAllocator->flush(m_uniformBuffersAllocations[currentImage], 0, sizeof(ubo));
 }
 
-void Vulkan::LogicalDevice::create_default_sampler()
+void vulkan::LogicalDevice::create_default_sampler()
 {
 	SamplerCreateInfo createInfo{
 		//.
@@ -959,24 +971,24 @@ void Vulkan::LogicalDevice::create_default_sampler()
 	}
 }
 
-Vulkan::Sampler* Vulkan::LogicalDevice::get_default_sampler(DefaultSampler samplerType) const noexcept
+vulkan::Sampler* vulkan::LogicalDevice::get_default_sampler(DefaultSampler samplerType) const noexcept
 {
 	assert(samplerType != DefaultSampler::Size);
 	return m_defaultSampler[static_cast<size_t>(samplerType)].get();
 }
 
-void Vulkan::LogicalDevice::wait_idle()
+void vulkan::LogicalDevice::wait_idle()
 {
-	vkDeviceWaitIdle(m_device);
+	wait_no_lock();
 }
 
 
-Vulkan::LogicalDevice::FrameResource::~FrameResource()
+vulkan::LogicalDevice::FrameResource::~FrameResource()
 {
 	begin();
 }
 
-void Vulkan::LogicalDevice::FrameResource::begin()
+void vulkan::LogicalDevice::FrameResource::begin()
 {
 	if (!waitForFences.empty()) {
 		std::vector<VkFence> fences;
@@ -1013,15 +1025,14 @@ void Vulkan::LogicalDevice::FrameResource::begin()
 	}
 	recycledSemaphores.clear();
 
-	for (auto [buffer, allocation] : deletedBufferAllocations) {
-		vmaDestroyBuffer(r_device.get_vma_allocator()->get_handle(), buffer, allocation);
+	for (auto buffer : deletedBuffer) {
+		vkDestroyBuffer(r_device.get_device(), buffer, r_device.get_allocator());
 	}
-	deletedBufferAllocations.clear();
-	for (auto [image, allocation] : deletedImageAllocations) {
-		vmaDestroyImage(r_device.get_vma_allocator()->get_handle(), image, allocation);
+	deletedBuffer.clear();
+	for (auto allocation : deletedAllocations) {
+		r_device.get_vma_allocator()->free_allocation(allocation);
 	}
-	deletedImageAllocations.clear();
-
+	deletedAllocations.clear();
 	for (auto image : deletedImages) {
 		vkDestroyImage(r_device.get_device(), image, r_device.get_allocator());
 	}
