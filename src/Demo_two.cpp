@@ -5,17 +5,17 @@
 #include "imgui.h"
 #include "VkWrapper.h"
 #include <glfwWrapper.h>
-#include "ShaderManager.h"
-#include "ImguiRenderer.h"
-#include "Rendergraph.h"
+#include "VulkanRenderer"
 #include <chrono>
 #include <stb_image.h>
 #include "LinAlg.h"
-#include "Transform.h"
 #include <new>
 #include <thread>
 using namespace std;
 using namespace Math;
+using namespace vulkan;
+using namespace nyan;
+using namespace Utility;
 
 
 
@@ -34,79 +34,89 @@ int main()
 		auto start = chrono::high_resolution_clock::now();
 		auto& device = application.get_device();
 		auto& window = application.get_window();
-		nyan::ImguiRenderer imgui(device);
-
+		vulkan::ShaderManager shaderManager(device);
+		nyan::ImguiRenderer imgui(device, shaderManager);
+		nyan::VulkanRenderer renderer(device, &shaderManager);
 		nyan::Rendergraph rendergraph(device);
-		auto& pass = rendergraph.add_pass("test", nyan::Renderpass::Type::Graphics);
-		rendergraph.build();
+		nyan::TextureManager textureManager(device);
+		application.add_renderer(&renderer);
+		application.add_renderer(&imgui);
+		bool wireframe = false;
 
+		auto& pass = rendergraph.add_pass("test", nyan::Renderpass::Type::Graphics);
+		nyan::ImageAttachment depth;
+		depth.clearColor[0] = 1.0f;
+		depth.format = VK_FORMAT_D16_UNORM;
+		pass.add_depth_output("depth", depth);
+		nyan::ImageAttachment color;
+		color.format = VK_FORMAT_R8G8B8A8_SRGB;
+		color.clearColor = Math::vec4({ .2f, .3f, .1f, 0.f });
+		pass.add_output("color", color);
+		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
+		nyan::ImageAttachment swap;
+		pass2.add_input("color");
+		//pass2.add_read_dependency("depth");
+		pass2.add_output("swap", swap);
+		rendergraph.set_swapchain("swap");
+		rendergraph.build();
+		auto* testProgr = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
+		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
+			cmd->bind_program(testProgr);
+			cmd->disable_depth();
+			cmd->set_cull_mode(VK_CULL_MODE_NONE);
+			cmd->bind_input_attachment(0, 0);
+			cmd->draw(3, 1, 0, 0);
+		});
+		//pass2.add_post_barrier("depth");
 		
 		window.configure_imgui();
-		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		vulkan::ImageInfo info = vulkan::ImageInfo::immutable_2d_image(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, false);
-		auto tex = device.create_image(info, reinterpret_cast<char*>(pixels));
-		stbi_image_free(pixels);
+		Material testMaterial(0, "default_frag");
+		StaticMesh testMesh;
+		testMesh.set_material(&testMaterial);
+
+		testMaterial.add_texture(textureManager.request_texture("textureDX2Mips"));
+
 
 		vulkan::BufferInfo buffInfo;
-		buffInfo.size = sizeof(vulkan::vertices);
-		buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		buffInfo.size = sizeof(vulkan::vertices) + sizeof(nyan::indices);
+		buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		auto vbo = device.create_buffer(buffInfo, vulkan::vertices.data());
-		buffInfo.size = sizeof(vulkan::indices);
-		buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		auto ibo = device.create_buffer(buffInfo, vulkan::indices.data());
-		vulkan::Ubo ubo_data[2]{ {
-			Math::mat44::identity(),
-			Math::mat44::identity(),
-			Math::mat44::identity()
-		} ,{
-			Math::mat44::identity(),
-			Math::mat44::identity(),
-			Math::mat44::identity()
-		} };
+		std::byte* tmp = (std::byte*) malloc(sizeof(nyan::vertices) + sizeof(nyan::indices));
+		std::memcpy(tmp, nyan::vertices.data(), sizeof(nyan::vertices));
+		std::memcpy(tmp + sizeof(nyan::vertices), nyan::indices.data(), sizeof(nyan::indices));
+		auto vbo = device.create_buffer(buffInfo, tmp);
+		//buffInfo.size = sizeof(vulkan::indices);
+		//buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		//auto ibo = device.create_buffer(buffInfo, nyan::indices.data());
+		testMesh.set_indices(vbo, sizeof(nyan::vertices), nyan::indices.size());
+		testMesh.set_vertices(vbo, 0, nyan::vertices.size());
+		RendererCamera camera{};
+		Transform transform{};
+		testMesh.set_transform(&transform);
 		float x = 0;
 		float y = 0;
 		float z = 0;
 		float fov = 90.f;
 		float distance = 1.0f;
-		float aspect = static_cast<float>(1080.f / 1920.f);
-		ubo_data[0].model = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-		ubo_data[0].model(3, 3) = 1;
-		ubo_data[0].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		ubo_data[0].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
-		ubo_data[1].model = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-		ubo_data[1].model(3, 3) = 1;
-		ubo_data[1].model = ubo_data[1].model * Math::mat44::translation_matrix(Math::vec3({ 0.0f, 0.0f, -0.5f }));
-		ubo_data[1].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		ubo_data[1].proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
-
-		buffInfo.size = sizeof(vulkan::Ubo) * 2;
-		buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		buffInfo.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		auto ubo = device.create_buffer(buffInfo, ubo_data);
-		vulkan::ShaderManager shaderManager(device);
-		auto program = shaderManager.request_program("basic_vert.spv", "basic_frag.spv");
+		float aspect = application.get_height() / static_cast<float>(application.get_width());
+		transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
+		//std::cout<< transform.transform.convert_to_string() << '\n';
+		transform.transform(3, 3) = 1;
+		camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+		camera.proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
 
 		//device.create_stuff(tex->get_view()->get_image_view());
 		uint64_t frame = 0;
 		auto total = start - start;
 		bool is_fullscreen_window = false;
 		bool should_fullscreen_window = false;
-		auto mapped = ubo->map_data();
+		int mipLevel = 0;
+
 		pass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
-			cmd->begin_region("Test");
-			cmd->bind_program(program);
-			cmd->bind_index_buffer(vulkan::IndexState{ .buffer = ibo->get_handle(), .offset = 0,.indexType = VK_INDEX_TYPE_UINT16 });
-			cmd->set_vertex_attribute(0, 0, vulkan::get_format<Math::vec3>());
-			cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::vec3>());
-			cmd->set_vertex_attribute(2, 0, vulkan::get_format<Math::vec2>());
-			cmd->bind_vertex_buffer(0, *vbo, 0, VK_VERTEX_INPUT_RATE_VERTEX);
-			cmd->bind_uniform_buffer(0, 0, *ubo, 0, 256);
-			cmd->bind_texture(0, 1, *tex->get_view(), vulkan::DefaultSampler::TrilinearClamp);
-			cmd->draw_indexed(static_cast<uint32_t>(vulkan::indices.size()), 1, 0, 0, 0);
-			//cmd->bind_uniform_buffer(0, 0, *ubo, 256, 256);
-			//cmd->draw_indexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			if (wireframe)
+				cmd->set_polygon_mode(VK_POLYGON_MODE_LINE);
+			cmd->begin_region("Renderer");
+			renderer.render(cmd);
 			cmd->end_region();
 		});
 
@@ -128,51 +138,31 @@ int main()
 					window.change_mode(glfww::WindowMode::Windowed);
 			}
 			if (!window.is_iconified()) {
-				ubo_data[0].model = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-				ubo_data[0].model(3, 3) = 1;
-				ubo_data[1].model = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-				ubo_data[1].model(3, 3) = 1;
-				ubo_data[1].model = ubo_data[1].model * Math::mat44::eye(0.2f) * Math::mat44::translation_matrix(Math::vec3({ 0.0f, 0.0f, -0.5f }));
-				ubo_data[0].proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
-				ubo_data[0].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-				ubo_data[1].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-				ubo_data[1].proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
-				{
-					std::memcpy(mapped, ubo_data, sizeof(ubo_data));
-				}
+				aspect = application.get_height() / static_cast<float>(application.get_width());
+				transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
+				transform.transform(3, 3) = 1;
+				camera.proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
+				camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+				renderer.update_camera(camera);
 				application.next_frame();
-				imgui.next_frame();
+				renderer.queue_mesh(&testMesh);
+				//imgui.next_frame();
 				//device.update_uniform_buffer();
 				ImGui::Begin("Interaction");
+				ImGui::ColorEdit4("Clearcolor", &color.clearColor[0]);
 				ImGui::SliderFloat("x_rotation", &x, 0.0f, 360.0f);
 				ImGui::SliderFloat("y_rotation", &y, 0.0f, 360.0f);
 				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
 				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
+				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();
-				auto rp = device.request_swapchain_render_pass(vulkan::SwapchainRenderpassType::Depth);
-				pass.set_render_pass(rp);
-				//auto cmd = device.request_command_buffer(vulkan::CommandBuffer::Type::Generic);
-				//cmd->begin_render_pass(rp);
-				
-				//cmd->begin_region("Test");
-				//cmd->bind_program(program);
-				//cmd->bind_index_buffer(vulkan::IndexState{ .buffer = ibo->get_handle(), .offset = 0,.indexType = VK_INDEX_TYPE_UINT16 });
-				//cmd->set_vertex_attribute(0, 0, vulkan::get_format<Math::vec3>());
-				//cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::vec3>());
-				//cmd->set_vertex_attribute(2, 0, vulkan::get_format<Math::vec2>());
-				//cmd->bind_vertex_buffer(0, *vbo, 0, VK_VERTEX_INPUT_RATE_VERTEX);
-				//cmd->bind_uniform_buffer(0, 0, *ubo, 0, 256);
-				//cmd->bind_texture(0, 1, *tex->get_view(), vulkan::DefaultSampler::TrilinearClamp);
-				//cmd->draw_indexed(static_cast<uint32_t>(vulkan::indices.size()), 1, 0, 0, 0);
-				////cmd->bind_uniform_buffer(0, 0, *ubo, 256, 256);
-				////cmd->draw_indexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-				//cmd->end_region();
-				//cmd->end_render_pass();
-				//device.submit(cmd, 0, nullptr);
+
+				//auto rp = device.request_swapchain_render_pass(vulkan::SwapchainRenderpassType::Depth);
+				//pass.set_render_pass(rp);
 				rendergraph.execute();
-				imgui.end_frame();
+				//imgui.end_frame();
 				application.end_frame();
 				frame++;
 				total += chrono::high_resolution_clock::now() - start;

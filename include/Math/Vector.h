@@ -2,6 +2,7 @@
 #define VECTOR_H
 #pragma once
 #include <string>
+#include "Util.h"
 
 namespace Math {
 	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
@@ -30,13 +31,13 @@ namespace Math {
 				m_data[i] = scalar;
 		}
 		template<size_t Size_other>
-		explicit Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
+		constexpr explicit Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
 			for (size_t i = 0; i < min(Size, Size_other); i++)
 				m_data[i] = other[i];
 			for (size_t i = min(Size, Size_other); i < Size; i++)
 				m_data[i] = Scalar(0);
 		}
-		explicit Vec(const Scalar(&list)[Size]) : m_data() {
+		constexpr explicit Vec(const Scalar(&list)[Size]) : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = list[i];
 		}
@@ -83,6 +84,18 @@ namespace Math {
 		friend inline bool operator==(const Vec& lhs, const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (lhs.m_data[i] != rhs)
+					return false;
+			return true;
+		}
+		friend inline bool operator>(const Vec& lhs, const Scalar& rhs) noexcept {
+			for (size_t i = 0; i < Size; i++)
+				if (lhs.m_data[i] <= rhs)
+					return false;
+			return true;
+		}
+		friend inline bool operator<(const Vec& lhs, const Scalar& rhs) noexcept {
+			for (size_t i = 0; i < Size; i++)
+				if (lhs.m_data[i] >= rhs)
 					return false;
 			return true;
 		}
@@ -205,13 +218,13 @@ namespace Math {
 			static_assert(false, "TODO");
 			return *this;
 		}
-		inline const Scalar& operator[] (const size_t index) const noexcept {
+		constexpr inline const Scalar& operator[] (const size_t index) const noexcept {
 			//Just pass through, User responsible for bounds
 			//if (Size <= index)
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
-		inline Scalar& operator[](const size_t index) noexcept {
+		constexpr inline Scalar& operator[](const size_t index) noexcept {
 			//Just pass through, User responsible for bounds
 			//if(Size <= index)
 			//	throw std::out_of_range("Index out of range");
@@ -318,9 +331,29 @@ namespace Math {
 		}
 	private:
 		std::array<Scalar, Size> m_data;
-		// I would really prefer C++20 concepts instead of this
-		static_assert(std::is_arithmetic<Scalar>::value, "Scalar must be numeric");
+		static_assert(std::is_arithmetic<Scalar>::value);
 	};
+	template<typename T>
+	concept Unsigned =  std::is_unsigned<T>::value;
+
+	template<Unsigned T, size_t size>
+	constexpr Vec<T, size> unormVec(const Vec<float, size>& vec) {
+		Vec<T, size> ret;
+		float max = static_cast<float>(T(~0u));
+		for (size_t i = 0; i < size; i++) {
+			auto temp = clamp(vec[i], 0.f, 1.f);
+			ret[i] = static_cast<T>(temp * max);
+		}
+		return ret;
+	}
+	template<Unsigned T, size_t bits>
+	constexpr T unorm(float val) {
+		T ret;
+		float max = static_cast<float>(T(~0u));
+		auto temp = clamp(val, 0.f, 1.f);
+		//ret[i] = static_cast<T>(temp * max);
+		return ret;
+	}
 	//template<typename Scalar,
 	//	size_t Size,
 	//	typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >

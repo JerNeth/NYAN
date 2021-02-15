@@ -13,7 +13,11 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 		m_pipelineState.state.dynamic_depth_write = 1;
 		m_pipelineState.state.dynamic_cull_mode = 1;
 	}
+	m_pipelineState.program = nullptr;
 	m_resourceBindings.bindings = {};
+	if constexpr (debug) {
+
+	}
 }
 
 void vulkan::CommandBuffer::begin_context()
@@ -444,6 +448,17 @@ void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldL
 	vkCmdPipelineBarrier(m_vkHandle, srcStages, dstStages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
+void vulkan::CommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+{
+	assert(!m_isCompute);
+	if (flush_graphics()) {
+		vkCmdDraw(m_vkHandle, vertexCount, instanceCount, firstVertex, firstInstance);
+	}
+	else {
+		std::cout << "Could not flush render state, dropped draw call.\n";
+	}
+}
+
 void vulkan::CommandBuffer::draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
 {
 	assert(!m_isCompute);
@@ -475,7 +490,21 @@ void vulkan::CommandBuffer::bind_input_attachment(uint32_t set, uint32_t startBi
 		auto& inputAttachmentReference = m_currentRenderpass->get_input_attachment(i, m_pipelineState.subpassIndex);
 		if (inputAttachmentReference.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
-		assert(false); // TODO
+
+		const auto* view = m_framebufferAttachments[inputAttachmentReference.attachment];
+		auto& image = m_resourceBindings.bindings[set][startBinding + i].image;
+		assert(view);
+		assert(view->get_image()->get_usage() & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+		if (view->get_id() == m_resourceBindings.bindingIds[set][startBinding + i] &&
+			image.fp.imageLayout == inputAttachmentReference.layout)
+			continue;
+
+		image.fp.imageLayout = inputAttachmentReference.layout;
+		image.fp.imageView = view->get_image_view();
+		image.integer.imageLayout = inputAttachmentReference.layout;
+		image.integer.imageView = view->get_image_view();
+		m_resourceBindings.bindingIds[set][startBinding + i] = view->get_id();
+		m_dirtyDescriptorSets.set(set);
 	}
 }
 
@@ -759,8 +788,9 @@ void vulkan::CommandBuffer::set_vertex_attribute(uint32_t location, uint32_t bin
 	assert(binding < MAX_VERTEX_BINDINGS);
 	m_vertexState.active.set(binding);
 	auto [format_, binding_] = m_pipelineState.attributes[location];
-	if (format_ != format || binding_ != binding)
-		m_invalidFlags.set(InvalidFlags::StaticVertex);
+	if (format_ == format && binding_ == binding)
+		return;
+	m_invalidFlags.set(InvalidFlags::StaticVertex);
 	m_pipelineState.attributes.bindings[location] = binding;
 	m_pipelineState.attributes.formats[location] = format;
 

@@ -123,7 +123,9 @@ namespace Utility {
 		static constexpr size_t typeSize  = bitSize / bitsPerWord + (bitSize % bitsPerWord != 0);
 		//static_assert(std::is_convertible<T, size_t>::value);
 	public:
-		bitset() = default;
+		bitset() {
+			m_data[0] = 0;
+		}
 		bitset(bitType t) {
 			m_data[0] = t;
 		}
@@ -310,11 +312,11 @@ namespace Utility {
 	public:
 		void set(T t, size_t idx) noexcept {
 			if (idx & 0x1) {
-				m_data[idx / 2] &= 0xf0u;
+				m_data[idx / 2] &= std::byte(0xf0u);
 				m_data[idx / 2] |= static_cast<std::byte>(static_cast<uint32_t>(t)<< 4u);
 			}
 			else {
-				m_data[idx / 2] &= 0xfu;
+				m_data[idx / 2] &= std::byte(0x0fu);
 				m_data[idx / 2] |= static_cast<std::byte>(static_cast<uint32_t>(t) & 0xfu);
 			}
 		}

@@ -85,6 +85,11 @@ namespace vulkan {
 		Color,
 		Depth
 	};
+	struct InitialImageData {
+		const void* data = nullptr;
+		uint32_t rowLength = 0;
+		uint32_t height = 0;
+	};
 	class LogicalDevice {
 		
 		struct Extensions {
@@ -187,7 +192,7 @@ namespace vulkan {
 
 		BufferHandle create_buffer(const BufferInfo& info, const void * initialData = nullptr);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
-		ImageHandle create_image(const ImageInfo& info, const void* data = nullptr, uint32_t rowLength = 0, uint32_t height = 0);
+		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
 
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
 		size_t register_shader(const std::vector<uint32_t>& shaderCode);
@@ -268,7 +273,6 @@ namespace vulkan {
 			return get_swapchain_image_view()->get_image()->get_height();
 		}
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
-		void update_uniform_buffer();
 
 	private:
 		Queue& get_queue(CommandBuffer::Type type) noexcept {
@@ -281,7 +285,7 @@ namespace vulkan {
 				return m_transfer;
 			}
 		}
-		ImageBuffer create_staging_buffer(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height);
+		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData);
 		ImageHandle create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData);
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
 		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);

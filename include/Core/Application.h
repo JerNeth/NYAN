@@ -2,7 +2,7 @@
 #ifndef NYANAPPLICATION_H
 #define NYANAPPLICATION_H
 #include "VkWrapper.h"
-#include "Renderer.h"
+#include "VulkanRenderer"
 #include "glfwWrapper.h"
 #include "Settings.h"
 namespace nyan {
@@ -18,6 +18,8 @@ namespace nyan {
 		//Remove these functions and refactor
 		vulkan::LogicalDevice& get_device();
 		glfww::Window& get_window();
+		int get_width();
+		int get_height();
 
 		void next_frame();
 		void end_frame();

@@ -43,7 +43,7 @@ namespace Math
 	typedef Vec<int16_t, 2> svec2;
 	typedef Vec<int16_t, 3> svec3;
 	typedef Vec<int16_t, 4> svec4;
-	typedef Vec<int8_t, 3> bvec2;
+	typedef Vec<int8_t, 2> bvec2;
 	typedef Vec<int8_t, 3> bvec3;
 	typedef Vec<int8_t, 4> bvec4;
 
@@ -67,6 +67,7 @@ namespace Math
 	typedef Mat<float, 2, 2> mat22;
 	typedef Mat<float, 3, 3> mat33;
 	typedef Mat<float, 4, 4> mat44;
+	typedef Mat<float, 4, 3> mat43;
 	typedef Mat<double, 2, 2> dmat22;
 	typedef Mat<double, 3, 3> dmat33;
 	typedef Mat<double, 4, 4> dmat44;

@@ -126,6 +126,8 @@ namespace Utility {
 		size_t m_size = 0;
 		size_t m_capacity = 0;
 	};
+
+	constexpr size_t invalidObjectId = ~0ull;
 	template<typename T, typename Container>
 	class ObjectHandle {
 	public:
@@ -244,7 +246,7 @@ namespace Utility {
 					ptr_container->remove(m_id);
 			}
 		}
-		size_t m_id;
+		size_t m_id = invalidObjectId;
 		Container* ptr_container = nullptr; //List this handle refers to
 		mutable size_t* ptr_count = nullptr;
 	};

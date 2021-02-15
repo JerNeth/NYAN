@@ -276,6 +276,12 @@ namespace vulkan {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
 			}
 		}
+		void set_polygon_mode(VkPolygonMode polygon_mode) noexcept {
+			if (m_pipelineState.state.polygon_mode != static_cast<unsigned>(polygon_mode)) {
+				m_invalidFlags.set(InvalidFlags::StaticPipeline);
+				m_pipelineState.state.polygon_mode = static_cast<unsigned>(polygon_mode);
+			}
+		}
 		void disable_depth() noexcept {
 			set_depth_test(VK_FALSE);
 			set_depth_write(VK_FALSE);

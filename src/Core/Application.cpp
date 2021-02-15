@@ -25,6 +25,16 @@ glfww::Window& nyan::Application::get_window()
 	return *m_window;
 }
 
+int nyan::Application::get_width()
+{
+	return m_vulkanDevice->get_swapchain_width();
+}
+
+int nyan::Application::get_height()
+{
+	return m_vulkanDevice->get_swapchain_height();
+}
+
 void nyan::Application::next_frame()
 {
 	m_windowSystemInterface->begin_frame();
@@ -43,7 +53,7 @@ void nyan::Application::end_frame()
 
 void nyan::Application::add_renderer(nyan::Renderer* renderer)
 {
-	if(const auto& res = std::find(m_renderer.cbegin(), m_renderer.cend(), renderer); res != m_renderer.cend())
+	if(const auto& res = std::find(m_renderer.cbegin(), m_renderer.cend(), renderer); res == m_renderer.cend())
 		m_renderer.push_back(renderer);
 }
 

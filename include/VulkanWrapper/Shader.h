@@ -2,13 +2,13 @@
 #define VKSHADER_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "DescriptorSet.h"
 #include "Utility.h"
 #include "LinAlg.h"
 
 namespace vulkan {
 	class LogicalDevice;
 	class PipelineLayout;
+	enum class DefaultSampler;
 	struct ResourceBinding {
 		union {
 			VkDescriptorBufferInfo buffer;
@@ -19,13 +19,74 @@ namespace vulkan {
 			VkBufferView bufferView;
 		};
 		VkDeviceSize dynamicOffset;
+	};	
+	enum class ShaderStage {
+		Vertex = Utility::bit_pos(VK_SHADER_STAGE_VERTEX_BIT),// 0,
+		TesselationControl = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT), //1,
+		TesselationEvaluation = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT), //2,
+		Geometry = Utility::bit_pos(VK_SHADER_STAGE_GEOMETRY_BIT), //3,
+		Fragment = Utility::bit_pos(VK_SHADER_STAGE_FRAGMENT_BIT), //4,
+		Compute = Utility::bit_pos(VK_SHADER_STAGE_COMPUTE_BIT),//5,
+		Size,
+		Raygen = Utility::bit_pos(VK_SHADER_STAGE_RAYGEN_BIT_NV),//8
+		AnyHit = Utility::bit_pos(VK_SHADER_STAGE_ANY_HIT_BIT_NV),//9
+		ClosestHit = Utility::bit_pos(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV),//10
+		Miss = Utility::bit_pos(VK_SHADER_STAGE_MISS_BIT_NV),//11
+		Intersection = Utility::bit_pos(VK_SHADER_STAGE_INTERSECTION_BIT_NV),//12
+		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
+		
+	};
+	constexpr size_t NUM_SHADER_STAGES = 6;
+
+	struct DescriptorSetLayout {
+		Utility::bitset<MAX_BINDINGS> imageSampler;
+		Utility::bitset<MAX_BINDINGS> sampledBuffer;
+		Utility::bitset<MAX_BINDINGS> storageImage;
+		Utility::bitset<MAX_BINDINGS> uniformBuffer;
+		Utility::bitset<MAX_BINDINGS> storageBuffer;
+		Utility::bitset<MAX_BINDINGS> inputAttachment;
+		Utility::bitset<MAX_BINDINGS> separateImage;
+		Utility::bitset<MAX_BINDINGS> seperateSampler;
+		Utility::bitset<MAX_BINDINGS> fp;
+		Utility::bitset<MAX_BINDINGS> immutableSampler;
+		Utility::bitarray<DefaultSampler, MAX_BINDINGS> immutableSamplers;
+		std::array<uint8_t, MAX_BINDINGS> arraySizes;
+		std::array<Utility::bitset<static_cast<size_t>(ShaderStage::Size), ShaderStage>, MAX_BINDINGS> stages{};
+		//std::array<uint32_t, MAX_BINDINGS> stages{};
+		friend bool operator==(DescriptorSetLayout& left, DescriptorSetLayout& right) {
+			return left.imageSampler == right.imageSampler &&
+				left.sampledBuffer == right.sampledBuffer &&
+				left.storageImage == right.storageImage &&
+				left.uniformBuffer == right.uniformBuffer &&
+				left.storageBuffer == right.storageBuffer &&
+				left.inputAttachment == right.inputAttachment &&
+				left.separateImage == right.separateImage &&
+				left.seperateSampler == right.seperateSampler &&
+				left.fp == right.fp &&
+				left.immutableSampler == right.immutableSampler &&
+				left.arraySizes == right.arraySizes &&
+				left.stages == right.stages;
+		}
+		friend bool operator==(const DescriptorSetLayout& left, const DescriptorSetLayout& right) {
+			return left.imageSampler == right.imageSampler &&
+				left.sampledBuffer == right.sampledBuffer &&
+				left.storageImage == right.storageImage &&
+				left.uniformBuffer == right.uniformBuffer &&
+				left.storageBuffer == right.storageBuffer &&
+				left.inputAttachment == right.inputAttachment &&
+				left.separateImage == right.separateImage &&
+				left.seperateSampler == right.seperateSampler &&
+				left.fp == right.fp &&
+				left.immutableSampler == right.immutableSampler &&
+				left.arraySizes == right.arraySizes &&
+				left.stages == right.stages;
+		}
 	};
 	struct ShaderLayout {
 		std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptors;
 		Utility::bitset<MAX_DESCRIPTOR_SETS> used;
 		Utility::bitset<MAX_VERTEX_ATTRIBUTES> inputs;
 		Utility::bitset<MAX_VERTEX_ATTRIBUTES> outputs;
-		std::array<uint16_t, MAX_DESCRIPTOR_SETS> stagesForSets;
 		std::array<uint8_t, MAX_VERTEX_ATTRIBUTES> attributeElementCounts;
 		VkPushConstantRange pushConstantRange{};
 		friend bool operator==(ShaderLayout& left, ShaderLayout& right) {
@@ -48,7 +109,51 @@ namespace vulkan {
 				left.pushConstantRange.size == right.pushConstantRange.size &&
 				left.pushConstantRange.stageFlags == right.pushConstantRange.stageFlags;
 		}
+		void combine(const ShaderLayout& other) {
+			used |= other.used;
+			inputs |= other.inputs;
+			outputs |= other.outputs;
+			for (uint32_t i = 0; i < MAX_VERTEX_ATTRIBUTES; i++) {
+				assert(!(attributeElementCounts[i] != 0) || (other.attributeElementCounts[i] == 0));
+				if(attributeElementCounts[i] == 0)
+					attributeElementCounts[i] = other.attributeElementCounts[i];
+			}
+			pushConstantRange.stageFlags |= other.pushConstantRange.stageFlags;
+			pushConstantRange.size = Math::max(pushConstantRange.size, other.pushConstantRange.size);
+			assert(pushConstantRange.size <= 128u);
+			for (uint32_t descriptor = 0; descriptor < MAX_DESCRIPTOR_SETS; descriptor++) {
+				assert((descriptors[descriptor].imageSampler & other.descriptors[descriptor].imageSampler).none());
+				assert((descriptors[descriptor].sampledBuffer & other.descriptors[descriptor].sampledBuffer).none());
+				assert((descriptors[descriptor].storageImage & other.descriptors[descriptor].storageImage).none());
+				assert((descriptors[descriptor].uniformBuffer & other.descriptors[descriptor].uniformBuffer).none());
+				assert((descriptors[descriptor].storageBuffer & other.descriptors[descriptor].storageBuffer).none());
+				assert((descriptors[descriptor].inputAttachment & other.descriptors[descriptor].inputAttachment).none());
+				assert((descriptors[descriptor].separateImage & other.descriptors[descriptor].separateImage).none());
+				assert((descriptors[descriptor].seperateSampler & other.descriptors[descriptor].seperateSampler).none());
+				assert((descriptors[descriptor].fp & other.descriptors[descriptor].fp).none());
+				assert((descriptors[descriptor].immutableSampler & other.descriptors[descriptor].immutableSampler).none());
+				descriptors[descriptor].imageSampler |= other.descriptors[descriptor].imageSampler;
+				descriptors[descriptor].sampledBuffer |= other.descriptors[descriptor].sampledBuffer;
+				descriptors[descriptor].storageImage |= other.descriptors[descriptor].storageImage;
+				descriptors[descriptor].uniformBuffer |= other.descriptors[descriptor].uniformBuffer;
+				descriptors[descriptor].storageBuffer |= other.descriptors[descriptor].storageBuffer;
+				descriptors[descriptor].inputAttachment |= other.descriptors[descriptor].inputAttachment;
+				descriptors[descriptor].separateImage |= other.descriptors[descriptor].separateImage;
+				descriptors[descriptor].seperateSampler |= other.descriptors[descriptor].seperateSampler;
+				descriptors[descriptor].fp |= other.descriptors[descriptor].fp;
+				descriptors[descriptor].immutableSampler |= other.descriptors[descriptor].immutableSampler;
+				for (uint32_t binding = 0; binding < MAX_BINDINGS; binding++) {
+					if(other.descriptors[descriptor].immutableSampler.test(binding))
+						descriptors[descriptor].immutableSamplers.set(other.descriptors[descriptor].immutableSamplers.get(binding), binding);
+					assert(!(descriptors[descriptor].arraySizes[binding] != 0) || (other.descriptors[descriptor].arraySizes[binding] == 0));
+					if(descriptors[descriptor].arraySizes[binding] == 0)
+						descriptors[descriptor].arraySizes[binding] = other.descriptors[descriptor].arraySizes[binding];
+					descriptors[descriptor].stages[binding] |= other.descriptors[descriptor].stages[binding];
+				}
+			}
+		}
 	};
+
 	constexpr size_t format_bytesize(VkFormat format) {
 		switch (format) {
 		case VK_FORMAT_A2B10G10R10_SINT_PACK32:
@@ -309,6 +414,14 @@ namespace vulkan {
 		return VK_FORMAT_R32_SFLOAT;
 	}
 	template< >
+	constexpr VkFormat get_format<uint8_t>() {
+		return VK_FORMAT_R8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<int8_t>() {
+		return VK_FORMAT_R8_UINT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::uvec2>() {
 		return VK_FORMAT_R32G32_UINT;
 	}
@@ -317,12 +430,20 @@ namespace vulkan {
 		return VK_FORMAT_R32G32_SINT;
 	}
 	template< >
+	constexpr VkFormat get_format<Math::ubvec2>() {
+		return VK_FORMAT_R8G8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::bvec2>() {
+		return VK_FORMAT_R8G8_SNORM;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::usvec2>() {
-		return VK_FORMAT_R16G16_UINT;
+		return VK_FORMAT_R16G16_UNORM;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::svec2>() {
-		return VK_FORMAT_R16G16_SINT;
+		return VK_FORMAT_R16G16_SNORM;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::vec2>() {
@@ -349,6 +470,14 @@ namespace vulkan {
 		return VK_FORMAT_R32G32B32_SFLOAT;
 	}
 	template< >
+	constexpr VkFormat get_format<Math::ubvec3>() {
+		return VK_FORMAT_R8G8B8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::bvec3>() {
+		return VK_FORMAT_R8G8B8_UINT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::uvec4>() {
 		return VK_FORMAT_R32G32B32A32_UINT;
 	}
@@ -368,26 +497,19 @@ namespace vulkan {
 	constexpr VkFormat get_format<Math::vec4>() {
 		return VK_FORMAT_R32G32B32A32_SFLOAT;
 	}
+	template< >
+	constexpr VkFormat get_format<Math::ubvec4>() {
+		return VK_FORMAT_R8G8B8A8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::bvec4>() {
+		return VK_FORMAT_R8G8B8A8_UINT;
+	}
 	template<typename T>
 	constexpr VkFormat get_format(T t) {
 		return get_format<T>();
 	}
-	enum class ShaderStage {
-		Vertex = Utility::bit_pos(VK_SHADER_STAGE_VERTEX_BIT),// 0,
-		TesselationControl = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT), //1,
-		TesselationEvaluation = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT), //2,
-		Geometry = Utility::bit_pos(VK_SHADER_STAGE_GEOMETRY_BIT), //3,
-		Fragment = Utility::bit_pos(VK_SHADER_STAGE_FRAGMENT_BIT), //4,
-		Compute = Utility::bit_pos(VK_SHADER_STAGE_COMPUTE_BIT),//5,
-		Raygen = Utility::bit_pos(VK_SHADER_STAGE_RAYGEN_BIT_NV),//8
-		AnyHit = Utility::bit_pos(VK_SHADER_STAGE_ANY_HIT_BIT_NV),//9
-		ClosestHit = Utility::bit_pos(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV),//10
-		Miss = Utility::bit_pos(VK_SHADER_STAGE_MISS_BIT_NV),//11
-		Intersection = Utility::bit_pos(VK_SHADER_STAGE_INTERSECTION_BIT_NV),//12
-		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
-	};
-	constexpr size_t NUM_SHADER_STAGES = 6;
-	
+
 	
 	class Shader
 	{
@@ -395,13 +517,15 @@ namespace vulkan {
 		Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode);
 		~Shader();
 		ShaderStage get_stage();
-		void parse_shader(ShaderLayout& layouts, const std::vector<uint32_t>& shaderCode) const;
+		void parse_shader(const std::vector<uint32_t>& shaderCode);
+		const ShaderLayout& get_layout() const {
+			return m_layout;
+		}
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
 	private:
 		inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const;
 		void inline array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const;
-		void parse_stage(const std::vector<uint32_t>& shaderCode);
 		void create_module(const std::vector<uint32_t>& shaderCode);
 
 		LogicalDevice& m_parent;

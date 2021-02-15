@@ -10,7 +10,7 @@ r_device(parent)
 
 
 	for (uint32_t i = 0; i < MAX_BINDINGS; i++) {
-		if (layout.stages[i]) {
+		if (layout.stages[i].any()) {
 			uint32_t poolSize = layout.arraySizes[i] * MAX_SETS_PER_POOL;
 			VkSampler immutableSampler = layout.immutableSampler.test(i)? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
 			if (layout.imageSampler.test(i)) {
@@ -19,7 +19,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
 					}
 				);
@@ -31,7 +31,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
@@ -43,7 +43,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
@@ -55,7 +55,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				); 
@@ -67,7 +67,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
@@ -79,7 +79,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
@@ -91,7 +91,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
@@ -103,7 +103,7 @@ r_device(parent)
 						.binding = i,
 						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
 						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i]),
+						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
 					}
 				); 

@@ -86,7 +86,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		else {
 			if (colorAttachment.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
 				implicitBottomOfPipe.set(i);
-				colorAttachment.initialLayout = info->get_image()->get_info().layout;
+				colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
 		}
 		attachmentDescriptions[i] = colorAttachment;
@@ -163,7 +163,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 		}
 		else {
 			depth->attachment = VK_ATTACHMENT_UNUSED;
-			depth->layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depth->layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		}
 		subpassDescriptions[i] = subpass;
 	}

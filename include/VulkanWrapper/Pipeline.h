@@ -4,6 +4,7 @@
 #include "VulkanIncludes.h"
 #include "Utility.h"
 #include "Shader.h"
+#include "DescriptorSet.h"
 #include "Renderpass.h"
 
 namespace vulkan {
@@ -65,14 +66,14 @@ namespace vulkan {
 		unsigned topology : TOPOLOGY_BITS;	
 
 		
-		unsigned wireframe : 1;
+		unsigned polygon_mode : 2;
 		unsigned subgroup_control_size : 1;
 		unsigned subgroup_full_group : 1;
 		unsigned subgroup_min_size_log2 : 3;
 		unsigned subgroup_max_size_log2 : 3;
 		unsigned conservative_raster : 1;
 
-		unsigned padding : 4{};
+		unsigned padding : 3{};
 		//96
 		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
 		//
@@ -86,10 +87,20 @@ namespace vulkan {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
 		.blend_enable = VK_FALSE,
-		.cull_mode = VK_CULL_MODE_FRONT_BIT,
-		//.cull_mode = VK_CULL_MODE_NONE,
+		//.cull_mode = VK_CULL_MODE_FRONT_BIT,
+		.cull_mode = VK_CULL_MODE_NONE,
 		.front_face = VK_FRONT_FACE_CLOCKWISE,
 		.depth_bias_enable = VK_FALSE,
+		.dynamic_cull_mode = 0,
+		.dynamic_front_face = 0,
+		.dynamic_primitive_topology = 0,
+		.dynamic_vertex_input_binding_stride = 0,
+		.dynamic_depth_test = 0,
+		.dynamic_depth_write = 0,
+		.dynamic_depth_compare = 0,
+		.dynamic_depth_bounds_test = 0,
+		.dynamic_stencil_test = 0,
+		.dynamic_stencil_op = 0,
 		.depth_compare = VK_COMPARE_OP_LESS,
 		.stencil_test = VK_FALSE,
 		.alpha_to_coverage = VK_FALSE,
@@ -103,7 +114,7 @@ namespace vulkan {
 		.alpha_blend_op = VK_BLEND_OP_ADD,
 		.primitive_restart = VK_FALSE,
 		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-		.wireframe = VK_POLYGON_MODE_FILL,
+		.polygon_mode = VK_POLYGON_MODE_FILL,
 		.subgroup_control_size = VK_FALSE,
 		.subgroup_full_group = VK_FALSE,
 		.subgroup_min_size_log2 = 0,
@@ -146,8 +157,8 @@ namespace vulkan {
 	};
 	struct PipelineCompile {
 		PipelineState state;
-		Program* program;
-		Renderpass* compatibleRenderPass;
+		Program* program = nullptr;
+		Renderpass* compatibleRenderPass = nullptr;
 		Attributes attributes;
 		InputRates inputRates;
 

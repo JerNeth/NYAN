@@ -77,7 +77,7 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
 add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC} ${IMGUI_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC})
 add_dependencies(Engine shaders)
 
 add_executable(Demo ${DEMO_SRC})# )

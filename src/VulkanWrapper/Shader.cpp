@@ -2,12 +2,13 @@
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
 vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
-	m_parent(parent)
+	m_parent(parent),
+	m_layout{}
 {
 	Utility::VectorHash<uint32_t> hasher;
 	m_hashValue = hasher(shaderCode);
 	create_module(shaderCode);
-	parse_stage( shaderCode);
+	parse_shader( shaderCode);
 }
 
 vulkan::Shader::~Shader()
@@ -31,7 +32,9 @@ inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> vulkan::Shad
 
 inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
 {
-	layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
+
+	layouts[set].stages[binding].set(m_stage);
+	//layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
 	auto& size = layouts[set].arraySizes[binding];
 	if (type.array.empty()) {
 		size = 1;
@@ -42,106 +45,101 @@ inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCR
 	}
 }
 
-void vulkan::Shader::parse_stage(const std::vector<uint32_t>& shaderCode)
+void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 {
 	using namespace spirv_cross;
-	Compiler comp(shaderCode);
+	//bool usesBinding = false;
+	Compiler comp(shaderCode); 
 	auto executionModel = comp.get_execution_model();
 	if (executionModel > NUM_SHADER_STAGES)
 		throw std::runtime_error("Unsupported Shadertype");
 	m_stage = static_cast<ShaderStage>(executionModel);
-}
-void vulkan::Shader::parse_shader(ShaderLayout& layout, const std::vector<uint32_t>& shaderCode) const
-{
-	using namespace spirv_cross;
-	//bool usesBinding = false;
-	Compiler comp(shaderCode);
 	ShaderResources resources = comp.get_shader_resources();
 	
 	
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
-		layout.used.set(set);
-		layout.descriptors[set].uniformBuffer.set(binding);
-		array_info(layout.descriptors, type, set, binding);
+		m_layout.used.set(set);
+		m_layout.descriptors[set].uniformBuffer.set(binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& sampledImage : resources.sampled_images) {
 		auto [set, binding, type] = get_values(sampledImage, comp);
-		layout.used.set(set);
+		m_layout.used.set(set);
 		if (type.image.dim == spv::DimBuffer) {
-			layout.descriptors[set].sampledBuffer.set(binding);
+			m_layout.descriptors[set].sampledBuffer.set(binding);
 		}
 		else {
-			layout.descriptors[set].imageSampler.set(binding);
+			m_layout.descriptors[set].imageSampler.set(binding);
 		}
 		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].fp.set(binding);
 		}
-		array_info(layout.descriptors, type, set, binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& subpassInput : resources.subpass_inputs) {
 		auto [set, binding, type] = get_values(subpassInput, comp);
-		layout.used.set(set);
-		layout.descriptors[set].inputAttachment.set(binding);
+		m_layout.used.set(set);
+		m_layout.descriptors[set].inputAttachment.set(binding);
 
 		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].fp.set(binding);
 		}
-		array_info(layout.descriptors, type, set, binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& separateImage : resources.separate_images) {
 		auto [set, binding, type] = get_values(separateImage, comp);
-		layout.used.set(set);
+		m_layout.used.set(set);
 		if (type.image.dim == spv::DimBuffer) {
-			layout.descriptors[set].sampledBuffer.set(binding);
+			m_layout.descriptors[set].sampledBuffer.set(binding);
 		}
 		else {
-			layout.descriptors[set].separateImage.set(binding);
+			m_layout.descriptors[set].separateImage.set(binding);
 		}
 		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].fp.set(binding);
 		}
-		array_info(layout.descriptors, type, set, binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& separateSampler : resources.separate_samplers) {
 		auto [set, binding, type] = get_values(separateSampler, comp);
-		layout.used.set(set);
-		layout.descriptors[set].seperateSampler.set(binding);
+		m_layout.used.set(set);
+		m_layout.descriptors[set].seperateSampler.set(binding);
 
-		array_info(layout.descriptors, type, set, binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& storageImage : resources.storage_images) {
 		auto [set, binding, type] = get_values(storageImage, comp);
-		layout.used.set(set);
-		layout.descriptors[set].storageImage.set(binding);
+		m_layout.used.set(set);
+		m_layout.descriptors[set].storageImage.set(binding);
 		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].fp.set(binding);
 		}
-		array_info(layout.descriptors, type, set, binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& storageImage : resources.storage_buffers) {
 		auto [set, binding, type] = get_values(storageImage, comp);
-		layout.used.set(set);
-		layout.descriptors[set].storageBuffer.set(binding);
-		array_info(layout.descriptors, type, set, binding);
+		m_layout.used.set(set);
+		m_layout.descriptors[set].storageBuffer.set(binding);
+		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& attrib : resources.stage_inputs) {
 		if (m_stage == vulkan::ShaderStage::Vertex) {
 			auto& type = comp.get_type(attrib.type_id);
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			layout.attributeElementCounts[location] = type.vecsize;
-			layout.inputs.set(location); 
+			m_layout.attributeElementCounts[location] = type.vecsize;
+			m_layout.inputs.set(location);
 		}
 	}
 	for (auto& attrib : resources.stage_outputs) {
 		if (m_stage == vulkan::ShaderStage::Fragment) {
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			layout.outputs.set(location);
+			m_layout.outputs.set(location);
 		}
 	}
 	if (!resources.push_constant_buffers.empty()) {
-		layout.pushConstantRange.stageFlags |= static_cast<VkShaderStageFlagBits>(1u << static_cast<uint32_t>(m_stage));
-		layout.pushConstantRange.size =  static_cast<uint32_t>(comp.get_declared_struct_size(comp.get_type(resources.push_constant_buffers.front().base_type_id)));
+		m_layout.pushConstantRange.stageFlags |= static_cast<VkShaderStageFlagBits>(1u << static_cast<uint32_t>(m_stage));
+		m_layout.pushConstantRange.size =  static_cast<uint32_t>(comp.get_declared_struct_size(comp.get_type(resources.push_constant_buffers.front().base_type_id)));
 	}
 }
 

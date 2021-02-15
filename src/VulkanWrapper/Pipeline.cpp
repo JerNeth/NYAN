@@ -23,9 +23,14 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_shaderLayout(layout) {
 	m_hashValue = Utility::Hasher()(layout);
 	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
-	for (size_t i = 0; i < descriptorSets.size(); i++) {
-		m_descriptors[i] = r_device.request_descriptor_set_allocator(layout.descriptors[i]);
-		descriptorSets[i] = m_descriptors[i]->get_layout();
+	for (size_t i = 0; i < layout.used.count(); i++) {
+		if (layout.used.test(i)) {
+			m_descriptors[i] = r_device.request_descriptor_set_allocator(layout.descriptors[i]);
+			descriptorSets[i] = m_descriptors[i]->get_layout();
+		}
+		else {
+			assert(false);
+		}
 	}
 	
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
@@ -196,7 +201,7 @@ void vulkan::PipelineLayout::create_update_template()
 				.dstBinding = binding,
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
 				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
 					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
@@ -326,8 +331,8 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	};
 	if (compile.compatibleRenderPass->has_depth_attachment(compile.subpassIndex)) {
 		depthStencilStateCreateInfo.depthWriteEnable = compile.state.depth_test;
-		depthStencilStateCreateInfo.stencilTestEnable = compile.state.depth_test;
-		if (depthStencilStateCreateInfo.depthTestEnable = compile.state.depth_test; depthStencilStateCreateInfo.depthTestEnable) {
+		depthStencilStateCreateInfo.depthTestEnable = compile.state.depth_test;
+		if (depthStencilStateCreateInfo.stencilTestEnable = compile.state.stencil_test; depthStencilStateCreateInfo.stencilTestEnable) {
 			depthStencilStateCreateInfo.front = {
 				.failOp = static_cast<VkStencilOp>(compile.state.stencil_front_pass),
 				.passOp = static_cast<VkStencilOp>(compile.state.stencil_front_fail),
@@ -395,12 +400,11 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.alphaToOneEnable = compile.state.alpha_to_one, // Optional
 	};
 	
-
 	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 		.depthClampEnable = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
-		.polygonMode = static_cast<VkPolygonMode>(compile.state.wireframe),
+		.polygonMode = static_cast<VkPolygonMode>(compile.state.polygon_mode),
 		.cullMode = static_cast<VkCullModeFlags>(compile.state.cull_mode),
 		.frontFace = static_cast<VkFrontFace>(compile.state.front_face),
 		.depthBiasEnable = compile.state.depth_bias_enable,
@@ -621,9 +625,9 @@ void vulkan::Pipeline::set_topology(VkPrimitiveTopology primitiveTopology)
 	s_pipelineState.topology = primitiveTopology;
 }
 
-void vulkan::Pipeline::set_wireframe(VkPolygonMode wireframe)
+void vulkan::Pipeline::set_wireframe(VkPolygonMode polygon_mode)
 {
-	s_pipelineState.wireframe = wireframe;
+	s_pipelineState.polygon_mode = polygon_mode;
 }
 
 void vulkan::Pipeline::set_subgroup_control_size(bool controlSize)

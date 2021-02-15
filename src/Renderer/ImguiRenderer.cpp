@@ -1,9 +1,8 @@
-#include "ImguiRenderer.h"
-#include "ShaderManager.h"
+#include "Renderer/ImguiRenderer.h"
 
 using namespace vulkan;
 
-nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device) : r_device(device) {
+nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager& shaderManager) : r_device(device) {
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -11,7 +10,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device) : r_device(device) {
 	io.DisplaySize.y = r_device.get_swapchain_height();
 	io.BackendRendererName = "imgui_custom_vulkan";
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-	set_up_program();
+	set_up_program(shaderManager);
 	set_up_font();
 }
 
@@ -194,10 +193,9 @@ void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 	}
 }
 
-void nyan::ImguiRenderer::set_up_program()
+void nyan::ImguiRenderer::set_up_program(ShaderManager& shaderManager)
 {
-	ShaderManager s(r_device);
-	m_program = s.request_program("imgui_vert.spv", "imgui_frag.spv");
+	m_program = shaderManager.request_program("imgui_vert", "imgui_frag");
 }
 
 void nyan::ImguiRenderer::set_up_font()
@@ -208,6 +206,10 @@ void nyan::ImguiRenderer::set_up_font()
 	int width, height;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 	auto info = ImageInfo::immutable_2d_image(width, height, VK_FORMAT_R8G8B8A8_UNORM, false);
-
-	m_font = r_device.create_image(info, pixels);
+	vulkan::InitialImageData data{
+			.data = reinterpret_cast<char*>(pixels),
+			.rowLength = 0,
+			.height = 0,
+	};
+	m_font = r_device.create_image(info, &data);
 }

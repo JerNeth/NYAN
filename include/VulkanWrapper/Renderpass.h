@@ -10,10 +10,11 @@ namespace vulkan {
 	class Framebuffer;
 	struct RenderpassCreateInfo {
 		enum class OpFlags : uint8_t {
-			DepthStencilClear = 0,
-			DepthStencilLoad = 1,
-			DepthStencilStore = 2,
-			DepthStencilReadOnly = 3
+			DepthStencilClear,
+			DepthStencilLoad,
+			DepthStencilStore,
+			DepthStencilReadOnly,
+			Size
 		};
 		enum class DepthStencil : uint8_t {
 			None,
@@ -27,7 +28,7 @@ namespace vulkan {
 		std::array<ImageView*, MAX_ATTACHMENTS> colorAttachmentsViews{};
 		ImageView* depthStencilAttachment = nullptr;
 		uint8_t colorAttachmentsCount = 0;
-		Utility::bitset<6, OpFlags> opFlags;
+		Utility::bitset<static_cast<size_t>(OpFlags::Size), OpFlags> opFlags;
 		std::array<VkClearColorValue, MAX_ATTACHMENTS> clearColors;
 		VkClearDepthStencilValue clearDepthStencil;
 

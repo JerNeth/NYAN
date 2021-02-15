@@ -17,21 +17,24 @@ namespace vulkan {
 			auto hash = hasher();
 			if (m_cachedPrograms.contains(hash))
 			{
-				return m_cachedPrograms.get(hash).value();
+				return &m_cachedPrograms.get(hash);
 			}
 			std::vector<Shader*> shaders;
 			for (const auto& filename : shaderFileNames) {
-				shaders.push_back(request_shader(filename, layout));
+				auto* shader = request_shader(filename);
+				shaders.push_back(shader);
+				layout.combine(shader->get_layout());
 			}
-			auto* program = r_device.request_program(shaders);
-			program->set_pipeline_layout(r_device.request_pipeline_layout(layout));
-			m_cachedPrograms.insert(hash, program);
-			return program;
+			auto& program = m_cachedPrograms.emplace(hash, shaders);
+			program.set_pipeline_layout(r_device.request_pipeline_layout(layout));
+			return &program;
 		}
 	private:
-		Shader* request_shader(const std::string& filename, ShaderLayout& layout);
+		Shader* request_shader(const std::string& filename);
 		LogicalDevice& r_device;
-		Utility::HashMap<Program*> m_cachedPrograms;
+		//Utility::HashMap<Program*> m_cachedPrograms;
+		Utility::NonInvalidatingMap<Utility::HashValue, Program> m_cachedPrograms;
+		Utility::NonInvalidatingMap<std::string, Shader> m_cachedShaders;
 	};
 }
 

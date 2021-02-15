@@ -4,40 +4,43 @@
 #include <type_traits>
 
 namespace Math {
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-		inline constexpr const Scalar& min(const Scalar& a, const Scalar& b) noexcept {
-		if (a <= b)
+	template<typename T>
+	concept Scalar = std::is_arithmetic<T>::value;
+	template<Scalar S>
+		inline constexpr const S& min(const S& a, const S& b) noexcept {
+		if (!(a > b))
 			return a;
 		return b;
 	}
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-		inline constexpr const Scalar& max(const Scalar& a, const Scalar& b) noexcept {
+	template<Scalar S>
+		inline constexpr const S& max(const S& a, const S& b) noexcept {
 		if (a > b)
 			return a;
 		return b;
 	}
-	template<typename Scalar,
-		typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-		inline constexpr bool close(const Scalar& a, const Scalar& b, const Scalar& eps = Scalar(1e-5)) noexcept {
+	template<Scalar S>
+	inline constexpr const S& clamp(const S& val, const S& min, const S& max) noexcept {
+		return Math::max(Math::min(val, max), min);
+	}
+	template<Scalar S>
+		inline constexpr bool close(const S& a, const S& b, const S& eps = S(1e-5)) noexcept {
 		return ((a - eps) <= b) && ((a + eps) >= b);
 	}
-	template<typename T>
+	template<Scalar T>
 	inline constexpr const T square(const T& a) noexcept {
 		return a * a;
 	}
-	template<int width>
-	inline constexpr int at(int y, int x) {
-		return x + y * width;
+	template<int height>
+	inline constexpr int at(int x, int y) {
+		return x*height + y;
 	}
-	template<size_t width>
-	inline constexpr size_t at(size_t y, size_t x) {
-		return x + y * width;
+	template<size_t height>
+	inline constexpr size_t at(size_t x, size_t y) {
+		return x * height + y;
 	}
 	//This function does not handle limits well
 	//This function is also stable
-	template<typename T, typename U>
+	template<Scalar T, Scalar U>
 	inline constexpr T lerp(T a, T b, U t) {
 		assert(t >= 0.0f && t <= 1.0f);
 		return (1 - t) * a + t * b;

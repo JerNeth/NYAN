@@ -411,7 +411,7 @@ vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
 {
 	return *m_frameResources[m_currentFrame];
 }
-vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
+vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, InitialImageData* initialData)
 {
 	uint32_t copyLevels;
 	if (info.generate_mips())
@@ -426,12 +426,13 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 		.size = mipInfo.size,
 		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		.offset = 0,
-		.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
+		.memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY
 	};
 	auto buffer = create_buffer(bufferInfo);
 	auto map = buffer->map_data();
 	std::vector<VkBufferImageCopy> blits;
 	blits.reserve(copyLevels);
+	size_t sourceOffset = 0;
 	for (uint32_t level = 0; level < copyLevels; level++) {
 		const auto& mip = mipInfo.mipLevels[level];
 		blits.push_back(VkBufferImageCopy{
@@ -453,13 +454,19 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 		uint32_t blockStride = format_block_size(info.format);
 		auto [blockSizeX, blockSizeY] = format_to_block_size(info.format);
 		size_t rowSize = mip.blockCountX * blockStride;
-		//size_t dstLayerSize = rowSize * mip.blockCountY;
-		//Ignore layers for now
-		//assume one level for now
-		assert(level == 0);
+		size_t dstLayerSize = mip.blockCountY * rowSize;
 
-		for (uint32_t y = 0; y < mip.blockCountY; y++)
-			std::memcpy(reinterpret_cast<char*>(map)+y *rowSize, reinterpret_cast<const uint8_t*>(data) + y * rowSize, rowSize);
+		uint32_t srcRowStride = (mip.width + blockSizeX - 1) / blockSizeX * blockStride;
+		uint32_t srcLayerStride = (mip.height + blockSizeY - 1) / blockSizeY * srcRowStride;
+		for (uint32_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
+
+			uint8_t* dst = static_cast<uint8_t*>(map) + mip.offset + blockStride * arrayLayer * mip.blockCountX * mip.blockCountY;
+			const uint8_t* src = static_cast<const uint8_t*>(initialData[arrayLayer].data) + sourceOffset;
+			for(uint32_t z = 0; z < mip.depth; z++)
+				for (uint32_t y = 0; y < mip.blockCountY; y++)
+					std::memcpy(dst + z* dstLayerSize+ y * rowSize, src + z * srcLayerStride + y * srcRowStride, rowSize);
+		}
+		sourceOffset += srcLayerStride;
 		
 	}
 	return { buffer, blits };
@@ -696,10 +703,10 @@ vulkan::ImageViewHandle vulkan::LogicalDevice::create_image_view(const ImageView
 	return m_imageViewPool.emplace(*this,info);
 }
 
-vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, const void* data, uint32_t rowLength, uint32_t height)
+vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, InitialImageData* initialData)
 {
-	if (data) {
-		auto buf = create_staging_buffer(info, data, rowLength, height);
+	if (initialData) {
+		auto buf = create_staging_buffer(info, initialData);
 		return create_image_with_staging_buffer(info, &buf);
 	}
 	else {
@@ -875,34 +882,6 @@ VkQueue vulkan::LogicalDevice::get_graphics_queue()  const noexcept
 }
 
 
-void vulkan::LogicalDevice::update_uniform_buffer()
-{
-	auto currentImage = get_swapchain_image_index();
-	Ubo ubo[2]{ {
-		Math::mat44::identity(),
-		Math::mat44::identity(),
-		Math::mat44::identity()
-	} ,{
-		Math::mat44::identity(),
-		Math::mat44::identity(),
-		Math::mat44::identity()
-	} };
-	static float degrees;
-	ubo[0].model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees++) / 100));
-	ubo[0].model(3, 3) = 1;
-	ubo[0].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-	ubo[0].proj = Math::mat44::perspective(0.01f, 10.f, 45.0f, static_cast<float>(get_swapchain_image_view()->get_image()->get_width()) / static_cast<float>(get_swapchain_image_view()->get_image()->get_height()));
-	ubo[1].model = Math::mat44(Math::mat33::rotation_matrix(0, 0, (degrees++) / 100));
-	ubo[1].model(3, 3) = 1;
-	ubo[1].model = ubo[1].model * Math::mat44::translation_matrix(Math::vec3({ 0.0f, 0.0f, -0.5f }));
-	ubo[1].view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-	ubo[1].proj = Math::mat44::perspective(0.01f, 10.f, 45.0f, static_cast<float>(get_swapchain_image_view()->get_image()->get_width()) / static_cast<float>(get_swapchain_image_view()->get_image()->get_height()));
-	void* mappedData;
-	m_vmaAllocator->map_memory(m_uniformBuffersAllocations[currentImage], &mappedData);
-	memcpy(mappedData, &ubo, sizeof(ubo));
-	m_vmaAllocator->unmap_memory(m_uniformBuffersAllocations[currentImage]);
-	m_vmaAllocator->flush(m_uniformBuffersAllocations[currentImage], 0, sizeof(ubo));
-}
 
 void vulkan::LogicalDevice::create_default_sampler()
 {
@@ -910,6 +889,7 @@ void vulkan::LogicalDevice::create_default_sampler()
 		//.
 	};
 	createInfo.maxLod = VK_LOD_CLAMP_NONE;
+	//createInfo.anisotropyEnable = VK_TRUE;
 	createInfo.maxAnisotropy = 1.0f;
 	for (int i = 0; i < static_cast<int>(DefaultSampler::Size); i++) {
 		auto type = static_cast<DefaultSampler>(i);

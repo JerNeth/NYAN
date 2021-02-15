@@ -2,20 +2,21 @@
 #define RDIMGUI_H
 #pragma once
 #include "VkWrapper.h"
+#include "ShaderManager.h"
 #include "imgui.h"
 #include "Renderer.h"
 #include <chrono>
 namespace nyan {
 	class ImguiRenderer : public Renderer {
 	public:
-		ImguiRenderer(vulkan::LogicalDevice& device);
+		ImguiRenderer(vulkan::LogicalDevice& device, vulkan::ShaderManager& shaderManager);
 		~ImguiRenderer();
 		void next_frame();
 		void end_frame();
 	private:
 		void create_cmds(ImDrawData* draw_data, vulkan::CommandBufferHandle& cmd);
 		void prep_buffer(ImDrawData* draw_data);
-		void set_up_program();
+		void set_up_program(vulkan::ShaderManager& shaderManager);
 		void set_up_font();
 		vulkan::LogicalDevice& r_device;
 		vulkan::Program* m_program;

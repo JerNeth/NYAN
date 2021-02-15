@@ -13,29 +13,38 @@ namespace Utility {
 		}
 		~HashBucket() {
 			for (size_t i = 0; i < data.size(); i++) {
-				if ((data[i].first != 0x0ull) && (data[i].second != 0x0ull))
+				if (occupancy.test(i)) {
 					data[i].second.~T();
+				}
 			}
 		}
+		Utility::bitset<bucketSize> occupancy;
 		std::array<std::pair<HashValue, T>, bucketSize> data;
-		size_t get_first_empty() const{
+		size_t get_first_empty() const {
 			for (size_t i = 0; i < data.size(); i++) {
-				if ((data[i].first == 0x0ull) && (data[i].second == 0x0ull))
+				if (!occupancy.test(i))
 					return i;
 			}
 			return data.size();
 		}
 		std::optional<T> get(HashValue hash) {
 			for (size_t i = 0; i < data.size(); i++) {
-				if (data[i].first == hash)
+				if (data[i].first == hash) {
+					assert(occupancy.test(i));
 					return data[i].second;
+				}
 			}
 			return std::nullopt;
 		}
 		void remove(HashValue hash) {
 			for (size_t i = 0; i < data.size(); i++) {
-				if (data[i].first == hash)
+				if (data[i].first == hash) {
+					assert(occupancy.test(i));
+					data[i].second.~T();
+					occupancy.reset(i);
 					std::memset(&data[i], 0, sizeof(std::pair<HashValue, T>));
+					return;
+				}
 			}
 		}
 		std::pair<HashValue, T>& operator[](size_t idx) {
@@ -52,6 +61,9 @@ namespace Utility {
 				if (data[i].first == hash)
 					return true;
 			return false;
+		}
+		bool contains_direct(size_t idx) {
+			return occupancy.test(idx);
 		}
 	};
 	template<typename T, size_t hashBucketSize = (std::hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
@@ -89,27 +101,29 @@ namespace Utility {
 			size_t idx = mod(hash);
 			if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
 				data[idx][bucket_idx] = std::make_pair(hash, value);
+				data[idx].occupancy.set(bucket_idx);
 				return true;
 			}
 			return false;
-		}
-		
+		}		
 		void insert(HashValue hash, const T& value) {
 			//Check if bucket is full
 			if (!try_insert(hash, value)) {
 				bool succeded = true;
 				auto oldSize = size;
 				do {
+					succeded = true;
 					auto oldData = data;
+					assert(size - oldSize < 3); //Otherwise is probably a leak
 					data = new HashBucket<T>[1ull << ++size];
 					for (size_t i = 0; i < (1ull << oldSize); i++) {
 						for (size_t j = 0; j < oldData[i].end(); j++) {
+							if (!oldData[i].contains_direct(j))
+								continue;
 							auto [tmpHash, tmpData] = oldData[i][j];
-							if ((tmpHash != 0ull) || (tmpData != 0ull)) {
-								succeded &= try_insert(tmpHash, tmpData);
-								if (!succeded)
-									goto cleanup;
-							}
+							succeded &= try_insert(tmpHash, tmpData);
+							if (!succeded)
+								goto cleanup;
 						}
 					}
 					succeded &= try_insert(hash, value);
@@ -129,6 +143,7 @@ namespace Utility {
 			size_t idx = mod(hash);
 			return data[idx].contains(hash);
 		}
+
 	private:
 		HashBucket<T, hashBucketSize>* data = nullptr;
 		size_t size = 0;
@@ -301,7 +316,7 @@ namespace Utility {
 					data[i].first.~Key();
 					data[i].second.~Value();
 					occupancy.reset(i);
-					std::memset(&data[i], 0, sizeof(std::pair<HashValue, Value>));
+					std::memset(&data[i], 0, sizeof(std::pair<Key, Value>));
 				}
 			}
 		}
@@ -315,13 +330,13 @@ namespace Utility {
 		size_t begin() const{
 			return 0;
 		}
-		bool contains(Key key) {
+		bool contains(const Key& key) {
 			for (size_t i = 0; i < data.size(); i++)
 				if (occupancy.test(i))
 					return true;
 			return false;
 		}
-		bool contains(size_t idx) {
+		bool contains_direct(size_t idx) {
 			return occupancy.test(idx);
 		}
 	};
@@ -363,6 +378,7 @@ namespace Utility {
 			size_t idx = mod(hash);
 			if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
 				data[idx][bucket_idx] = std::make_pair(key, value);
+				data[idx].occupancy.set(bucket_idx);
 				return true;
 			}
 			return false;
@@ -374,11 +390,12 @@ namespace Utility {
 				bool succeded = true;
 				auto oldSize = size;
 				do {
+					succeded = true;
 					auto oldData = data;
 					data = new Bucket[1ull << ++size];
 					for (size_t i = 0; i < (1ull << oldSize); i++) {
 						for (size_t j = 0; j < oldData[i].end(); j++) {
-							if (!oldData[i].contains(j))
+							if (!oldData[i].contains_direct(j))
 								continue;
 							auto [tmpKey, tmpData] = oldData[i][j];
 							succeded &= try_insert(tmpKey, tmpData);
@@ -421,14 +438,21 @@ namespace Utility {
 			m_hashMap.insert(key, id);
 			return m_storage.get(id);
 		}
-		Value& get(Key key) {
+		Value& get(const Key& key) {
 			auto id = m_hashMap.get(key);
 			assert(id);
 			return m_storage.get(*id);
 		}
+		Value& get_direct(size_t id) {
+			return m_storage.get(id);
+		}
 		template<typename Functor>
 		void for_each(Functor functor) {
 			m_storage.for_each(functor);
+		}
+		bool contains(Key key) {
+			auto id = m_hashMap.get(key);
+			return id.has_value();
 		}
 	private:
 		KeyHashMap<Key, size_t> m_hashMap;

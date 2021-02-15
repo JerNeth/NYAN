@@ -81,3 +81,21 @@ vulkan::Image::~Image() noexcept
 			r_device.queue_image_deletion(m_vkHandle);
 	
 }
+
+vulkan::ImageView* vulkan::Image::create_higher_mip(uint32_t mip) {
+	if (mip == m_view->get_base_mip_level())
+		return nullptr;
+	if (mip >= m_info.mipLevels)
+		return nullptr;
+	ImageViewCreateInfo createInfo;
+	createInfo.image = this;
+	createInfo.viewType = m_info.view_type();
+	createInfo.format = m_info.format;
+	createInfo.baseMipLevel = mip;
+	createInfo.levelCount = m_info.mipLevels - mip;
+	createInfo.baseArrayLayer = 0;
+	createInfo.layerCount = m_info.arrayLayers;
+	createInfo.aspectMask = ImageInfo::format_to_aspect_mask(m_info.format);
+	m_view = r_device.create_image_view(createInfo);
+	return &(*m_view);
+}

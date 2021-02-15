@@ -260,7 +260,7 @@ namespace vulkan {
 		uint32_t mipLevelCount;
 		size_t size;
 		MipInfo(VkFormat format, uint32_t width, uint32_t height, uint32_t layers, uint32_t mipLevelCount_, uint32_t depth = 1) {
-			assert(!(depth == 1) || (layers == 1)); //logical implication
+			assert(!(depth != 1) || (layers == 1)); //logical implication
 			assert(!(height == 1) || (depth == 1)); //logical implication
 			assert(!(layers != 1) || (depth == 1)); //logical implication
 			auto stride = format_block_size(format);
@@ -299,6 +299,7 @@ namespace vulkan {
 	struct ImageInfo {
 		enum class Flags {
 			GenerateMips,
+			IsCube,
 			ConcurrentGraphics,
 			ConcurrentAsyncCompute,
 			ConcurrentAsyncGraphics,
@@ -520,6 +521,7 @@ namespace vulkan {
 		const ImageView* get_view() const noexcept {
 			return &(*m_view);
 		}
+		ImageView* create_higher_mip(uint32_t mip);
 
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.width >> mipLevel);
