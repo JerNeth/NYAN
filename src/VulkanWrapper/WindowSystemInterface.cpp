@@ -84,6 +84,8 @@ void vulkan::WindowSystemInterface::end_frame()
 	r_device.end_frame();
 	if (!r_device.swapchain_touched())
 		return;
+	if (!m_swapchainImageAcquired)
+		return;
 	m_swapchainImageAcquired = false;
 	auto semaphore = r_device.get_present_semaphore();
 	VkPresentInfoKHR presentInfo{

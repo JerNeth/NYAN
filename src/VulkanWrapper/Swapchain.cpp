@@ -226,8 +226,8 @@ void vulkan::Swapchain::create_images()
 		.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 	for (auto image : images) {
-		std::optional< AllocationHandle> opt = std::nullopt;
-		m_swapchainImages.emplace_back(new Image(r_device, image, info, opt));
+		std::vector< AllocationHandle> allocs;
+		m_swapchainImages.emplace_back(new Image(r_device, image, info, allocs));
 	}
 }
 

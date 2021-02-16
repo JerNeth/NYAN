@@ -426,7 +426,6 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 	dynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
 	deviceFeatures2.pNext = &dynamicState;
 	dynamicState.pNext = nullptr;
-
 	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
 	uint32_t count;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);

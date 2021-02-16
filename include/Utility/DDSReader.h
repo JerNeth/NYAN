@@ -289,7 +289,7 @@ namespace Utility {
 	class DDSReader {
 	public:
 		static std::vector<std::byte> readDDSFileInMemory(const std::string& filename);
-		static vulkan::ImageInfo parseImage(const std::vector<std::byte>& data, std::vector<vulkan::InitialImageData>& initalData, bool strict = false);
+		static vulkan::ImageInfo parseImage(const std::vector<std::byte>& data, std::vector<vulkan::InitialImageData>& initalData, uint32_t startMipLevel = 0, bool strict = false);
 	private:
 	};
 }

@@ -46,18 +46,20 @@ vulkan::ImageView::~ImageView() noexcept {
     }
 }
 
-vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, std::optional< AllocationHandle> allocation) :
+vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail) :
 	r_device(parent),
 	m_vkHandle(image),
 	m_info(info),
-	m_allocation(allocation)
+	m_allocations(allocations),
+	m_availableMip(mipTail),
+	m_mipTail(mipTail)
 {
 	ImageViewCreateInfo createInfo;
 	createInfo.image = this;
 	createInfo.viewType = info.view_type();
 	createInfo.format = info.format;
-	createInfo.baseMipLevel = 0;
-	createInfo.levelCount = info.mipLevels;
+	createInfo.baseMipLevel = m_availableMip;
+	createInfo.levelCount = info.mipLevels - m_availableMip;
 	createInfo.baseArrayLayer = 0;
 	createInfo.layerCount = info.arrayLayers;
 	createInfo.aspectMask = ImageInfo::format_to_aspect_mask(info.format);
@@ -68,8 +70,10 @@ vulkan::Image::Image(Image&& other) noexcept :
 	r_device(other.r_device),
 	m_vkHandle(other.m_vkHandle),
 	m_info(other.m_info),
-	m_allocation(other.m_allocation),
-	m_view(other.m_view)
+	m_allocations(other.m_allocations),
+	m_view(other.m_view),
+	m_availableMip( other.m_availableMip),
+	m_mipTail(other.m_mipTail)
 {
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
@@ -82,7 +86,18 @@ vulkan::Image::~Image() noexcept
 	
 }
 
-vulkan::ImageView* vulkan::Image::create_higher_mip(uint32_t mip) {
+void vulkan::Image::append_allocations(const std::vector<AllocationHandle>& allocations)
+{
+	m_allocations.reserve(m_allocations.size() + allocations.size());
+	m_allocations.insert(m_allocations.end(), allocations.cbegin(), allocations.cend());
+}
+
+void vulkan::Image::drop_allocations(uint32_t count)
+{
+	m_allocations.resize(m_allocations.size()-Math::min(count, static_cast<uint32_t>(m_allocations.size())));
+}
+
+vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {
 	if (mip == m_view->get_base_mip_level())
 		return nullptr;
 	if (mip >= m_info.mipLevels)

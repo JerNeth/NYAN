@@ -250,7 +250,7 @@ std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::string
 	file.close();
 	return buffer;
 }
-vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& data, std::vector<vulkan::InitialImageData>& initalData, bool strict) {
+vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& data, std::vector<vulkan::InitialImageData>& initalData, uint32_t startMipLevel, bool strict) {
 	vulkan::ImageInfo ret{};
 	const DDSImage* image = reinterpret_cast<const DDSImage*>(data.data());
 	const DDSHeader& header = image->header;
@@ -434,24 +434,34 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 			}
 		}
 	}
+	//TODO could directly read from file into vulkan buffer ?
 	std::vector<uint32_t> levelSizes(ret.mipLevels);
 	size_t totalSize = 0;
+	size_t mipOffset = 0;
+	uint32_t mipWidth = ret.width;
+	uint32_t mipHeight =ret.height;
+	startMipLevel = Math::min(startMipLevel, ret.mipLevels);
+	std::array<uint32_t, 16> mipOffsets{};
 	for (uint32_t mipLevel = 0; mipLevel < ret.mipLevels; mipLevel++) {
 		auto [blockWidth, blockHeight] = vulkan::format_to_block_size(ret.format);
 		auto blockStride = vulkan::format_block_size(ret.format);
-		uint32_t mipWidth = Math::max(1u,ret.width >> mipLevel);
-		uint32_t mipHeight = Math::max(1u,ret.height>> mipLevel);
+		mipWidth = Math::max(1u, ret.width >> mipLevel);
+		mipHeight = Math::max(1u, ret.height >> mipLevel);
 		uint32_t mipSize = Math::max(1u, (mipWidth + blockWidth - 1) / blockWidth) *
 			Math::max(1u, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
+		mipOffsets[mipLevel] = totalSize;
 		totalSize += mipSize;
 		//std::cout << "Level (" << mipLevel << "): " << mipSize << " Bytes\t\tTotal: " << totalSize << " Bytes \n";
 	}
+
 	const std::byte* ptr = data.data();
 	ptr += sizeof(uint32_t) + sizeof(DDSHeader);
 	ptr += dx10Header ? sizeof(DDSHeaderDXT10) : 0;
 	for (uint32_t arrayLayer = 0; arrayLayer < ret.arrayLayers; arrayLayer++) {
 		vulkan::InitialImageData initialImageData{
-			.data = reinterpret_cast<const void*>(ptr+ totalSize * arrayLayer )
+			.data = reinterpret_cast<const void*>(ptr+ mipOffset  + totalSize * arrayLayer ),
+			.mipOffsets = mipOffsets,
+			.mipCounts = ret.mipLevels
 		};
 		initalData.push_back(initialImageData);
 	}

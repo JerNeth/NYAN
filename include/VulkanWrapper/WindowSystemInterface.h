@@ -21,7 +21,7 @@ namespace vulkan {
 		std::vector<VkImage> m_swapchainImages;
 		VkExtent2D m_swapchainExtent{};
 		uint32_t m_swapchainImageIndex = 0;
-		bool m_swapchainImageAcquired = true;
+		bool m_swapchainImageAcquired = false;
 		VkFormat m_format = VK_FORMAT_UNDEFINED;
 	};
 }

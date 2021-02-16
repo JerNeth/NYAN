@@ -87,6 +87,8 @@ namespace vulkan {
 	};
 	struct InitialImageData {
 		const void* data = nullptr;
+		std::array<uint32_t, 16> mipOffsets;
+		uint32_t mipCounts;
 		uint32_t rowLength = 0;
 		uint32_t height = 0;
 	};
@@ -114,6 +116,7 @@ namespace vulkan {
 			std::vector<VkSemaphore> waitSemaphores;
 			std::vector<VkPipelineStageFlags> waitStages;
 			bool needsFence = false;
+			bool supportsSparse = false;
 
 			const uint32_t familyIndex = 0;
 			VkQueue queue = VK_NULL_HANDLE;
@@ -193,6 +196,9 @@ namespace vulkan {
 		BufferHandle create_buffer(const BufferInfo& info, const void * initialData = nullptr);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
 		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
+		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
+		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
+		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
 		size_t register_shader(const std::vector<uint32_t>& shaderCode);
@@ -233,7 +239,7 @@ namespace vulkan {
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
-		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr);
+		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
 
@@ -272,6 +278,29 @@ namespace vulkan {
 		uint32_t get_swapchain_height() const noexcept {
 			return get_swapchain_image_view()->get_image()->get_height();
 		}
+		bool supports_sparse_textures() const noexcept {
+			bool ret = true;
+			ret &= m_physicalProperties.sparseProperties.residencyStandard2DBlockShape; //Desired
+			m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
+			ret &= m_physicalFeatures.features.sparseBinding; //Required
+			ret &= m_physicalFeatures.features.sparseResidencyImage2D; //Required
+			m_physicalFeatures.features.sparseResidencyAliased; //Ignore for now
+			return ret;
+		}
+		VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect) {
+			uint32_t sparseMemoryRequirementsCount;
+			vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, NULL);
+			std::vector<VkSparseImageMemoryRequirements> sparseMemoryRequirements(sparseMemoryRequirementsCount);
+			vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, sparseMemoryRequirements.data());
+			VkSparseImageMemoryRequirements sparseMemoryRequirement = sparseMemoryRequirements[0];
+			assert(sparseMemoryRequirementsCount);
+			for (uint32_t i = 0; i < sparseMemoryRequirementsCount; i++) {
+				if (sparseMemoryRequirements[i].formatProperties.aspectMask & aspect) {
+					return sparseMemoryRequirements[i];
+				}
+			}
+			return sparseMemoryRequirement;
+		}
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 
 	private:
@@ -285,8 +314,14 @@ namespace vulkan {
 				return m_transfer;
 			}
 		}
-		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData);
-		ImageHandle create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData);
+		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
+		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
+		ImageHandle create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage);
+		void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
+		void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
+		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);
+		uint32_t resize_sparse_image_down(Image& handle, uint32_t baseMipLevel, VkFence fence);
+
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
 		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);
 		void create_vma_allocator();
@@ -322,33 +357,10 @@ namespace vulkan {
 		Queue m_compute;
 		Queue m_transfer;
 		VkPhysicalDeviceProperties m_physicalProperties;
+		VkPhysicalDeviceFeatures2 m_physicalFeatures;
 
-
-		//std::vector<std::unique_ptr<Swapchain>> m_swapchains;
-		VkPipelineLayout m_pipelineLayout;
-		VkPipeline m_graphicsPipeline;
-		
-		VkDescriptorSetLayout m_descriptorSetLayout;
-		VkDescriptorPool m_descriptorPool;
-		std::vector<VkDescriptorSet> m_descriptorSets;
-
-		std::vector<VkBuffer> m_uniformBuffers;
-		std::vector<VmaAllocation> m_uniformBuffersAllocations;
-
-		VkBuffer m_vertexBuffer;
-		VmaAllocation m_vertexBufferAllocation;
-		VkBuffer m_indexBuffer;
-		VmaAllocation m_indexBufferAllocation;
-
-
-		std::vector<VkCommandPool> m_commandPool;
-		std::vector<VkCommandBuffer> m_commandBuffers;
 		size_t m_currentFrame = 0;
-
-		Program* m_program;
 		
-
-		RenderpassCreateInfo m_swapChainRenderPassInfo;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;

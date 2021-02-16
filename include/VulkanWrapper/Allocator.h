@@ -35,6 +35,9 @@ namespace vulkan {
 		VmaAllocation get_handle() const noexcept {
 			return m_VmaHandle;
 		}
+		VkDeviceSize get_size() const noexcept;
+		VkDeviceSize get_offset() const noexcept;
+		VkDeviceMemory get_memory() const noexcept;
 		~Allocation();
 	private:
 		LogicalDevice& r_device;

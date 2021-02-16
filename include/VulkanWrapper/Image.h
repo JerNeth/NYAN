@@ -272,23 +272,23 @@ namespace vulkan {
 			size_t offset = 0;
 			for (uint32_t level = 0; level < mipLevelCount; level++) {
 				offset = (offset + 15ull) & ~15ull;
+				uint32_t width_ = Math::max(width >> level, 1u);
+				uint32_t height_ = Math::max(height >> level, 1u);
+				uint32_t depth_ = Math::max(depth >> level, 1u);
 
-				uint32_t blockCountX = (width + blockSizeX - 1) / blockSizeX;
-				uint32_t blockCountY = (height + blockSizeY - 1) / blockSizeY;
+				uint32_t blockCountX = (width_ + blockSizeX - 1) / blockSizeX;
+				uint32_t blockCountY = (height_ + blockSizeY - 1) / blockSizeY;
 
 				mipLevels[level].offset = static_cast<uint32_t>(offset);
-				mipLevels[level].width = width;
-				mipLevels[level].height = height;
-				mipLevels[level].depth = depth;
+				mipLevels[level].width = width_;
+				mipLevels[level].height = height_;
+				mipLevels[level].depth = depth_;
 				mipLevels[level].blockWidth = blockCountX * blockSizeX;
 				mipLevels[level].blockHeight = blockCountY * blockSizeY;
 				mipLevels[level].blockCountX = blockCountX;
 				mipLevels[level].blockCountY = blockCountY;
 
-				width = Math::max(width / 2u, 1u);
-				height = Math::max(height / 2u, 1u);
-				depth = Math::max(depth / 2u, 1u);
-				offset += blockCountX * blockCountY * stride * depth * layers;
+				offset += blockCountX * blockCountY * stride * depth_ * layers;
 			}
 			size = offset;
 		}
@@ -508,12 +508,14 @@ namespace vulkan {
 	};
 	class Image : public Utility::UIDC {
 	public:
-		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, std::optional< AllocationHandle> allocation);
+		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0);
 		Image(Image&) = delete;
 		Image(Image&&) noexcept;
 		Image& operator=(Image&) = delete;
 		Image& operator=(Image&&) = delete;
 		~Image() noexcept;
+		void append_allocations(const std::vector< AllocationHandle>& allocations);
+		void drop_allocations(uint32_t count);
 
 		ImageView* get_view() noexcept {
 			return &(*m_view);
@@ -521,13 +523,23 @@ namespace vulkan {
 		const ImageView* get_view() const noexcept {
 			return &(*m_view);
 		}
-		ImageView* create_higher_mip(uint32_t mip);
+		ImageView* change_view_mip_level(uint32_t mip);
 
+		uint32_t get_available_mip() const noexcept {
+			return m_availableMip;
+		}
+		void set_available_mip(uint32_t mip) noexcept {
+			if(mip <= m_mipTail)
+				m_availableMip = mip;
+		}
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.width >> mipLevel);
 		}
 		uint32_t get_height(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.height >> mipLevel);
+		}
+		uint32_t get_depth(uint32_t mipLevel = 0) const noexcept {
+			return Math::max(1u, m_info.depth >> mipLevel);
 		}
 		VkImage get_handle() const noexcept {
 			return m_vkHandle;
@@ -567,6 +579,9 @@ namespace vulkan {
 		}
 		void set_access_flags(VkAccessFlags flags) noexcept {
 			m_accessFlags =flags;
+		}
+		void set_single_mip_tail(bool mipTail) noexcept {
+			m_singleMipTail = mipTail;
 		}
 		static inline VkPipelineStageFlags possible_stages_from_image_usage(VkImageUsageFlags usage)
 		{
@@ -641,13 +656,15 @@ namespace vulkan {
 		LogicalDevice& r_device;
 		bool m_optimal = true;
 		bool m_ownsImage = true;
-		bool m_ownsAllocation = true;
 		VkImage m_vkHandle = VK_NULL_HANDLE;
 		VkPipelineStageFlags m_stageFlags{};
 		VkAccessFlags m_accessFlags{};
 		ImageInfo m_info;
-		std::optional<AllocationHandle> m_allocation;
+		std::vector<AllocationHandle> m_allocations;
 		ImageViewHandle m_view;
+		uint32_t m_availableMip = 0;
+		uint32_t m_mipTail = 0;
+		bool m_singleMipTail = false; //If false => first <Layer> allocations are mip tails, otherwise first allocation only
 	};
 }
 

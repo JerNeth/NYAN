@@ -71,6 +71,25 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkD
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_frameResources.emplace_back(new FrameResource{*this});
 	}
+	m_physicalFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	m_physicalFeatures.pNext = nullptr;
+	vkGetPhysicalDeviceFeatures2(m_physicalDevice, &m_physicalFeatures);
+
+
+	//uint32_t propertyCount = 0;
+	/*void vkGetPhysicalDeviceSparseImageFormatProperties(
+		VkPhysicalDevice                            device.get_device(),
+		VkFormat                                    format,
+		VkImageType                                 type,
+		VkSampleCountFlagBits                       samples,
+		VkImageUsageFlags                           usage,
+		VkImageTiling                               tiling,
+		uint32_t * pPropertyCount,
+		VkSparseImageFormatProperties * pProperties);*/
+	/*vkGetPhysicalDeviceSparseImageFormatProperties(m_physicalDevice, VK_FORMAT_BC7_SRGB_BLOCK, VK_IMAGE_TYPE_2D, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_TILING_OPTIMAL, &propertyCount, nullptr);
+	std::vector< VkSparseImageFormatProperties> proper(propertyCount);
+	vkGetPhysicalDeviceSparseImageFormatProperties(m_physicalDevice, VK_FORMAT_BC7_SRGB_BLOCK, VK_IMAGE_TYPE_2D, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_TILING_OPTIMAL, &propertyCount, proper.data());
+	std::cout << "Hello \n";*/
 }
 vulkan::LogicalDevice::~LogicalDevice()
 {
@@ -104,7 +123,8 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 	m_wsiState.index = 0u;
 
 	for (const auto image : swapchainImages) {
-		auto handle = m_imagePool.emplace(*this, image, info, std::nullopt);
+		std::vector<AllocationHandle> allocs;
+		auto handle = m_imagePool.emplace(*this, image, info, allocs);
 		handle->disown();
 		handle->set_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		m_wsiState.swapchainImages.emplace_back(handle);
@@ -361,14 +381,14 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 	}
 }
 
-void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores)
+void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence)
 {
 	auto type = cmd->get_type();
 	auto& submissions = get_current_submissions(type);
 	cmd->end();
 	submissions.push_back(cmd);
-	if (semaphoreCount) {
-		submit_queue(type, nullptr, semaphoreCount, semaphores);
+	if (semaphoreCount || fence) {
+		submit_queue(type, fence, semaphoreCount, semaphores);
 	}
 }
 
@@ -411,7 +431,7 @@ vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
 {
 	return *m_frameResources[m_currentFrame];
 }
-vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, InitialImageData* initialData)
+vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel)
 {
 	uint32_t copyLevels;
 	if (info.generate_mips())
@@ -431,12 +451,11 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 	auto buffer = create_buffer(bufferInfo);
 	auto map = buffer->map_data();
 	std::vector<VkBufferImageCopy> blits;
-	blits.reserve(copyLevels);
-	size_t sourceOffset = 0;
-	for (uint32_t level = 0; level < copyLevels; level++) {
+	blits.reserve(copyLevels-Math::min(baseMipLevel, copyLevels));
+	for (uint32_t level = baseMipLevel; level < copyLevels; level++) {
 		const auto& mip = mipInfo.mipLevels[level];
 		blits.push_back(VkBufferImageCopy{
-			.bufferOffset = mip.offset,
+			.bufferOffset = mip.offset - mipInfo.mipLevels[baseMipLevel].offset,
 			.bufferRowLength = mip.blockWidth,
 			.bufferImageHeight = mip.blockHeight,
 			.imageSubresource {
@@ -459,22 +478,23 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 		uint32_t srcRowStride = (mip.width + blockSizeX - 1) / blockSizeX * blockStride;
 		uint32_t srcLayerStride = (mip.height + blockSizeY - 1) / blockSizeY * srcRowStride;
 		for (uint32_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
-
-			uint8_t* dst = static_cast<uint8_t*>(map) + mip.offset + blockStride * arrayLayer * mip.blockCountX * mip.blockCountY;
-			const uint8_t* src = static_cast<const uint8_t*>(initialData[arrayLayer].data) + sourceOffset;
+			uint8_t* dst = static_cast<uint8_t*>(map) + (mip.offset - mipInfo.mipLevels[baseMipLevel].offset) + arrayLayer*dstLayerSize;
+			const uint8_t* src = static_cast<const uint8_t*>(initialData[arrayLayer].data) + initialData[arrayLayer].mipOffsets[level];
+			//std::cout << "Mip offset: " << mip.offset  << " initial offset: " << initialData[arrayLayer].mipOffsets[level] <<"\n";
 			for(uint32_t z = 0; z < mip.depth; z++)
 				for (uint32_t y = 0; y < mip.blockCountY; y++)
 					std::memcpy(dst + z* dstLayerSize+ y * rowSize, src + z * srcLayerStride + y * srcRowStride, rowSize);
 		}
-		sourceOffset += srcLayerStride;
 		
 	}
 	return { buffer, blits };
 }
-vulkan::ImageHandle vulkan::LogicalDevice::create_image_with_staging_buffer(const ImageInfo& info, const ImageBuffer* initialData)
+vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, VkImageUsageFlags usage)
 {
 
 	std::array<uint32_t, 3> queueFamilyIndices;
+	if (info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT))
+		assert(supports_sparse_textures());
 	VkImageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.flags = info.flags,
@@ -489,14 +509,12 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 		.arrayLayers = info.arrayLayers,
 		.samples = info.samples,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = info.usage,
+		.usage = info.usage | usage,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.queueFamilyIndexCount = 0,
 		.pQueueFamilyIndices = queueFamilyIndices.data(),
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	};
-	if (initialData)
-		createInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	VmaAllocationCreateInfo allocInfo{
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
@@ -523,78 +541,482 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image_with_staging_buffer(cons
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
 	auto tmp = info;
 	tmp.mipLevels = createInfo.mipLevels;
-	auto handle(m_imagePool.emplace(*this, image, tmp, m_allocationPool.emplace(*this, allocation)));
+	std::vector<AllocationHandle> allocs{ m_allocationPool.emplace(*this, allocation) };
+	auto handle(m_imagePool.emplace(*this, image, tmp, allocs));
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
-	if (initialData) {
 
-		VkAccessFlags finalTransitionSrcAccess = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT : VK_ACCESS_TRANSFER_WRITE_BIT;
-		VkAccessFlags prepareSrcAccess = m_graphics.queue == m_transfer.queue ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
-		
-		bool needMipBarrier = true;
-		bool needInitialBarrier = true;
-
-		auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
-		auto transferCmd = graphicsCmd;
-		if (m_transfer.queue != m_graphics.queue)
-			transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
-
-		transferCmd->image_barrier(*handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-									VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-		transferCmd->copy_buffer_to_image(*handle, *initialData->buffer, initialData->blits.size(), initialData->blits.data());
-
-		if (m_transfer.queue != m_graphics.queue) {
-			VkPipelineStageFlags dstStages = info.generate_mips() ? VK_PIPELINE_STAGE_TRANSFER_BIT : handle->get_stage_flags();
-			if (!info.concurrent_queue() && m_transfer.familyIndex != m_graphics.familyIndex) {
-				needMipBarrier = false;
-
-				VkImageMemoryBarrier release{
-					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-					.dstAccessMask = 0,
-					.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					.newLayout = info.generate_mips() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : info.layout,
-					.srcQueueFamilyIndex = m_transfer.familyIndex,
-					.dstQueueFamilyIndex = m_graphics.familyIndex,
-					.image = handle->get_handle(),
-					.subresourceRange {
-						.aspectMask = ImageInfo::format_to_aspect_mask(createInfo.format),
-						.levelCount = info.generate_mips() ? 1: createInfo.mipLevels,
-						.layerCount = createInfo.arrayLayers,
-					}
-				};
-				needInitialBarrier = info.generate_mips();
-
-				auto acquire = release;
-				acquire.srcAccessMask = 0;
-				acquire.dstAccessMask = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT :
-					handle->get_access_flags() & Image::possible_access_from_image_layout(info.layout);
-				transferCmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-										0, nullptr, 0, nullptr, 1, &release);
-				graphicsCmd->barrier(dstStages, dstStages,
-										0, nullptr, 0, nullptr, 1, &acquire);
-			}
-			VkSemaphore sem = VK_NULL_HANDLE;
-			submit(transferCmd, 1, &sem);
-			add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages);
-		}
-		if (info.generate_mips()) {
-			graphicsCmd->mip_barrier(*handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-									VK_PIPELINE_STAGE_TRANSFER_BIT, needMipBarrier);
-			graphicsCmd->generate_mips(*handle);
-		}
-		if (needInitialBarrier) {
-			graphicsCmd->image_barrier(*handle, info.generate_mips() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				info.layout, VK_PIPELINE_STAGE_TRANSFER_BIT, finalTransitionSrcAccess, handle->get_stage_flags(),
-				handle->get_stage_flags() & Image::possible_access_from_image_layout(info.layout));
-		}
-		//Todo
-		submit(graphicsCmd);
-	}
-	else if (info.layout != VK_IMAGE_LAYOUT_UNDEFINED) {
-		//assert(false);
-	}
 	return handle;
+}
+vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage)
+{
+	std::array<uint32_t, 3> queueFamilyIndices;
+	assert(supports_sparse_textures());
+	VkImageCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.flags = info.flags | (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT),
+		.imageType = info.type,
+		.format = info.format,
+		.extent {
+			.width = info.width,
+			.height = info.height,
+			.depth = info.depth
+		},
+		.mipLevels = info.mipLevels,
+		.arrayLayers = info.arrayLayers,
+		.samples = info.samples,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage = info.usage | usage,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = queueFamilyIndices.data(),
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+	assert(createInfo.mipLevels);
+	if (info.concurrent_queue()) {
+		createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentGraphics, ImageInfo::Flags::ConcurrentAsyncGraphics))
+			queueFamilyIndices[createInfo.queueFamilyIndexCount++] = m_graphics.familyIndex;
+		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentAsyncCompute) &&
+			(!(createInfo.queueFamilyIndexCount != 0) || (m_graphics.familyIndex != m_compute.familyIndex)))
+			queueFamilyIndices[createInfo.queueFamilyIndexCount++] = m_compute.familyIndex;
+		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentAsyncTransfer) &&
+			(!(createInfo.queueFamilyIndexCount != 0) || (m_graphics.familyIndex != m_transfer.familyIndex)))
+			queueFamilyIndices[createInfo.queueFamilyIndexCount++] = m_transfer.familyIndex;
+		if (createInfo.queueFamilyIndexCount == 1)
+			createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+	VkImage image;
+	if (auto result = vkCreateImage(m_device, &createInfo, m_allocator, &image); result != VK_SUCCESS) {
+		throw std::runtime_error("Vk: error creating image");
+	}
+
+	VmaAllocationCreateInfo allocCreateInfo{
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(image, ImageInfo::format_to_aspect_mask(createInfo.format));
+	uint32_t mipTailBegin = sparseMemoryRequirement.imageMipTailFirstLod;
+	std::vector< VkSparseMemoryBind> mipTailBinds;
+	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
+	
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(m_device, image, &memoryRequirements);
+	assert(memoryRequirements.size <= m_physicalProperties.limits.sparseAddressSpaceSize);
+	assert((memoryRequirements.size % memoryRequirements.alignment) == 0);
+
+	std::vector<AllocationHandle> allocs;
+	if (sparseMemoryRequirement.imageMipTailFirstLod < info.mipLevels) {
+		if (singleMipTail) {
+			VmaAllocation allocation;
+			VmaAllocationInfo allocInfo;
+			VkMemoryRequirements requirements{
+				.size = sparseMemoryRequirement.imageMipTailSize,
+				.alignment = memoryRequirements.alignment,
+				.memoryTypeBits = memoryRequirements.memoryTypeBits,
+			};
+			vmaAllocateMemory(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, &allocation, &allocInfo);
+			mipTailBinds.reserve(1);
+			VkSparseMemoryBind mipTailBind{
+				.resourceOffset = sparseMemoryRequirement.imageMipTailOffset,
+				.size = sparseMemoryRequirement.imageMipTailSize,
+				.memory = allocInfo.deviceMemory,
+				.memoryOffset = allocInfo.offset,
+			};
+			mipTailBinds.push_back(mipTailBind);
+			allocs.push_back(m_allocationPool.emplace(*this, allocation));
+		}
+		else {
+			std::vector<VmaAllocation> allocations;
+			std::vector<VmaAllocationInfo> allocInfos;
+			VkMemoryRequirements requirements{
+				.size = sparseMemoryRequirement.imageMipTailSize,
+				.alignment = memoryRequirements.alignment,
+				.memoryTypeBits = memoryRequirements.memoryTypeBits,
+			};
+			allocations.resize(info.arrayLayers);
+			allocInfos.resize(info.arrayLayers);
+			mipTailBinds.reserve(info.arrayLayers);
+			vmaAllocateMemoryPages(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, info.arrayLayers, allocations.data(), allocInfos.data());
+			for (uint32_t layer = 0; layer < info.arrayLayers; layer++) {
+
+				VkSparseMemoryBind mipTailBind{
+					.resourceOffset = sparseMemoryRequirement.imageMipTailOffset + layer*sparseMemoryRequirement.imageMipTailStride,
+					.size = sparseMemoryRequirement.imageMipTailSize,
+					.memory = allocInfos[layer].deviceMemory,
+					.memoryOffset = allocInfos[layer].offset,
+				};
+				mipTailBinds.push_back(mipTailBind);
+				allocs.push_back(m_allocationPool.emplace(*this, allocations[layer]));
+			}
+		}
+		VkSparseImageOpaqueMemoryBindInfo mipTailBindInfo{
+			.image = image,
+			.bindCount = static_cast<uint32_t>(mipTailBinds.size()),
+			.pBinds = mipTailBinds.data()
+		};
+		VkBindSparseInfo bindInfo{
+			.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 0,
+			.pWaitSemaphores = nullptr,
+			.bufferBindCount = 0,
+			.pBufferBinds = 0,
+			.imageOpaqueBindCount = 1,
+			.pImageOpaqueBinds = &mipTailBindInfo,
+			.imageBindCount = 0,
+			.pImageBinds = nullptr,
+		};
+		if (m_graphics.queue != m_transfer.queue) {
+			std::array<VkSemaphore, 2> semaphores;
+			semaphores[0] = request_semaphore();
+			semaphores[1] = request_semaphore();
+			bindInfo.pSignalSemaphores = semaphores.data();
+			bindInfo.signalSemaphoreCount = 2;
+			add_wait_semaphore(CommandBuffer::Type::Generic, semaphores[0], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			add_wait_semaphore(CommandBuffer::Type::Transfer, semaphores[1], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+			if (m_transfer.supportsSparse)
+				vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
+			else
+				vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
+		}
+		else {
+			VkSemaphore sem = request_semaphore();
+			//Mip Tail is assumed to be available
+			bindInfo.pSignalSemaphores = &sem;
+			bindInfo.signalSemaphoreCount = 1;
+			add_wait_semaphore(CommandBuffer::Type::Generic, sem, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
+		}
+	}
+	
+	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin));
+	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
+	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
+	handle->set_single_mip_tail(singleMipTail);
+
+	return handle;
+}
+void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence)
+{
+	VkAccessFlags finalTransitionSrcAccess = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT : VK_ACCESS_TRANSFER_WRITE_BIT;
+	VkAccessFlags prepareSrcAccess = m_graphics.queue == m_transfer.queue ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
+
+	bool needMipBarrier = true;
+	bool needInitialBarrier = true;
+
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
+	auto transferCmd = graphicsCmd;
+	if (m_transfer.queue != m_graphics.queue)
+		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
+
+	transferCmd->image_barrier(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+	transferCmd->copy_buffer_to_image(image, *buffer.buffer, buffer.blits.size(), buffer.blits.data());
+
+	if (m_transfer.queue != m_graphics.queue) {
+		VkPipelineStageFlags dstStages = info.generate_mips() ? VK_PIPELINE_STAGE_TRANSFER_BIT : image.get_stage_flags();
+		if (!info.concurrent_queue() && m_transfer.familyIndex != m_graphics.familyIndex) {
+			needMipBarrier = false;
+
+			VkImageMemoryBarrier release{
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+				.dstAccessMask = 0,
+				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = info.generate_mips() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : info.layout,
+				.srcQueueFamilyIndex = m_transfer.familyIndex,
+				.dstQueueFamilyIndex = m_graphics.familyIndex,
+				.image = image.get_handle(),
+				.subresourceRange {
+					.aspectMask = ImageInfo::format_to_aspect_mask(info.format),
+					.levelCount = info.generate_mips() ? 1 : info.mipLevels,
+					.layerCount = info.arrayLayers,
+				}
+			};
+			needInitialBarrier = info.generate_mips();
+
+			auto acquire = release;
+			acquire.srcAccessMask = 0;
+			acquire.dstAccessMask = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT :
+				image.get_access_flags() & Image::possible_access_from_image_layout(info.layout);
+			transferCmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				0, nullptr, 0, nullptr, 1, &release);
+			graphicsCmd->barrier(dstStages, dstStages,
+				0, nullptr, 0, nullptr, 1, &acquire);
+		}
+		VkSemaphore sem = VK_NULL_HANDLE;
+		submit(transferCmd, 1, &sem);
+		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages);
+	}
+	if (info.generate_mips()) {
+		graphicsCmd->mip_barrier(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, needMipBarrier);
+		graphicsCmd->generate_mips(image);
+	}
+	if (needInitialBarrier) {
+		graphicsCmd->image_barrier(image, info.generate_mips() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			info.layout, VK_PIPELINE_STAGE_TRANSFER_BIT, finalTransitionSrcAccess, image.get_stage_flags(),
+			image.get_stage_flags() & Image::possible_access_from_image_layout(info.layout));
+	}
+	submit(graphicsCmd, 0 ,nullptr, fence);
+}
+void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence, uint32_t mipLevel)
+{
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
+	auto transferCmd = graphicsCmd;
+	if (m_transfer.queue != m_graphics.queue)
+		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
+	bool needInitialBarrier = true;
+
+	transferCmd->image_barrier(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+	transferCmd->copy_buffer_to_image(image, *buffer.buffer, buffer.blits.size(), buffer.blits.data());
+
+	if (m_transfer.queue != m_graphics.queue) {
+		VkPipelineStageFlags dstStages = image.get_stage_flags();
+		if (!info.concurrent_queue() && m_transfer.familyIndex != m_graphics.familyIndex) {
+			VkImageMemoryBarrier release{
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+				.dstAccessMask = 0,
+				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				.srcQueueFamilyIndex = m_transfer.familyIndex,
+				.dstQueueFamilyIndex = m_graphics.familyIndex,
+				.image = image.get_handle(),
+				.subresourceRange {
+					.aspectMask = ImageInfo::format_to_aspect_mask(info.format),
+					.baseMipLevel = mipLevel,
+					.levelCount = info.mipLevels - mipLevel,
+					.layerCount = info.arrayLayers,
+				}
+			};
+			needInitialBarrier = false;
+			auto acquire = release;
+			acquire.srcAccessMask = 0;
+			acquire.dstAccessMask = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT :
+				image.get_access_flags() & Image::possible_access_from_image_layout(info.layout);
+			transferCmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				0, nullptr, 0, nullptr, 1, &release);
+			graphicsCmd->barrier(dstStages, dstStages,
+				0, nullptr, 0, nullptr, 1, &acquire);
+		}
+		VkSemaphore sem = VK_NULL_HANDLE;
+		submit(transferCmd, 1, &sem);
+		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages);
+	}
+	if (needInitialBarrier) {
+		graphicsCmd->image_barrier(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, image.get_stage_flags(),
+			image.get_stage_flags() & Image::possible_access_from_image_layout(info.layout));
+	}
+	submit(graphicsCmd, 0, nullptr, fence);
+}
+bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMipLevel)
+{
+	VmaAllocationCreateInfo allocInfo{
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+	VkImage imageHandle = image.get_handle();
+	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(imageHandle, ImageInfo::format_to_aspect_mask(image.get_format()));
+
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(m_device, imageHandle, &memoryRequirements);
+	assert(memoryRequirements.size <= m_physicalProperties.limits.sparseAddressSpaceSize);
+	assert((memoryRequirements.size % memoryRequirements.alignment) == 0);
+
+	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
+	uint32_t allocationSize = memoryRequirements.alignment;
+	uint32_t mipTailSize = sparseMemoryRequirement.imageMipTailSize;
+	if (!singleMipTail)
+		mipTailSize *= image.get_info().arrayLayers;
+
+	VmaAllocationCreateInfo allocCreateInfo{
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+	uint32_t allocationCount = (memoryRequirements.size - mipTailSize) / allocationSize;
+
+	std::vector<VmaAllocation> allocations;
+	std::vector<VmaAllocationInfo> allocationInfos;
+
+	std::vector<AllocationHandle> allocationHandles;
+	std::vector<VkSparseImageMemoryBind> imageBinds;
+	VkMemoryRequirements requirements{
+		.size = allocationSize,
+		.alignment = memoryRequirements.alignment,
+		.memoryTypeBits = memoryRequirements.memoryTypeBits,
+	};
+	allocations.resize(allocationCount);
+	allocationInfos.resize(allocationCount);
+	vmaAllocateMemoryPages(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, allocationCount, allocations.data(), allocationInfos.data());
+
+	allocationHandles.reserve(allocationCount);
+	imageBinds.reserve(allocationCount);
+	
+	uint32_t current = 0;
+	//Iterate reversly because we want the image allocations to be in that order
+	for (uint32_t mipLevel = image.get_available_mip(); mipLevel --> 0 ;) {
+		VkExtent3D extent{
+			.width = image.get_width(mipLevel) ,
+			.height = image.get_height(mipLevel),
+			.depth = image.get_depth(mipLevel),
+		};
+		VkExtent3D granularity = sparseMemoryRequirement.formatProperties.imageGranularity;
+
+		uint32_t xCount = (extent.width + granularity.width -1) / granularity.width;
+		uint32_t yCount = (extent.height + granularity.height - 1) / granularity.height;
+		uint32_t zCount = (extent.depth + granularity.depth - 1) / granularity.depth;
+
+		VkExtent3D blockExtent = granularity;
+		for (uint32_t arrayLayer = 0; arrayLayer < image.get_info().arrayLayers; arrayLayer++) {
+			for (uint32_t z = 0; z < zCount; z++) {
+				if (z == zCount - 1)
+					blockExtent.depth = extent.depth - granularity.depth * z;
+				for (uint32_t y = 0; y < yCount; y++) {
+					if (y == yCount - 1)
+						blockExtent.height = extent.height - granularity.height * y;
+					for (uint32_t x = 0; x < xCount; x++, current++) {
+						if (x == xCount - 1)
+							blockExtent.width = extent.width - granularity.width * x;
+						VkOffset3D offset{
+							.x = static_cast<int32_t>(x*granularity.width),
+							.y = static_cast<int32_t>(y*granularity.height),
+							.z = static_cast<int32_t>(z*granularity.depth)
+						};
+						VmaAllocationInfo allocationInfo = allocationInfos[current];
+						VkSparseImageMemoryBind imageBind{
+							.subresource {
+								.aspectMask = ImageInfo::format_to_aspect_mask(image.get_format()),
+								.mipLevel = mipLevel,
+								.arrayLayer = arrayLayer,
+							},
+							.offset = offset,
+							.extent = blockExtent,
+							.memory = allocationInfo.deviceMemory,
+							.memoryOffset = allocationInfo.offset
+						};
+						imageBinds.push_back(imageBind);
+						allocationHandles.push_back(m_allocationPool.emplace(*this, allocations[current]));
+					}
+					blockExtent.width = granularity.width;
+				}
+				blockExtent.height = granularity.height;
+			}
+			blockExtent.depth = granularity.depth;
+		}
+	}
+	
+
+	VkSparseImageMemoryBindInfo imageBindInfo{
+		.image = imageHandle,
+		.bindCount = static_cast<uint32_t>(imageBinds.size()),
+		.pBinds = imageBinds.data()
+	};
+	VkSemaphore sem = request_semaphore();
+	VkBindSparseInfo bindInfo{
+		.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 0,
+		.pWaitSemaphores = nullptr,
+		.bufferBindCount = 0,
+		.pBufferBinds = 0,
+		.imageOpaqueBindCount = 0,
+		.pImageOpaqueBinds = nullptr,
+		.imageBindCount = 1,
+		.pImageBinds = &imageBindInfo,
+		.signalSemaphoreCount = 1,
+		.pSignalSemaphores = &sem,
+	};
+	if(m_transfer.supportsSparse)
+		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
+	else
+		vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
+	add_wait_semaphore(CommandBuffer::Type::Transfer, sem, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	image.append_allocations(allocationHandles);
+	image.set_available_mip(baseMipLevel);
+	return true;
+}
+uint32_t vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t baseMipLevel, VkFence fence)
+{
+	VkImage imageHandle = image.get_handle();
+	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(imageHandle, ImageInfo::format_to_aspect_mask(image.get_format()));
+
+	uint32_t allocCount = 0;
+	std::vector<VkSparseImageMemoryBind> imageBinds;
+	for (uint32_t mipLevel = image.get_available_mip(); mipLevel < baseMipLevel; mipLevel++) {
+		VkExtent3D extent{
+			.width = image.get_width(mipLevel) ,
+			.height = image.get_height(mipLevel),
+			.depth = image.get_depth(mipLevel),
+		};
+		VkExtent3D granularity = sparseMemoryRequirement.formatProperties.imageGranularity;
+
+		uint32_t xCount = (extent.width + granularity.width - 1) / granularity.width;
+		uint32_t yCount = (extent.height + granularity.height - 1) / granularity.height;
+		uint32_t zCount = (extent.depth + granularity.depth - 1) / granularity.depth;
+
+		VkExtent3D blockExtent = granularity;
+		for (uint32_t arrayLayer = 0; arrayLayer < image.get_info().arrayLayers; arrayLayer++) {
+			for (uint32_t z = 0; z < zCount; z++) {
+				if (z == zCount - 1)
+					blockExtent.depth = extent.depth - granularity.depth * z;
+				for (uint32_t y = 0; y < yCount; y++) {
+					if (y == yCount - 1)
+						blockExtent.height = extent.height - granularity.height * y;
+					for (uint32_t x = 0; x < xCount; x++, allocCount++) {
+						if (x == xCount - 1)
+							blockExtent.width = extent.width - granularity.width * x;
+						VkOffset3D offset{
+							.x = static_cast<int32_t>(x * granularity.width),
+							.y = static_cast<int32_t>(y * granularity.height),
+							.z = static_cast<int32_t>(z * granularity.depth)
+						};
+						VkSparseImageMemoryBind imageBind{
+							.subresource {
+								.aspectMask = ImageInfo::format_to_aspect_mask(image.get_format()),
+								.mipLevel = mipLevel,
+								.arrayLayer = arrayLayer,
+							},
+							.offset = offset,
+							.extent = blockExtent,
+							.memory = VK_NULL_HANDLE,
+							.memoryOffset = 0
+						};
+						imageBinds.push_back(imageBind);
+					}
+					blockExtent.width = granularity.width;
+				}
+				blockExtent.height = granularity.height;
+			}
+			blockExtent.depth = granularity.depth;
+		}
+	}
+	VkSparseImageMemoryBindInfo imageBindInfo{
+		.image = imageHandle,
+		.bindCount = static_cast<uint32_t>(imageBinds.size()),
+		.pBinds = imageBinds.data()
+	};
+	//Todo add wait semaphore or queue submit
+	VkBindSparseInfo bindInfo{
+		.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 0,
+		.pWaitSemaphores = nullptr,
+		.bufferBindCount = 0,
+		.pBufferBinds = 0,
+		.imageOpaqueBindCount = 0,
+		.pImageOpaqueBinds = nullptr,
+		.imageBindCount = 1,
+		.pImageBinds = &imageBindInfo,
+		.signalSemaphoreCount = 0,
+		.pSignalSemaphores = nullptr,
+	};
+	if (m_transfer.supportsSparse)
+		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
+	else
+		vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
+	image.set_available_mip(baseMipLevel);
+	return allocCount;
 }
 std::vector<vulkan::CommandBufferHandle>& vulkan::LogicalDevice::get_current_submissions(CommandBuffer::Type type)
 {
@@ -683,7 +1105,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 	auto handle(m_bufferPool.emplace(*this, buffer, allocation, tmp));
 	if (initialData != nullptr && (info.memoryUsage == VMA_MEMORY_USAGE_GPU_ONLY)) {
 		//Need to stage
-		tmp.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		tmp.memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 		auto stagingBuffer = create_buffer(tmp,initialData);
 		auto cmd = request_command_buffer(CommandBuffer::Type::Transfer);
 		cmd->copy_buffer(*handle, *stagingBuffer);
@@ -707,11 +1129,59 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, I
 {
 	if (initialData) {
 		auto buf = create_staging_buffer(info, initialData);
-		return create_image_with_staging_buffer(info, &buf);
+		auto handle = create_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		update_image_with_buffer(info, *handle, buf);
+		return handle;
 	}
 	else {
-		return create_image_with_staging_buffer(info, nullptr);
+		auto handle = create_image(info, static_cast<VkImageUsageFlags>(0));
+		return handle;
 	}
+}
+
+vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& info, InitialImageData* initialData)
+{
+	if (initialData) {
+		auto handle = create_sparse_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		auto buf = create_staging_buffer(info, initialData, handle->get_available_mip());
+		update_sparse_image_with_buffer(info, *handle, buf, nullptr, handle->get_available_mip());
+		return handle;
+	}
+	else {
+		return create_sparse_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	}
+}
+
+void vulkan::LogicalDevice::downsize_sparse_image(Image& image, uint32_t targetMipLevel)
+{
+	if (image.get_available_mip() >= targetMipLevel)
+		return;
+	image.change_view_mip_level(targetMipLevel);
+	//Theoretically we can now remove allocations without problems? I don't know
+	vulkan::FenceHandle fence  =m_fenceManager.request_fence();
+	auto allocsToDelete = resize_sparse_image_down(image, targetMipLevel, fence);
+	VkFence localFence = fence;
+	//TODO Urgent async 
+	//while (vkWaitForFences(m_device, 1, &localFence, TRUE, 100) != VK_SUCCESS);
+	image.drop_allocations(allocsToDelete);
+
+}
+
+bool vulkan::LogicalDevice::upsize_sparse_image(Image& image, InitialImageData* initialData, uint32_t targetMipLevel)
+{
+	if (!initialData)
+		return false;
+	if (image.get_available_mip() <= targetMipLevel)
+		return false;
+	auto buf = create_staging_buffer(image.get_info(), initialData, targetMipLevel);
+	resize_sparse_image_up(image, targetMipLevel);
+	vulkan::FenceHandle fence(m_fenceManager);
+	update_sparse_image_with_buffer(image.get_info(), image, buf, &fence, targetMipLevel);
+	VkFence localFence = fence;
+	//TODO Urgent async 
+	while (vkWaitForFences(m_device, 1, &localFence, TRUE, 100) != VK_SUCCESS);
+	image.change_view_mip_level(targetMipLevel);
+
 }
 
 

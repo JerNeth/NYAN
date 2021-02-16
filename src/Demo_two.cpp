@@ -38,11 +38,12 @@ int main()
 		nyan::ImguiRenderer imgui(device, shaderManager);
 		nyan::VulkanRenderer renderer(device, &shaderManager);
 		nyan::Rendergraph rendergraph(device);
-		nyan::TextureManager textureManager(device);
+		nyan::TextureManager textureManager(device, false);
 		application.add_renderer(&renderer);
 		application.add_renderer(&imgui);
 		bool wireframe = false;
 
+		
 		auto& pass = rendergraph.add_pass("test", nyan::Renderpass::Type::Graphics);
 		nyan::ImageAttachment depth;
 		depth.clearColor[0] = 1.0f;
@@ -110,7 +111,7 @@ int main()
 		auto total = start - start;
 		bool is_fullscreen_window = false;
 		bool should_fullscreen_window = false;
-		int mipLevel = 0;
+		int mipLevel = 2;
 
 		pass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			if (wireframe)
@@ -146,6 +147,7 @@ int main()
 				renderer.update_camera(camera);
 				application.next_frame();
 				renderer.queue_mesh(&testMesh);
+				//textureManager.change_mip("textureDX2Mips", mipLevel);
 				//imgui.next_frame();
 				//device.update_uniform_buffer();
 				ImGui::Begin("Interaction");
@@ -155,6 +157,7 @@ int main()
 				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
 				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
+				//ImGui::SliderInt("lod", &mipLevel, 0, 16);
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
 				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();

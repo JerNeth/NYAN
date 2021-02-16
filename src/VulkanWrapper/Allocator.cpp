@@ -61,9 +61,23 @@ vulkan::Allocation::Allocation(LogicalDevice& device, VmaAllocation handle)
 	:r_device(device),
 	m_VmaHandle(handle)
 {
-
 }
 
+VkDeviceSize vulkan::Allocation::get_size() const noexcept {
+	VmaAllocationInfo info;
+	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	return info.size;
+}
+VkDeviceSize vulkan::Allocation::get_offset() const noexcept {
+	VmaAllocationInfo info;
+	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	return info.offset;
+}
+VkDeviceMemory vulkan::Allocation::get_memory() const noexcept {
+	VmaAllocationInfo info;
+	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	return info.deviceMemory;
+}
 vulkan::Allocation::~Allocation()
 {
 	if (m_VmaHandle != VK_NULL_HANDLE)
