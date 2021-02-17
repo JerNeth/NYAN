@@ -158,22 +158,22 @@ namespace vulkan {
 		}
 		void set_depth_test(VkBool32 enabled) noexcept {
 			if (m_pipelineState.state.dynamic_depth_test) {
-				if (m_dynamicState.depth_test != enabled) {
-					m_dynamicState.depth_test = enabled;
+				if (m_dynamicState.depth_test != static_cast<unsigned>(enabled)) {
+					m_dynamicState.depth_test = static_cast<unsigned>(enabled);
 					m_invalidFlags.set(InvalidFlags::DepthTest);
 				}
 			}
 			else {
-				if (m_pipelineState.state.depth_test != enabled) {
+				if (m_pipelineState.state.depth_test != static_cast<unsigned>(enabled)) {
 					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.depth_test = enabled;
+						m_pipelineState.state.depth_test = static_cast<unsigned>(enabled);
 				}
 			}
 		}
 		void set_depth_write(VkBool32 enabled) noexcept {
 			if (m_pipelineState.state.dynamic_depth_write) {
-				if (m_dynamicState.depth_write != enabled) {
-					m_dynamicState.depth_write = enabled;
+				if (m_dynamicState.depth_write != static_cast<unsigned>(enabled)) {
+					m_dynamicState.depth_write = static_cast<unsigned>(enabled);
 					m_invalidFlags.set(InvalidFlags::DepthWrite);
 				}
 			}
@@ -186,88 +186,88 @@ namespace vulkan {
 		}
 		void set_depth_compare(VkCompareOp compare) noexcept {
 			if (m_pipelineState.state.dynamic_depth_compare) {
-				if (m_dynamicState.depth_compare != compare) {
-					m_dynamicState.depth_compare = compare;
+				if (m_dynamicState.depth_compare != static_cast<unsigned>(compare)) {
+					m_dynamicState.depth_compare = static_cast<unsigned>(compare);
 					m_invalidFlags.set(InvalidFlags::DepthCompare);
 				}
 			}
 			else {
-				if (m_pipelineState.state.depth_compare != compare) {
+				if (m_pipelineState.state.depth_compare != static_cast<unsigned>(compare)) {
 					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.depth_compare = compare;
+						m_pipelineState.state.depth_compare = static_cast<unsigned>(compare);
 				}
 			}
 		}
 		void set_cull_mode(VkCullModeFlags cullMode) noexcept {
 			if (m_pipelineState.state.dynamic_cull_mode) {
-				if (m_dynamicState.cull_mode != cullMode) {
-					m_dynamicState.cull_mode = cullMode;
+				if (m_dynamicState.cull_mode != static_cast<unsigned>(cullMode)) {
+					m_dynamicState.cull_mode = static_cast<unsigned>(cullMode);
 					m_invalidFlags.set(InvalidFlags::CullMode);
 				}
 			}
 			else {
-				if (m_pipelineState.state.cull_mode != cullMode) {
+				if (m_pipelineState.state.cull_mode != static_cast<unsigned>(cullMode)) {
 					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.cull_mode = cullMode;
+						m_pipelineState.state.cull_mode = static_cast<unsigned>(cullMode);
 				}
 			}
 		}
 		void set_front_face(VkFrontFace frontFace) noexcept {
 			if (m_pipelineState.state.dynamic_front_face) {
-				if (m_dynamicState.front_face != frontFace) {
-					m_dynamicState.front_face = frontFace;
+				if (m_dynamicState.front_face != static_cast<unsigned>(frontFace)) {
+					m_dynamicState.front_face = static_cast<unsigned>(frontFace);
 					m_invalidFlags.set(InvalidFlags::FrontFace);
 				}
 			}
 			else {
-				if (m_pipelineState.state.front_face != frontFace) {
+				if (m_pipelineState.state.front_face != static_cast<unsigned>(frontFace)) {
 					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.front_face = frontFace;
+						m_pipelineState.state.front_face = static_cast<unsigned>(frontFace);
 				}
 			}
 		}
 		void set_topology(VkPrimitiveTopology topology) noexcept {
 			if (m_pipelineState.state.dynamic_primitive_topology) {
-				if (m_dynamicState.topology != topology) {
-					m_dynamicState.topology = topology;
+				if (m_dynamicState.topology != static_cast<unsigned>(topology)) {
+					m_dynamicState.topology = static_cast<unsigned>(topology);
 					m_invalidFlags.set(InvalidFlags::FrontFace);
 				}
 			}
 			else {
-				if (m_pipelineState.state.topology != topology) {
+				if (m_pipelineState.state.topology != static_cast<unsigned>(topology)) {
 					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.topology = topology;
+						m_pipelineState.state.topology = static_cast<unsigned>(topology);
 				}
 			}
 		}
 		void set_blend_enable(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.blend_enable != enabled) {
+			if (m_pipelineState.state.blend_enable != static_cast<unsigned>(enabled)) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.blend_enable = enabled;
+					m_pipelineState.state.blend_enable = static_cast<unsigned>(enabled);
 			}
 		}
 		void set_src_color_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.src_color_blend != blendFactor) {
+			if (m_pipelineState.state.src_color_blend != static_cast<unsigned>(blendFactor)) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.src_color_blend = blendFactor;
+					m_pipelineState.state.src_color_blend = static_cast<unsigned>(blendFactor);
 			}
 		}
 		void set_dst_color_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.dst_color_blend != blendFactor) {
+			if (m_pipelineState.state.dst_color_blend != static_cast<unsigned>(blendFactor)) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.dst_color_blend = blendFactor;
+					m_pipelineState.state.dst_color_blend = static_cast<unsigned>(blendFactor);
 			}
 		}
 		void set_src_alpha_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.src_alpha_blend != blendFactor) {
+			if (m_pipelineState.state.src_alpha_blend != static_cast<unsigned>(blendFactor)) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.src_alpha_blend = blendFactor;
+					m_pipelineState.state.src_alpha_blend = static_cast<unsigned>(blendFactor);
 			}
 		}
 		void set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.dst_alpha_blend != blendFactor) {
+			if (m_pipelineState.state.dst_alpha_blend != static_cast<unsigned>(blendFactor)) {
 				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.dst_alpha_blend = blendFactor;
+					m_pipelineState.state.dst_alpha_blend = static_cast<unsigned>(blendFactor);
 			}
 		}
 		void reset_pipeline_state() noexcept {

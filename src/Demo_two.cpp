@@ -89,6 +89,7 @@ int main()
 		//buffInfo.size = sizeof(vulkan::indices);
 		//buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		//auto ibo = device.create_buffer(buffInfo, nyan::indices.data());
+		//Todo, can't pass poitner to buffer
 		testMesh.set_indices(vbo, sizeof(nyan::vertices), nyan::indices.size());
 		testMesh.set_vertices(vbo, 0, nyan::vertices.size());
 		RendererCamera camera{};
@@ -147,7 +148,7 @@ int main()
 				renderer.update_camera(camera);
 				application.next_frame();
 				renderer.queue_mesh(&testMesh);
-				//textureManager.change_mip("textureDX2Mips", mipLevel);
+				textureManager.change_mip("textureDX2Mips", mipLevel);
 				//imgui.next_frame();
 				//device.update_uniform_buffer();
 				ImGui::Begin("Interaction");
@@ -157,7 +158,7 @@ int main()
 				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
 				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
-				//ImGui::SliderInt("lod", &mipLevel, 0, 16);
+				ImGui::SliderInt("lod", &mipLevel, 0, 16);
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
 				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();

@@ -32,6 +32,10 @@ namespace vulkan {
 	class Allocation {
 	public:
 		Allocation(LogicalDevice& device, VmaAllocation handle);
+		Allocation(const Allocation& other) = delete;
+		Allocation(Allocation&& other) noexcept;
+		Allocation& operator=(const Allocation& other) = delete;
+		Allocation& operator=(Allocation&& other);
 		VmaAllocation get_handle() const noexcept {
 			return m_VmaHandle;
 		}

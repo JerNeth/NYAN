@@ -508,11 +508,11 @@ namespace vulkan {
 	};
 	class Image : public Utility::UIDC {
 	public:
-		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0);
+		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0, bool sparse = false);
 		Image(Image&) = delete;
 		Image(Image&&) noexcept;
 		Image& operator=(Image&) = delete;
-		Image& operator=(Image&&) = delete;
+		Image& operator=(Image&& other);
 		~Image() noexcept;
 		void append_allocations(const std::vector< AllocationHandle>& allocations);
 		void drop_allocations(uint32_t count);
@@ -531,6 +531,12 @@ namespace vulkan {
 		void set_available_mip(uint32_t mip) noexcept {
 			if(mip <= m_mipTail)
 				m_availableMip = mip;
+		}
+		bool is_sparse() const noexcept {
+			return m_isSparse;
+		}
+		uint32_t get_mip_tail() const noexcept {
+			return m_mipTail;
 		}
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
 			return Math::max(1u, m_info.width >> mipLevel);
@@ -665,6 +671,7 @@ namespace vulkan {
 		uint32_t m_availableMip = 0;
 		uint32_t m_mipTail = 0;
 		bool m_singleMipTail = false; //If false => first <Layer> allocations are mip tails, otherwise first allocation only
+		bool m_isSparse = false;
 	};
 }
 

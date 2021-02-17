@@ -243,36 +243,65 @@ std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::string
 		}
 	}
 	auto fileSize = file.tellg();
-	std::vector<std::byte> buffer(fileSize / sizeof(uint8_t));
-
-	file.seekg(0);
-	file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-	file.close();
-	return buffer;
-}
-vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& data, std::vector<vulkan::InitialImageData>& initalData, uint32_t startMipLevel, bool strict) {
-	vulkan::ImageInfo ret{};
-	const DDSImage* image = reinterpret_cast<const DDSImage*>(data.data());
-	const DDSHeader& header = image->header;
-	if (data.size() < 128)
+	if (fileSize < 128)
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
-	if (image->magicNumber != DDSMagicNumber)
-		throw std::runtime_error("File is not a valid .dds file. Reason (invalid magic number)");
+	uint32_t magicNumber;
+	Utility::DDSHeader header;
+	file.seekg(0);
+	file.read(reinterpret_cast<char*>(&magicNumber), sizeof(uint32_t));
+	if (magicNumber != DDSMagicNumber)
+		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
+	file.read(reinterpret_cast<char*>(&header), sizeof(Utility::DDSHeader));
 	if (header.size != 124u)
 		throw std::runtime_error("File is not a valid .dds file. Reason (invalid header.size)");
 	if (header.pixelFormat.size != 32)
 		throw std::runtime_error("File is not a valid .dds file. Reason (invalid pixelFormat.size)");
-	if((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10 )&& (data.size() <= 148))
+	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10) && (fileSize <= 148))
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small for DX10)");
-	if (!(header.flags & DDSHeader::Flags::WIDTH))
-		throw std::runtime_error("File is not a valid .dds file. Reason (WIDTH flag not set)");
-	if (!(header.flags & DDSHeader::Flags::HEIGHT))
-		throw std::runtime_error("File is not a valid .dds file. Reason (HEIGHT flag not set)");
-	if (!(header.flags & DDSHeader::Flags::PIXELFORMAT))
-		throw std::runtime_error("File is not a valid .dds file. Reason (PIXELFORMAT flag not set)");
+	DDSHeaderDXT10 extHeader;
+	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10))
+		file.read(reinterpret_cast<char*>(&extHeader), sizeof(Utility::DDSHeaderDXT10));
+	fileSize -= file.tellg();
+	std::vector<std::byte> buffer(fileSize / sizeof(uint8_t));
+	file.read(reinterpret_cast<char*>(buffer.data()), fileSize );
+	file.close();
+	return buffer;
+}
+vulkan::ImageInfo Utility::DDSReader::readDDSFileHeader(const std::string& filename, bool strict)
+{
+	vulkan::ImageInfo ret{};
+	std::ifstream file(filename + ".dds", std::ios::ate | std::ios::binary);
+	if (!(file.is_open())) {
+		file.open(filename, std::ios::ate | std::ios::binary);
+		if (!(file.is_open())) {
+			throw std::runtime_error("Could not open file: \"" + filename + ".dds" + "\"");
+		}
+	}
+	Utility::DDSHeader header;
+	auto fileSize = file.tellg();
+	if (fileSize < 128)
+		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
+	uint32_t magicNumber;
+	file.seekg(0);
+	file.read(reinterpret_cast<char*>(&magicNumber), sizeof(uint32_t));
+
+	if (magicNumber != DDSMagicNumber)
+		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
+
+	file.read(reinterpret_cast<char*>(&header), sizeof(Utility::DDSHeader));
+	if (header.size != 124u)
+		throw std::runtime_error("File is not a valid .dds file. Reason (invalid header.size)");
+	if (header.pixelFormat.size != 32)
+		throw std::runtime_error("File is not a valid .dds file. Reason (invalid pixelFormat.size)");
+	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10) && (fileSize <= 148))
+		throw std::runtime_error("File is not a valid .dds file. Reason (file too small for DX10)");
+
+	DDSHeaderDXT10 extHeader;
+	if((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10))
+		file.read(reinterpret_cast<char*>(&extHeader), sizeof(Utility::DDSHeaderDXT10));
+	file.close();
 	ret.width = header.width;
 	ret.height = header.height;
-	bool hasMipMaps = false;
 	bool isCubeMap = false;
 	bool isVolume = false;
 	if (strict) {
@@ -287,7 +316,6 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 			ret.depth = 1;
 		if (header.flags & DDSHeader::Flags::MIPMAPCOUNT) {
 			ret.mipLevels = header.mipMapCount;
-			hasMipMaps = true;
 		}
 		else
 			ret.mipLevels = 1;
@@ -308,10 +336,8 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 		assert(ret.depth);
 		ret.mipLevels = header.mipMapCount;
 		assert(ret.mipLevels);
-		if(ret.depth != 1)
+		if (ret.depth != 1)
 			isVolume = true;
-		if (ret.mipLevels != 1)
-			hasMipMaps = true;
 		if (header.caps2 & DDSHeader::Caps2::CUBEMAP)
 			isCubeMap = true;
 	}
@@ -341,7 +367,6 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 		assert(false); //Not supported yet
 	}
 	if (dx10Header) {
-		const DDSHeaderDXT10& extHeader = image->extHeader;
 		ret.format = convertToVk(extHeader.format);
 		assert(ret.format != VK_FORMAT_UNDEFINED);
 		if (isCubeMap)
@@ -371,9 +396,9 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 		}
 	}
 	else {
-		if(ret.depth != 1)
+		if (ret.depth != 1)
 			ret.type = VK_IMAGE_TYPE_3D;
-		else if(ret.height != 1)
+		else if (ret.height != 1)
 			ret.type = VK_IMAGE_TYPE_2D;
 		else
 			ret.type = VK_IMAGE_TYPE_1D;
@@ -434,38 +459,42 @@ vulkan::ImageInfo Utility::DDSReader::parseImage(const std::vector<std::byte>& d
 			}
 		}
 	}
-	//TODO could directly read from file into vulkan buffer ?
-	std::vector<uint32_t> levelSizes(ret.mipLevels);
-	size_t totalSize = 0;
-	size_t mipOffset = 0;
-	uint32_t mipWidth = ret.width;
-	uint32_t mipHeight =ret.height;
-	startMipLevel = Math::min(startMipLevel, ret.mipLevels);
-	std::array<uint32_t, 16> mipOffsets{};
-	for (uint32_t mipLevel = 0; mipLevel < ret.mipLevels; mipLevel++) {
-		auto [blockWidth, blockHeight] = vulkan::format_to_block_size(ret.format);
-		auto blockStride = vulkan::format_block_size(ret.format);
-		mipWidth = Math::max(1u, ret.width >> mipLevel);
-		mipHeight = Math::max(1u, ret.height >> mipLevel);
-		uint32_t mipSize = Math::max(1u, (mipWidth + blockWidth - 1) / blockWidth) *
-			Math::max(1u, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
-		mipOffsets[mipLevel] = totalSize;
-		totalSize += mipSize;
-		//std::cout << "Level (" << mipLevel << "): " << mipSize << " Bytes\t\tTotal: " << totalSize << " Bytes \n";
-	}
 
-	const std::byte* ptr = data.data();
-	ptr += sizeof(uint32_t) + sizeof(DDSHeader);
-	ptr += dx10Header ? sizeof(DDSHeaderDXT10) : 0;
-	for (uint32_t arrayLayer = 0; arrayLayer < ret.arrayLayers; arrayLayer++) {
-		vulkan::InitialImageData initialImageData{
-			.data = reinterpret_cast<const void*>(ptr+ mipOffset  + totalSize * arrayLayer ),
-			.mipOffsets = mipOffsets,
-			.mipCounts = ret.mipLevels
-		};
-		initalData.push_back(initialImageData);
-	}
 	if (isCubeMap)
 		ret.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 	return ret;
+}
+std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const vulkan::ImageInfo& info, const std::vector<std::byte>& data, uint32_t startMipLevel) {
+	//TODO could directly read from file into vulkan buffer ?
+	std::vector<vulkan::InitialImageData> initalData;
+	std::vector<uint32_t> levelSizes(info.mipLevels);
+	size_t totalSize = 0;
+	startMipLevel = Math::min(startMipLevel, info.mipLevels);
+	std::array<uint32_t, 16> mipOffsets{};
+	for (uint32_t mipLevel = 0; mipLevel < info.mipLevels; mipLevel++) {
+		auto [blockWidth, blockHeight] = vulkan::format_to_block_size(info.format);
+		auto blockStride = vulkan::format_block_size(info.format);
+		uint32_t mipWidth = Math::max(1u, info.width >> mipLevel);
+		uint32_t mipHeight = Math::max(1u, info.height >> mipLevel);
+		uint32_t mipSize = Math::max(1u, (mipWidth + blockWidth - 1) / blockWidth) *
+			Math::max(1u, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
+		if(mipLevel >= startMipLevel)
+			mipOffsets[mipLevel- startMipLevel] = totalSize;
+		totalSize += mipSize;
+		//std::cout << "Level (" << mipLevel << "): " << mipSize << " Bytes\t\tTotal: " << totalSize << " Bytes \n";
+	}
+	//std::cout << "Mipoffset: " << mipOffset << '\n';
+	const std::byte* ptr = data.data();
+	for (uint32_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
+		vulkan::InitialImageData initialImageData{
+			.data = reinterpret_cast<const void*>(ptr  + totalSize * arrayLayer ),
+			.mipOffsets = mipOffsets,
+			.mipCounts = info.mipLevels - startMipLevel
+		};
+		initalData.push_back(initialImageData);
+	}
+	return initalData;
+	//ret.mipLevels = ret.mipLevels - startMipLevel;
+	//ret.width = Math::max(1u, ret.width >> startMipLevel);
+	//ret.height = Math::max(1u, ret.height >> startMipLevel);
 }

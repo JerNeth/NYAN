@@ -149,14 +149,13 @@ namespace vulkan {
 
 			~FrameResource();
 
-			//std::vector<CommandPool> commandPool;
 			std::vector<CommandPool> graphicsPool;
 			std::vector<CommandPool> computePool;
 			std::vector<CommandPool> transferPool;
-			//std::vector<CommandBufferHandle> submittedCmds;
 			std::vector<CommandBufferHandle> submittedGraphicsCmds;
 			std::vector<CommandBufferHandle> submittedComputeCmds;
 			std::vector<CommandBufferHandle> submittedTransferCmds;
+
 
 			std::vector<VkBufferView> deletedBufferViews;
 			std::vector<VkImageView> deletedImageViews;
@@ -170,6 +169,12 @@ namespace vulkan {
 
 			std::vector<FenceHandle> waitForFences;
 
+			//Sparse
+			std::vector<VkSparseImageMemoryBind> sparseMemoryBinds;
+			std::vector<VkSparseImageMemoryBindInfo> submittedSparseBinds;
+			std::unordered_multimap< uint32_t, std::function<void(void)>> sparseFenceCallbacks;
+			std::vector<VkSemaphore> sparseSemaphores;
+			std::vector<FenceHandle> sparseFences;
 			void begin();
 		};
 		friend class Swapchain;
@@ -240,10 +245,10 @@ namespace vulkan {
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
+		void submit(const VkSparseImageMemoryBindInfo& sparse, std::function<void(void)> fenceCallback);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
 
-		void demo_create_command_buffer(VkCommandBuffer buf);
 		FrameResource& frame();
 
 		const Extensions& get_supported_extensions() const noexcept {
@@ -278,8 +283,8 @@ namespace vulkan {
 		uint32_t get_swapchain_height() const noexcept {
 			return get_swapchain_image_view()->get_image()->get_height();
 		}
-		bool supports_sparse_textures() const noexcept {
-			bool ret = true;
+		VkBool32 supports_sparse_textures() const noexcept {
+			VkBool32 ret = true;
 			ret &= m_physicalProperties.sparseProperties.residencyStandard2DBlockShape; //Desired
 			m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
 			ret &= m_physicalFeatures.features.sparseBinding; //Required
@@ -320,7 +325,7 @@ namespace vulkan {
 		void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
 		void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
 		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);
-		uint32_t resize_sparse_image_down(Image& handle, uint32_t baseMipLevel, VkFence fence);
+		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel, VkFence fence);
 
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
 		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);

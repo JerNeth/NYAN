@@ -46,13 +46,14 @@ vulkan::ImageView::~ImageView() noexcept {
     }
 }
 
-vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail) :
+vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail, bool sparse) :
 	r_device(parent),
 	m_vkHandle(image),
 	m_info(info),
 	m_allocations(allocations),
 	m_availableMip(mipTail),
-	m_mipTail(mipTail)
+	m_mipTail(mipTail),
+	m_isSparse(sparse)
 {
 	ImageViewCreateInfo createInfo;
 	createInfo.image = this;
@@ -73,9 +74,29 @@ vulkan::Image::Image(Image&& other) noexcept :
 	m_allocations(other.m_allocations),
 	m_view(other.m_view),
 	m_availableMip( other.m_availableMip),
-	m_mipTail(other.m_mipTail)
+	m_mipTail(other.m_mipTail),
+	m_isSparse(other.m_isSparse)
 {
 	other.m_vkHandle = VK_NULL_HANDLE;
+}
+
+vulkan::Image& vulkan::Image::operator=(Image&& other)
+{
+	if (this != &other) {
+		if (m_ownsImage)
+			if (m_vkHandle != VK_NULL_HANDLE)
+				r_device.queue_image_deletion(m_vkHandle);
+		m_allocations.clear();
+		m_vkHandle = other.m_vkHandle;
+		m_info = other.m_info;
+		m_allocations = std::move(other.m_allocations);
+		m_view = std::move(other.m_view);
+		m_availableMip = other.m_availableMip;
+		m_mipTail = other.m_mipTail;
+		m_isSparse = other.m_isSparse;
+		other.m_vkHandle = VK_NULL_HANDLE;
+	}
+	return *this;
 }
 
 vulkan::Image::~Image() noexcept

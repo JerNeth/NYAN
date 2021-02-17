@@ -53,7 +53,16 @@ namespace vulkan {
 			}
 			return *this;
 		}
-	
+		VkFence get_handle() const noexcept{
+			return m_vkHandle;
+		}
+		void clear() {
+			r_manager.reset_fence(m_vkHandle);
+			m_vkHandle = VK_NULL_HANDLE;
+		}
+		operator bool()  const noexcept {
+			return m_vkHandle != VK_NULL_HANDLE;
+		}
 		~FenceHandle() {
 			r_manager.reset_fence(m_vkHandle);
 		}

@@ -159,23 +159,66 @@ void vulkan::LogicalDevice::next_frame()
 
 void vulkan::LogicalDevice::end_frame()
 {
+	bool sparseBindsQueued = !frame().submittedSparseBinds.empty();
+	std::vector<VkSemaphore> semaphores;
+	semaphores.reserve(3);
 	if (!frame().submittedTransferCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		submit_queue(CommandBuffer::Type::Transfer, &fence);
+		if (sparseBindsQueued) {
+			semaphores.push_back(VK_NULL_HANDLE);
+			submit_queue(CommandBuffer::Type::Transfer, &fence, 1, &semaphores.back());
+		}
+		else
+			submit_queue(CommandBuffer::Type::Transfer, &fence);
 		frame().waitForFences.emplace_back(std::move(fence));
 		m_compute.needsFence = false;
 	}
 	if (!frame().submittedGraphicsCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		submit_queue(CommandBuffer::Type::Generic, &fence);
+		if (sparseBindsQueued) {
+			semaphores.push_back(VK_NULL_HANDLE);
+			submit_queue(CommandBuffer::Type::Generic, &fence, 1, &semaphores.back());
+		} 
+		else
+			submit_queue(CommandBuffer::Type::Generic, &fence);
 		frame().waitForFences.emplace_back(std::move(fence));
 		m_compute.needsFence = false;
 	}
 	if (!frame().submittedComputeCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		submit_queue(CommandBuffer::Type::Compute,&fence);
+		if (sparseBindsQueued) {
+			semaphores.push_back(VK_NULL_HANDLE);
+			submit_queue(CommandBuffer::Type::Compute, &fence, 1, &semaphores.back());
+		}
+		else 
+			submit_queue(CommandBuffer::Type::Compute, &fence);
 		frame().waitForFences.emplace_back(std::move(fence));
 		m_compute.needsFence = false;
+	}
+	if (sparseBindsQueued) {
+		VkBindSparseInfo bindInfo{
+			.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = static_cast<uint32_t>(semaphores.size()),
+			.pWaitSemaphores = semaphores.data(),
+			.bufferBindCount = 0,
+			.pBufferBinds = 0,
+			.imageOpaqueBindCount = 0,
+			.pImageOpaqueBinds = nullptr,
+			.imageBindCount = static_cast<uint32_t>(frame().submittedSparseBinds.size()),
+			.pImageBinds = frame().submittedSparseBinds.data(),
+			.signalSemaphoreCount = 0,
+			.pSignalSemaphores =nullptr,
+		};
+		FenceHandle fence = m_fenceManager.request_fence();
+		VkFence localFence = fence;
+		frame().sparseFences.emplace_back(std::move(fence));
+		if (m_transfer.supportsSparse)
+			vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, localFence);
+		else
+			vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, localFence);
+		frame().sparseSemaphores.insert(frame().sparseSemaphores.end(), semaphores.cbegin(), semaphores.cend());
+		frame().submittedSparseBinds.clear();
 	}
 	//m_swapchains[0]->present_queue();
 }
@@ -262,7 +305,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* 
 		}
 	}
 #endif //  0
-	VkFence localFence = fence ? *fence : VK_NULL_HANDLE;
+	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
 	if (auto result = vkQueueSubmit(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not submit to Queue, out of host memory");
@@ -390,6 +433,12 @@ void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCo
 	if (semaphoreCount || fence) {
 		submit_queue(type, fence, semaphoreCount, semaphores);
 	}
+}
+
+void vulkan::LogicalDevice::submit(const VkSparseImageMemoryBindInfo& sparse, std::function<void(void)> fenceCallback)
+{
+	frame().submittedSparseBinds.push_back(sparse);
+	frame().sparseFenceCallbacks.emplace(frame().sparseFences.size(), fenceCallback);
 }
 
 void vulkan::LogicalDevice::wait_no_lock() noexcept
@@ -689,7 +738,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 		}
 	}
 	
-	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin));
+	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin, true));
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
 	handle->set_single_mip_tail(singleMipTail);
@@ -855,7 +904,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	
 	uint32_t current = 0;
 	//Iterate reversly because we want the image allocations to be in that order
-	for (uint32_t mipLevel = image.get_available_mip(); mipLevel --> 0 ;) {
+	for (uint32_t mipLevel = image.get_available_mip(); mipLevel --> baseMipLevel;) {
 		VkExtent3D extent{
 			.width = image.get_width(mipLevel) ,
 			.height = image.get_height(mipLevel),
@@ -936,13 +985,14 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	image.set_available_mip(baseMipLevel);
 	return true;
 }
-uint32_t vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t baseMipLevel, VkFence fence)
+void vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t baseMipLevel, VkFence fence)
 {
 	VkImage imageHandle = image.get_handle();
 	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(imageHandle, ImageInfo::format_to_aspect_mask(image.get_format()));
 
 	uint32_t allocCount = 0;
 	std::vector<VkSparseImageMemoryBind> imageBinds;
+	assert(baseMipLevel <= image.get_mip_tail());
 	for (uint32_t mipLevel = image.get_available_mip(); mipLevel < baseMipLevel; mipLevel++) {
 		VkExtent3D extent{
 			.width = image.get_width(mipLevel) ,
@@ -996,27 +1046,13 @@ uint32_t vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t 
 		.bindCount = static_cast<uint32_t>(imageBinds.size()),
 		.pBinds = imageBinds.data()
 	};
-	//Todo add wait semaphore or queue submit
-	VkBindSparseInfo bindInfo{
-		.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
-		.pNext = nullptr,
-		.waitSemaphoreCount = 0,
-		.pWaitSemaphores = nullptr,
-		.bufferBindCount = 0,
-		.pBufferBinds = 0,
-		.imageOpaqueBindCount = 0,
-		.pImageOpaqueBinds = nullptr,
-		.imageBindCount = 1,
-		.pImageBinds = &imageBindInfo,
-		.signalSemaphoreCount = 0,
-		.pSignalSemaphores = nullptr,
-	};
-	if (m_transfer.supportsSparse)
-		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
-	else
-		vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
 	image.set_available_mip(baseMipLevel);
-	return allocCount;
+
+	//Following dependency chain intended: wait for queues who use the image to finish => unbind allocations => release allocations
+	submit(imageBindInfo, [&]() {
+		image.drop_allocations(allocCount);
+	});
+	
 }
 std::vector<vulkan::CommandBufferHandle>& vulkan::LogicalDevice::get_current_submissions(CommandBuffer::Type type)
 {
@@ -1154,16 +1190,17 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 
 void vulkan::LogicalDevice::downsize_sparse_image(Image& image, uint32_t targetMipLevel)
 {
-	if (image.get_available_mip() >= targetMipLevel)
+	//Always keep mipTail resident
+	if (targetMipLevel > image.get_mip_tail())
+		targetMipLevel = image.get_mip_tail();
+	//Only downsize
+	if (targetMipLevel <= image.get_available_mip())
 		return;
 	image.change_view_mip_level(targetMipLevel);
 	//Theoretically we can now remove allocations without problems? I don't know
 	vulkan::FenceHandle fence  =m_fenceManager.request_fence();
-	auto allocsToDelete = resize_sparse_image_down(image, targetMipLevel, fence);
-	VkFence localFence = fence;
-	//TODO Urgent async 
-	//while (vkWaitForFences(m_device, 1, &localFence, TRUE, 100) != VK_SUCCESS);
-	image.drop_allocations(allocsToDelete);
+	//Add semaphore which waits for image to not be in use?
+	resize_sparse_image_down(image, targetMipLevel, fence);
 
 }
 
@@ -1171,7 +1208,7 @@ bool vulkan::LogicalDevice::upsize_sparse_image(Image& image, InitialImageData* 
 {
 	if (!initialData)
 		return false;
-	if (image.get_available_mip() <= targetMipLevel)
+	if (targetMipLevel >= image.get_available_mip() )
 		return false;
 	auto buf = create_staging_buffer(image.get_info(), initialData, targetMipLevel);
 	resize_sparse_image_up(image, targetMipLevel);
@@ -1447,6 +1484,32 @@ void vulkan::LogicalDevice::FrameResource::begin()
 			fences.push_back(fence);
 		vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
 		waitForFences.clear();
+	}
+	bool canClearSparse = true;
+	uint32_t fenceIndex = 0;
+	for (auto& sparseFence : sparseFences) {
+		if (sparseFence) {
+			if (vkGetFenceStatus(r_device.get_device(), sparseFence) == VK_SUCCESS) {
+				auto its = sparseFenceCallbacks.equal_range(fenceIndex);
+				for (auto &it = its.first; it != its.second; it++) {
+					it->second();
+				}
+				sparseFenceCallbacks.erase(its.first, its.second);
+				sparseFence.clear();
+			}
+			else {
+				canClearSparse = false;
+			}
+		}
+		fenceIndex++;
+	}
+	if (canClearSparse) {
+		sparseFenceCallbacks.clear();
+		sparseFences.clear();
+		for (auto semaphore : sparseSemaphores) {
+			r_device.m_semaphoreManager.recycle_semaphore(semaphore);
+		}
+		sparseSemaphores.clear();
 	}
 	for (auto& pool : graphicsPool) {
 		assert(submittedGraphicsCmds.empty());

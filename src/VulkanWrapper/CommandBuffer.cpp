@@ -440,7 +440,9 @@ void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldL
 		.image = image.get_handle(),
 		.subresourceRange {
 			.aspectMask = ImageInfo::format_to_aspect_mask(image.get_info().format),
+			.baseMipLevel = 0,
 			.levelCount = image.get_info().mipLevels,
+			.baseArrayLayer = 0,
 			.layerCount = image.get_info().arrayLayers
 		}
 	};
