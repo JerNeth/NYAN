@@ -77,7 +77,6 @@ int main()
 
 		testMaterial.add_texture(textureManager.request_texture("textureDX2Mips"));
 
-
 		vulkan::BufferInfo buffInfo;
 		buffInfo.size = sizeof(vulkan::vertices) + sizeof(nyan::indices);
 		buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;

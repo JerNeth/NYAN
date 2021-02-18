@@ -346,8 +346,8 @@ namespace vulkan {
 		std::vector<std::unique_ptr<FrameResource>> m_frameResources;
 
 		Utility::Pool<CommandBuffer> m_commandBufferPool;
-		Utility::Pool<Buffer> m_bufferPool;
 		Utility::Pool<Allocation> m_allocationPool;
+		Utility::LinkedBucketList<Buffer> m_bufferPool;
 		Utility::LinkedBucketList<ImageView> m_imageViewPool;
 		Utility::LinkedBucketList<Image> m_imagePool;
 		WSIState m_wsiState;

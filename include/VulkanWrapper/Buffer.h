@@ -101,7 +101,7 @@ namespace vulkan {
 		BufferInfo m_info;
 		void* maped = nullptr;
 	};
-	using BufferHandle = Utility::ObjectHandle<Buffer, Utility::Pool<Buffer>>;
+	using BufferHandle = Utility::ObjectHandle<Buffer, Utility::LinkedBucketList<Buffer>>;
 }
 
 #endif 
