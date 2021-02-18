@@ -58,7 +58,7 @@ int main()
 		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
 		nyan::ImageAttachment swap;
 		pass2.add_input("color");
-		//pass2.add_read_dependency("depth");
+		pass2.add_read_dependency("depth");
 		pass2.add_output("swap", swap);
 		rendergraph.set_swapchain("swap");
 		rendergraph.build();
@@ -73,7 +73,7 @@ int main()
 			cmd->bind_input_attachment(0, 0);
 			cmd->draw(3, 1, 0, 0);
 		});
-		//pass2.add_post_barrier("depth");
+		pass2.add_post_barrier("depth");
 		
 		Material testMaterial(0, "default_frag");
 		StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");

@@ -42,7 +42,6 @@ void nyan::Renderpass::add_read_dependency(const std::string& name)
 {
 	auto& resource = r_graph.get_resource(name);
 	resource.m_readIn.insert(m_id);
-	m_reads.insert(resource.m_id);
 }
 
 void nyan::Renderpass::add_write_dependency(const std::string& name)
