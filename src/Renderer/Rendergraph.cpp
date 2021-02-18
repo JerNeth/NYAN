@@ -273,7 +273,7 @@ void nyan::Rendergraph::execute()
 				auto* info = pass.m_rpInfo.get();
 				if (*resource.m_writeToIn.begin() == pass.m_id) {
 					for (size_t i = 0u; i < 4u; i++)
-						info->clearColors[info->colorAttachmentsCount].float32[i] = attachment.clearColor[i];
+						info->clearColors[attachmentId].float32[i] = attachment.clearColor[i];
 				}
 				assert(resource.handle);
 				info->colorAttachmentsViews[attachmentId++] = resource.handle;

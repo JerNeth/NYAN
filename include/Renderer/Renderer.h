@@ -5,6 +5,7 @@
 #include "ShaderManager.h"
 #include "Material.h"
 #include "Mesh.h"
+#include <map>
 
 namespace nyan {
 	class Renderer {
@@ -26,8 +27,8 @@ namespace nyan {
 	public:
 		void clear();
 	private:
-		std::unordered_multimap<RenderId,StaticMesh*> m_staticMeshes;
-		std::unordered_multimap<RenderId,SkinnedMesh*> m_skinnedMeshes;
+		std::multimap<RenderId,StaticMesh*> m_staticMeshes;
+		std::multimap<RenderId,SkinnedMesh*> m_skinnedMeshes;
 
 	};
 	struct RendererCamera {

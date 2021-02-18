@@ -36,9 +36,11 @@ int main()
 		auto& window = application.get_window();
 		vulkan::ShaderManager shaderManager(device);
 		nyan::ImguiRenderer imgui(device, shaderManager);
+		window.configure_imgui();
 		nyan::VulkanRenderer renderer(device, &shaderManager);
 		nyan::Rendergraph rendergraph(device);
 		nyan::TextureManager textureManager(device, false);
+		nyan::MeshManager meshManager(device);
 		application.add_renderer(&renderer);
 		application.add_renderer(&imgui);
 		bool wireframe = false;
@@ -60,6 +62,9 @@ int main()
 		pass2.add_output("swap", swap);
 		rendergraph.set_swapchain("swap");
 		rendergraph.build();
+
+		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);
+
 		auto* testProgr = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
 		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			cmd->bind_program(testProgr);
@@ -70,30 +75,14 @@ int main()
 		});
 		//pass2.add_post_barrier("depth");
 		
-		window.configure_imgui();
 		Material testMaterial(0, "default_frag");
-		StaticMesh testMesh;
-		testMesh.set_material(&testMaterial);
+		StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");
+		testMesh->set_material(&testMaterial);
 
-		testMaterial.add_texture(textureManager.request_texture("textureDX2Mips"));
+		testMaterial.add_texture(textureManager.request_texture("grass"));
 
-		vulkan::BufferInfo buffInfo;
-		buffInfo.size = sizeof(vulkan::vertices) + sizeof(nyan::indices);
-		buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		std::byte* tmp = (std::byte*) malloc(sizeof(nyan::vertices) + sizeof(nyan::indices));
-		std::memcpy(tmp, nyan::vertices.data(), sizeof(nyan::vertices));
-		std::memcpy(tmp + sizeof(nyan::vertices), nyan::indices.data(), sizeof(nyan::indices));
-		auto vbo = device.create_buffer(buffInfo, tmp);
-		//buffInfo.size = sizeof(vulkan::indices);
-		//buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		//auto ibo = device.create_buffer(buffInfo, nyan::indices.data());
-		//Todo, can't pass poitner to buffer
-		testMesh.set_indices(vbo, sizeof(nyan::vertices), nyan::indices.size());
-		testMesh.set_vertices(vbo, 0, nyan::vertices.size());
 		RendererCamera camera{};
-		Transform transform{};
-		testMesh.set_transform(&transform);
+		Transform& transform = testMesh->get_transform();
 		float x = 0;
 		float y = 0;
 		float z = 0;
@@ -146,12 +135,10 @@ int main()
 				camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();
-				renderer.queue_mesh(&testMesh);
-				
-				//imgui.next_frame();
-				//device.update_uniform_buffer();
+				renderer.queue_mesh(testMesh);
+
 				ImGui::Begin("Interaction");
-				ImGui::ColorEdit4("Clearcolor", &color.clearColor[0]);
+				ImGui::ColorEdit4("Clearcolor", &attachment.clearColor[0]);
 				ImGui::SliderFloat("x_rotation", &x, 0.0f, 360.0f);
 				ImGui::SliderFloat("y_rotation", &y, 0.0f, 360.0f);
 				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);

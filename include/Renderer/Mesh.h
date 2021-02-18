@@ -18,6 +18,9 @@ namespace nyan {
 	};
 	class Mesh {
 	public:
+		/*Mesh() {
+			transform.transform = Math::mat44::identity();
+		}*/
 		const Material* get_material() const noexcept {
 			return material;
 		}
@@ -44,14 +47,14 @@ namespace nyan {
 			indexOffset = offset;
 			indexCount = count;
 		}
-		void set_transform(Transform* transform_) noexcept {
-			transform = transform_;
+		Transform& get_transform() noexcept {
+			return transform;
 		}
 		void set_material(Material* material_) noexcept {
 			material = material_;
 		}
 	protected:
-		Transform* transform = nullptr;
+		Transform transform;
 		vulkan::Buffer* vertexBuffer = nullptr;
 		uint32_t vertexOffset = 0;
 		uint32_t vertexCount = 0;
@@ -65,7 +68,7 @@ namespace nyan {
 	};
 	class StaticMesh : public Mesh {
 	public:
-		//StaticMesh();
+		//StaticMesh() : Mesh() {}
 		struct Vertex {
 			Math::vec3 pos;
 			Math::usvec2 uv; //normalized [0,1] coordinates
@@ -142,6 +145,46 @@ namespace nyan {
 	constexpr std::array<uint16_t, 6> indices = {
 		0, 1, 2, 2, 3, 0,
 		//4, 5, 6, 6, 7, 4
+	};
+	constexpr std::array<StaticMesh::Vertex, 24> cubeVertices{
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.0f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, 0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.0f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+		
+		StaticMesh::Vertex{Math::vec3({0.5f, -0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.168f * 1.f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.168f * 1.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, 0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 2.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, 0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 2.f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 3.f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({ 0.5f, 0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 2.f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({ 0.5f, 0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 2.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, 0.5f})  , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 3.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+		
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 4.f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 4.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 3.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 3.f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 4.f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({ 0.5f, -0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 5.f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({ 0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 5.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, 0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 4.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+
+		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, -0.5f} ) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 6.f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, -0.5f, -0.5f} ) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 5.f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({0.5f, 0.5f, -0.5f} ) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 5.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 0.0f, 1.0f, 1.0f})) },
+		StaticMesh::Vertex{Math::vec3({-0.5f, 0.5f, -0.5f}) , Math::unormVec<uint16_t>(Math::vec2({0.166666666f * 6.f, 0.0f})) , Math::unormVec<uint8_t>(Math::vec4({1.0f, 1.0f, 1.0f, 1.0f})) },
+
+	};
+	constexpr std::array<uint16_t, 36> cubeIndices = {
+		0, 1, 2, 2, 3, 0,
+		6, 5, 4, 4, 7, 6,
+		10, 9, 8, 8, 11, 10,
+		12, 13, 14, 14, 15, 12,
+		16, 17, 18, 18, 19, 16,
+		22, 21, 20, 20, 23, 22,
 	};
 }
 #endif !RDMESH_H
