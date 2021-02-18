@@ -27,6 +27,23 @@ vulkan::FenceHandle vulkan::FenceManager::request_fence()
 	
 }
 
+VkFence vulkan::FenceManager::request_raw_fence()
+{
+	if (m_fences.empty()) {
+		VkFence fence;
+		VkFenceCreateInfo fenceCreateInfo{
+			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
+		};
+		vkCreateFence(r_device.get_device(), &fenceCreateInfo, r_device.get_allocator(), &fence);
+		return  fence;
+	}
+	else {
+		auto fence = m_fences.back();
+		m_fences.pop_back();
+		return fence;
+	}
+}
+
 void vulkan::FenceManager::reset_fence(VkFence fence) {
 	if (fence == VK_NULL_HANDLE)
 		return;

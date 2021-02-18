@@ -16,7 +16,9 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 	m_pipelineState.program = nullptr;
 	m_resourceBindings.bindings = {};
 	if constexpr (debug) {
-
+#ifdef DEBUGSUBMISSIONS
+		std::cout << "Created commandbuffer with handle: " << handle << '\n';
+#endif
 	}
 }
 

@@ -146,6 +146,25 @@ void vulkan::LogicalDevice::next_frame()
 {
 	end_frame();
 
+	if (!m_fenceCallbacks.empty()) {
+		auto range = m_fenceCallbacks.equal_range(m_fenceCallbacks.begin()->first);
+		std::vector<VkFence> clear;
+		for (auto it = m_fenceCallbacks.begin(); it != m_fenceCallbacks.end(); it = range.second) {
+			range = m_fenceCallbacks.equal_range(it->first);
+			if (vkGetFenceStatus(m_device, range.first->first) == VK_SUCCESS) {
+				for (auto cb = range.first; cb != range.second; cb++) {
+					cb->second();
+				}
+				clear.push_back(range.first->first);
+			}
+		}
+		for (auto fence : clear) {
+			auto range = m_fenceCallbacks.equal_range(fence);
+			m_fenceCallbacks.erase(range.first, range.second);
+			m_fenceManager.reset_fence(fence);
+		}
+	}
+
 	m_currentFrame++;
 	if (m_currentFrame >= m_frameResources.size())
 		m_currentFrame = 0;
@@ -159,66 +178,31 @@ void vulkan::LogicalDevice::next_frame()
 
 void vulkan::LogicalDevice::end_frame()
 {
-	bool sparseBindsQueued = !frame().submittedSparseBinds.empty();
-	std::vector<VkSemaphore> semaphores;
-	semaphores.reserve(3);
-	if (!frame().submittedTransferCmds.empty()) {
+	frame().deletedSemaphores.insert(frame().deletedSemaphores.end(), frame().signalSemaphores.cbegin(), frame().signalSemaphores.cend());
+	frame().signalSemaphores.clear();
+	if (m_transfer.needsFence|| !frame().submittedTransferCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		if (sparseBindsQueued) {
-			semaphores.push_back(VK_NULL_HANDLE);
-			submit_queue(CommandBuffer::Type::Transfer, &fence, 1, &semaphores.back());
-		}
-		else
-			submit_queue(CommandBuffer::Type::Transfer, &fence);
+		VkSemaphore sem = VK_NULL_HANDLE;
+		submit_queue(CommandBuffer::Type::Transfer, &fence, 1, &sem);
 		frame().waitForFences.emplace_back(std::move(fence));
-		m_compute.needsFence = false;
+		frame().signalSemaphores.push_back(sem);
+		m_transfer.needsFence = false;
 	}
-	if (!frame().submittedGraphicsCmds.empty()) {
+	if (m_graphics.needsFence || !frame().submittedGraphicsCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		if (sparseBindsQueued) {
-			semaphores.push_back(VK_NULL_HANDLE);
-			submit_queue(CommandBuffer::Type::Generic, &fence, 1, &semaphores.back());
-		} 
-		else
-			submit_queue(CommandBuffer::Type::Generic, &fence);
+		VkSemaphore sem = VK_NULL_HANDLE;
+		submit_queue(CommandBuffer::Type::Generic, &fence, 1, &sem);
 		frame().waitForFences.emplace_back(std::move(fence));
-		m_compute.needsFence = false;
+		frame().signalSemaphores.push_back(sem);
+		m_graphics.needsFence = false;
 	}
-	if (!frame().submittedComputeCmds.empty()) {
+	if (m_compute.needsFence || !frame().submittedComputeCmds.empty()) {
 		FenceHandle fence(m_fenceManager);
-		if (sparseBindsQueued) {
-			semaphores.push_back(VK_NULL_HANDLE);
-			submit_queue(CommandBuffer::Type::Compute, &fence, 1, &semaphores.back());
-		}
-		else 
-			submit_queue(CommandBuffer::Type::Compute, &fence);
+		VkSemaphore sem = VK_NULL_HANDLE;
+		submit_queue(CommandBuffer::Type::Compute, &fence, 1, &sem);
 		frame().waitForFences.emplace_back(std::move(fence));
+		frame().signalSemaphores.push_back(sem);
 		m_compute.needsFence = false;
-	}
-	if (sparseBindsQueued) {
-		VkBindSparseInfo bindInfo{
-			.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
-			.pNext = nullptr,
-			.waitSemaphoreCount = static_cast<uint32_t>(semaphores.size()),
-			.pWaitSemaphores = semaphores.data(),
-			.bufferBindCount = 0,
-			.pBufferBinds = 0,
-			.imageOpaqueBindCount = 0,
-			.pImageOpaqueBinds = nullptr,
-			.imageBindCount = static_cast<uint32_t>(frame().submittedSparseBinds.size()),
-			.pImageBinds = frame().submittedSparseBinds.data(),
-			.signalSemaphoreCount = 0,
-			.pSignalSemaphores =nullptr,
-		};
-		FenceHandle fence = m_fenceManager.request_fence();
-		VkFence localFence = fence;
-		frame().sparseFences.emplace_back(std::move(fence));
-		if (m_transfer.supportsSparse)
-			vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, localFence);
-		else
-			vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, localFence);
-		frame().sparseSemaphores.insert(frame().sparseSemaphores.end(), semaphores.cbegin(), semaphores.cend());
-		frame().submittedSparseBinds.clear();
 	}
 	//m_swapchains[0]->present_queue();
 }
@@ -227,7 +211,11 @@ void vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* 
 {
 	auto& queue = get_queue(type);
 	auto& submissions = get_current_submissions(type);
-	assert(!submissions.empty());
+	if (submissions.empty()) {
+		if (fence || semaphoreCount)
+			submit_empty(type, fence, semaphoreCount, semaphores);
+		return;
+	}
 	//Split commands into pre and post swapchain commands
 	std::array<VkSubmitInfo, 2> submitInfos;
 	uint32_t submitCounts = 0;
@@ -298,11 +286,21 @@ void vulkan::LogicalDevice::submit_queue(CommandBuffer::Type type, FenceHandle* 
 		submitInfos[i].pSignalSemaphores = signalSemaphores[i].data();
 
 	}
-#if 0
+#ifdef DEBUGSUBMISSIONS
 	for (auto i = 0; i < submitCounts; i++) {
+		std::cout << "Submitted :";
 		for (auto cmd = 0; cmd < submitInfos[i].commandBufferCount; cmd++) {
-			std::cout << "Submitted :" << submitInfos[i].pCommandBuffers[cmd] << "\n";
+			std::cout << submitInfos[i].pCommandBuffers[cmd] << " ";
 		}
+		std::cout << "\n\tWaits:";
+		for (auto j = 0; j < submitInfos[i].waitSemaphoreCount; j++) {
+			std::cout << submitInfos[i].pWaitSemaphores[j] << " ";
+		}
+		std::cout << "\n\tSignals:";
+		for (auto j = 0; j < submitInfos[i].signalSemaphoreCount; j++) {
+			std::cout << submitInfos[i].pSignalSemaphores[j] << " ";
+		}
+		std::cout << '\n';
 	}
 #endif //  0
 	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
@@ -363,10 +361,46 @@ void vulkan::LogicalDevice::queue_allocation_deletion(VmaAllocation allocation) 
 void vulkan::LogicalDevice::add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush)
 {
 	assert(stages != 0);
+	if (flush)
+		submit_queue(type, nullptr);
 	auto& queue = get_queue(type);
 	queue.waitSemaphores.push_back(semaphore);
 	queue.waitStages.push_back(stages);
 	queue.needsFence = true;
+}
+
+void vulkan::LogicalDevice::submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
+{
+	auto& queue = get_queue(type);
+	
+	std::vector<VkSemaphore> signalSemaphores;
+	std::vector<VkSemaphore> waitSemaphores;
+	auto waitStages = queue.waitStages;
+	queue.waitStages.clear();
+	for (auto semaphore : queue.waitSemaphores) {
+		frame().recycledSemaphores.push_back(semaphore);
+		waitSemaphores.push_back(semaphore);
+	}
+	queue.waitSemaphores.clear();
+	for (uint32_t i = 0; i < semaphoreCount; i++) {
+		auto semaphore = m_semaphoreManager.request_semaphore();
+		assert(semaphores[i] == VK_NULL_HANDLE);
+		semaphores[i] = semaphore;
+		signalSemaphores.push_back(semaphore);
+	}
+
+	if (fence)
+		*fence = m_fenceManager.request_fence();
+	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
+	VkSubmitInfo submitInfo{
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
+		.pWaitSemaphores = waitSemaphores.data(),
+		.pWaitDstStageMask = waitStages.data(),
+		.signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
+		.pSignalSemaphores = signalSemaphores.data()
+	};
+	vkQueueSubmit(queue.queue, 1, &submitInfo, localFence);
 }
 
 void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush)
@@ -435,12 +469,6 @@ void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCo
 	}
 }
 
-void vulkan::LogicalDevice::submit(const VkSparseImageMemoryBindInfo& sparse, std::function<void(void)> fenceCallback)
-{
-	frame().submittedSparseBinds.push_back(sparse);
-	frame().sparseFenceCallbacks.emplace(frame().sparseFences.size(), fenceCallback);
-}
-
 void vulkan::LogicalDevice::wait_no_lock() noexcept
 {
 	if (!m_frameResources.empty())
@@ -474,6 +502,11 @@ void vulkan::LogicalDevice::clear_semaphores() noexcept
 	m_compute.waitStages.clear();
 	m_transfer.waitStages.clear();
 
+}
+
+void vulkan::LogicalDevice::add_fence_callback(VkFence fence, std::function<void(void)> callback)
+{
+	m_fenceCallbacks.emplace(fence, callback);
 }
 
 vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
@@ -542,8 +575,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 {
 
 	std::array<uint32_t, 3> queueFamilyIndices;
-	if (info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT))
-		assert(supports_sparse_textures());
+	assert(!(info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT)));
 	VkImageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.flags = info.flags,
@@ -565,9 +597,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	};
 
-	VmaAllocationCreateInfo allocInfo{
-		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
-	};
+	
 	if (info.concurrent_queue()) {
 		createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
 		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentGraphics, ImageInfo::Flags::ConcurrentAsyncGraphics))
@@ -583,11 +613,20 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 	}
 	VmaAllocation allocation;
 	VkImage image;
+	VmaAllocationCreateInfo allocInfo{
+		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
 	if (auto result = vmaCreateImage(get_vma_allocator()->get_handle(), &createInfo, &allocInfo, &image, &allocation, nullptr); result != VK_SUCCESS) {
-		throw std::runtime_error("Vk: error creating image");
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could create image, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could create image, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+		}
 	}
-	bool needsView = (createInfo.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
 	auto tmp = info;
 	tmp.mipLevels = createInfo.mipLevels;
 	std::vector<AllocationHandle> allocs{ m_allocationPool.emplace(*this, allocation) };
@@ -601,9 +640,10 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 {
 	std::array<uint32_t, 3> queueFamilyIndices;
 	assert(supports_sparse_textures());
+	assert(info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT));
 	VkImageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		.flags = info.flags | (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT),
+		.flags = info.flags ,
 		.imageType = info.type,
 		.format = info.format,
 		.extent {
@@ -721,8 +761,21 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 			semaphores[1] = request_semaphore();
 			bindInfo.pSignalSemaphores = semaphores.data();
 			bindInfo.signalSemaphoreCount = 2;
-			add_wait_semaphore(CommandBuffer::Type::Generic, semaphores[0], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-			add_wait_semaphore(CommandBuffer::Type::Transfer, semaphores[1], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+			add_wait_semaphore(CommandBuffer::Type::Generic, semaphores[0], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, true);
+			add_wait_semaphore(CommandBuffer::Type::Transfer, semaphores[1], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, true);
+#if DEBUGSUBMISSIONS
+			std::cout << "Submitted Sparse\n";
+			std::cout << "\tWaits:";
+			for (auto j = 0; j < bindInfo.waitSemaphoreCount; j++) {
+				std::cout << bindInfo.pWaitSemaphores[j] << " ";
+			}
+			std::cout << "\n\tSignals:";
+			for (auto j = 0; j < bindInfo.signalSemaphoreCount; j++) {
+				std::cout << bindInfo.pSignalSemaphores[j] << " ";
+			}
+			std::cout << '\n';
+			
+#endif //  0
 			if (m_transfer.supportsSparse)
 				vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
 			else
@@ -734,15 +787,29 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 			bindInfo.pSignalSemaphores = &sem;
 			bindInfo.signalSemaphoreCount = 1;
 			add_wait_semaphore(CommandBuffer::Type::Generic, sem, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+#if DEBUGSUBMISSIONS
+			std::cout << "Submitted Sparse\n";
+			std::cout << "\tWaits:";
+			for (auto j = 0; j < bindInfo.waitSemaphoreCount; j++) {
+				std::cout << bindInfo.pWaitSemaphores[j] << " ";
+			}
+			std::cout << "\n\tSignals:";
+			for (auto j = 0; j < bindInfo.signalSemaphoreCount; j++) {
+				std::cout << bindInfo.pSignalSemaphores[j] << " ";
+			}
+			std::cout << '\n';
+
+#endif //  0
 			vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, nullptr);
 		}
 	}
 	
-	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin, true));
+	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin));
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
 	handle->set_single_mip_tail(singleMipTail);
-
+	handle->set_optimal(false);
+	handle->set_available_mip(sparseMemoryRequirement.imageMipTailFirstLod);
 	return handle;
 }
 void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence)
@@ -795,7 +862,7 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 		}
 		VkSemaphore sem = VK_NULL_HANDLE;
 		submit(transferCmd, 1, &sem);
-		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages);
+		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages, true);
 	}
 	if (info.generate_mips()) {
 		graphicsCmd->mip_barrier(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -808,6 +875,7 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 			image.get_stage_flags() & Image::possible_access_from_image_layout(info.layout));
 	}
 	submit(graphicsCmd, 0 ,nullptr, fence);
+	image.set_optimal(true);
 }
 void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence, uint32_t mipLevel)
 {
@@ -817,8 +885,9 @@ void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& inf
 		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
 	bool needInitialBarrier = true;
 
-	transferCmd->image_barrier(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	transferCmd->image_barrier(image, image.is_optimal()?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+	image.set_optimal(true);
 	transferCmd->copy_buffer_to_image(image, *buffer.buffer, buffer.blits.size(), buffer.blits.data());
 
 	if (m_transfer.queue != m_graphics.queue) {
@@ -835,8 +904,8 @@ void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& inf
 				.image = image.get_handle(),
 				.subresourceRange {
 					.aspectMask = ImageInfo::format_to_aspect_mask(info.format),
-					.baseMipLevel = mipLevel,
-					.levelCount = info.mipLevels - mipLevel,
+					.baseMipLevel = 0,
+					.levelCount = info.mipLevels ,
 					.layerCount = info.arrayLayers,
 				}
 			};
@@ -850,9 +919,10 @@ void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& inf
 			graphicsCmd->barrier(dstStages, dstStages,
 				0, nullptr, 0, nullptr, 1, &acquire);
 		}
-		VkSemaphore sem = VK_NULL_HANDLE;
-		submit(transferCmd, 1, &sem);
-		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages);
+		std::array<VkSemaphore, 2> sem{};
+		submit(transferCmd, 2, sem.data());
+		add_wait_semaphore(graphicsCmd->get_type(), sem[0], dstStages);
+		add_wait_semaphore(transferCmd->get_type(), sem[1], dstStages);
 	}
 	if (needInitialBarrier) {
 		graphicsCmd->image_barrier(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -873,6 +943,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	vkGetImageMemoryRequirements(m_device, imageHandle, &memoryRequirements);
 	assert(memoryRequirements.size <= m_physicalProperties.limits.sparseAddressSpaceSize);
 	assert((memoryRequirements.size % memoryRequirements.alignment) == 0);
+	assert((sparseMemoryRequirement.imageMipTailSize % memoryRequirements.alignment) == 0);
 
 	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
 	uint32_t allocationSize = memoryRequirements.alignment;
@@ -976,6 +1047,19 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &sem,
 	};
+#if DEBUGSUBMISSIONS
+	std::cout << "Submitted Sparse\n";
+	std::cout << "\tWaits:";
+	for (auto j = 0; j < bindInfo.waitSemaphoreCount; j++) {
+		std::cout << bindInfo.pWaitSemaphores[j] << " ";
+	}
+	std::cout << "\n\tSignals:";
+	for (auto j = 0; j < bindInfo.signalSemaphoreCount; j++) {
+		std::cout << bindInfo.pSignalSemaphores[j] << " ";
+	}
+	std::cout << '\n';
+
+#endif //  0
 	if(m_transfer.supportsSparse)
 		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, nullptr);
 	else
@@ -985,7 +1069,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	image.set_available_mip(baseMipLevel);
 	return true;
 }
-void vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t baseMipLevel, VkFence fence)
+void vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t baseMipLevel)
 {
 	VkImage imageHandle = image.get_handle();
 	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(imageHandle, ImageInfo::format_to_aspect_mask(image.get_format()));
@@ -1047,10 +1131,41 @@ void vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t base
 		.pBinds = imageBinds.data()
 	};
 	image.set_available_mip(baseMipLevel);
+	VkBindSparseInfo bindInfo{
+		.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO,
+		.pNext = nullptr,
+		.waitSemaphoreCount = static_cast<uint32_t>(frame().signalSemaphores.size()),
+		.pWaitSemaphores = frame().signalSemaphores.data(),
+		.bufferBindCount = 0,
+		.pBufferBinds = 0,
+		.imageOpaqueBindCount = 0,
+		.pImageOpaqueBinds = nullptr,
+		.imageBindCount = 1,
+		.pImageBinds = &imageBindInfo,
+		.signalSemaphoreCount = 0,
+		.pSignalSemaphores = nullptr,
+	};
+	VkFence fence = m_fenceManager.request_raw_fence();
+#if DEBUGSUBMISSIONS
+	std::cout << "Submitted Sparse\n";
+	std::cout << "\tWaits:";
+	for (auto j = 0; j < bindInfo.waitSemaphoreCount; j++) {
+		std::cout << bindInfo.pWaitSemaphores[j] << " ";
+	}
+	std::cout << "\n\tSignals:";
+	for (auto j = 0; j < bindInfo.signalSemaphoreCount; j++) {
+		std::cout << bindInfo.pSignalSemaphores[j] << " ";
+	}
+	std::cout << '\n';
 
-	//Following dependency chain intended: wait for queues who use the image to finish => unbind allocations => release allocations
-	submit(imageBindInfo, [&]() {
+#endif //  0
+	if (m_transfer.supportsSparse)
+		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, fence);
+	else
+		vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, fence);
+	add_fence_callback(fence, [&image, allocCount]() {
 		image.drop_allocations(allocCount);
+		image.set_being_resized(false);
 	});
 	
 }
@@ -1164,8 +1279,8 @@ vulkan::ImageViewHandle vulkan::LogicalDevice::create_image_view(const ImageView
 vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, InitialImageData* initialData)
 {
 	if (initialData) {
-		auto buf = create_staging_buffer(info, initialData);
 		auto handle = create_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		auto buf = create_staging_buffer(info, initialData);
 		update_image_with_buffer(info, *handle, buf);
 		return handle;
 	}
@@ -1196,11 +1311,9 @@ void vulkan::LogicalDevice::downsize_sparse_image(Image& image, uint32_t targetM
 	//Only downsize
 	if (targetMipLevel <= image.get_available_mip())
 		return;
+	image.set_being_resized(true);
 	image.change_view_mip_level(targetMipLevel);
-	//Theoretically we can now remove allocations without problems? I don't know
-	vulkan::FenceHandle fence  =m_fenceManager.request_fence();
-	//Add semaphore which waits for image to not be in use?
-	resize_sparse_image_down(image, targetMipLevel, fence);
+	resize_sparse_image_down(image, targetMipLevel);
 
 }
 
@@ -1210,14 +1323,17 @@ bool vulkan::LogicalDevice::upsize_sparse_image(Image& image, InitialImageData* 
 		return false;
 	if (targetMipLevel >= image.get_available_mip() )
 		return false;
+	image.set_being_resized(true);
 	auto buf = create_staging_buffer(image.get_info(), initialData, targetMipLevel);
 	resize_sparse_image_up(image, targetMipLevel);
 	vulkan::FenceHandle fence(m_fenceManager);
 	update_sparse_image_with_buffer(image.get_info(), image, buf, &fence, targetMipLevel);
-	VkFence localFence = fence;
-	//TODO Urgent async 
-	while (vkWaitForFences(m_device, 1, &localFence, TRUE, 100) != VK_SUCCESS);
-	image.change_view_mip_level(targetMipLevel);
+	VkFence localFence = fence.release_handle();
+
+	add_fence_callback(localFence, [&image, targetMipLevel]() {
+		image.change_view_mip_level(targetMipLevel);
+		image.set_being_resized(false);
+	});
 
 }
 
@@ -1485,32 +1601,7 @@ void vulkan::LogicalDevice::FrameResource::begin()
 		vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
 		waitForFences.clear();
 	}
-	bool canClearSparse = true;
-	uint32_t fenceIndex = 0;
-	for (auto& sparseFence : sparseFences) {
-		if (sparseFence) {
-			if (vkGetFenceStatus(r_device.get_device(), sparseFence) == VK_SUCCESS) {
-				auto its = sparseFenceCallbacks.equal_range(fenceIndex);
-				for (auto &it = its.first; it != its.second; it++) {
-					it->second();
-				}
-				sparseFenceCallbacks.erase(its.first, its.second);
-				sparseFence.clear();
-			}
-			else {
-				canClearSparse = false;
-			}
-		}
-		fenceIndex++;
-	}
-	if (canClearSparse) {
-		sparseFenceCallbacks.clear();
-		sparseFences.clear();
-		for (auto semaphore : sparseSemaphores) {
-			r_device.m_semaphoreManager.recycle_semaphore(semaphore);
-		}
-		sparseSemaphores.clear();
-	}
+
 	for (auto& pool : graphicsPool) {
 		assert(submittedGraphicsCmds.empty());
 		pool.reset();

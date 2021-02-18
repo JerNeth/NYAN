@@ -15,6 +15,7 @@ namespace vulkan {
 		FenceManager(FenceManager&) = delete;
 		FenceManager(FenceManager&& other) = delete;
 		FenceHandle request_fence();
+		VkFence request_raw_fence();
 		void reset_fence(VkFence fence);
 	private:
 		LogicalDevice& r_device;
@@ -52,6 +53,11 @@ namespace vulkan {
 				m_vkHandle = temp_handle;
 			}
 			return *this;
+		}
+		VkFence release_handle() noexcept {
+			auto tmp = m_vkHandle;
+			m_vkHandle = VK_NULL_HANDLE;
+			return tmp;
 		}
 		VkFence get_handle() const noexcept{
 			return m_vkHandle;

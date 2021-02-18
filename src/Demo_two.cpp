@@ -148,7 +148,7 @@ int main()
 				renderer.update_camera(camera);
 				application.next_frame();
 				renderer.queue_mesh(&testMesh);
-				textureManager.change_mip("textureDX2Mips", mipLevel);
+				
 				//imgui.next_frame();
 				//device.update_uniform_buffer();
 				ImGui::Begin("Interaction");
@@ -158,7 +158,29 @@ int main()
 				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
 				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
-				ImGui::SliderInt("lod", &mipLevel, 0, 16);
+
+				ImGui::AlignTextToFramePadding();
+				ImGui::Text("Hold to repeat:");
+				ImGui::SameLine();
+
+				// Arrow buttons with Repeater
+				float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+				ImGui::PushButtonRepeat(true);
+				if (ImGui::ArrowButton("##left", ImGuiDir_Left)) {
+					if (mipLevel) {
+						mipLevel--; textureManager.change_mip("textureDX2Mips", mipLevel);
+						
+					}
+				}
+				ImGui::SameLine(0.0f, spacing);
+				if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { 
+					mipLevel++; 
+					textureManager.change_mip("textureDX2Mips", mipLevel);
+				}
+				ImGui::PopButtonRepeat();
+				ImGui::SameLine();
+				ImGui::Text("%d", mipLevel);
+
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
 				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();

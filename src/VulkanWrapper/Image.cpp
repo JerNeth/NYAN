@@ -46,14 +46,13 @@ vulkan::ImageView::~ImageView() noexcept {
     }
 }
 
-vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail, bool sparse) :
+vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail) :
 	r_device(parent),
 	m_vkHandle(image),
 	m_info(info),
 	m_allocations(allocations),
 	m_availableMip(mipTail),
-	m_mipTail(mipTail),
-	m_isSparse(sparse)
+	m_mipTail(mipTail)
 {
 	ImageViewCreateInfo createInfo;
 	createInfo.image = this;
@@ -69,13 +68,18 @@ vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info
 
 vulkan::Image::Image(Image&& other) noexcept :
 	r_device(other.r_device),
+	m_optimal(other.m_optimal),
+	m_ownsImage(other.m_ownsImage),
 	m_vkHandle(other.m_vkHandle),
+	m_stageFlags(other.m_stageFlags),
+	m_accessFlags(other.m_accessFlags),
 	m_info(other.m_info),
-	m_allocations(other.m_allocations),
-	m_view(other.m_view),
-	m_availableMip( other.m_availableMip),
+	m_allocations(std::move(other.m_allocations)),
+	m_view(std::move(other.m_view)),
+	m_availableMip(other.m_availableMip),
 	m_mipTail(other.m_mipTail),
-	m_isSparse(other.m_isSparse)
+	m_singleMipTail(other.m_singleMipTail),
+	m_isBeingResized(other.m_isBeingResized)
 {
 	other.m_vkHandle = VK_NULL_HANDLE;
 }
@@ -87,13 +91,18 @@ vulkan::Image& vulkan::Image::operator=(Image&& other)
 			if (m_vkHandle != VK_NULL_HANDLE)
 				r_device.queue_image_deletion(m_vkHandle);
 		m_allocations.clear();
+		m_optimal = other.m_optimal;
+		m_ownsImage = other.m_ownsImage;
 		m_vkHandle = other.m_vkHandle;
+		m_stageFlags = other.m_stageFlags;
+		m_accessFlags = other.m_accessFlags;
 		m_info = other.m_info;
 		m_allocations = std::move(other.m_allocations);
 		m_view = std::move(other.m_view);
 		m_availableMip = other.m_availableMip;
 		m_mipTail = other.m_mipTail;
-		m_isSparse = other.m_isSparse;
+		m_singleMipTail = other.m_singleMipTail;
+		m_isBeingResized = other.m_isBeingResized;
 		other.m_vkHandle = VK_NULL_HANDLE;
 	}
 	return *this;

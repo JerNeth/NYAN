@@ -267,9 +267,9 @@ std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::string
 	file.close();
 	return buffer;
 }
-vulkan::ImageInfo Utility::DDSReader::readDDSFileHeader(const std::string& filename, bool strict)
+Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& filename, bool strict)
 {
-	vulkan::ImageInfo ret{};
+	Utility::TextureInfo ret{};
 	std::ifstream file(filename + ".dds", std::ios::ate | std::ios::binary);
 	if (!(file.is_open())) {
 		file.open(filename, std::ios::ate | std::ios::binary);
@@ -461,10 +461,10 @@ vulkan::ImageInfo Utility::DDSReader::readDDSFileHeader(const std::string& filen
 	}
 
 	if (isCubeMap)
-		ret.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		ret.cube =  true;
 	return ret;
 }
-std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const vulkan::ImageInfo& info, const std::vector<std::byte>& data, uint32_t startMipLevel) {
+std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const Utility::TextureInfo& info, const std::vector<std::byte>& data, uint32_t startMipLevel) {
 	//TODO could directly read from file into vulkan buffer ?
 	std::vector<vulkan::InitialImageData> initalData;
 	std::vector<uint32_t> levelSizes(info.mipLevels);

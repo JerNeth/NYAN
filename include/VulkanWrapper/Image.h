@@ -508,7 +508,7 @@ namespace vulkan {
 	};
 	class Image : public Utility::UIDC {
 	public:
-		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0, bool sparse = false);
+		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0);
 		Image(Image&) = delete;
 		Image(Image&&) noexcept;
 		Image& operator=(Image&) = delete;
@@ -533,7 +533,7 @@ namespace vulkan {
 				m_availableMip = mip;
 		}
 		bool is_sparse() const noexcept {
-			return m_isSparse;
+			return m_info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		}
 		uint32_t get_mip_tail() const noexcept {
 			return m_mipTail;
@@ -588,6 +588,12 @@ namespace vulkan {
 		}
 		void set_single_mip_tail(bool mipTail) noexcept {
 			m_singleMipTail = mipTail;
+		}
+		bool is_being_resized() const noexcept {
+			return m_isBeingResized;
+		}
+		void set_being_resized(bool resized) noexcept {
+			m_isBeingResized = resized;
 		}
 		static inline VkPipelineStageFlags possible_stages_from_image_usage(VkImageUsageFlags usage)
 		{
@@ -671,7 +677,7 @@ namespace vulkan {
 		uint32_t m_availableMip = 0;
 		uint32_t m_mipTail = 0;
 		bool m_singleMipTail = false; //If false => first <Layer> allocations are mip tails, otherwise first allocation only
-		bool m_isSparse = false;
+		bool m_isBeingResized = false;
 	};
 }
 

@@ -167,14 +167,9 @@ namespace vulkan {
 			std::vector<VkSemaphore> deletedSemaphores;
 			std::vector<VkSemaphore> recycledSemaphores;
 
+			std::vector<VkSemaphore> signalSemaphores;
 			std::vector<FenceHandle> waitForFences;
 
-			//Sparse
-			std::vector<VkSparseImageMemoryBind> sparseMemoryBinds;
-			std::vector<VkSparseImageMemoryBindInfo> submittedSparseBinds;
-			std::unordered_multimap< uint32_t, std::function<void(void)>> sparseFenceCallbacks;
-			std::vector<VkSemaphore> sparseSemaphores;
-			std::vector<FenceHandle> sparseFences;
 			void begin();
 		};
 		friend class Swapchain;
@@ -243,11 +238,12 @@ namespace vulkan {
 		void queue_buffer_deletion(VkBuffer buffer) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
+		void submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
-		void submit(const VkSparseImageMemoryBindInfo& sparse, std::function<void(void)> fenceCallback);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
+		void add_fence_callback(VkFence fence, std::function<void(void)> callback);
 
 		FrameResource& frame();
 
@@ -325,7 +321,7 @@ namespace vulkan {
 		void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
 		void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
 		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);
-		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel, VkFence fence);
+		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel);
 
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
 		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);
@@ -366,12 +362,12 @@ namespace vulkan {
 
 		size_t m_currentFrame = 0;
 		
+		std::unordered_multimap<VkFence, std::function<void(void)>> m_fenceCallbacks;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
 
-		//TODO use other data structures
-		//std::unordered_map< std::string, size_t> m_shaderIds;
+
 		Utility::LinkedBucketList<Shader> m_shaderStorage;
 
 		std::unordered_map< std::vector<Shader*>, size_t, Utility::VectorHash<Shader*>> m_programIds;
