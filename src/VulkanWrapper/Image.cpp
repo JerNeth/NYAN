@@ -109,7 +109,7 @@ vulkan::Image& vulkan::Image::operator=(Image&& other)
 }
 
 vulkan::Image::~Image() noexcept
-{			
+{		
 	if (m_ownsImage)
 		if (m_vkHandle != VK_NULL_HANDLE)
 			r_device.queue_image_deletion(m_vkHandle);
@@ -124,7 +124,8 @@ void vulkan::Image::append_allocations(const std::vector<AllocationHandle>& allo
 
 void vulkan::Image::drop_allocations(uint32_t count)
 {
-	m_allocations.resize(m_allocations.size()-Math::min(count, static_cast<uint32_t>(m_allocations.size())));
+	uint32_t releaseCount = Math::min(count, static_cast<uint32_t>(m_allocations.size()));
+	m_allocations.resize(m_allocations.size() - releaseCount);
 }
 
 vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {

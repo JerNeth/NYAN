@@ -954,7 +954,21 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	VmaAllocationCreateInfo allocCreateInfo{
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
 	};
-	uint32_t allocationCount = (memoryRequirements.size - mipTailSize) / allocationSize;
+
+	uint32_t allocationCount = 0;
+	for (uint32_t mipLevel = image.get_available_mip(); mipLevel-- > baseMipLevel;) {
+		VkExtent3D extent{
+			.width = image.get_width(mipLevel) ,
+			.height = image.get_height(mipLevel),
+			.depth = image.get_depth(mipLevel),
+		};
+		VkExtent3D granularity = sparseMemoryRequirement.formatProperties.imageGranularity;
+
+		uint32_t xCount = (extent.width + granularity.width - 1) / granularity.width;
+		uint32_t yCount = (extent.height + granularity.height - 1) / granularity.height;
+		uint32_t zCount = (extent.depth + granularity.depth - 1) / granularity.depth;
+		allocationCount += xCount * yCount * zCount;
+	}
 
 	std::vector<VmaAllocation> allocations;
 	std::vector<VmaAllocationInfo> allocationInfos;
@@ -969,7 +983,6 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	allocations.resize(allocationCount);
 	allocationInfos.resize(allocationCount);
 	vmaAllocateMemoryPages(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, allocationCount, allocations.data(), allocationInfos.data());
-
 	allocationHandles.reserve(allocationCount);
 	imageBinds.reserve(allocationCount);
 	
