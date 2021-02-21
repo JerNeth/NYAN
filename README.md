@@ -24,7 +24,7 @@ None, yet.
 	- [x] Create a window
 	- [x] Get Vulkan Context
 - [ ] Renderer
-	- [ ] Rendergraph
+	- [x] Rendergraph (partial)
 	- [ ] UI
 	- [ ] Lights
 	- [ ] Deferred renderer
@@ -46,6 +46,7 @@ None, yet.
 	- [x] Command Buffer abstraction
 	- [x] Buffer abstraction
 	- [x] Image abstraction
+	- [x] Sparse Images
 - [ ] Scene representation
 - [ ] I/O
 
@@ -54,6 +55,7 @@ None, yet.
 The engine depends on the following libraries:
 
 - [Vulkan SDK](https://vulkan.lunarg.com/): must be manually installed
+- [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-2): must be manually installed (for now, in future optional) (Expects FBXSDK_DIR to be set in UserSettings.txt)
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched

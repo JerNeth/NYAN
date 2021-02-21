@@ -2,7 +2,7 @@
 #define VKBUFFER_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "Utility.h"
+#include <Util>
 #include "Allocator.h"
 namespace vulkan {
 	class LogicalDevice;

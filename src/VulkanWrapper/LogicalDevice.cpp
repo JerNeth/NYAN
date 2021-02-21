@@ -74,22 +74,6 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkD
 	m_physicalFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	m_physicalFeatures.pNext = nullptr;
 	vkGetPhysicalDeviceFeatures2(m_physicalDevice, &m_physicalFeatures);
-
-
-	//uint32_t propertyCount = 0;
-	/*void vkGetPhysicalDeviceSparseImageFormatProperties(
-		VkPhysicalDevice                            device.get_device(),
-		VkFormat                                    format,
-		VkImageType                                 type,
-		VkSampleCountFlagBits                       samples,
-		VkImageUsageFlags                           usage,
-		VkImageTiling                               tiling,
-		uint32_t * pPropertyCount,
-		VkSparseImageFormatProperties * pProperties);*/
-	/*vkGetPhysicalDeviceSparseImageFormatProperties(m_physicalDevice, VK_FORMAT_BC7_SRGB_BLOCK, VK_IMAGE_TYPE_2D, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_TILING_OPTIMAL, &propertyCount, nullptr);
-	std::vector< VkSparseImageFormatProperties> proper(propertyCount);
-	vkGetPhysicalDeviceSparseImageFormatProperties(m_physicalDevice, VK_FORMAT_BC7_SRGB_BLOCK, VK_IMAGE_TYPE_2D, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_TILING_OPTIMAL, &propertyCount, proper.data());
-	std::cout << "Hello \n";*/
 }
 vulkan::LogicalDevice::~LogicalDevice()
 {
@@ -634,6 +618,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
 
+
 	return handle;
 }
 vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage)
@@ -811,6 +796,14 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 	handle->set_optimal(false);
 	handle->set_available_mip(sparseMemoryRequirement.imageMipTailFirstLod);
 	return handle;
+}
+void vulkan::LogicalDevice::transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
+
+	graphicsCmd->image_barrier(*handle, oldLayout, newLayout,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0);
+	submit(graphicsCmd);
 }
 void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence)
 {
@@ -1299,6 +1292,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, I
 	}
 	else {
 		auto handle = create_image(info, static_cast<VkImageUsageFlags>(0));
+		if (info.layout != VK_IMAGE_LAYOUT_UNDEFINED)
+			transition_image(handle, VK_IMAGE_LAYOUT_UNDEFINED, info.layout);
 		return handle;
 	}
 }

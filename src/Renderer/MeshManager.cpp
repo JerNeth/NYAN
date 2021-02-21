@@ -1,3 +1,4 @@
+#include "..\..\include\Renderer\MeshManager.h"
 #include "Renderer/MeshManager.h"
 
 using namespace vulkan;
@@ -30,5 +31,52 @@ StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 	mesh.set_vertices(vbo, 0, nyan::cubeVertices.size());
 	auto res = m_staticMeshes.emplace(name, mesh);
 	
+	return &res.first->second;
+}
+
+StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name, const std::vector<StaticMesh::Vertex>& vertices, const std::vector<uint16_t>& indices)
+{
+	if (auto res = m_staticMeshes.find(name); res != m_staticMeshes.end())
+		return &res->second;
+
+	StaticMesh mesh;
+	vulkan::BufferInfo buffInfo;
+	buffInfo.size = vertices.size()* sizeof(StaticMesh::Vertex) + indices.size()*sizeof(uint16_t);
+	buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	std::byte* tmp = (std::byte*)malloc(buffInfo.size);
+	std::memcpy(tmp, vertices.data(), vertices.size() * sizeof(StaticMesh::Vertex));
+	std::memcpy(tmp + vertices.size() * sizeof(StaticMesh::Vertex), indices.data(), indices.size() * sizeof(uint16_t));
+	auto vbo = r_device.create_buffer(buffInfo, tmp);
+
+	m_usedBuffers.push_back(vbo);
+
+	mesh.set_indices(vbo, vertices.size() * sizeof(StaticMesh::Vertex), indices.size());
+	mesh.set_vertices(vbo, 0, vertices.size());
+	auto res = m_staticMeshes.emplace(name, mesh);
+
+	return &res.first->second;
+}
+StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name, const std::vector<StaticMesh::Vertex>& vertices, const std::vector<uint32_t>& indices)
+{
+	if (auto res = m_staticMeshes.find(name); res != m_staticMeshes.end())
+		return &res->second;
+
+	StaticMesh mesh;
+	vulkan::BufferInfo buffInfo;
+	buffInfo.size = vertices.size() * sizeof(StaticMesh::Vertex) + indices.size() * sizeof(uint32_t);
+	buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+	std::byte* tmp = (std::byte*)malloc(buffInfo.size);
+	std::memcpy(tmp, vertices.data(), vertices.size() * sizeof(StaticMesh::Vertex));
+	std::memcpy(tmp + vertices.size() * sizeof(StaticMesh::Vertex), indices.data(), indices.size() * sizeof(uint32_t));
+	auto vbo = r_device.create_buffer(buffInfo, tmp);
+
+	m_usedBuffers.push_back(vbo);
+
+	mesh.set_indices(vbo, vertices.size() * sizeof(StaticMesh::Vertex), indices.size());
+	mesh.set_vertices(vbo, 0, vertices.size());
+	auto res = m_staticMeshes.emplace(name, mesh);
+
 	return &res.first->second;
 }

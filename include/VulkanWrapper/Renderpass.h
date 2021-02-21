@@ -2,7 +2,7 @@
 #define VKRENDERPASS_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "Utility.h"
+#include <Util>
 #include "Image.h"
 
 namespace vulkan {

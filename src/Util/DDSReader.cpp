@@ -1,4 +1,4 @@
-#include "DDSReader.h"
+#include "Utility/DDSReader.h"
 #include "LinAlg.h"
 #include "VkWrapper.h"
 

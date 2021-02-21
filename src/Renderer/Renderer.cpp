@@ -22,6 +22,8 @@ nyan::VulkanRenderer::VulkanRenderer(vulkan::LogicalDevice& device,vulkan::Shade
 
 void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
 {
+	if (mesh == nullptr)
+		return;
 	RenderId id = mesh->get_material()->get_id();
 	id <<= 32;
 	if (mesh->uses_tangent_space())
@@ -31,6 +33,8 @@ void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
 
 void nyan::VulkanRenderer::queue_mesh(SkinnedMesh* mesh)
 {
+	if (mesh == nullptr)
+		return;
 	RenderId id = mesh->get_material()->get_id();
 	id <<= 32;
 	if (mesh->uses_tangent_space())

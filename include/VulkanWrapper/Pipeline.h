@@ -2,7 +2,7 @@
 #define VKPIPELINE_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "Utility.h"
+#include <Util>
 #include "Shader.h"
 #include "DescriptorSet.h"
 #include "Renderpass.h"
@@ -82,14 +82,14 @@ namespace vulkan {
 			return std::memcmp(&left, &right, sizeof(PipelineState))== 0;
 		}
 	};
-	static_assert(sizeof(PipelineState) == 16, "Somehting wrong with PipelineState");
+	static_assert(sizeof(PipelineState) == 16, "Something wrong with PipelineState");
 	constexpr PipelineState defaultPipelineState {
 		.depth_write = VK_TRUE,
 		.depth_test = VK_TRUE,
 		.blend_enable = VK_FALSE,
-		//.cull_mode = VK_CULL_MODE_FRONT_BIT,
-		.cull_mode = VK_CULL_MODE_NONE,
-		.front_face = VK_FRONT_FACE_CLOCKWISE,
+		.cull_mode = VK_CULL_MODE_BACK_BIT,
+		//.cull_mode = VK_CULL_MODE_NONE,
+		.front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		.depth_bias_enable = VK_FALSE,
 		.dynamic_cull_mode = 0,
 		.dynamic_front_face = 0,

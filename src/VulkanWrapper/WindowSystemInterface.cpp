@@ -123,6 +123,11 @@ void vulkan::WindowSystemInterface::end_frame()
 	}
 }
 
+void vulkan::WindowSystemInterface::set_vsync(bool enabled)
+{
+	m_vsyncEnabled = enabled;
+}
+
 bool vulkan::WindowSystemInterface::init_swapchain()
 {
 

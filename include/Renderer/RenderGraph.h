@@ -97,7 +97,7 @@ namespace nyan {
 		Type m_type;
 		uint32_t m_id;
 		std::function<void(vulkan::CommandBufferHandle&)> m_renderFunction;
-		//Order Renderpass as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
+		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
 		std::set<RenderResourceId> m_reads;
 		std::set<RenderResourceId> m_writes;
 		RenderResourceId m_depthStencilRead = InvalidResourceId;

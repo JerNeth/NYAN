@@ -81,4 +81,4 @@ constexpr bool debug = true;
 #include <iostream>
 #include <new>
 #include <thread>
-#endif// VKVULKANINCLUDES_H
+#endif   //!VKVULKANINCLUDES_H

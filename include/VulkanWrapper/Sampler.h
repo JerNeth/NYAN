@@ -2,7 +2,7 @@
 #define VKSAMPLER_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "Utility.h"
+#include <Util>
 
 namespace vulkan {
 

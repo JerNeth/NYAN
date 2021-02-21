@@ -2,8 +2,8 @@
 #define VKLOGICALDEVICE_H
 #pragma once
 #include "VulkanIncludes.h"
+#include <Util>
 #include "Framebuffer.h"
-#include "Utility.h"
 #include "LinAlg.h"
 #include "Shader.h"
 #include "Instance.h"
@@ -318,6 +318,7 @@ namespace vulkan {
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
 		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
 		ImageHandle create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage);
+		void transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout);
 		void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
 		void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
 		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);

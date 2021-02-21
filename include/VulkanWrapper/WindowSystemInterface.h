@@ -13,6 +13,7 @@ namespace vulkan {
 		void update_swapchain();
 		void begin_frame();
 		void end_frame();
+		void set_vsync(bool enabled);
 		bool init_swapchain();
 	private:
 		LogicalDevice& r_device;
@@ -22,6 +23,7 @@ namespace vulkan {
 		VkExtent2D m_swapchainExtent{};
 		uint32_t m_swapchainImageIndex = 0;
 		bool m_swapchainImageAcquired = false;
+		bool m_vsyncEnabled = false;
 		VkFormat m_format = VK_FORMAT_UNDEFINED;
 	};
 }

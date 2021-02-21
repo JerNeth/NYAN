@@ -3,7 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "Pipeline.h"
-#include "Utility.h"
+#include <Util>
 namespace vulkan {
 	class LogicalDevice;
 	class Framebuffer;

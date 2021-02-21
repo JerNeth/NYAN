@@ -5,7 +5,7 @@
 
 
 project(SmallEngine)
-
+include("UserSettings.txt")
 #Project Wide Settings
 #All Options which change the ABI come here
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -13,12 +13,16 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #add_compile_options(/WX)
     #set(CMAKE_CXX_FLAGS_RELEASE "/MT")
     #set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
-    add_compile_options(/MTd /wd26812)
+    add_compile_options(/wd26812)
+    add_compile_options("$<$<CONFIG:RELEASE>:/MT>")
+    add_compile_options("$<$<CONFIG:DEBUG>:/MTd>")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     message("Detected Clang")
     #set(CMAKE_CXX_FLAGS_RELEASE "-MT")
     #set(CMAKE_CXX_FLAGS_DEBUG "-MTd")
-    add_compile_options(-MTd)
+    #add_compile_options(-MTd)
+    add_compile_options("$<$<CONFIG:RELEASE>:-MT>")
+    add_compile_options("$<$<CONFIG:DEBUG>:-MTd>")
     #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
 endif()
 
@@ -27,13 +31,16 @@ endif()
 # ---------------------------------------------------------------------------
 
 find_package(Threads REQUIRED)
-#find_package(Openmp REQUIRED)
 
 find_package(Vulkan REQUIRED)
 
+find_package(spirv-cross-core)
 
 # SPIRV-Cross
-include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
+if(NOT spirv-cross-core_FOUND)
+    include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
+endif()
+
 
 # GLFW
 include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
@@ -50,6 +57,11 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 
 # Volk
 include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
+
+# FBX SDK
+
+include("${CMAKE_SOURCE_DIR}/vendor/FBXSDK.cmake")
+
 
 
 # ---------------------------------------------------------------------------
@@ -82,11 +94,15 @@ add_dependencies(Engine shaders)
 
 add_executable(Demo ${DEMO_SRC})# )
 add_executable(Demo2 ${DEMO2_SRC})
+add_executable(FBXTest ${FBXTest_SRC})
 
 target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk)
 target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)
+
+include_directories("${FBXSDK_DIR}/include")
+target_link_libraries(FBXTest Engine ${FBX_REQUIRED_LIBS_DEPENDENCY})
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 

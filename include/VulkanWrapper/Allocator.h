@@ -3,7 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "Image.h"
-#include "Utility.h"
+#include <Util>
 #include <unordered_map>
 
 namespace vulkan {

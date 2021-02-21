@@ -74,6 +74,10 @@ namespace nyan {
 			Math::usvec2 uv; //normalized [0,1] coordinates
 			Math::ubvec4 color;
 		}; 
+		struct TangentVertex {
+			Vertex vertex;
+			TangentSpaceBasis tangentBasis;
+		};
 		size_t vertex_count() const noexcept {
 			return 0;
 		}
@@ -111,6 +115,10 @@ namespace nyan {
 			Math::ubvec4 boneIndices;
 			Math::usvec4 boneWeights; //normalized [0,1] boneweights
 		}; 
+		struct TangentVertex {
+			Vertex vertex;
+			TangentSpaceBasis tangentBasis;
+		};
 		size_t vertex_count() const noexcept {
 			return 0;
 		}

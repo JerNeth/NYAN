@@ -54,6 +54,12 @@ vulkan::ImageView* vulkan::AttachmentAllocator::request_attachment(uint32_t widt
 		return res->second->get_view();
 	ImageInfo info = ImageInfo::render_target(width, height, format);
 	info.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	if (ImageInfo::is_depth_or_stencil_format(format)) {
+		info.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	}
+	else {
+		info.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
 	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second->get_view();
 }
 

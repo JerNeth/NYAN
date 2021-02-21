@@ -38,6 +38,7 @@ void nyan::SkinnedMesh::render(vulkan::CommandBufferHandle& cmd)
 		assert(blendshape);
 		cmd->set_vertex_attribute(7, 1, vulkan::get_format<Math::ubvec3>());
 		cmd->bind_vertex_buffer(1, *blendshape->vertexBuffer, blendshape->vertexOffset, VK_VERTEX_INPUT_RATE_VERTEX);
+		//TODO bind ubo/push constant for blendweight
 	}
 	cmd->bind_vertex_buffer(0, *vertexBuffer, vertexOffset, VK_VERTEX_INPUT_RATE_VERTEX);
 	cmd->push_constants(&transform.transform, 0, sizeof(Transform));

@@ -2,7 +2,7 @@
 #define VKSHADER_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "Utility.h"
+#include <Util>
 #include "LinAlg.h"
 
 namespace vulkan {

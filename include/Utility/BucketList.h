@@ -3,6 +3,7 @@
 #define BUCKETLIST_H
 #include <iostream>
 #include <bitset>
+#include <assert.h>
 namespace Utility {
 	template<typename T, typename Container>
 	class ObjectHandle;

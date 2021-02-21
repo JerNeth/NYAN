@@ -4,8 +4,8 @@
 #include "VkWrapper.h"
 #include "LinAlg.h"
 #include "LogicalDevice.h"
-#include "Utility.h"
-#include "DDSReader.h"
+#include "Utility/DDSReader.h"
+#include <Util>
 namespace nyan {
 	class TextureManager {
 	public:

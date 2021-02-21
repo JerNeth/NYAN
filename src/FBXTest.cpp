@@ -1,37 +1,19 @@
-﻿
 #include <iostream>
-
+#include <fbxsdk.h>
+#include <Util>
 #include "Application.h"
-#include "imgui.h"
-#include "VkWrapper.h"
-#include <glfwWrapper.h>
-#include "VulkanRenderer"
-#include <chrono>
-#include <stb_image.h>
-#include "LinAlg.h"
-#include <new>
-#include <thread>
-using namespace std;
-using namespace Math;
-using namespace vulkan;
+#include "Utility/FBXReader.h"
 using namespace nyan;
-using namespace Utility;
+int main() {
+	Utility::FBXReader fbxReader;
+	char meshName[255] = "monkey.fbx";
+	auto meshes = fbxReader.parse_meshes(meshName);
+	auto& mesh = meshes.back();
+	auto texName = "monkey";
 
-
-
-int main()
-{
-
-	/*
-	unsigned int n = std::thread::hardware_concurrency();
-	std::cout << n << " concurrent threads are supported.\n";
-	std::cout << std::hardware_constructive_interference_size << " hardware_constructive_interference_size.\n";
-	std::cout << std::hardware_destructive_interference_size << " hardware_destructive_interference_size .\n";
-	*/
 	nyan::Application application("Demo");
 	try {
 
-		auto start = chrono::high_resolution_clock::now();
 		auto& device = application.get_device();
 		auto& window = application.get_window();
 		vulkan::ShaderManager shaderManager(device);
@@ -45,11 +27,11 @@ int main()
 		application.add_renderer(&imgui);
 		bool wireframe = false;
 
-		
+
 		auto& pass = rendergraph.add_pass("test", nyan::Renderpass::Type::Graphics);
 		nyan::ImageAttachment depth;
 		depth.clearColor[0] = 1.0f;
-		depth.format = VK_FORMAT_D16_UNORM;
+		depth.format = VK_FORMAT_D24_UNORM_S8_UINT;
 		pass.add_depth_output("depth", depth);
 		nyan::ImageAttachment color;
 		color.format = VK_FORMAT_R8G8B8A8_SRGB;
@@ -58,7 +40,7 @@ int main()
 		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
 		nyan::ImageAttachment swap;
 		pass2.add_input("color");
-		pass2.add_read_dependency("depth");
+		//pass2.add_read_dependency("depth");
 		pass2.add_output("swap", swap);
 		rendergraph.set_swapchain("swap");
 		rendergraph.build();
@@ -73,50 +55,46 @@ int main()
 			cmd->bind_input_attachment(0, 0);
 			cmd->draw(3, 1, 0, 0);
 		});
-		pass2.add_post_barrier("depth");
-		
-		Material testMaterial(0, "default_frag");
-		StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");
-		testMesh->set_material(&testMaterial);
+		//pass2.add_post_barrier("depth");
 
-		testMaterial.add_texture(textureManager.request_texture("grass"));
+		Material testMaterial(0, "default_frag");
+		//StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");
+		StaticMesh* viewPortMesh = nullptr; 
+
+		testMaterial.add_texture(textureManager.request_texture(texName));
 
 		RendererCamera camera{};
-		Transform& transform = testMesh->get_transform();
-		float x = 0;
-		float y = 0;
-		float z = 0;
+		Transform* transform = nullptr;
+		Math::vec3 rotation({ 0.0f, 0.0f, 0.0f });
+		Math::vec3 position({ 0.0f, 0.0f, 0.0f });
 		float fov = 90.f;
 		float distance = 1.0f;
 		float aspect = application.get_height() / static_cast<float>(application.get_width());
-		transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-		//std::cout<< transform.transform.convert_to_string() << '\n';
-		transform.transform(3, 3) = 1;
-		camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		camera.proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
+		camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+		camera.proj = Math::mat44::perspective(1.f, 10.f, fov, aspect);
 
 		//device.create_stuff(tex->get_view()->get_image_view());
-		uint64_t frame = 0;
-		auto total = start - start;
 		bool is_fullscreen_window = false;
 		bool should_fullscreen_window = false;
+		bool culling = true;
 		int mipLevel = 2;
-
 		pass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			if (wireframe)
 				cmd->set_polygon_mode(VK_POLYGON_MODE_LINE);
 			cmd->begin_region("Renderer");
+			//cmd->set_cull_mode(VK_CULL_MODE_BACK_BIT);
+			if (culling) {
+				cmd->set_cull_mode(VK_CULL_MODE_BACK_BIT);
+			}
+			else {
+				cmd->set_cull_mode(VK_CULL_MODE_NONE);
+			}
 			renderer.render(cmd);
 			cmd->end_region();
 		});
 
-		std::chrono::duration<float, std::milli> delta = std::chrono::high_resolution_clock::now() - start;
-		start = chrono::steady_clock::now();
-		std::cout << "Demo setup took: " << delta.count() << "ms\n";
 		while (!window.should_close())
 		{
-			delta = std::chrono::high_resolution_clock::now() - start;
-			start = chrono::steady_clock::now();
 			//window.swap_buffers();
 			glfwPollEvents();
 			window.imgui_update_mouse_keyboard();
@@ -129,24 +107,24 @@ int main()
 			}
 			if (!window.is_iconified()) {
 				aspect = application.get_height() / static_cast<float>(application.get_width());
-				transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
-				transform.transform(3, 3) = 1;
+				if (transform) {
+					transform->transform = Math::mat44(Math::mat33::rotation_matrix(rotation));
+					transform->transform(3, 3) = 1;
+					transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
+				}
 				camera.proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
-				camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+				camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();
-				renderer.queue_mesh(testMesh);
 
 				ImGui::Begin("Interaction");
 				ImGui::ColorEdit4("Clearcolor", &attachment.clearColor[0]);
-				ImGui::SliderFloat("x_rotation", &x, 0.0f, 360.0f);
-				ImGui::SliderFloat("y_rotation", &y, 0.0f, 360.0f);
-				ImGui::SliderFloat("z_rotation", &z, 0.0f, 360.0f);
+				
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
 				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
 
 				ImGui::AlignTextToFramePadding();
-				ImGui::Text("Hold to repeat:");
+				ImGui::Text("Mip Level:");
 				ImGui::SameLine();
 
 				// Arrow buttons with Repeater
@@ -154,34 +132,83 @@ int main()
 				ImGui::PushButtonRepeat(true);
 				if (ImGui::ArrowButton("##left", ImGuiDir_Left)) {
 					if (mipLevel) {
-						mipLevel--; textureManager.change_mip("grass", mipLevel);
-						
+						mipLevel--; textureManager.change_mip(texName, mipLevel);
+
 					}
 				}
 				ImGui::SameLine(0.0f, spacing);
-				if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { 
-					mipLevel++; 
-					textureManager.change_mip("grass", mipLevel);
+				if (ImGui::ArrowButton("##right", ImGuiDir_Right)) {
+					mipLevel++;
+					textureManager.change_mip(texName, mipLevel);
 				}
 				ImGui::PopButtonRepeat();
 				ImGui::SameLine();
 				ImGui::Text("%d", mipLevel);
 
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
+				ImGui::Checkbox("Backface Culling", &culling);
 				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();
+				ImGui::Begin("Model");
+				if (ImGui::Button("Load Model")) {
+					auto meshes = fbxReader.parse_meshes(meshName);
+					if (!meshes.empty()) {
+						auto& mesh = meshes.back();
+						if(mesh.get_static_vertices().size() < UINT16_MAX)
+							viewPortMesh = meshManager.request_static_mesh(mesh.name, mesh.get_static_vertices(), mesh.get_indices16());
+						else
+							viewPortMesh = meshManager.request_static_mesh(mesh.name, mesh.get_static_vertices(), mesh.get_indices32());
+						viewPortMesh->set_material(&testMaterial);
+						transform = &viewPortMesh->get_transform();
+					}
+				}
+				ImGui::SameLine();
+				ImGui::InputText("", meshName, 255);
+				if (viewPortMesh) {
+					if (ImGui::TreeNode("Transform")) {
+						ImGui::Text("Orientation");
+						ImGui::DragFloat3("", &rotation[0], 1.0f, -360.0f, 720.f, "%.2f", ImGuiSliderFlags_None);
+						ImGui::SameLine();
+						if (ImGui::Button("Reset")) {
+							rotation[0] = 0.f;
+							rotation[1] = 0.f;
+							rotation[2] = 0.f;
+						}
+						if (rotation[0] > 360.0f)
+							rotation[0] -= 360.0f;
+						if (rotation[1] > 360.0f)
+							rotation[1] -= 360.0f;
+						if (rotation[2] > 360.0f)
+							rotation[2] -= 360.0f;
+						if (rotation[0] < 0.f)
+							rotation[0] += 360.0f;
+						if (rotation[1] < 0.f)
+							rotation[1] += 360.0f;
+						if (rotation[2] < 0.f)
+							rotation[2] += 360.0f;
+
+						ImGui::Text("Position");
+						ImGui::DragFloat3(" ", &position[0], 0.01f, -10.0f, 10.f, "%.5f", ImGuiSliderFlags_None); 
+						ImGui::SameLine();
+						if (ImGui::Button("Reset ")) {
+							position[0] = 0.f;
+							position[1] = 0.f;
+							position[2] = 0.f;
+						}
+						ImGui::TreePop();
+					}
+				}
+				ImGui::End();
+
+				renderer.queue_mesh(viewPortMesh);
 
 				//auto rp = device.request_swapchain_render_pass(vulkan::SwapchainRenderpassType::Depth);
 				//pass.set_render_pass(rp);
 				rendergraph.execute();
 				//imgui.end_frame();
 				application.end_frame();
-				frame++;
-				total += chrono::high_resolution_clock::now() - start;
 			}
 		}
-		auto end = chrono::steady_clock::now();
-		std::cout << "Average: " << chrono::duration_cast<chrono::microseconds>(total).count() / frame << "microseconds\n";
 		device.wait_idle();
 	}
 	catch (const std::runtime_error& error) {

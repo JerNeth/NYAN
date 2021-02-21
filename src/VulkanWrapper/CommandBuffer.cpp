@@ -12,6 +12,9 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 		m_pipelineState.state.dynamic_depth_test = 1;
 		m_pipelineState.state.dynamic_depth_write = 1;
 		m_pipelineState.state.dynamic_cull_mode = 1;
+		m_dynamicState.cull_mode = defaultPipelineState.cull_mode;
+		m_dynamicState.depth_test = defaultPipelineState.depth_test;
+		m_dynamicState.depth_write = defaultPipelineState.depth_write;
 	}
 	m_pipelineState.program = nullptr;
 	m_resourceBindings.bindings = {};

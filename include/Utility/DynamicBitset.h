@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <cstddef>
 #include <bit>
+#include <assert.h>
 namespace Utility {
 	
 	class DynamicBitset {

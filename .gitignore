@@ -56,3 +56,4 @@
 
 *.opendb
 /CMakeSettings.json
+/UserSettings.txt

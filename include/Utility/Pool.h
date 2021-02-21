@@ -2,6 +2,7 @@
 #define UTPOOL_H
 #pragma once
 #include "DynamicBitset.h"
+#include <assert.h>
 namespace Utility {
 	template<typename T, typename Container>
 	class ObjectHandle;

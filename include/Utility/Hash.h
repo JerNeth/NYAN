@@ -2,6 +2,7 @@
 #ifndef HASH_H
 #define HASH_H
 #include <cstdint>
+#include <vector>
 namespace Utility {
 	typedef uint64_t HashValue;
 	struct Hasher {

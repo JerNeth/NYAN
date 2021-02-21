@@ -356,6 +356,8 @@ void nyan::Rendergraph::set_up_RaW(RenderpassId write, RenderpassId read, const 
 {
 	auto& src = m_renderpasses.get_direct(write);
 	auto& dst = m_renderpasses.get_direct(read);
+	//TODO Differentiate between Async Compute and Graphics for potential ownership transfer
+	assert(src.get_type() == dst.get_type());
 	Barrier barrier;
 	if (resource.m_type == RenderResource::Type::Image) {
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
@@ -364,15 +366,15 @@ void nyan::Rendergraph::set_up_RaW(RenderpassId write, RenderpassId read, const 
 			.oldLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.image = VK_NULL_HANDLE,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
+			.image = VK_NULL_HANDLE, //This gets updated each frame
 			.subresourceRange {
 				.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),
 				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
+				.levelCount = 1, //TODO
+				.baseArrayLayer = 0, 
+				.layerCount = 1, //TODO
 			}
 		};
 		if (src.get_type() == Renderpass::Type::Graphics) {
@@ -420,6 +422,8 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 {
 	auto& src = m_renderpasses.get_direct(src_);
 	auto& dst = m_renderpasses.get_direct(dst_);
+	//TODO Differentiate between Async Compute and Graphics for potential ownership transfer
+	assert(src.get_type() == dst.get_type());
 	Barrier barrier;
 	if (resource.m_type == RenderResource::Type::Image) {
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
@@ -429,15 +433,15 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			.newLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.image = VK_NULL_HANDLE,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
+			.image = VK_NULL_HANDLE, //This gets updated each frame
 			.subresourceRange {
 				.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),
 				.baseMipLevel = 0,
-				.levelCount = 1,
+				.levelCount = 1, //TODO
 				.baseArrayLayer = 0,
-				.layerCount = 1,
+				.layerCount = 1, //TODO
 			}
 		};
 		if (src.get_type() == Renderpass::Type::Graphics) {
@@ -473,6 +477,7 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 
 		src.m_postImageBarriers.push_back(imageBarrier);
 		src.m_postResource.push_back(resource.m_id);
+		src.m_postBarriers.push_back(barrier);
 	}
 	else {
 		assert(false);
