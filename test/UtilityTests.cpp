@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "Utility.h"
+#include "Util"
 #include <array>
 #include <chrono>
 #include <list>

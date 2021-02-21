@@ -21,9 +21,9 @@ namespace Math {
 		}
 		// Expects Angles in Degrees
 		// Reason being: this is expected to be used as a human interface and not intended for internal use, this is what quaternions are for
+		// Yaw (Z) -> Pitch (Y) -> Roll (X)
 		explicit Quaternion(Scalar x_roll, Scalar y_pitch, Scalar z_yaw)  {
 			//Source https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-			//TODO currently expanded to double, maybe give the option to stick to given precision
 			double cy = cos(z_yaw * 0.5 * deg_to_rad);
 			double sy = sin(z_yaw * 0.5 * deg_to_rad);
 			double cp = cos(y_pitch * 0.5 * deg_to_rad);
@@ -37,9 +37,9 @@ namespace Math {
 		}
 		// Expects Angles in Degrees
 		// Reason being: this is expected to be used as a human interface and not intended for internal use, this is what quaternions are for
+		// Yaw (Z) -> Pitch (Y) -> Roll (X)
 		explicit Quaternion(Vec<Scalar, 3> euler_angles) {
 			//Source https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-			//TODO currently expanded to double, maybe give the option to stick to given precision
 			double cy = cos(euler_angles[2] * 0.5 * deg_to_rad);
 			double sy = sin(euler_angles[2] * 0.5 * deg_to_rad);
 			double cp = cos(euler_angles[1] * 0.5 * deg_to_rad);

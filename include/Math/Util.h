@@ -40,7 +40,7 @@ namespace Math {
 	}
 	//This function does not handle limits well
 	//This function is also stable
-	template<Scalar T, Scalar U>
+	template<typename T, Scalar U>
 	inline constexpr T lerp(T a, T b, U t) {
 		assert(t >= 0.0f && t <= 1.0f);
 		return (1 - t) * a + t * b;

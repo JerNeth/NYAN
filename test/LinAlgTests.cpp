@@ -266,7 +266,8 @@ namespace Math {
         mat33 c({ 1, 0, 1,
                  0, 1, 0,
                  0, 1, 0 });
-        EXPECT_EQ(a*b, c);
+        auto res = a * b;
+        EXPECT_TRUE(close(res, c)) << res.convert_to_string() << " not equal to:\n" << c.convert_to_string() << "\n";
 
         mat33 d({ 2, 0, 2,
                  0, 2, 0,
@@ -280,46 +281,49 @@ namespace Math {
         mat33 g({ 2, 2, 2,
                  0, 2, 0,
                  2, 0, 2 });
-        EXPECT_EQ(d * e, f);
-        EXPECT_EQ(e * d, g);
+        res = d * e;
+        EXPECT_TRUE(close(res, f)) << res.convert_to_string() << " not equal to:\n" << f.convert_to_string() << "\n";
+        res = e * d;
+        EXPECT_TRUE(close(res, g)) << res.convert_to_string() << " not equal to:\n" << g.convert_to_string() << "\n";
     }
-    TEST(Matrices, rotationMatrices) {
-        static std::default_random_engine rng;
+    //TEST(Matrices, rotationMatrices) {
+    //      TODO: This Test is flawed currently
+    //    static std::default_random_engine rng;
 
-        std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
-        std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
-        std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
-        int counter1_2 = 0;
-        for (int i = 0; i < 100000; i++) {
-            vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
-            double yaw = angles[2], pitch = angles[1], roll = angles[0];
-            float cy = (float)cos(yaw * deg_to_rad);
-            float sy = (float)sin(yaw * deg_to_rad);
-            float cp = (float)cos(pitch * deg_to_rad);
-            float sp = (float)sin(pitch * deg_to_rad);
-            float cr = (float)cos(roll * deg_to_rad);
-            float sr = (float)sin(roll * deg_to_rad);
-            mat33 roll_m({ 1, 0, 0,
-                                        0, cr, -sr,
-                                        0, sr, cr });
-            mat33  pitch_m({ cp, 0, sp,
-                                    0, 1, 0,
-                                    -sp, 0, cp });
-            mat33  yaw_m({ cy, -sy, 0,
-                                    sy, cy, 0,
-                                    0, 0, 1 });
-            mat33 rot = (yaw_m * pitch_m) * roll_m;
+    //    std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
+    //    std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
+    //    std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
+    //    int counter1_2 = 0;
+    //    for (int i = 0; i < 100000; i++) {
+    //        vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
+    //        double yaw = angles[2], pitch = angles[1], roll = angles[0];
+    //        float cy = (float)cos(yaw * deg_to_rad);
+    //        float sy = (float)sin(yaw * deg_to_rad);
+    //        float cp = (float)cos(pitch * deg_to_rad);
+    //        float sp = (float)sin(pitch * deg_to_rad);
+    //        float cr = (float)cos(roll * deg_to_rad);
+    //        float sr = (float)sin(roll * deg_to_rad);
+    //        mat33 roll_m({ 1, 0, 0,
+    //                                    0, cr, -sr,
+    //                                    0, sr, cr });
+    //        mat33  pitch_m({ cp, 0, sp,
+    //                                0, 1, 0,
+    //                                -sp, 0, cp });
+    //        mat33  yaw_m({ cy, -sy, 0,
+    //                                sy, cy, 0,
+    //                                0, 0, 1 });
+    //        mat33 rot = (yaw_m * pitch_m) * roll_m;
 
-            vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
-            vec3 result1 = mat33::rotation_matrix(angles) * pos;
-            vec3 result2 = rot * pos;
-           
-            if (!close(result1, result2, 0.01f))
-                counter1_2++;
-        }
-        EXPECT_EQ(counter1_2, 0);
-        
-    }
+    //        vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
+    //        vec3 result1 = mat33::rotation_matrix(angles) * pos;
+    //        vec3 result2 = rot * pos;
+    //       
+    //        if (!close(result1, result2, 0.01f))
+    //            counter1_2++;
+    //    }
+    //    EXPECT_EQ(counter1_2, 0);
+    //    
+    //}
     TEST(Quaternions, Dot) {
         quat a, b;
         EXPECT_EQ(dot(a,b), 0);
@@ -442,18 +446,18 @@ namespace Math {
         int counter1_2 = 0;
         int counter2_3 = 0;
         int counter1_3 = 0;
-        for (int i = 0; i < 100000; i++) {
+        for (int i = 0; i < 10000; i++) {
             vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
             quat q(angles);
             vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
             vec3 result1 = mat33(q) * pos;
             vec3 result2 = q * pos;
             vec3 result3 = mat33::rotation_matrix(angles) * pos;
-            //EXPECT_TRUE(close(result1.L2_norm(), result2.L2_norm())) << result1.L2_norm() << " != " << result2.L2_norm();
-            //EXPECT_TRUE(close(result2.L2_norm(), result3.L2_norm())) << result2.L2_norm() << " != " << result3.L2_norm();
-            //EXPECT_TRUE(close(result1, result2, 0.0001f));// << result1.convert_to_string() << " not equal to " << result2.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33(q).convert_to_string();
-            //EXPECT_TRUE(close(result2, result3, 0.0001f));// << result2.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << q.convert_to_string();
-            //EXPECT_TRUE(close(result1, result3, 0.0001f));// << result1.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << mat33(q).convert_to_string();
+            EXPECT_TRUE(close(result1.L2_norm(), result2.L2_norm(), 1e-3f)) << result1.L2_norm() << " != " << result2.L2_norm();
+            EXPECT_TRUE(close(result2.L2_norm(), result3.L2_norm(), 1e-3f)) << result2.L2_norm() << " != " << result3.L2_norm();
+            EXPECT_TRUE(close(result1, result2, 0.0001f)) << result1.convert_to_string() << " not equal to " << result2.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33(q).convert_to_string();
+            EXPECT_TRUE(close(result2, result3, 0.0001f)) << result2.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << q.convert_to_string();
+            EXPECT_TRUE(close(result1, result3, 0.0001f)) << result1.convert_to_string() << " not equal to " << result3.convert_to_string() << " at: i=" << i << " pos: " << pos.convert_to_string() << " angles: " << angles.convert_to_string() << "\n" << mat33::rotation_matrix(angles).convert_to_string() << "\n" << mat33(q).convert_to_string();
             if (!close(result1, result2, 0.01f))
                 counter1_2++;
             if (!close(result2, result3, 0.01f))
