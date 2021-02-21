@@ -54,9 +54,10 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	if (executionModel > NUM_SHADER_STAGES)
 		throw std::runtime_error("Unsupported Shadertype");
 	m_stage = static_cast<ShaderStage>(executionModel);
-	ShaderResources resources = comp.get_shader_resources();
-	
-	
+	ShaderResources resources = comp.get_shader_resources();/*
+	auto specs = comp.get_specialization_constants();
+	const auto& val = comp.get_constant(specs[0].id);
+	auto t =val.constant_type;*/
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
 		m_layout.used.set(set);
@@ -150,7 +151,8 @@ VkPipelineShaderStageCreateInfo vulkan::Shader::get_create_info()
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = static_cast<VkShaderStageFlagBits>(1u <<static_cast<uint32_t>(m_stage)),
 		.module = m_module,
-		.pName = "main"
+		.pName = "main",
+		.pSpecializationInfo = nullptr, //TODO
 	};
 	return createInfo;
 }

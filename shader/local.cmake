@@ -12,6 +12,7 @@ endfunction()
 file(GLOB_RECURSE SHADER_SRC CONFIGURE_DEPENDS 
 	${PROJECT_SOURCE_DIR}/shader/*.vert
     ${PROJECT_SOURCE_DIR}/shader/*.frag
+    ${PROJECT_SOURCE_DIR}/shader/*.comp
 )
 set(SHADERS "")
 foreach(shader ${SHADER_SRC})

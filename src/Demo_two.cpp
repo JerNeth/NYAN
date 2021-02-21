@@ -52,28 +52,43 @@ int main()
 		depth.format = VK_FORMAT_D16_UNORM;
 		pass.add_depth_output("depth", depth);
 		nyan::ImageAttachment color;
-		color.format = VK_FORMAT_R8G8B8A8_SRGB;
+		color.format = VK_FORMAT_R8G8B8A8_UNORM;
 		color.clearColor = Math::vec4({ .2f, .3f, .1f, 0.f });
 		pass.add_output("color", color);
-		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
+		auto& compute = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Compute);
 		nyan::ImageAttachment swap;
-		pass2.add_input("color");
-		pass2.add_read_dependency("depth");
-		pass2.add_output("swap", swap);
+		rendergraph.add_ressource("swap", swap);
+		compute.add_read_dependency("color", true);
+		compute.add_write_dependency("swap", true);
 		rendergraph.set_swapchain("swap");
 		rendergraph.build();
 
 		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);
 
-		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
-		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
+		//auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
+		/*pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			cmd->bind_program(fullscreenProgram);
 			cmd->disable_depth();
 			cmd->set_cull_mode(VK_CULL_MODE_NONE);
 			cmd->bind_input_attachment(0, 0);
 			cmd->draw(3, 1, 0, 0);
+		});*/
+
+		auto* computeProgram = shaderManager.request_program("test_comp");
+		compute.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
+			auto& in = rendergraph.get_resource("color");
+			auto& out = rendergraph.get_resource("swap");
+			cmd->image_barrier(*in.handle->get_image(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
+			cmd->image_barrier(*out.handle->get_image(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
+
+			cmd->bind_program(computeProgram);
+			cmd->bind_storage_image(0, 0, *in.handle);
+			cmd->bind_storage_image(0, 1, *out.handle);
+			cmd->dispatch(1920 / 8, 1080 / 8, 1);
+			cmd->image_barrier(*in.handle->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0);
+			cmd->image_barrier(*out.handle->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0);
+
 		});
-		pass2.add_post_barrier("depth");
 		
 		Material testMaterial(0, "default_frag");
 		StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");
@@ -93,7 +108,7 @@ int main()
 		//std::cout<< transform.transform.convert_to_string() << '\n';
 		transform.transform(3, 3) = 1;
 		camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		camera.proj = Math::mat44::perspective(0.01f, 10.f, fov, aspect);
+		camera.proj = Math::mat44::perspectiveX(0.01f, 10.f, fov, aspect);
 
 		//device.create_stuff(tex->get_view()->get_image_view());
 		uint64_t frame = 0;
@@ -131,7 +146,7 @@ int main()
 				aspect = application.get_height() / static_cast<float>(application.get_width());
 				transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
 				transform.transform(3, 3) = 1;
-				camera.proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
+				camera.proj = Math::mat44::perspectiveX(0.01f, 100.f, fov, aspect);
 				camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();

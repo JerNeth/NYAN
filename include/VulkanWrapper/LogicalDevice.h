@@ -210,11 +210,12 @@ namespace vulkan {
 		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
 		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
 		VkPipeline request_pipeline(const PipelineCompile& compile) noexcept;
+		VkPipeline request_pipeline(const Program& program) noexcept;
 		RenderpassCreateInfo request_swapchain_render_pass(SwapchainRenderpassType type) noexcept;
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
-		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
+		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 		
 		VkSemaphore get_present_semaphore();
@@ -301,6 +302,12 @@ namespace vulkan {
 				}
 			}
 			return sparseMemoryRequirement;
+		}
+		uint32_t get_compute_family() const noexcept {
+			return m_compute.familyIndex;
+		}
+		uint32_t get_graphics_family() const noexcept {
+			return m_graphics.familyIndex;
 		}
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 

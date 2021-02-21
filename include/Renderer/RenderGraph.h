@@ -23,7 +23,7 @@ namespace nyan {
 	};
 	using Attachment = std::variant<ImageAttachment, BufferAttachment>;
 	using RenderResourceId = uint32_t;
-	constexpr RenderResourceId InvalidResourceId = -1;
+	constexpr RenderResourceId InvalidResourceId = UINT32_MAX;
 	struct RenderResource {
 		enum class Type : uint8_t {
 			Image,
@@ -36,19 +36,44 @@ namespace nyan {
 		std::set<uint32_t> m_readIn;
 		std::set<uint32_t> m_writeToIn;
 		Attachment attachment;
+		bool storageImage = false;
 		vulkan::ImageView* handle = nullptr;
 	};
 	struct Barrier {
+		RenderResourceId resourceId = InvalidResourceId;
 		VkPipelineStageFlags src = 0;
 		VkPipelineStageFlags dst = 0;
-		uint32_t bufferBarrierCount = 0;
-		uint32_t bufferBarrierOffset = 0;
-		uint32_t imageBarrierCount = 0;
-		uint32_t imageBarrierOffset = 0;
-
+		uint16_t bufferBarrierCount = 0;
+		uint16_t bufferBarrierOffset = 0;
+		uint16_t imageBarrierCount = 0;
+		uint16_t imageBarrierOffset = 0;
 	};
+	
 	class Rendergraph;
 	using RenderpassId = uint32_t;
+	constexpr RenderpassId invalidRenderpassId = UINT32_MAX;
+	struct ImageBarrier {
+		RenderpassId src = invalidRenderpassId;
+		RenderpassId dst = invalidRenderpassId;
+		//uint32_t srcFamily = VK_QUEUE_FAMILY_IGNORED;
+		//uint32_t dstFamily = VK_QUEUE_FAMILY_IGNORED;
+		VkPipelineStageFlags srcStage = 0;
+		VkPipelineStageFlags dstStage = 0;
+		VkAccessFlags srcAccess = 0;
+		VkAccessFlags dstAccess = 0;
+		VkImageLayout srcLayout = static_cast<VkImageLayout>(0);
+		VkImageLayout dstLayout = static_cast<VkImageLayout>(0);
+	};
+	struct BufferBarrier {
+		RenderpassId src = invalidRenderpassId;
+		RenderpassId dst = invalidRenderpassId;
+		//uint32_t srcFamily = VK_QUEUE_FAMILY_IGNORED;
+		//uint32_t dstFamily = VK_QUEUE_FAMILY_IGNORED;
+		VkPipelineStageFlags srcStage = 0;
+		VkPipelineStageFlags dstStage = 0;
+		VkAccessFlags srcAccess = 0;
+		VkAccessFlags dstAccess = 0;
+	};
 	class Renderpass {
 		friend class Rendergraph;
 	public:
@@ -65,8 +90,8 @@ namespace nyan {
 		void add_output(const std::string& name, ImageAttachment attachment);
 		void add_depth_input(const std::string& name);
 		void add_depth_output(const std::string& name, ImageAttachment attachment);
-		void add_read_dependency(const std::string& name);
-		void add_write_dependency(const std::string& name);
+		void add_read_dependency(const std::string& name, bool storageImage = false);
+		void add_write_dependency(const std::string& name, bool storageImage = false);
 		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&)>& functor) {
 			m_renderFunction = functor;
 		}
@@ -87,9 +112,10 @@ namespace nyan {
 			m_rpInfo = std::make_unique<vulkan::RenderpassCreateInfo>(info);
 		}
 		bool has_post_barriers() const noexcept {
-			return !m_postBufferBarriers.empty() || !m_postImageBarriers.empty();
+			return !m_bufferBarriers.empty() || !m_imageBarriers.empty();
 		}
 		void add_post_barrier(const std::string& name);
+		void apply_pre_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_post_barriers(vulkan::CommandBufferHandle& cmd);
 	private:
 		Rendergraph& r_graph;
@@ -104,9 +130,9 @@ namespace nyan {
 		RenderResourceId m_depthStencilWrite = InvalidResourceId;
 		std::unique_ptr<vulkan::RenderpassCreateInfo> m_rpInfo;
 		std::vector<Barrier> m_postBarriers;
-		std::vector<VkImageMemoryBarrier> m_postImageBarriers;
-		std::vector<RenderResourceId> m_postResource;
-		std::vector<VkBufferMemoryBarrier> m_postBufferBarriers;
+		std::vector<Barrier> m_preBarriers;
+		std::vector<VkImageMemoryBarrier> m_imageBarriers;
+		std::vector<VkBufferMemoryBarrier> m_bufferBarriers;
 	};
 	class Rendergraph {
 	private:
@@ -121,12 +147,14 @@ namespace nyan {
 		Renderpass& get_pass(const std::string& name);
 		void build();
 		void execute();
-		void add_ressource(const std::string& name, Attachment attachment);
+		RenderResource& add_ressource(const std::string& name, Attachment attachment);
 		RenderResource& get_resource(const std::string& name);
 		void set_swapchain(const std::string& name);
 	private:
 		void set_up_RaW(RenderpassId write, RenderpassId read, const RenderResource& resource);
 		void set_up_WaW(RenderpassId src_, RenderpassId dst_, const RenderResource& resource);
+		void set_up_WaR(RenderpassId write, RenderpassId read, const RenderResource& resource);
+		void set_up_barrier(const ImageBarrier& imageBarrier, const RenderResource& resource);
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;

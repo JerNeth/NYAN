@@ -104,7 +104,9 @@ namespace vulkan {
 		void begin_graphics();
 		void begin_compute();
 		bool flush_graphics();
+		bool flush_compute();
 		bool flush_graphics_pipeline();
+		bool flush_compute_pipeline();
 		void flush_descriptor_sets();
 		void flush_descriptor_set(uint32_t set);
 		void rebind_descriptor_set(uint32_t set);
@@ -126,7 +128,8 @@ namespace vulkan {
 			VkPipelineStageFlags dstStages,VkAccessFlags dstAccessFlags);
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 		void draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
-		 //TODO: Add Buffer to bind
+		void dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ);
+
 		void push_constants(const void* data, VkDeviceSize offset, VkDeviceSize range);
 		void bind_index_buffer(IndexState indexState);
 		void init_viewport_and_scissor(const RenderpassCreateInfo& info);
@@ -140,6 +143,7 @@ namespace vulkan {
 		void next_subpass(VkSubpassContents subpass);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
+		void bind_storage_image(uint32_t set, uint32_t binding, const ImageView& view);
 		void bind_input_attachment(uint32_t set, uint32_t startBinding);
 		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, const Sampler* sampler);
 		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, DefaultSampler sampler);

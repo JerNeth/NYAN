@@ -67,17 +67,18 @@ int main() {
 		Transform* transform = nullptr;
 		Math::vec3 rotation({ 0.0f, 0.0f, 0.0f });
 		Math::vec3 position({ 0.0f, 0.0f, 0.0f });
-		float fov = 90.f;
+		float fovX = 90.f;
+		float fovY = 45.f;
 		float distance = 1.0f;
 		float aspect = application.get_height() / static_cast<float>(application.get_width());
-		camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		camera.proj = Math::mat44::perspective(1.f, 10.f, fov, aspect);
+		//camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+		//camera.proj = Math::mat44::perspectiveX(1.f, 10.f, fov, aspect);
 
 		//device.create_stuff(tex->get_view()->get_image_view());
 		bool is_fullscreen_window = false;
 		bool should_fullscreen_window = false;
 		bool culling = true;
-		int mipLevel = 2;
+		int mipLevel = 0;
 		pass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			if (wireframe)
 				cmd->set_polygon_mode(VK_POLYGON_MODE_LINE);
@@ -106,13 +107,14 @@ int main() {
 					window.change_mode(glfww::WindowMode::Windowed);
 			}
 			if (!window.is_iconified()) {
-				aspect = application.get_height() / static_cast<float>(application.get_width());
+				aspect = static_cast<float>(application.get_width())/ application.get_height();
 				if (transform) {
 					transform->transform = Math::mat44(Math::mat33::rotation_matrix(rotation));
 					transform->transform(3, 3) = 1;
 					transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
 				}
-				camera.proj = Math::mat44::perspective(0.01f, 100.f, fov, aspect);
+				camera.proj = Math::mat44::perspectiveY(0.01f, 100.f, fovY, aspect);
+				//camera.proj = Math::mat44::perspectiveXY(0.01f, 100.f, fovX, fovY);
 				camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();
@@ -121,7 +123,8 @@ int main() {
 				ImGui::ColorEdit4("Clearcolor", &attachment.clearColor[0]);
 				
 				ImGui::SliderFloat("distance", &distance, 0.0f, 10.f);
-				ImGui::SliderFloat("fov", &fov, 45.f, 110.0f);
+				//ImGui::SliderFloat("fovX", &fovX, 45.f, 110.0f);
+				ImGui::SliderFloat("fovY", &fovY, 25.f, 70.0f);
 
 				ImGui::AlignTextToFramePadding();
 				ImGui::Text("Mip Level:");

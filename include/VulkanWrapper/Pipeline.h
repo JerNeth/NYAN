@@ -180,7 +180,8 @@ namespace vulkan {
 			Utility::Hasher h;
 			h(compile.state);
 			h(compile.program->get_hash());
-			h(compile.compatibleRenderPass->get_compatible_hash());
+			if(compile.compatibleRenderPass)
+				h(compile.compatibleRenderPass->get_compatible_hash());
 			h(compile.subpassIndex);
 			h(compile.attributes);
 			h(compile.inputRates);
@@ -213,6 +214,9 @@ namespace vulkan {
 	};
 	class Pipeline {
 	public:
+		//Implicit compute
+		Pipeline(LogicalDevice& parent, const Program& program);
+		//Implicit graphics pipeline
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
 		//~Pipeline() noexcept;
 		Pipeline(Pipeline& other) = default;
@@ -220,7 +224,7 @@ namespace vulkan {
 		Pipeline& operator=(const Pipeline& other) = default;
 		Pipeline& operator=(Pipeline&& other) = default;
 		VkPipeline get_pipeline() const noexcept;
-		static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex);
+		//static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex);
 		static void reset_static_pipeline();
 		static void set_depth_write(bool depthWrite);
 		static void set_depth_test(bool depthTest);
@@ -270,6 +274,7 @@ namespace vulkan {
 		PipelineStorage& operator=(PipelineStorage&&) = delete;
 		~PipelineStorage();
 		VkPipeline request_pipeline(const PipelineCompile& compile);
+		VkPipeline request_pipeline(const Program& program);
 	private:
 		LogicalDevice& r_device;
 		std::unordered_map<PipelineCompile, Pipeline, PipelineCompileHasher> m_hashMap;

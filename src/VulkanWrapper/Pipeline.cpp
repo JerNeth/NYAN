@@ -187,7 +187,7 @@ void vulkan::PipelineLayout::create_update_template()
 				.dstBinding = binding,
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
 					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
@@ -231,6 +231,21 @@ void vulkan::PipelineLayout::create_update_template()
 			}
 		}
 	}
+}
+
+vulkan::Pipeline::Pipeline(LogicalDevice& parent, const Program& program)
+{
+	assert(program.get_shader(vulkan::ShaderStage::Compute) != nullptr);
+	VkComputePipelineCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0, // |VK_PIPELINE_CREATE_DISPATCH_BASE_BIT 
+		.stage = program.get_shader(vulkan::ShaderStage::Compute)->get_create_info(),
+		.layout = program.get_pipeline_layout()->get_layout(),
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1
+	};
+	vkCreateComputePipelines(parent.get_device(), VK_NULL_HANDLE, 1, &createInfo, parent.get_allocator(), &m_pipeline);
 }
 
 vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile)
@@ -457,6 +472,7 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	}
 }
 
+
 //vulkan::Pipeline::~Pipeline() noexcept
 //{
 //	if (m_pipeline != VK_NULL_HANDLE)
@@ -478,10 +494,10 @@ VkPipeline vulkan::Pipeline::get_pipeline() const noexcept
 
 
 
-vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
-{
-	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
-}
+//vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
+//{
+//	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
+//}
 
 void vulkan::Pipeline::reset_static_pipeline()
 {
@@ -663,8 +679,11 @@ vulkan::PipelineStorage::PipelineStorage(LogicalDevice& device) :
 vulkan::PipelineStorage::~PipelineStorage()
 {
 	for (const auto& [compile, pipeline] : m_hashMap) {
-		assert(pipeline.get_pipeline() != VK_NULL_HANDLE);
-		vkDestroyPipeline(r_device.get_device(), pipeline.get_pipeline(), r_device.get_allocator());
+		//assert(pipeline.get_pipeline() != VK_NULL_HANDLE);
+		if (pipeline.get_pipeline() != VK_NULL_HANDLE)
+			vkDestroyPipeline(r_device.get_device(), pipeline.get_pipeline(), r_device.get_allocator());
+		else
+			assert(false);
 	}
 }
 
@@ -681,4 +700,14 @@ VkPipeline vulkan::PipelineStorage::request_pipeline(const PipelineCompile& comp
 	else {
 		return ret->second;
 	}*/
+}
+
+VkPipeline vulkan::PipelineStorage::request_pipeline(const Program& program)
+{
+	//TODO seperate Storage maybe, wasting ~200Bytes
+	PipelineCompile compile{};
+	std::memset(&compile, 0, sizeof(PipelineCompile));
+	compile.program = const_cast<Program*>(&program); //Cast const away, not ideal but we still consider program const
+	const auto& [ret, _] = m_hashMap.try_emplace(compile, r_device, program);
+	return ret->second.get_pipeline();
 }

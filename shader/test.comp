@@ -1,0 +1,14 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout (local_size_x = 8, local_size_y = 8) in;
+layout ( set = 0, binding = 0,rgba8) uniform readonly image2D inputColor;
+layout ( set = 0, binding = 1,rgba8) uniform image2D outputColor;
+
+void main() {
+    //outColor = subpassLoad(inputColor);
+    ivec2 coord = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    vec4 color = imageLoad(inputColor, coord);
+    imageStore(outputColor, coord, color);
+    //outColor = vec4(0.5, 0.2, 0.8, 1.0);
+}

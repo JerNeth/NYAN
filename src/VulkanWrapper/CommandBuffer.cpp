@@ -6,15 +6,17 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 	m_threadIdx(threadIdx),
 	m_type(type)
 {
-	m_pipelineState.state = defaultPipelineState;
-	if (r_device.get_supported_extensions().extended_dynamic_state) {
-		//m_pipelineState.state.dynamic_vertex_input_binding_stride = 1;
-		m_pipelineState.state.dynamic_depth_test = 1;
-		m_pipelineState.state.dynamic_depth_write = 1;
-		m_pipelineState.state.dynamic_cull_mode = 1;
-		m_dynamicState.cull_mode = defaultPipelineState.cull_mode;
-		m_dynamicState.depth_test = defaultPipelineState.depth_test;
-		m_dynamicState.depth_write = defaultPipelineState.depth_write;
+	if (type == Type::Generic) {
+		m_pipelineState.state = defaultPipelineState;
+		if (r_device.get_supported_extensions().extended_dynamic_state) {
+			//m_pipelineState.state.dynamic_vertex_input_binding_stride = 1;
+			m_pipelineState.state.dynamic_depth_test = 1;
+			m_pipelineState.state.dynamic_depth_write = 1;
+			m_pipelineState.state.dynamic_cull_mode = 1;
+			m_dynamicState.cull_mode = defaultPipelineState.cull_mode;
+			m_dynamicState.depth_test = defaultPipelineState.depth_test;
+			m_dynamicState.depth_write = defaultPipelineState.depth_write;
+		}
 	}
 	m_pipelineState.program = nullptr;
 	m_resourceBindings.bindings = {};
@@ -134,9 +136,50 @@ bool vulkan::CommandBuffer::flush_graphics()
 	return true;
 }
 
+bool vulkan::CommandBuffer::flush_compute()
+{
+	if (!m_pipelineState.program)
+		return false;
+	assert(m_currentPipelineLayout != nullptr);
+
+	if (m_currentPipeline == VK_NULL_HANDLE)
+		m_invalidFlags.set(InvalidFlags::Pipeline);
+
+	if (m_invalidFlags.get_and_clear(InvalidFlags::Pipeline)) {
+		VkPipeline oldPipeline = m_currentPipeline;
+		if (!flush_compute_pipeline())
+			return false;
+		if (oldPipeline != m_currentPipeline) {
+			vkCmdBindPipeline(m_vkHandle, VK_PIPELINE_BIND_POINT_COMPUTE, m_currentPipeline);
+			//m_invalidFlags.set(InvalidFlags::DynamicState);
+		}
+	}
+	if (m_currentPipeline == VK_NULL_HANDLE)
+		return false;
+	flush_descriptor_sets();
+
+	if (m_invalidFlags.get_and_clear(InvalidFlags::PushConstants)) {
+		auto& pushConstants = m_currentPipelineLayout->get_shader_layout().pushConstantRange;
+
+		if (pushConstants.stageFlags) {
+			assert(pushConstants.offset == 0);
+			//assert(false);
+			vkCmdPushConstants(m_vkHandle, m_currentPipelineLayout->get_layout(), pushConstants.stageFlags, 0, pushConstants.size, m_resourceBindings.pushConstantData.data());
+		}
+	}
+	return true;
+}
+
 bool vulkan::CommandBuffer::flush_graphics_pipeline()
 {
 	m_currentPipeline = r_device.request_pipeline(m_pipelineState);
+	return m_currentPipeline != VK_NULL_HANDLE;
+}
+
+bool vulkan::CommandBuffer::flush_compute_pipeline()
+{
+	assert(m_pipelineState.program);
+	m_currentPipeline = r_device.request_pipeline(*m_pipelineState.program);
 	return m_currentPipeline != VK_NULL_HANDLE;
 }
 
@@ -478,6 +521,14 @@ void vulkan::CommandBuffer::draw_indexed(uint32_t indexCount, uint32_t instanceC
 	}
 }
 
+void vulkan::CommandBuffer::dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+{
+	assert(m_isCompute);
+	if (flush_compute()) {
+		vkCmdDispatch(m_vkHandle, groupsX, groupsY, groupsZ);
+	}
+}
+
 bool vulkan::CommandBuffer::swapchain_touched() const noexcept
 {
 	return m_swapchainTouched;
@@ -486,6 +537,12 @@ bool vulkan::CommandBuffer::swapchain_touched() const noexcept
 void vulkan::CommandBuffer::touch_swapchain() noexcept
 {
 	m_swapchainTouched = true;
+}
+
+void vulkan::CommandBuffer::bind_storage_image(uint32_t set, uint32_t binding, const ImageView& view)
+{
+	assert(view.get_image()->get_usage() & VK_IMAGE_USAGE_STORAGE_BIT);
+	bind_texture(set, binding, view.get_image_view(), view.get_image_view(), view.get_image()->get_info().layout, view.get_id());
 }
 
 void vulkan::CommandBuffer::bind_input_attachment(uint32_t set, uint32_t startBinding)
@@ -813,16 +870,18 @@ VkRect2D vulkan::CommandBuffer::get_scissor() const
 }
 void vulkan::CommandBuffer::bind_program(Program* program)
 {
+	if (!program)
+		return;
 	if (m_pipelineState.program == program)
 		return;
 	m_pipelineState.program = program;
 	m_currentPipeline = VK_NULL_HANDLE;
-	m_invalidFlags.set(InvalidFlags::DynamicState);
-	m_invalidFlags.set(InvalidFlags::Pipeline);
-	if (!program)
-		return;
-	assert(m_currentFramebuffer && program->get_shader(ShaderStage::Vertex));
+
+	assert((m_currentFramebuffer && program->get_shader(ShaderStage::Vertex)) ||
+		   (!m_currentFramebuffer && program->get_shader(ShaderStage::Compute)));
 	assert(program->get_pipeline_layout() != nullptr);
+	m_invalidFlags.set(InvalidFlags::Pipeline);
+	m_invalidFlags.set(InvalidFlags::DynamicState);
 	if (!m_currentPipelineLayout) {
 		m_dirtyDescriptorSets.set();
 		m_invalidFlags.set(InvalidFlags::PushConstants);

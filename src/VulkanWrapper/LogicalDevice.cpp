@@ -99,6 +99,7 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 	m_wsiState.swapchainImages.clear();
 	wait_idle();
 	auto info = ImageInfo::render_target(width, height, format);
+	info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	info.isSwapchainImage = true;
 	assert(m_wsiState.aquire == VK_NULL_HANDLE);
 	assert(m_wsiState.present == VK_NULL_HANDLE);
@@ -1428,6 +1429,11 @@ VkPipeline vulkan::LogicalDevice::request_pipeline(const PipelineCompile& compil
 	return m_pipelineStorage.request_pipeline(compile);
 }
 
+VkPipeline vulkan::LogicalDevice::request_pipeline(const Program& program) noexcept
+{
+	return m_pipelineStorage.request_pipeline(program);
+}
+
 vulkan::RenderpassCreateInfo vulkan::LogicalDevice::request_swapchain_render_pass(SwapchainRenderpassType type) noexcept
 {
 	RenderpassCreateInfo info;
@@ -1473,9 +1479,9 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
-vulkan::ImageView* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits sampleCount)
+vulkan::ImageView* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount)
 {
-	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount);
+	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage);
 }
 
 void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)

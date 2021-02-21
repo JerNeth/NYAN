@@ -95,11 +95,12 @@ namespace Math {
 					m_data[i] = vec[i];
 			}
 		}
-		explicit Mat(const Scalar(&list)[Size_x*Size_y]) : m_data() {
+		template<typename T>
+		explicit Mat(const T(&list)[Size_x*Size_y]) : m_data() {
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = 0; x < Size_x; x++) {
 					//Memory layout differs from user expectation
-					m_data[at<Size_y>(x, y)] = list[at<Size_x>(y, x)];
+					m_data[at<Size_y>(x, y)] = Scalar(list[at<Size_x>(y, x)]);
 				}
 			}
 		}
@@ -450,82 +451,17 @@ namespace Math {
 			static_assert(Size_x == 3 || Size_x == 4);
 			static_assert(Size_y == 3 || Size_y == 4);
 			//TODO use doubles until return for more precision
-			Scalar cy = Scalar(cos(yaw * deg_to_rad));
-			Scalar sy = Scalar(sin(yaw * deg_to_rad));
-			Scalar cp = Scalar(cos(pitch * deg_to_rad));
-			Scalar sp = Scalar(sin(pitch * deg_to_rad));
-			Scalar cr = Scalar(cos(roll * deg_to_rad));
-			Scalar sr = Scalar(sin(roll * deg_to_rad));
+			auto cy = cos(yaw * deg_to_rad);
+			auto sy = sin(yaw * deg_to_rad);
+			auto cp = cos(pitch * deg_to_rad);
+			auto sp = sin(pitch * deg_to_rad);
+			auto cr = cos(roll * deg_to_rad);
+			auto sr = sin(roll * deg_to_rad);
 
 			
 			return Mat<Scalar, 3, 3>({ cy * cp,		cy * sp * sr - sy * cr,		cy * sp * cr + sy * sr,
 										sy * cp,	sy * sp * sr + cr * cy,		sy * sp * cr - cy * sr,
 										-sp,			cp * sr,							cp * cr });
-			/*Scalar ca = Scalar(cos(yaw * deg_to_rad));
-			Scalar sa = Scalar(sin(yaw * deg_to_rad));
-			Scalar ch = Scalar(cos(pitch * deg_to_rad));
-			Scalar sh = Scalar(sin(pitch * deg_to_rad));
-			Scalar cb = Scalar(cos(roll * deg_to_rad));
-			Scalar sb = Scalar(sin(roll * deg_to_rad));*/
-			//return Mat<Scalar, 3, 3>({ ch * ca, -ch*sa*cb + sh*sb, ch*sa*sb + sh*cb,
-			//							sa, ca*cb, -ca*sb,
-			//							-sh*ca, sh*sa*cb + ch*sb, -sh*sa*sb + ch*cb});
-			/*Scalar ca = Scalar(cos(yaw * deg_to_rad));
-			Scalar sa = Scalar(sin(yaw * deg_to_rad));
-			Scalar ch = Scalar(cos(pitch * deg_to_rad));
-			Scalar sh = Scalar(sin(pitch * deg_to_rad));
-			Scalar cb = Scalar(cos(roll * deg_to_rad));
-			Scalar sb = Scalar(sin(roll * deg_to_rad));*/
-			////https://en.wikipedia.org/wiki/Rotation_matrix
-			///*return Mat<Scalar, 3, 3>({ cy * cp,		-sp,						cp*sy,
-			//							cy*sp*cr+sr*sy,	cr*cp,		sp*cr*sy-sr*cy,
-			//							sr*sp*cy-sy*cr, sr*cp, sp*sr*sy+cr*cy});*/
-			////attitude = yaw, heading= pitch, bank = roll
-			//
-			//Mat<Scalar, 3, 3> ret;
-			//ret.m_data[at<Size_y>(0, 0)] = ch * ca;
-			//ret.m_data[at<Size_y>(1, 0)] = sh* sb - ch*sa*cb;
-			//ret.m_data[at<Size_y>(2, 0)] = ch*sa*sb + sh*cb;
-
-			//ret.m_data[at<Size_y>(0, 1)] = sa;
-			//ret.m_data[at<Size_y>(1, 1)] = ca *cb;
-			//ret.m_data[at<Size_y>(2, 1)] = -ca*sb;
-
-			//ret.m_data[at<Size_y>(0, 2)] = -sh*ca;
-			//ret.m_data[at<Size_y>(1, 2)] = sh*sa*cb + ch*sb;
-			//ret.m_data[at<Size_y>(2, 2)] = -sh * sa *sb + ch*cb;
-
-			//Mat<Scalar, 3, 3> temp2({ ch*ca, -ch*sa, sh,
-			//						sa, ca, 0,
-			//						-sh*ca, sh*sa, ch});
-			//if constexpr (Size_x == 4) {
-			//	ret.m_data[at<Size_y>(0, 3)] = Scalar(0);
-			//	ret.m_data[at<Size_y>(1, 3)] = Scalar(0);
-			//	ret.m_data[at<Size_y>(2, 3)] = Scalar(0);
-
-			//	ret.m_data[at<Size_y>(3, 0)] = Scalar(0);
-			//	ret.m_data[at<Size_y>(3, 1)] = Scalar(0);
-			//	ret.m_data[at<Size_y>(3, 2)] = Scalar(0);
-
-			//	ret.m_data[at<Size_y>(3, 3)] = Scalar(1);
-			//}
-			//return ret;
-			//Mat<Scalar, 3, 3> temp3 = temp2;
-			//temp3.transposed();
-			//Mat<Scalar, 3, 3> roll_m({ 1, 0, 0,
-			//						0, cr, -sr,
-			//						0, sr, cr});
-			//Mat<Scalar, 3, 3> pitch_m({ cp, 0, sp,
-			//						0, 1, 0,
-			//						-sp, 0, cp });
-			//Mat<Scalar, 3, 3> yaw_m({ cy, -sy, 0,
-			//						sy, cy, 0,
-			//						0, 0, 1 });
-			////Mat<Scalar, 3, 3> temp = (yaw_m * pitch_m);
-			//Mat<Scalar, 3, 3> comb = (yaw_m * pitch_m) * roll_m;
-			////for some reason this (probably wrong) matrix multiplications work 
-			////std::cout << temp.convert_to_string() << '\n' << temp2.convert_to_string() << '\n' << temp3.convert_to_string() << std::endl;
-			//return comb;
 		}
 		static inline Mat<Scalar, 3, 3> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
 			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
@@ -535,8 +471,9 @@ namespace Math {
 			matrix.set_col(translation_vector, 3);
 			return matrix;
 		}
-		static inline Mat<Scalar, 4, 4> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
-			Mat<Scalar, 4, 4> matrix = Mat<Scalar, 4, 4>::identity();
+		static inline Mat<Scalar, Size_x, Size_y> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
+			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
+			Mat<Scalar, Size_x, Size_y> matrix = Mat<Scalar, Size_x, Size_y>::identity();
 			Vec<Scalar, 3> zAxis = at - eye;
 			zAxis.normalize();
 			Vec<Scalar, 3> xAxis = zAxis.cross(up);
@@ -560,18 +497,51 @@ namespace Math {
 			return matrix;
 		}
 		
-		static inline Mat<Scalar, 4, 4> perspective(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
+		static inline Mat<Scalar, 4, 4> perspectiveY(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
 			//Right handed, zero to one
 			Mat<Scalar, 4, 4> matrix;
-			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
+			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
+			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
+			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
+			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
+			//matrix(2, 3) = -Scalar(1);
+			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
+			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
+			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix[Math::at<Size_y>(2, 2)] =  farPlane / (nearPlane  - farPlane);
+			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
+			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			return matrix;
+		}
+		static inline Mat<Scalar, 4, 4> perspectiveX(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar aspectRatio) {
+			//Right handed, zero to one
+			Mat<Scalar, 4, 4> matrix;
+			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovX) * 0.5 * deg_to_rad));
+			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
+			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
+			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
+			//matrix(2, 3) = -Scalar(1);
+			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
+			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / ( tanHalfFovx);
+			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
+			matrix[Math::at<Size_y>(2, 2)] = farPlane / (nearPlane - farPlane);
+			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
+			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			return matrix;
+		}
+		static inline Mat<Scalar, 4, 4> perspectiveXY(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar fovY) {
+			//Right handed, zero to one
+			Mat<Scalar, 4, 4> matrix;
+			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovX) * 0.5 * deg_to_rad));
+			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
 			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
 			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
 			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / (tanHalfFovx);
-			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
-			matrix[Math::at<Size_y>(2, 2)] =  farPlane / (nearPlane  - farPlane);
+			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix[Math::at<Size_y>(2, 2)] = farPlane / (nearPlane - farPlane);
 			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
 			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;

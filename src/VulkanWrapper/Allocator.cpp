@@ -42,18 +42,19 @@ vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent)
 {
 }
-vulkan::ImageView* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples)
+vulkan::ImageView* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage)
 {
 	Utility::Hasher hasher;
 	hasher(width);
 	hasher(height);
 	hasher(format);
 	hasher(index);
+	hasher(usage);
 	auto hash = hasher(samples);
 	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
 		return res->second->get_view();
 	ImageInfo info = ImageInfo::render_target(width, height, format);
-	info.usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	info.usage |= usage;
 	if (ImageInfo::is_depth_or_stencil_format(format)) {
 		info.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}

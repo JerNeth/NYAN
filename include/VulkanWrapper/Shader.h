@@ -20,7 +20,7 @@ namespace vulkan {
 		};
 		VkDeviceSize dynamicOffset;
 	};	
-	enum class ShaderStage {
+	enum class ShaderStage : uint32_t{
 		Vertex = Utility::bit_pos(VK_SHADER_STAGE_VERTEX_BIT),// 0,
 		TesselationControl = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT), //1,
 		TesselationEvaluation = Utility::bit_pos(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT), //2,
@@ -36,7 +36,7 @@ namespace vulkan {
 		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
 		
 	};
-	constexpr size_t NUM_SHADER_STAGES = 6;
+	constexpr uint32_t NUM_SHADER_STAGES = static_cast<uint32_t>(ShaderStage::Size);
 
 	struct DescriptorSetLayout {
 		Utility::bitset<MAX_BINDINGS> imageSampler;

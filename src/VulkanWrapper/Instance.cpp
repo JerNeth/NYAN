@@ -28,7 +28,8 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device()
 	if (auto selectedDevice = std::find_if(devices.cbegin(), devices.cend(),
 		[this](const auto& device) {return this->is_device_suitable(device); }); selectedDevice != devices.cend()) {
 		m_physicalDevice = *selectedDevice;
-		
+		/*VkSurfaceCapabilitiesKHR surfaceCapabilites;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilites);*/
 		auto [device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex] = setup_logical_device(*selectedDevice);
 		return std::make_unique<LogicalDevice>(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, *selectedDevice);
 		
