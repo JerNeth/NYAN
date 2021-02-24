@@ -14,7 +14,7 @@ None, yet.
 	- [x] Vectors
 	- [x] Matrizes
 	- [x] Quaternions
-- [ ] Utility
+- [x] Utility
 	- [x] Hash
 	- [x] HashMap
 	- [x] LinkedBucketList
@@ -32,9 +32,10 @@ None, yet.
 	- [ ] Mesh representations
 		- [ ] Skeletal mesh
 		- [ ] Morph targets/Blend shapes
-		- [ ] Static mesh
+		- [x] Static mesh
 		- [ ] Heightmap
-- [ ] Vulkan
+	- [x] Tangent basis
+- [x] Vulkan
 	- [x] Pipeline abstraction
 	- [x] Renderpass abstraction
 	- [x] Descriptor abstraction
@@ -47,6 +48,8 @@ None, yet.
 	- [x] Buffer abstraction
 	- [x] Image abstraction
 	- [x] Sparse Images
+	- [x] Compute shaders
+	- [ ] ...
 - [ ] Scene representation
 - [ ] I/O
 
@@ -62,4 +65,3 @@ The engine depends on the following libraries:
 - [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross): automatically fetched
 - [volk](https://github.com/zeux/volk): automatically fetched
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): included in this repository
-- [stb](https://github.com/nothings/stb): included in this repository
