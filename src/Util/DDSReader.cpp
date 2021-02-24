@@ -350,13 +350,19 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& fi
 		ret.format = VK_FORMAT_BC2_UNORM_BLOCK;
 		break;
 	case (DDSPixelFormat::FourCC::DXT3):
-		ret.format = VK_FORMAT_BC3_UNORM_BLOCK;
+		ret.format = VK_FORMAT_BC2_UNORM_BLOCK;
 		break;
 	case (DDSPixelFormat::FourCC::DXT4):
-		ret.format = VK_FORMAT_BC4_UNORM_BLOCK;
+		ret.format = VK_FORMAT_BC3_UNORM_BLOCK;
 		break;
 	case (DDSPixelFormat::FourCC::DXT5):
+		ret.format = VK_FORMAT_BC3_UNORM_BLOCK;
+		break;
+	case (DDSPixelFormat::FourCC::BC5U):
 		ret.format = VK_FORMAT_BC5_UNORM_BLOCK;
+		break;
+	case (DDSPixelFormat::FourCC::BC5S):
+		ret.format = VK_FORMAT_BC5_SNORM_BLOCK;
 		break;
 	case (DDSPixelFormat::FourCC::DX10):
 		dx10Header = true;
@@ -366,16 +372,17 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& fi
 	default:
 		assert(false); //Not supported yet
 	}
+	if (isCubeMap)
+		ret.arrayLayers = 6;
+	else
+		ret.arrayLayers = 1;
 	if (dx10Header) {
 		ret.format = convertToVk(extHeader.format);
 		assert(ret.format != VK_FORMAT_UNDEFINED);
 		if (isCubeMap)
 			assert(extHeader.miscFlag & DDSHeaderDXT10::MiscFlags::TEXTURECUBE);
 		isCubeMap = extHeader.miscFlag & DDSHeaderDXT10::MiscFlags::TEXTURECUBE;
-		if (isCubeMap)
-			ret.arrayLayers = 6;
-		else
-			ret.arrayLayers = 1;
+		
 		ret.arrayLayers *= extHeader.arraySize;
 		if (isVolume)
 			assert(ret.arrayLayers == 1);
@@ -404,7 +411,7 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& fi
 			ret.type = VK_IMAGE_TYPE_1D;
 		if (ret.format == VK_FORMAT_UNDEFINED) {
 			if (header.pixelFormat.flags & DDSPixelFormat::Flags::DDPF_RGB) {
-				if (header.pixelFormat.flags & DDSPixelFormat::Flags::DDPF_ALPHA) {
+				if (header.pixelFormat.flags & DDSPixelFormat::Flags::DDPF_ALPHA || header.pixelFormat.flags & DDSPixelFormat::Flags::DDPF_ALPHAPIXELS) {
 					if ((header.pixelFormat.RBitMask & 0xff000000) &&
 						(header.pixelFormat.GBitMask & 0xff0000) &&
 						(header.pixelFormat.BBitMask & 0xff00) &&
@@ -414,12 +421,17 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& fi
 						(header.pixelFormat.GBitMask & 0xff0000) &&
 						(header.pixelFormat.BBitMask & 0xff000000) &&
 						(header.pixelFormat.ABitMask & 0xff))
-						ret.format = VK_FORMAT_B8G8R8A8_UNORM;
+						ret.format = VK_FORMAT_B8G8R8A8_UNORM; 
+					else if ((header.pixelFormat.RBitMask & 0xff) &&
+							(header.pixelFormat.GBitMask & 0xff00) &&
+							(header.pixelFormat.BBitMask & 0xff0000) &&
+							(header.pixelFormat.ABitMask & 0xff000000))
+						ret.format = VK_FORMAT_R8G8B8A8_UNORM;
 					else if ((header.pixelFormat.RBitMask & 0xff0000) &&
 						(header.pixelFormat.GBitMask & 0xff00) &&
 						(header.pixelFormat.BBitMask & 0xff) &&
 						(header.pixelFormat.ABitMask & 0xff000000))
-						ret.format = VK_FORMAT_R8G8B8A8_UNORM;
+						ret.format = VK_FORMAT_B8G8R8A8_UNORM;
 					else
 						assert(false);
 				}

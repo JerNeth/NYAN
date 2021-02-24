@@ -475,7 +475,7 @@ namespace vulkan {
 	}
 	template< >
 	constexpr VkFormat get_format<Math::bvec3>() {
-		return VK_FORMAT_R8G8B8_UINT;
+		return VK_FORMAT_R8G8B8_SNORM;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::uvec4>() {
@@ -503,7 +503,7 @@ namespace vulkan {
 	}
 	template< >
 	constexpr VkFormat get_format<Math::bvec4>() {
-		return VK_FORMAT_R8G8B8A8_UINT;
+		return VK_FORMAT_R8G8B8A8_SNORM;
 	}
 	template<typename T>
 	constexpr VkFormat get_format(T t) {

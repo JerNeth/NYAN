@@ -27,7 +27,7 @@ void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
 	RenderId id = mesh->get_material()->get_id();
 	id <<= 32;
 	if (mesh->uses_tangent_space())
-		id &= tangentSpaceBit;
+		id |= tangentSpaceBit;
 	m_renderQueue.m_staticMeshes.emplace(id, mesh);
 }
 
@@ -38,9 +38,9 @@ void nyan::VulkanRenderer::queue_mesh(SkinnedMesh* mesh)
 	RenderId id = mesh->get_material()->get_id();
 	id <<= 32;
 	if (mesh->uses_tangent_space())
-		id &= tangentSpaceBit;
+		id |= tangentSpaceBit;
 	if (mesh->has_blendshape())
-		id &= blendShapeBit;
+		id |= blendShapeBit;
 	m_renderQueue.m_skinnedMeshes.emplace(id, mesh);
 }
 
@@ -59,15 +59,18 @@ void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
 	RenderId current = invalidId;
 	for (auto& it : m_renderQueue.m_staticMeshes) {
 		if (it.first != current) {
-			std::string vertexShaderName;
-			if (it.first & tangentSpaceBit && !(current & tangentSpaceBit)) {
-				assert(false);
-				//Todo
+			std::string vertexShaderName = "static";
+			std::string fragmentShaderName = it.second->get_material()->get_shader_name();
+			if (it.first & tangentSpaceBit) {
+				//assert(false);
+				vertexShaderName = "staticTangent_vert";
+				fragmentShaderName += "Tangent_frag";
 			}
 			else {
 				vertexShaderName = "static_vert";
+				fragmentShaderName += "_frag";
 			}
-			auto* program = m_shaderManager->request_program(vertexShaderName, it.second->get_material()->get_shader_name());
+			auto* program = m_shaderManager->request_program(vertexShaderName, fragmentShaderName);
 			cmd->bind_program(program);
 			it.second->get_material()->bind(cmd);
 			current = it.first;

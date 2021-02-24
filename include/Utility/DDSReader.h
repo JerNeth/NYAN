@@ -153,6 +153,10 @@ namespace Utility {
 			DXT3 = 0x33545844u,
 			DXT4 = 0x34545844u,
 			DXT5 = 0x35545844u,
+			BC4U = 0x55344342u,
+			BC4S = 0x53344342u,
+			BC5U = 0x55354342u,
+			BC5S = 0x53354342u,
 			DX10 = 0x30315844u,
 		};
 		uint32_t size;					//Structure size; set to 32 (bytes).

@@ -137,7 +137,15 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
 		_surfaceFormat != surfaceFormats.cend())
 		surfaceFormat = *_surfaceFormat;
-	
+	//if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
+	//	[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
+	//	_surfaceFormat != surfaceFormats.cend())
+	//	surfaceFormat = *_surfaceFormat;
+	//if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
+	//	[](auto format) {return format.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
+	//	_surfaceFormat != surfaceFormats.cend())
+	//	surfaceFormat = *_surfaceFormat;
+
 	m_format = surfaceFormat.format;
 	
 	auto presentModes = r_instance.get_present_modes();

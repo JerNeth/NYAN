@@ -5,28 +5,35 @@
 
 namespace Math {
 	template<typename T>
-	concept Scalar = std::is_arithmetic<T>::value;
-	template<Scalar S>
+	concept ScalarT = std::is_arithmetic<T>::value;
+	template<ScalarT S>
 		inline constexpr const S& min(const S& a, const S& b) noexcept {
+		//Assuming IEEE-754
+		//If either is NaN, > returns FALSE => min(a,b) gives you the oposite result compared to max(a,b)
 		if (!(a > b))
 			return a;
 		return b;
 	}
-	template<Scalar S>
+	template<ScalarT S>
 		inline constexpr const S& max(const S& a, const S& b) noexcept {
+		//Assuming IEEE-754
+		//If either is NaN, > returns FALSE
 		if (a > b)
 			return a;
 		return b;
 	}
-	template<Scalar S>
+	/*
+	If val is NaN => returns min
+	*/
+	template<ScalarT S>
 	inline constexpr const S& clamp(const S& val, const S& min, const S& max) noexcept {
 		return Math::max(Math::min(val, max), min);
 	}
-	template<Scalar S>
+	template<ScalarT S>
 		inline constexpr bool close(const S& a, const S& b, const S& eps = S(1e-5)) noexcept {
 		return ((a - eps) <= b) && ((a + eps) >= b);
 	}
-	template<Scalar T>
+	template<ScalarT T>
 	inline constexpr const T square(const T& a) noexcept {
 		return a * a;
 	}
@@ -40,10 +47,11 @@ namespace Math {
 	}
 	//This function does not handle limits well
 	//This function is also stable
-	template<typename T, Scalar U>
+	template<typename T, ScalarT U>
 	inline constexpr T lerp(T a, T b, U t) {
 		assert(t >= 0.0f && t <= 1.0f);
-		return (1 - t) * a + t * b;
+		//return (1 - t) * a + t * b;
+		return a + t * (b - a);
 	}
 }
 #endif

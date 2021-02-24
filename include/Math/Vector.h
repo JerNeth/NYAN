@@ -5,11 +5,11 @@
 #include "Util.h"
 
 namespace Math {
-	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
-	template<typename Scalar> class Quaternion;
+	template<ScalarT Scalar, size_t Size_x, size_t Size_y> class Mat;
+	template<ScalarT Scalar> class Quaternion;
 
 	template<
-		typename Scalar,
+		ScalarT Scalar,
 		size_t Size>
 		class Vec
 	{
@@ -26,12 +26,26 @@ namespace Math {
 		//		m_data[i] = scalar;
 		//}
 		//Without explicit: Vec<int, 2> t = 2; would compile
-		constexpr explicit Vec(Scalar const& scalar) noexcept : m_data() {
-			for (size_t i = 0; i < Size; i++)
-				m_data[i] = scalar;
+		//constexpr explicit Vec(Scalar const& scalar) noexcept : m_data() {
+		//	for (size_t i = 0; i < Size; i++)
+		//		m_data[i] = scalar;
+		//}
+		template<typename... Args>
+		constexpr explicit Vec(Args... args) {
+			static_assert(sizeof...(Args) <= Size);
+			if constexpr (sizeof...(Args) == 1) {
+				for (size_t i = 0; i < Size; i++)
+				{
+					std::array<std::common_type_t<Args...>, 1> list = {std::forward<Args>(args)...};
+					m_data[i] = static_cast<Scalar>(list[0]);
+				}
+			}
+			else {
+				m_data = { static_cast<Scalar>(std::forward<Args>(args))... };
+			}
 		}
 		template<size_t Size_other>
-		constexpr explicit Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
+		constexpr Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
 			for (size_t i = 0; i < min(Size, Size_other); i++)
 				m_data[i] = other[i];
 			for (size_t i = min(Size, Size_other); i < Size; i++)
@@ -334,14 +348,31 @@ namespace Math {
 		static_assert(std::is_arithmetic<Scalar>::value);
 	};
 	template<typename T>
-	concept Unsigned =  std::is_unsigned<T>::value;
+	concept Unsigned = std::is_unsigned<T>::value;
+	template<typename T>
+	concept Signed = std::is_signed<T>::value;
 
 	template<Unsigned T, size_t size>
 	constexpr Vec<T, size> unormVec(const Vec<float, size>& vec) {
+		//c = convertFloatToUInt(f * (2^b-1), b)
 		Vec<T, size> ret;
 		float max = static_cast<float>(T(~0u));
 		for (size_t i = 0; i < size; i++) {
 			auto temp = clamp(vec[i], 0.f, 1.f);
+			ret[i] = static_cast<T>(temp * max);
+		}
+		return ret;
+	}
+	template<Signed T, size_t size>
+	constexpr Vec<T, size> snormVec(const Vec<float, size>& vec) {
+		//See https://www.khronos.org/registry/vulkan/specs/1.1/html/vkspec.html#fundamentals-fixedfpconv
+		//f = max(c/2^(b-1)-1, -1.0) for int => float
+		//c = convertFloatToInt(f * (2^(b-1)-1), b)
+		Vec<T, size> ret;
+		float max = static_cast<float>((1ull<<(sizeof(T)*8ull-1ull))-1ull);
+		for (size_t i = 0; i < size; i++) {
+			//NaN not correctly handled
+			auto temp = clamp(vec[i], -1.f, 1.f);
 			ret[i] = static_cast<T>(temp * max);
 		}
 		return ret;
@@ -353,6 +384,10 @@ namespace Math {
 		auto temp = clamp(val, 0.f, 1.f);
 		//ret[i] = static_cast<T>(temp * max);
 		return ret;
+	}
+	template<typename... Args>
+	constexpr Vec<std::common_type_t<Args...>, sizeof...(Args)> make_vector(Args... args) {
+		return Vec<std::common_type_t<Args...>, sizeof...(Args)>(std::forward<Args>(args)...);
 	}
 	//template<typename Scalar,
 	//	size_t Size,

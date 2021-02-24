@@ -8,9 +8,8 @@ namespace nyan {
 
 	class Material;
 	struct TangentSpaceBasis {
-		Math::ubvec3 normal;
-		Math::ubvec3 bitangent;
-		Math::ubvec3 tangent;
+		Math::bvec3 normal;
+		Math::bvec3 tangent;
 	};
 	struct Transform {
 		Math::mat44 transform;
@@ -18,6 +17,7 @@ namespace nyan {
 	};
 	class Mesh {
 	public:
+		friend class MeshManager;
 		/*Mesh() {
 			transform.transform = Math::mat44::identity();
 		}*/
@@ -75,8 +75,11 @@ namespace nyan {
 			Math::ubvec4 color;
 		}; 
 		struct TangentVertex {
-			Vertex vertex;
-			TangentSpaceBasis tangentBasis;
+			Math::vec3 pos;
+			Math::usvec2 uv; //normalized [0,1] coordinates
+			Math::ubvec4 color;
+			Math::bvec4 normal;
+			Math::bvec4 tangent;
 		};
 		size_t vertex_count() const noexcept {
 			return 0;
@@ -116,8 +119,12 @@ namespace nyan {
 			Math::usvec4 boneWeights; //normalized [0,1] boneweights
 		}; 
 		struct TangentVertex {
-			Vertex vertex;
-			TangentSpaceBasis tangentBasis;
+			Math::vec3 pos;
+			Math::usvec2 uv; //normalized [0,1] coordinates
+			Math::ubvec4 boneIndices;
+			Math::usvec4 boneWeights; //normalized [0,1] boneweights
+			Math::bvec3 normal;
+			Math::bvec3 tangent;
 		};
 		size_t vertex_count() const noexcept {
 			return 0;

@@ -11,6 +11,18 @@ namespace vulkan {
 	class Allocation;
 	class Image;
 	class ImageView;
+	constexpr std::array<const char*,9> ImageLayoutNames{
+		"VK_IMAGE_LAYOUT_UNDEFINED",
+		"VK_IMAGE_LAYOUT_GENERAL",
+		"VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL",
+		"VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL",
+		"VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL",
+		"VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL",
+		"VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL",
+		"VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL",
+		"VK_IMAGE_LAYOUT_PREINITIALIZED"
+	};
+	
 	inline size_t format_block_size(VkFormat format) {
 		switch (format) {
 			case VK_FORMAT_R4G4_UNORM_PACK8	 :

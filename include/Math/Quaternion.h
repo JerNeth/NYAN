@@ -4,10 +4,10 @@
 
 #include "Constants.h"
 namespace Math {
-	template<typename Scalar, size_t Size_x, size_t Size_y> class Mat;
-	template<typename Scalar, size_t Size> class Vec;
+	template<ScalarT Scalar, size_t Size_x, size_t Size_y> class Mat;
+	template<ScalarT Scalar, size_t Size> class Vec;
 
-	template<typename Scalar>
+	template<ScalarT Scalar>
 	class Quaternion {
 	public:
 		Quaternion() : m_real(), m_imaginary() {
@@ -214,13 +214,13 @@ namespace Math {
 		// ============================================================================================================
 		// Frens
 		// ============================================================================================================
-		template<typename, size_t, size_t> friend class Mat;
-		template<typename, size_t> friend class Vec;
+		template<ScalarT, size_t, size_t> friend class Mat;
+		template<ScalarT, size_t> friend class Vec;
 	private:
 		Scalar m_real;
 		Vec<Scalar, 3> m_imaginary;
 		// I would really prefer C++20 concepts instead of this
-		static_assert(std::is_arithmetic<Scalar>::value, "Scalar must be numeric");
+		//static_assert(std::is_arithmetic<Scalar>::value, "Scalar must be numeric");
 	};
 	//template<typename Scalar,
 	//	typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >

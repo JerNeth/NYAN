@@ -121,7 +121,7 @@ namespace vulkan {
 		.subgroup_max_size_log2 = 0,
 		.conservative_raster = 0,
 		.padding {},
-		.color_write_mask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+		.color_write_mask = (1ull<<(WRITE_MASK_BITS * MAX_ATTACHMENTS))-1ull,
 	};
 	struct Attributes {
 		std::array<VkFormat, MAX_VERTEX_ATTRIBUTES> formats;

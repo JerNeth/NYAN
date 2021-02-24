@@ -21,7 +21,7 @@ namespace nyan {
 		vulkan::LogicalDevice& r_device;
 		std::unordered_map<std::string, std::pair<vulkan::ImageHandle, Utility::TextureInfo>> m_usedTextures;
 		bool m_streaming;
-		bool m_useSparse = true;
+		bool m_useSparse = false;
 		uint32_t m_minimumMipLevel = 0;
 		//std::vector<vulkan::ImageHandle> m_usedTextures;
 	};

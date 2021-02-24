@@ -88,6 +88,7 @@ namespace nyan {
 		Renderpass& operator=(Renderpass&&) = default;
 		void add_input(const std::string& name);
 		void add_output(const std::string& name, ImageAttachment attachment);
+		void add_swapchain_output();
 		void add_depth_input(const std::string& name);
 		void add_depth_output(const std::string& name, ImageAttachment attachment);
 		void add_read_dependency(const std::string& name, bool storageImage = false);
@@ -124,8 +125,8 @@ namespace nyan {
 		uint32_t m_id;
 		std::function<void(vulkan::CommandBufferHandle&)> m_renderFunction;
 		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
-		std::set<RenderResourceId> m_reads;
-		std::set<RenderResourceId> m_writes;
+		std::vector<RenderResourceId> m_reads;
+		std::vector<RenderResourceId> m_writes;
 		RenderResourceId m_depthStencilRead = InvalidResourceId;
 		RenderResourceId m_depthStencilWrite = InvalidResourceId;
 		std::unique_ptr<vulkan::RenderpassCreateInfo> m_rpInfo;

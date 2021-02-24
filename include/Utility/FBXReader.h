@@ -15,7 +15,7 @@ namespace Utility {
 	public:
 		FBXReader();
 		~FBXReader();
-		std::vector<nyan::MeshData> parse_meshes(std::string fbxFile);
+		std::vector<nyan::MeshData> parse_meshes(std::string fbxFile, bool tangentSpace);
 	private:
 		FbxManager* sdkManager;
 		FbxIOSettings* ios;

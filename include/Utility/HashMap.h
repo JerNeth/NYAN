@@ -332,7 +332,13 @@ namespace Utility {
 		}
 		bool contains(const Key& key) {
 			for (size_t i = 0; i < data.size(); i++)
-				if (occupancy.test(i))
+				if (occupancy.test(i) && (key == data[i].first))
+					return true;
+			return false;
+		}
+		bool contains_value(const Value& value) {
+			for (size_t i = 0; i < data.size(); i++)
+				if (occupancy.test(i) && (value == data[i].second))
 					return true;
 			return false;
 		}
@@ -422,6 +428,13 @@ namespace Utility {
 			size_t idx = mod(hash);
 			return data[idx].contains(key);
 		}
+		//Key get_key(const Value& value) {
+		//	for (size_t i = 0; i < capacity(); i++) {
+		//		for (size_t j = 0; j < oldData[i].end(); j++) {
+
+		//		}
+		//	}
+		//}
 	private:
 		Bucket* data = nullptr;
 		size_t size = 0;

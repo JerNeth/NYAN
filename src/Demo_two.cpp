@@ -108,7 +108,7 @@ int main()
 		//std::cout<< transform.transform.convert_to_string() << '\n';
 		transform.transform(3, 3) = 1;
 		camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
-		camera.proj = Math::mat44::perspectiveX(0.01f, 10.f, fov, aspect);
+		camera.proj = Math::mat44::perspectiveX(1.f, 10.f, fov, aspect);
 
 		//device.create_stuff(tex->get_view()->get_image_view());
 		uint64_t frame = 0;
@@ -146,7 +146,7 @@ int main()
 				aspect = application.get_height() / static_cast<float>(application.get_width());
 				transform.transform = Math::mat44(Math::mat33::rotation_matrix(x, y, z));
 				transform.transform(3, 3) = 1;
-				camera.proj = Math::mat44::perspectiveX(0.01f, 100.f, fov, aspect);
+				camera.proj = Math::mat44::perspectiveX(1.f, 10.f, fov, aspect);
 				camera.view = Math::mat44::look_at(Math::vec3({ 2.0f, 2.0f, 2.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();

@@ -6,13 +6,16 @@
 using namespace nyan;
 int main() {
 	Utility::FBXReader fbxReader;
-	char meshName[255] = "monkey.fbx";
-	auto meshes = fbxReader.parse_meshes(meshName);
-	auto& mesh = meshes.back();
-	auto texName = "monkey";
+	char meshName[255] = "sphere.fbx";
+	//auto meshes = fbxReader.parse_meshes(meshName);
+	//auto& mesh = meshes.back();
+	auto texName = "textureDX2Mips";
+	auto texNameNormal = "NormalTangent";
+	//auto texNameNormal = "Normal";
+	//auto texNameNormal = "FGD";
 
 	nyan::Application application("Demo");
-	try {
+	//try {
 
 		auto& device = application.get_device();
 		auto& window = application.get_window();
@@ -31,37 +34,53 @@ int main() {
 		auto& pass = rendergraph.add_pass("test", nyan::Renderpass::Type::Graphics);
 		nyan::ImageAttachment depth;
 		depth.clearColor[0] = 1.0f;
-		depth.format = VK_FORMAT_D24_UNORM_S8_UINT;
+		//depth.format = VK_FORMAT_D24_UNORM_S8_UINT;
+		//depth.format = VK_FORMAT_D16_UNORM;
+		depth.format = VK_FORMAT_D32_SFLOAT;
 		pass.add_depth_output("depth", depth);
 		nyan::ImageAttachment color;
+		//color.format = VK_FORMAT_R8G8B8A8_UNORM;
+		//color.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 		color.format = VK_FORMAT_R8G8B8A8_SRGB;
-		color.clearColor = Math::vec4({ .2f, .3f, .1f, 0.f });
+		color.clearColor = Math::vec4(.1f, .3f, .7f, 0.f);
+
+		Math::mat22(1, 2, 3, 4);
+		nyan::ImageAttachment normal;
+		normal.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+		normal.clearColor = Math::vec4({ 0.f, 0.f, 1.f, 0.f});
 		pass.add_output("color", color);
+		pass.add_output("normal", normal);
 		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
-		nyan::ImageAttachment swap;
 		pass2.add_input("color");
 		//pass2.add_read_dependency("depth");
-		pass2.add_output("swap", swap);
-		rendergraph.set_swapchain("swap");
+		pass2.add_input("depth");
+		pass2.add_input("normal");
+		pass2.add_swapchain_output();
 		rendergraph.build();
 
 		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);
 
-		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
+		//auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
+		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "deferred_frag");
 		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			cmd->bind_program(fullscreenProgram);
 			cmd->disable_depth();
 			cmd->set_cull_mode(VK_CULL_MODE_NONE);
 			cmd->bind_input_attachment(0, 0);
+			//cmd->bind_input_attachment(0, 1);
+			//cmd->bind_input_attachment(0, 2);
+			//auto& depth= rendergraph.get_resource("depth");
+			//cmd->bind_texture(0, 1, *depth.handle, vulkan::DefaultSampler::LinearClamp);
 			cmd->draw(3, 1, 0, 0);
 		});
 		//pass2.add_post_barrier("depth");
 
-		Material testMaterial(0, "default_frag");
+		Material testMaterial(0, "default");
 		//StaticMesh* testMesh = meshManager.request_static_mesh("TestMesh");
 		StaticMesh* viewPortMesh = nullptr; 
 
 		testMaterial.add_texture(textureManager.request_texture(texName));
+		testMaterial.add_texture(textureManager.request_texture(texNameNormal));
 
 		RendererCamera camera{};
 		Transform* transform = nullptr;
@@ -90,10 +109,11 @@ int main() {
 			else {
 				cmd->set_cull_mode(VK_CULL_MODE_NONE);
 			}
+			cmd->set_depth_write(VK_TRUE);
+			cmd->set_depth_test(VK_TRUE);
 			renderer.render(cmd);
 			cmd->end_region();
 		});
-
 		while (!window.should_close())
 		{
 			//window.swap_buffers();
@@ -113,7 +133,7 @@ int main() {
 					transform->transform(3, 3) = 1;
 					transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
 				}
-				camera.proj = Math::mat44::perspectiveY(0.01f, 100.f, fovY, aspect);
+				camera.proj = Math::mat44::perspectiveY(0.01f, 10.f, fovY, aspect);
 				//camera.proj = Math::mat44::perspectiveXY(0.01f, 100.f, fovX, fovY);
 				camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
@@ -154,13 +174,23 @@ int main() {
 				ImGui::End();
 				ImGui::Begin("Model");
 				if (ImGui::Button("Load Model")) {
-					auto meshes = fbxReader.parse_meshes(meshName);
+					//auto meshes = fbxReader.parse_meshes(meshName, false);
+					//if (!meshes.empty()) {
+					//	auto& mesh = meshes.back();
+					//	if(mesh.get_static_vertices().size() < UINT16_MAX)
+					//		viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_vertices(), mesh.get_indices16());
+					//	else
+					//		viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_vertices(), mesh.get_indices32());
+					//	viewPortMesh->set_material(&testMaterial);
+					//	transform = &viewPortMesh->get_transform();
+					//}
+					auto meshes = fbxReader.parse_meshes(meshName, true);
 					if (!meshes.empty()) {
 						auto& mesh = meshes.back();
-						if(mesh.get_static_vertices().size() < UINT16_MAX)
-							viewPortMesh = meshManager.request_static_mesh(mesh.name, mesh.get_static_vertices(), mesh.get_indices16());
+						if (mesh.get_static_tangent_vertices().size() < UINT16_MAX)
+							viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_tangent_vertices(), mesh.get_indices16());
 						else
-							viewPortMesh = meshManager.request_static_mesh(mesh.name, mesh.get_static_vertices(), mesh.get_indices32());
+							viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_tangent_vertices(), mesh.get_indices32());
 						viewPortMesh->set_material(&testMaterial);
 						transform = &viewPortMesh->get_transform();
 					}
@@ -213,11 +243,11 @@ int main() {
 			}
 		}
 		device.wait_idle();
-	}
-	catch (const std::runtime_error& error) {
-		std::cerr << error.what() << std::endl;
-		return EXIT_FAILURE;
-	}
+	//}
+	//catch (const std::runtime_error& error) {
+	//	std::cerr << error.what() << std::endl;
+	//	return EXIT_FAILURE;
+	//}
 
 	return 0;
 }

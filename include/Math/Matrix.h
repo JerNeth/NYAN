@@ -7,11 +7,11 @@
 #include <optional>
 
 namespace Math {
-	template<typename Scalar, size_t Size> class Vec;
-	template<typename Scalar> class Quaternion;
+	template<ScalarT Scalar, size_t Size> class Vec;
+	template<ScalarT Scalar> class Quaternion;
 
 	template<
-		typename Scalar,
+		ScalarT Scalar,
 		size_t Size_x, //width
 		size_t Size_y> //height
 	class Mat
@@ -104,6 +104,26 @@ namespace Math {
 				}
 			}
 		}
+		template<ScalarT... Args>
+		constexpr explicit Mat(Args... args) {
+			static_assert(sizeof...(Args) == (Size_x * Size_y)|| sizeof...(Args) == 1, "Invalid amount of parameters for this mat");
+			if constexpr (sizeof...(Args) == 1) {
+				for (size_t i = 0; i < (Size_x * Size_y); i++)
+				{
+					std::array<std::common_type_t<Args...>, 1> list = { std::forward<Args>(args)... };
+					m_data[i] = static_cast<Scalar>(list[0]);
+				}
+			}
+			else {
+				std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
+				size_t idx = 0;
+				for (size_t y = 0; y < Size_y; y++) {
+					for (size_t x = 0; x < Size_x; x++) {
+						m_data[at<Size_y>(x, y)] = list[idx++];
+					}
+				}
+			}
+		}
 		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other>
 		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other>& other) : m_data() {
 			for (size_t y = 0; y < min(Size_y, Size_y_other); y++) {
@@ -141,6 +161,9 @@ namespace Math {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] * rhs;
 			return result;
+		}
+		friend inline Mat operator*(const Scalar& lhs, const Mat& rhs) noexcept {
+			return rhs * lhs;
 		}
 		friend inline Mat operator/(const Mat& lhs, const Scalar& rhs) noexcept {
 			Mat result;
@@ -549,8 +572,6 @@ namespace Math {
 	private:
 
 		std::array<Scalar, Size_x* Size_y> m_data;
-		// I would really prefer C++20 concepts instead of this
-		static_assert(std::is_arithmetic<Scalar>::value, "Scalar must be numeric");
 	};
 	
 	template<typename Scalar, size_t Size_x, size_t Size_y>
@@ -562,12 +583,12 @@ namespace Math {
 	}
 	
 	template<typename Scalar, size_t rows, size_t equal, size_t cols>
-	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, rows, equal>& lhs, const Mat<Scalar, equal, cols>& rhs) {
+	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, equal, cols>& lhs, const Mat<Scalar, rows, equal>& rhs) {
 		Mat<Scalar, rows, cols> result;
 		for (size_t y = 0; y < cols; y++) {
-			Vec<Scalar, equal> old_col = lhs.row(y);
+			Vec<Scalar, equal> old_row = lhs.row(y);
 			for (size_t x = 0; x < rows; x++) {
-				result[at<cols>(x, y)] = old_col.dot(rhs.col(x));
+				result[at<cols>(x, y)] = old_row.dot(rhs.col(x));
 			}
 		}
 		return result;

@@ -67,6 +67,7 @@ namespace Math
 	typedef Mat<float, 2, 2> mat22;
 	typedef Mat<float, 3, 3> mat33;
 	typedef Mat<float, 4, 4> mat44;
+	typedef Mat<float, 3, 2> mat32;
 	typedef Mat<float, 4, 3> mat43;
 	typedef Mat<double, 2, 2> dmat22;
 	typedef Mat<double, 3, 3> dmat33;

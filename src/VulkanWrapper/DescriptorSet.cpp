@@ -148,6 +148,7 @@ std::pair<VkDescriptorSet, bool> vulkan::DescriptorSetAllocator::find(unsigned t
 		state.removeStale = false;
 	}
 	if (auto r = state.hashMap.get(hash); r.has_value()) {
+		//TODO technically memory "leak" i.e. we never clear stale
 		state.stale.push_back(hash);
 		return {*r, true};
 	}

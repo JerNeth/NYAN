@@ -296,6 +296,7 @@ void vulkan::CommandBuffer::flush_descriptor_set(uint32_t set)
 
 		if (updateTemplate != VK_NULL_HANDLE) {
 			vkUpdateDescriptorSetWithTemplate(r_device.get_device(), descriptorSet, updateTemplate, m_resourceBindings.bindings[set].data());
+			//vkCmdPushDescriptorSetWithTemplateKHR(m_vkHandle, updateTemplate, m_currentPipelineLayout->get_layout(),set, m_resourceBindings.bindings[set].data());
 		}
 
 	}
@@ -548,7 +549,7 @@ void vulkan::CommandBuffer::bind_storage_image(uint32_t set, uint32_t binding, c
 void vulkan::CommandBuffer::bind_input_attachment(uint32_t set, uint32_t startBinding)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
-	uint32_t inputAttachmentCount = m_currentRenderpass->get_num_color_attachments(m_pipelineState.subpassIndex);
+	uint32_t inputAttachmentCount = m_currentRenderpass->get_num_input_attachments(m_pipelineState.subpassIndex);
 	assert(startBinding + inputAttachmentCount <= MAX_BINDINGS);
 	for (uint32_t i = 0; i < inputAttachmentCount; i++ ){
 		auto& inputAttachmentReference = m_currentRenderpass->get_input_attachment(i, m_pipelineState.subpassIndex);
