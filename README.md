@@ -4,6 +4,8 @@
 
 This is supposed to be a simple lightweight engine based on vulkan
 
+![work-in-progress-screenshot](doc/sample.png)
+
 ## Features
 
 None, yet.
