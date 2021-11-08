@@ -2,13 +2,14 @@
 
 ## Description
 
-This is supposed to be a simple lightweight engine based on vulkan
+This is supposed to be a simple lightweight high-performance render-engine based on vulkan.
 
 ![work-in-progress-screenshot](doc/sample.png)
 
 ## Features
 
-None, yet.
+Currently, a basic fbx-model-viewer with simple Blin-Phong shading has been implemented in the fbx demo. Furthermore, the foundations for complex render tasks have been sett with the abstractions
+and rendergraph.
 
 ## Progress
 
@@ -22,9 +23,6 @@ None, yet.
 	- [x] LinkedBucketList
 	- [x] Pool
 	- [ ] ...
-- [x] Window management
-	- [x] Create a window
-	- [x] Get Vulkan Context
 - [ ] Renderer
 	- [x] Rendergraph (partial)
 	- [ ] UI
