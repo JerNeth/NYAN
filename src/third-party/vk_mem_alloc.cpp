@@ -1,4 +1,4 @@
-#define VK_USE_PLATFORM_WIN32_KHR
+//#define VK_USE_PLATFORM_WIN32_KHR
 #ifdef __clang__
 #pragma clang diagnostic push
 #endif

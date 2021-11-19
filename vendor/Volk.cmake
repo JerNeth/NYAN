@@ -2,8 +2,10 @@ cmake_minimum_required (VERSION 3.14)
 include(FetchContent)
 if(WIN32)
     set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
-elseif()
-    message("Not supported yet")
+elseif(LINUX)
+    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_XLIB_KHR)
+elseif(APPLE)
+    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_MACOS_MVK)
 endif()
 
 FetchContent_Declare(
