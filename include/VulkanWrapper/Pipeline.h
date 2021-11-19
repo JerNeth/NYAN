@@ -79,7 +79,7 @@ namespace vulkan {
 		//
 		friend bool operator==(const PipelineState& left, const PipelineState& right) {
 			assert(left.padding == 0 && right.padding == 0);
-			return std::memcmp(&left, &right, sizeof(PipelineState))== 0;
+			return memcmp(&left, &right, sizeof(PipelineState))== 0;
 		}
 	};
 	static_assert(sizeof(PipelineState) == 16, "Something wrong with PipelineState");
