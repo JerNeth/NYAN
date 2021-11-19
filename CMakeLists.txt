@@ -125,11 +125,11 @@ target_compile_features(Engine PUBLIC
 )
 
 if(WIN32)
-    target_compile_definitions(Engine PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-elseif(LINUX)
-    target_compile_definitions(Engine PRIVATE VK_USE_PLATFORM_XLIB_KHR)
+    target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_WIN32_KHR)
 elseif(APPLE)
-    target_compile_definitions(Engine PRIVATE VK_USE_PLATFORM_MACOS_MVK)
+    target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_MACOS_MVK)
+elseif(UNIX)
+    target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_XLIB_KHR)
 endif()
 
 # ---------------------------------------------------------------------------
