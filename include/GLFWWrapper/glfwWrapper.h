@@ -203,9 +203,11 @@ namespace glfww {
 			int iconified = glfwGetWindowAttrib(m_window, GLFW_ICONIFIED);
 			return iconified != 0;
 		}
+#if defined(_WIN32)
 		inline HWND get_win32_window() {
 			return glfwGetWin32Window(m_window);
 		}
+#endif
 		~Window() {
 			glfwDestroyWindow(m_window);
 		}

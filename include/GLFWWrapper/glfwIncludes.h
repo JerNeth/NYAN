@@ -9,7 +9,9 @@
 	#pragma clang diagnostic ignored "-Wdocumentation-unknown-command"
 #endif
 #include <GLFW/glfw3.h>
+#if defined(_WIN32)
 #include <GLFW/glfw3native.h>
+#endif
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
