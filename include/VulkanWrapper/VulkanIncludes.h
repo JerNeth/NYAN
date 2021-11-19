@@ -23,8 +23,10 @@ constexpr bool debug = true;
 #endif
 
 #define VK_NO_PROTOTYPES
+#ifdef WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
 #define NOMINMAX
 #ifdef __clang__
 	#pragma clang diagnostic push
