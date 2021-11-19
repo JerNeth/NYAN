@@ -63,7 +63,7 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 	VkXlibSurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
 		.Display = dpy,
-		.window = window,
+		.Window = window,
 	};
 	if (auto result = vkCreateXcbSurfaceKHR(m_instance, &createInfo, m_allocator, &m_surface); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {

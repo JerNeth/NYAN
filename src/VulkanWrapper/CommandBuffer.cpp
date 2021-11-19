@@ -757,7 +757,7 @@ void vulkan::CommandBuffer::push_constants(const void* data, VkDeviceSize offset
 {
 	//TODO constant
 	assert(offset + range <= 128);
-	std::memcpy(m_resourceBindings.pushConstantData.data() + offset, data, range);
+	memcpy(m_resourceBindings.pushConstantData.data() + offset, data, range);
 	m_invalidFlags.set(InvalidFlags::PushConstants);
 }
 
@@ -830,7 +830,7 @@ void vulkan::CommandBuffer::begin_render_pass(const RenderpassCreateInfo& render
 
 void vulkan::CommandBuffer::end_render_pass()
 {
-	assert(m_currentFramebuffer, "No Framebuffer, forgot to begin render pass?");
+	assert(m_currentFramebuffer);// No Framebuffer, forgot to begin render pass?
 	assert(m_currentRenderpass);
 	assert(m_pipelineState.compatibleRenderPass);
 	vkCmdEndRenderPass(m_vkHandle);
