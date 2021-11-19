@@ -9,7 +9,7 @@ namespace Utility {
 	template<typename T, size_t bucketSize = (std::hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
 	struct alignas(std::hardware_constructive_interference_size) HashBucket {
 		HashBucket() {
-			std::memset(data.data(), 0, data.size() * sizeof(std::pair<HashValue, T>));
+			memset(data.data(), 0, data.size() * sizeof(std::pair<HashValue, T>));
 		}
 		~HashBucket() {
 			for (size_t i = 0; i < data.size(); i++) {
@@ -42,7 +42,7 @@ namespace Utility {
 					assert(occupancy.test(i));
 					data[i].second.~T();
 					occupancy.reset(i);
-					std::memset(&data[i], 0, sizeof(std::pair<HashValue, T>));
+					memset(&data[i], 0, sizeof(std::pair<HashValue, T>));
 					return;
 				}
 			}
@@ -90,7 +90,7 @@ namespace Utility {
 		void operator=(HashMap& other) = delete;
 		void clear() {
 			if (data) {
-				std::memset(data, 0, sizeof(HashBucket<T>) * capacity());
+				memset(data, 0, sizeof(HashBucket<T>) * capacity());
 			}
 		}
 		std::optional<T> get(HashValue hash) {
@@ -281,7 +281,7 @@ namespace Utility {
 	template<typename Key, typename Value, size_t bucketSize>
 	struct alignas(std::hardware_constructive_interference_size) KeyHashBucket {
 		KeyHashBucket() {
-			std::memset(data.data(), 0, sizeof(data));
+			memset(data.data(), 0, sizeof(data));
 		}
 		~KeyHashBucket() {
 			for (size_t i = 0; i < data.size(); i++) {
@@ -316,7 +316,7 @@ namespace Utility {
 					data[i].first.~Key();
 					data[i].second.~Value();
 					occupancy.reset(i);
-					std::memset(&data[i], 0, sizeof(std::pair<Key, Value>));
+					memset(&data[i], 0, sizeof(std::pair<Key, Value>));
 				}
 			}
 		}
@@ -371,7 +371,7 @@ namespace Utility {
 		void operator=(KeyHashMap& other) = delete;
 		void clear() {
 			if (data) {
-				std::memset(data, 0, sizeof(Bucket) * capacity());
+				memset(data, 0, sizeof(Bucket) * capacity());
 			}
 		}
 		std::optional<Value> get(Key key) {

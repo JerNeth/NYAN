@@ -3,6 +3,7 @@
 #pragma once
 #include <stdlib.h>
 #include <cstddef>
+#include <cstdint>
 #include <bit>
 #include <assert.h>
 namespace Utility {
@@ -22,7 +23,7 @@ namespace Utility {
 			m_size(other.m_size) 
 		{
 			m_occupancy = static_cast<size_t*>(malloc(m_size));
-			std::memcpy(m_occupancy, other.m_occupancy, m_size);
+			memcpy(m_occupancy, other.m_occupancy, m_size);
 		}
 		DynamicBitset(DynamicBitset&& other) noexcept : 
 			m_occupancy(other.m_occupancy),
@@ -36,7 +37,7 @@ namespace Utility {
 			if (this != &other) {
 				m_size = other.m_size;
 				m_occupancy = static_cast<size_t*>(malloc(m_size));
-				std::memcpy(m_occupancy, other.m_occupancy, m_size);
+				memcpy(m_occupancy, other.m_occupancy, m_size);
 			}
 			return *this;
 		}
