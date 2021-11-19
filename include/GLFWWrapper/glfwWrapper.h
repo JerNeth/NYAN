@@ -211,7 +211,7 @@ namespace glfww {
 		inline Display* get_x11_display() {
 			return glfwGetX11Display();
 		}
-		inline Window get_x11_window() {
+		inline ::Window get_x11_window() {
 			return glfwGetX11Window(m_window);
 		}
 #endif

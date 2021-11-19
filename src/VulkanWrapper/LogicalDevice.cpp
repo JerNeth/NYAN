@@ -43,28 +43,47 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkD
 	std::vector<VkExtensionProperties> extensions(count);
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensions.data());
 	for (auto& extension : extensions) {
-		
+		#ifdef VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME
 		if (strcmp(extension.extensionName, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.descriptor_update_template = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.swapchain = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.timeline_semaphore = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.fullscreen_exclusive = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.extended_dynamic_state = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_EXT_DEBUG_MARKER_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.debug_marker = 1;
 		}
-		else if (strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+		else 
+		#endif
+		#ifdef VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+		if (strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
 			m_supportedExtensions.debug_utils = 1;
 		}
+		#endif
 	}
 	assert(m_supportedExtensions.swapchain);
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
@@ -550,7 +569,7 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 			//std::cout << "Mip offset: " << mip.offset  << " initial offset: " << initialData[arrayLayer].mipOffsets[level] <<"\n";
 			for(uint32_t z = 0; z < mip.depth; z++)
 				for (uint32_t y = 0; y < mip.blockCountY; y++)
-					std::memcpy(dst + z* dstLayerSize+ y * rowSize, src + z * srcLayerStride + y * srcRowStride, rowSize);
+					memcpy(dst + z* dstLayerSize+ y * rowSize, src + z * srcLayerStride + y * srcRowStride, rowSize);
 		}
 		
 	}
@@ -1272,7 +1291,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 	else if (initialData != nullptr) {
 		//No staging needed
 		auto map = handle->map_data();
-		std::memcpy(reinterpret_cast<char*>(map), initialData, info.size);
+		memcpy(reinterpret_cast<char*>(map), initialData, info.size);
 	}
 	return handle;
 }

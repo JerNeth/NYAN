@@ -1,5 +1,3 @@
-#include "..\..\include\VulkanWrapper\Manager.h"
-#include "..\..\include\VulkanWrapper\Manager.h"
 #include "Manager.h"
 #include "LogicalDevice.h"
 

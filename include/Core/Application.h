@@ -8,7 +8,7 @@
 namespace nyan {
 	struct InitializationError : public std::exception {
 
-		InitializationError(const char* msg) : std::exception(msg){
+		InitializationError(const char* msg) : std::exception(){
 
 		}
 	};

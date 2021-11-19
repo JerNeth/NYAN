@@ -47,7 +47,7 @@ void nyan::VulkanRenderer::queue_mesh(SkinnedMesh* mesh)
 void nyan::VulkanRenderer::update_camera(const RendererCamera& camera)
 {
 	auto* map = m_cameraBuffer->map_data();
-	std::memcpy(map, &camera, sizeof(RendererCamera));
+	memcpy(map, &camera, sizeof(RendererCamera));
 }
 
 void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)

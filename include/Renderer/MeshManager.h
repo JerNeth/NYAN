@@ -23,15 +23,15 @@ namespace nyan {
 				mesh.tangentSpace = true;
 			}
 			else {
-				static_assert(false);
+				assert(false);
 			}
 			vulkan::BufferInfo buffInfo;
 			buffInfo.size = vertices.size() * sizeof(V) + indices.size() * sizeof(I);
 			buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 			buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 			std::byte* tmp = (std::byte*)malloc(buffInfo.size);
-			std::memcpy(tmp, vertices.data(), vertices.size() * sizeof(V));
-			std::memcpy(tmp + vertices.size() * sizeof(V), indices.data(), indices.size() * sizeof(I));
+			memcpy(tmp, vertices.data(), vertices.size() * sizeof(V));
+			memcpy(tmp + vertices.size() * sizeof(V), indices.data(), indices.size() * sizeof(I));
 			auto vbo = r_device.create_buffer(buffInfo, tmp);
 
 			m_usedBuffers.push_back(vbo);
@@ -49,7 +49,7 @@ namespace nyan {
 				return nullptr;
 			}
 			else {
-				static_assert(false);
+				assert(false);
 				return nullptr;
 			}
 		}/*

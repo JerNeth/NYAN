@@ -1,7 +1,7 @@
 #pragma once
 #ifndef DDSREADER_H
 #define DDSREADER_H
-#include "VulkanWrapper\VulkanIncludes.h"
+#include "VulkanWrapper/VulkanIncludes.h"
 namespace Utility {
 	//Really don't want to write this but did not really find a good implementation
 	//Reference https://docs.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-reference
