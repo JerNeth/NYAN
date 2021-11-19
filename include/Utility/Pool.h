@@ -109,14 +109,14 @@ namespace Utility {
 			if (m_data && m_occupancy.test(idx)) {
 				return m_data[idx];
 			}
-			throw std::exception{ "Invalid idx" };
+			throw std::range_error{ "Invalid idx" };
 		}
 		const T& get(size_t idx) const {
 			assert(idx < m_capacity);
 			if (m_data && m_occupancy.test(idx)) {
 				return m_data[idx];
 			}
-			throw std::exception{ "Invalid idx" };
+			throw std::range_error{ "Invalid idx" };
 		}
 		size_t size() const noexcept {
 			return m_size;

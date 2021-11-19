@@ -1,13 +1,27 @@
-#pragma once
+﻿#pragma once
 #ifndef HASHMAP_H
 #define HASHMAP_H
 #include <optional>
 #include <new>
 #include "Hash.h"
 #include "Pool.h"
+
+// https://en.cppreference.com/w/cpp/thread/hardware_destructive_interference_size
+// Since Clang and GCC (<12) do not support it
+#ifdef __cpp_lib_hardware_interference_size
+using std::hardware_constructive_interference_size;
+using std::hardware_destructive_interference_size;
+#else
+// 64 bytes on x86-64 │ L1_CACHE_BYTES │ L1_CACHE_SHIFT │ __cacheline_aligned │ ...
+constexpr std::size_t hardware_constructive_interference_size
+= 2 * sizeof(std::max_align_t);
+constexpr std::size_t hardware_destructive_interference_size
+= 2 * sizeof(std::max_align_t);
+#endif
 namespace Utility {
-	template<typename T, size_t bucketSize = (std::hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
-	struct alignas(std::hardware_constructive_interference_size) HashBucket {
+	
+	template<typename T, size_t bucketSize = (hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
+	struct alignas(hardware_constructive_interference_size) HashBucket {
 		HashBucket() {
 			memset(data.data(), 0, data.size() * sizeof(std::pair<HashValue, T>));
 		}
@@ -66,7 +80,7 @@ namespace Utility {
 			return occupancy.test(idx);
 		}
 	};
-	template<typename T, size_t hashBucketSize = (std::hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
+	template<typename T, size_t hashBucketSize = (hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
 	class HashMap {
 	private:
 		constexpr size_t capacity() {
@@ -279,7 +293,7 @@ namespace Utility {
 		size_t* ptr_count = nullptr;
 	};
 	template<typename Key, typename Value, size_t bucketSize>
-	struct alignas(std::hardware_constructive_interference_size) KeyHashBucket {
+	struct alignas(hardware_constructive_interference_size) KeyHashBucket {
 		KeyHashBucket() {
 			memset(data.data(), 0, sizeof(data));
 		}

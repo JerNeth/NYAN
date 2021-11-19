@@ -22,7 +22,7 @@ namespace Utility {
 	inline uint32_t fast_log2(uint32_t num) {
 		double ff = static_cast<double>(num | 1);
 		uint32_t tmp;
-		std::memcpy(&tmp, reinterpret_cast<const char*>(&ff) + sizeof(uint32_t), sizeof(uint32_t));
+		memcpy(&tmp, reinterpret_cast<const char*>(&ff) + sizeof(uint32_t), sizeof(uint32_t));
 		return (tmp >> 20) - 1023;
 	}
 	template <typename T, typename C>
