@@ -5,6 +5,7 @@
 #include "Constants.h"
 #include <string>
 #include <optional>
+#include <cmath>
 
 namespace Math {
 	template<ScalarT Scalar, size_t Size> class Vec;

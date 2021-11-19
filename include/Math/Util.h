@@ -9,7 +9,7 @@ namespace Math {
 	template<ScalarT S>
 		inline constexpr const S& min(const S& a, const S& b) noexcept {
 		//Assuming IEEE-754
-		//If either is NaN, > returns FALSE => min(a,b) gives you the oposite result compared to max(a,b)
+		//If either is NaN, > returns FALSE => min(a,b) gives you the opposite result compared to max(a,b)
 		if (!(a > b))
 			return a;
 		return b;

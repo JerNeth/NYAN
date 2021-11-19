@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Constants.h"
+#include <cmath>
 namespace Math {
 	template<ScalarT Scalar, size_t Size_x, size_t Size_y> class Mat;
 	template<ScalarT Scalar, size_t Size> class Vec;
@@ -18,6 +19,12 @@ namespace Math {
 		}
 		explicit Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
 
+		}
+		Scalar get_real() const {
+			return m_real;
+		}
+		const Vec<Scalar, 3>& get_imaginary() const {
+			return m_imaginary;
 		}
 		// Expects Angles in Degrees
 		// Reason being: this is expected to be used as a human interface and not intended for internal use, this is what quaternions are for

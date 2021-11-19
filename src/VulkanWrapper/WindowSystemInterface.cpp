@@ -2,9 +2,10 @@
 #include "LogicalDevice.h"
 #include "Instance.h"
 
-vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Instance& instance)
+vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Instance& instance, VkPresentModeKHR preferedPresentMode)
 	:r_device(device),
-	r_instance(instance)
+	r_instance(instance),
+	m_preferredPresentMode(preferedPresentMode)
 {
 	init_swapchain();
 	r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
@@ -33,6 +34,7 @@ void vulkan::WindowSystemInterface::destroy_swapchain()
 
 void vulkan::WindowSystemInterface::update_swapchain()
 {
+	m_staleSwapchain = false;
 	drain_swapchain();
 
 	if(init_swapchain());
@@ -42,7 +44,7 @@ void vulkan::WindowSystemInterface::update_swapchain()
 void vulkan::WindowSystemInterface::begin_frame()
 {
 	r_device.next_frame();
-	if (m_vkHandle == VK_NULL_HANDLE)
+	if (m_staleSwapchain || m_vkHandle == VK_NULL_HANDLE)
 		update_swapchain();
 	if (m_swapchainImageAcquired)
 		return;
@@ -134,7 +136,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	auto surfaceFormats = r_instance.get_surface_formats();
 	auto surfaceFormat = surfaceFormats[0];
 	if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
-		[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
+		[&](auto format) {return format.format == m_preferredSwapchainFormat && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
 		_surfaceFormat != surfaceFormats.cend())
 		surfaceFormat = *_surfaceFormat;
 	//if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
@@ -150,12 +152,13 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	
 	auto presentModes = r_instance.get_present_modes();
 	auto presentMode = VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR;
-	if (std::find(presentModes.cbegin(), presentModes.cend(), VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR) != presentModes.cend()) {
+	if (std::find(presentModes.cbegin(), presentModes.cend(), m_preferredPresentMode) != presentModes.cend()) {
 		presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 	}
 	
 	
 	auto capabilities = r_instance.get_surface_capabilites();
+	
 	auto minImageCount = capabilities.minImageCount + 1;
 	if (capabilities.maxImageCount > 0 && minImageCount > capabilities.maxImageCount) {
 		minImageCount = capabilities.maxImageCount;
@@ -187,7 +190,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.imageColorSpace = surfaceFormat.colorSpace,
 		.imageExtent = m_swapchainExtent,
 		.imageArrayLayers = 1,
-		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.queueFamilyIndexCount = 0,
 		.pQueueFamilyIndices = nullptr,

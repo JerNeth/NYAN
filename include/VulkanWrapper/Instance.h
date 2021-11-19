@@ -27,7 +27,11 @@ namespace vulkan {
 		Instance& operator=(Instance&) = delete;
 		//LogicalDevice setup_device_direct();
 		std::unique_ptr<LogicalDevice> setup_device();
+#ifdef WIN32
 		void setup_win32_surface(HWND hwnd, HINSTANCE hinstance);
+#else
+		void setup_x11_surface(Window window, Display* dpy);
+#endif
 		uint32_t find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 		std::vector<VkPresentModeKHR> get_present_modes() const;
 		std::vector<VkSurfaceFormatKHR> get_surface_formats() const;

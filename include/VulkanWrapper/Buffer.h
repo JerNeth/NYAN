@@ -92,7 +92,7 @@ namespace vulkan {
 		//MappedMemoryHandle<uint8_t> map_data() const noexcept;
 		void* map_data() noexcept;
 		void unmap_data() noexcept;
-		void flush(uint32_t offset = 0, uint32_t size = ~0Ui32);
+		void flush(uint32_t offset = 0, uint32_t size = ~0u);
 		~Buffer();
 	private:
 		LogicalDevice& r_device;

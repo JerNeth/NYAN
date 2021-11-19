@@ -120,7 +120,7 @@ namespace Utility {
 	};
 	template<size_t bitSize, typename T = size_t> // typename for indices e.g. enums
 	class bitset {
-		using bitType = std::conditional_t< bitSize <= 8, typename uint8_t, std::conditional_t < bitSize <= 16, typename uint16_t, std::conditional_t < bitSize <= 32, typename uint32_t, typename  uint64_t>>> ;
+		using bitType = std::conditional_t< bitSize <= 8, uint8_t, std::conditional_t < bitSize <= 16, uint16_t, std::conditional_t < bitSize <= 32, uint32_t,  uint64_t>>> ;
 		static constexpr size_t bitsPerWord = (sizeof(bitType) * 8);
 		static constexpr size_t typeSize  = bitSize / bitsPerWord + (bitSize % bitsPerWord != 0);
 		//static_assert(std::is_convertible<T, size_t>::value);

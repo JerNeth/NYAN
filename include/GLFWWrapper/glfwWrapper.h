@@ -207,6 +207,13 @@ namespace glfww {
 		inline HWND get_win32_window() {
 			return glfwGetWin32Window(m_window);
 		}
+#else
+		inline Display* get_x11_display() {
+			return glfwGetX11Display();
+		}
+		inline Window get_x11_window() {
+			return glfwGetX11Window(m_window);
+		}
 #endif
 		~Window() {
 			glfwDestroyWindow(m_window);

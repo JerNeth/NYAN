@@ -18,7 +18,7 @@ namespace Utility {
 			return m_id;
 		}
 	private:
-		UID m_id = ~0Ui64;
+		UID m_id = ~0ull;
 	};
 }
 

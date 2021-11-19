@@ -2,6 +2,7 @@
 #define VECTOR_H
 #pragma once
 #include <string>
+#include <cmath>
 #include "Util.h"
 
 namespace Math {
@@ -229,7 +230,8 @@ namespace Math {
 			return *this;
 		}
 		inline Vec& operator*=(const Quaternion<Scalar>& rhs) noexcept {
-			static_assert(false, "TODO");
+			static_assert(Size == 3 || Size == 4, "Only works for three dimensional vectors");
+			*this = rhs * *this;
 			return *this;
 		}
 		constexpr inline const Scalar& operator[] (const size_t index) const noexcept {

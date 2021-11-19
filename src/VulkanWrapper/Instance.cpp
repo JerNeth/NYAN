@@ -39,6 +39,7 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device()
 	}
 }
 
+#ifdef WIN32
 void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 	VkWin32SurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
@@ -57,7 +58,26 @@ void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 		}
 	}
 }
-
+#else
+void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
+	VkXlibSurfaceCreateInfoKHR createInfo{
+		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+		.Display = dpy,
+		.window = window,
+	};
+	if (auto result = vkCreateXcbSurfaceKHR(m_instance, &createInfo, m_allocator, &m_surface); result != VK_SUCCESS) {
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not create win32 surface, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not create win32 surface, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+		}
+	}
+}
+#endif
 uint32_t vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties)const 
 {
 	VkPhysicalDeviceMemoryProperties memoryProperties;
