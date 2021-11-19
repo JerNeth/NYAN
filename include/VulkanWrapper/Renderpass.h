@@ -17,7 +17,7 @@ namespace vulkan {
 			Size
 		};
 		enum class DepthStencil : uint8_t {
-			None,
+			NoDepthStencil,
 			Read,
 			ReadWrite
 		};

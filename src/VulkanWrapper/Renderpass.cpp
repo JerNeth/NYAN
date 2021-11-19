@@ -157,7 +157,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				resolves[j].layout = VK_IMAGE_LAYOUT_UNDEFINED;
 			}
 		}
-		if (createInfo.depthStencilAttachment && subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::None) {
+		if (createInfo.depthStencilAttachment && subpasses[i].depthStencil != RenderpassCreateInfo::DepthStencil::NoDepthStencil) {
 			depth->attachment = createInfo.colorAttachmentsCount;
 			depth->layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
@@ -308,7 +308,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				colorAttachmentReadWrite.set(subpass);
 			}
 			else if (depth && input) {
-				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
+				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::NoDepthStencil);
 				if (subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthSelfDependency.set(subpass);
 					currentLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -334,7 +334,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 				lastSubpassForAttachment[attachment] = subpass;
 			}
 			else if (depth) {
-				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::None);
+				assert(subpasses[subpass].depthStencil != RenderpassCreateInfo::DepthStencil::NoDepthStencil);
 				if (subpasses[subpass].depthStencil == RenderpassCreateInfo::DepthStencil::ReadWrite) {
 					depthStencilAttachmentWrite.set(subpass);
 					if (currentLayout != VK_IMAGE_LAYOUT_GENERAL)
