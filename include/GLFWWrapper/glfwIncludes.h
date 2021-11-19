@@ -10,7 +10,7 @@
 #endif
 #include <GLFW/glfw3.h>
 
-#ifdef __linux__  
+#ifdef __linux__
 #undef GLFW_EXPOSE_NATIVE_COCOA
 #define GLFW_EXPOSE_NATIVE_X11
 #undef GLFW_EXPOSE_NATIVE_WAYLAND
