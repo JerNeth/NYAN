@@ -13,8 +13,8 @@ if(NOT SPIRV-Cross_POPULATED)
 
     # Set any custom variables, etc. here, then
     # populate the content as part of this build
-    set(SPIRV-Cross_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/SPIRV-Cross-src)
-    set(SPIRV-Cross_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/SPIRV-Cross-build)
+    set(SPIRV-Cross_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/spirv-cross-src)
+    set(SPIRV-Cross_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/_deps/spirv-cross-build)
     set_source_files_properties(
       ${Cross_SOURCE_DIR}
       PROPERTIES
