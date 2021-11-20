@@ -304,6 +304,7 @@ namespace Utility {
 					data[i].second.~Value();
 				}
 			}
+			//TODO double free due to std::array also calling destructor (which we don't want)
 		}
 		Utility::bitset<bucketSize> occupancy;
 		std::array<std::pair<Key, Value>, bucketSize> data;
@@ -397,7 +398,9 @@ namespace Utility {
 			auto hash = Hash<Key>()(key);
 			size_t idx = mod(hash);
 			if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
-				data[idx][bucket_idx] = std::make_pair(key, value);
+				// data[idx][bucket_idx] = std::make_pair(key, value);
+				data[idx][bucket_idx].first = key;
+				data[idx][bucket_idx].second = value;
 				data[idx].occupancy.set(bucket_idx);
 				return true;
 			}

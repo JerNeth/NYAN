@@ -1,8 +1,9 @@
 #pragma once
 #ifndef FBXREADER_H
 #define FBXREADER_H
+#undef PropertyNotify
 #include <fbxsdk.h>
-#include <Renderer\MeshLoader.h>
+#include <Renderer/MeshLoader.h>
 namespace Utility {
 	//TODO move this into an importer class
 	//So that modules don't depend on this class

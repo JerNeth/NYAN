@@ -8,7 +8,7 @@
 namespace nyan {
 	struct InitializationError : public std::exception {
 
-		InitializationError(const char* msg) : std::exception(msg){
+		InitializationError(const char* msg) : std::exception(){
 
 		}
 	};
@@ -45,4 +45,4 @@ namespace nyan {
 	};
 }
 
-#endif !NYANAPPLICATION_H
+#endif

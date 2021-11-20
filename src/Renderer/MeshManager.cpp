@@ -20,8 +20,8 @@ StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 	buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 	std::byte* tmp = (std::byte*)malloc(sizeof(nyan::cubeVertices) + sizeof(nyan::cubeIndices));
-	std::memcpy(tmp, nyan::cubeVertices.data(), sizeof(nyan::cubeVertices));
-	std::memcpy(tmp + sizeof(nyan::cubeVertices), nyan::cubeIndices.data(), sizeof(nyan::cubeIndices));
+	memcpy(tmp, nyan::cubeVertices.data(), sizeof(nyan::cubeVertices));
+	memcpy(tmp + sizeof(nyan::cubeVertices), nyan::cubeIndices.data(), sizeof(nyan::cubeIndices));
 	auto vbo = r_device.create_buffer(buffInfo, tmp);
 
 	m_usedBuffers.push_back(vbo);

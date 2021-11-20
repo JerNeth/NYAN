@@ -96,7 +96,7 @@ add_executable(Demo ${DEMO_SRC})# )
 add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
 
-target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk)
+target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk::volk)
 target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)

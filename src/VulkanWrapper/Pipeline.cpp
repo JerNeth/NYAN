@@ -706,7 +706,7 @@ VkPipeline vulkan::PipelineStorage::request_pipeline(const Program& program)
 {
 	//TODO seperate Storage maybe, wasting ~200Bytes
 	PipelineCompile compile{};
-	std::memset(&compile, 0, sizeof(PipelineCompile));
+	memset(&compile, 0, sizeof(PipelineCompile));
 	compile.program = const_cast<Program*>(&program); //Cast const away, not ideal but we still consider program const
 	const auto& [ret, _] = m_hashMap.try_emplace(compile, r_device, program);
 	return ret->second.get_pipeline();

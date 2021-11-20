@@ -4,6 +4,8 @@
 #include <iostream>
 #include <bitset>
 #include <assert.h>
+#include <array>
+#include <memory>
 namespace Utility {
 	template<typename T, typename Container>
 	class ObjectHandle;

@@ -524,7 +524,7 @@ namespace vulkan {
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
 	private:
-		inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const;
+		inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const;
 		void inline array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const;
 		void create_module(const std::vector<uint32_t>& shaderCode);
 

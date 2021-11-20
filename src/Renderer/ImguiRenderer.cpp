@@ -1,5 +1,4 @@
 #include "Renderer/ImguiRenderer.h"
-
 using namespace vulkan;
 
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager& shaderManager) : r_device(device) {
@@ -46,8 +45,8 @@ void nyan::ImguiRenderer::next_frame()
 				max = values[n];
 		}
 		average /= (float)IM_ARRAYSIZE(values);
-		char overlay[32];
-		sprintf_s(overlay, "avg %f", average);
+		char overlay[] = "fps";
+		//sprintf_s(overlay, "avg %f", average);
 		ImGui::PlotLines("Frame Times", values, IM_ARRAYSIZE(values), values_offset, overlay, 0.0f, max * 1.2f, ImVec2(0, 80.0f));
 	}
 

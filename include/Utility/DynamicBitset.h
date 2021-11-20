@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <stdexcept>
 #include <bit>
 #include <assert.h>
 namespace Utility {
@@ -70,7 +72,7 @@ namespace Utility {
 			for (; (m_occupancy[bucket] & full_mask) == full_mask; bucket++) {
 				assert(bucket < m_size);
 			}
-			size_t idx = idx = bucket * sizeof(size_t) * 8;
+			size_t idx = bucket * sizeof(size_t) * 8;
 			for (; test(idx); idx++) {
 
 			}
@@ -155,8 +157,6 @@ namespace Utility {
 			}
 			return false;
 		}
-		template<class Head, class... Tail>
-		using are_same = std::conjunction<std::is_same<Head, Tail>...>;
 		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
 		bitset get_and_clear(Tail... args) noexcept {
 			bitset flags;
