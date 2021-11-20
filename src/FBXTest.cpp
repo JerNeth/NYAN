@@ -6,10 +6,12 @@
 using namespace nyan;
 int main() {
 	Utility::FBXReader fbxReader;
-	char meshName[255] = "sphere.fbx";
+	//char meshName[255] = "sphereMedium.fbx";
+	char meshName[255] = "cube.fbx";
 	//auto meshes = fbxReader.parse_meshes(meshName);
 	//auto& mesh = meshes.back();
-	auto texName = "textureDX2Mips";
+	//auto texName = "textureDX2Mips";
+	auto texName = "tex";
 	auto texNameNormal = "NormalTangent";
 	//auto texNameNormal = "Normal";
 	//auto texNameNormal = "FGD";
@@ -44,7 +46,6 @@ int main() {
 		color.format = VK_FORMAT_R8G8B8A8_SRGB;
 		color.clearColor = Math::vec4(.1f, .3f, .7f, 0.f);
 
-		Math::mat22(1, 2, 3, 4);
 		nyan::ImageAttachment normal;
 		normal.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 		normal.clearColor = Math::vec4({ 0.f, 0.f, 1.f, 0.f});
@@ -61,16 +62,18 @@ int main() {
 		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);
 
 		//auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "fullscreen_frag");
-		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "deferred_frag");
+		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "deferredPBR_frag");
+		struct ShaderStuff {
+			Math::vec4 lightDir = Math::vec3(-1, -2, 1);
+			Math::vec4 lightColor = Math::vec3(0.9, 0.9, 0.9);
+			Math::vec4 camPos { 0.0f, -4.0f, 0.0f };
+		} shaderstuff;
 		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			cmd->bind_program(fullscreenProgram);
 			cmd->disable_depth();
 			cmd->set_cull_mode(VK_CULL_MODE_NONE);
+			cmd->push_constants(&shaderstuff, 0, sizeof(ShaderStuff));
 			cmd->bind_input_attachment(0, 0);
-			//cmd->bind_input_attachment(0, 1);
-			//cmd->bind_input_attachment(0, 2);
-			//auto& depth= rendergraph.get_resource("depth");
-			//cmd->bind_texture(0, 1, *depth.handle, vulkan::DefaultSampler::LinearClamp);
 			cmd->draw(3, 1, 0, 0);
 		});
 		//pass2.add_post_barrier("depth");
@@ -109,8 +112,6 @@ int main() {
 			else {
 				cmd->set_cull_mode(VK_CULL_MODE_NONE);
 			}
-			cmd->set_depth_write(VK_TRUE);
-			cmd->set_depth_test(VK_TRUE);
 			renderer.render(cmd);
 			cmd->end_region();
 		});
@@ -135,7 +136,7 @@ int main() {
 				}
 				camera.proj = Math::mat44::perspectiveY(0.01f, 10.f, fovY, aspect);
 				//camera.proj = Math::mat44::perspectiveXY(0.01f, 100.f, fovX, fovY);
-				camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }) * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
+				camera.view = Math::mat44::look_at(shaderstuff.camPos * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
 				application.next_frame();
 
@@ -146,6 +147,12 @@ int main() {
 				//ImGui::SliderFloat("fovX", &fovX, 45.f, 110.0f);
 				ImGui::SliderFloat("fovY", &fovY, 25.f, 70.0f);
 
+				ImGui::ColorEdit3("Lightcolor", &shaderstuff.lightColor[0]);
+				ImGui::Text("Camera Position");
+				ImGui::DragFloat3("   ", &shaderstuff.camPos[0], 0.01f, -10.0f, 10.f, "%.5f", ImGuiSliderFlags_None);
+				ImGui::Text("Light Direction");
+				ImGui::DragFloat3("  ", &shaderstuff.lightDir[0], 0.01f, -1.f, 1.f, "%.5f", ImGuiSliderFlags_None);
+				shaderstuff.lightDir.normalize();
 				ImGui::AlignTextToFramePadding();
 				ImGui::Text("Mip Level:");
 				ImGui::SameLine();
