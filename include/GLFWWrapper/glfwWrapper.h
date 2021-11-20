@@ -34,6 +34,9 @@ namespace glfww {
 			ret.reserve(glfwExtensionCount);
 			for (uint32_t i = 0; i < glfwExtensionCount; i++)
 				ret.push_back(glfwExtensions[i]);
+			#ifdef X_PROTOCOL
+			ret.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+			#endif
 			return ret;
 		}
 		~Library() {

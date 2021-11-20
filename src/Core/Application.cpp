@@ -115,7 +115,7 @@ bool nyan::Application::setup_vulkan_surface()
 	try {
 		#ifdef _WIN32
 		m_vulkanInstance->setup_win32_surface(m_window->get_win32_window(), GetModuleHandle(nullptr));
-		#elif defined __LINUX__
+		#elif X_PROTOCOL
 		m_vulkanInstance->setup_x11_surface(m_window->get_x11_window(),m_window->get_x11_display());
 		#endif
 	}

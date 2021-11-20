@@ -283,10 +283,10 @@ namespace vulkan {
 		VkBool32 supports_sparse_textures() const noexcept {
 			VkBool32 ret = true;
 			ret &= m_physicalProperties.sparseProperties.residencyStandard2DBlockShape; //Desired
-			m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
+			//m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
 			ret &= m_physicalFeatures.features.sparseBinding; //Required
 			ret &= m_physicalFeatures.features.sparseResidencyImage2D; //Required
-			m_physicalFeatures.features.sparseResidencyAliased; //Ignore for now
+			//m_physicalFeatures.features.sparseResidencyAliased; //Ignore for now
 			return ret;
 		}
 		VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect) {

@@ -45,4 +45,4 @@ namespace nyan {
 	};
 }
 
-#endif !NYANAPPLICATION_H
+#endif

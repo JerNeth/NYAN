@@ -9,7 +9,7 @@ int main() {
 	char meshName[255] = "sphere.fbx";
 	//auto meshes = fbxReader.parse_meshes(meshName);
 	//auto& mesh = meshes.back();
-	auto texName = "textureDX2Mips";
+	auto texName = "tex";
 	auto texNameNormal = "NormalTangent";
 	//auto texNameNormal = "Normal";
 	//auto texNameNormal = "FGD";

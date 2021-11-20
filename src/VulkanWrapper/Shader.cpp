@@ -22,11 +22,11 @@ vulkan::ShaderStage vulkan::Shader::get_stage()
 	return m_stage;
 }
 
-inline std::tuple<uint32_t, uint32_t, const spirv_cross::SPIRType&> vulkan::Shader::get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const
+inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> vulkan::Shader::get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const
 {
 	auto set = comp.get_decoration(resource.id, spv::DecorationDescriptorSet);
 	auto binding = comp.get_decoration(resource.id, spv::DecorationBinding);
-	auto& type = comp.get_type(resource.type_id);
+	auto type = comp.get_type(resource.type_id);
 	return std::make_tuple(set, binding, type);
 }
 

@@ -42,4 +42,4 @@ namespace nyan {
 		std::unordered_map<Setting, std::variant<int, std::string, float>> m_settings;
 	};
 }
-#endif !NYANSETTINGS_H
+#endif
