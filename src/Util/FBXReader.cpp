@@ -91,8 +91,8 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 					auto uv = uvs->operator[](uvIdx);
 					auto index = findices[polyIndex + j];
 					auto& vertex = vertices[index];
-					uint16_t tarX = uv[0] * UINT16_MAX;
-					uint16_t tarY = (1.0f - uv[1]) * UINT16_MAX;
+					float tarX = uv[0];// *UINT16_MAX;
+					float tarY = (1.0f - uv[1]);// *UINT16_MAX;
 					Hasher h;
 					h(tarX);
 					h(tarY);

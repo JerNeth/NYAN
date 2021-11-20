@@ -6,7 +6,7 @@ void nyan::StaticMesh::render(vulkan::CommandBufferHandle& cmd)
 	assert(indexBuffer);
 	cmd->bind_index_buffer(vulkan::IndexState{ .buffer = indexBuffer->get_handle(), .offset = indexOffset,.indexType = indexType });
 	cmd->set_vertex_attribute(0, 0, vulkan::get_format<Math::vec3>());
-	cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::usvec2>());
+	cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::vec2>());
 	cmd->set_vertex_attribute(2, 0, vulkan::get_format<Math::ubvec4>());
 	if (tangentSpace) {
 		cmd->set_vertex_attribute(3, 0, vulkan::get_format<Math::bvec4>());
@@ -25,7 +25,7 @@ void nyan::SkinnedMesh::render(vulkan::CommandBufferHandle& cmd)
 	skeleton->bind(cmd);
 	cmd->bind_index_buffer(vulkan::IndexState{ .buffer = indexBuffer->get_handle(), .offset = indexOffset,.indexType = indexType });
 	cmd->set_vertex_attribute(0, 0, vulkan::get_format<Math::vec3>());
-	cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::usvec2>());
+	cmd->set_vertex_attribute(1, 0, vulkan::get_format<Math::vec2>());
 	cmd->set_vertex_attribute(2, 0, VK_FORMAT_R8G8B8A8_UINT);
 	cmd->set_vertex_attribute(3, 0, vulkan::get_format<Math::usvec4>());
 	if (tangentSpace) {

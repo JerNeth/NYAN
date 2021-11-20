@@ -24,8 +24,8 @@ layout(location = 2) out mat3 fragTangentFrame;
 
 void main() {
     gl_Position = sceneMatrices.proj * sceneMatrices.view * constants.model * vec4(inPosition, 1.0);
-    vec3 tangent = vec3(constants.model * inTangent);
-    vec3 normal = vec3(constants.model * inNormal);
+    vec3 tangent = vec3(constants.model * vec4(inTangent.xyz, 0));
+    vec3 normal = vec3(constants.model * vec4(inNormal.xyz, 0));
     vec3 bitangent = cross(normal, tangent);
     fragTangentFrame = mat3(tangent, bitangent, normal);
     fragColor = inColor;

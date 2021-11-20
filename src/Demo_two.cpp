@@ -7,7 +7,6 @@
 #include <glfwWrapper.h>
 #include "VulkanRenderer"
 #include <chrono>
-#include <stb_image.h>
 #include "LinAlg.h"
 #include <new>
 #include <thread>

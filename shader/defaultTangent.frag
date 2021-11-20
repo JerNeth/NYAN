@@ -17,9 +17,10 @@ void main() {
     vec3 diffuseColor = texture(texSampler, fragTexCoord).rgb;
     float diffuse = dot(normal, lightDir);
     normal = fragTangentFrame * normal;
+    //normal = fragTangentFrame[2];
     outColor = vec4(diffuse * diffuseColor, 1.0);
     //outNormal = vec4(normal, 1);
-    outNormal = vec4(normal, 1);
+    outNormal = vec4(normal *0.5 +0.5, 1);
     //outNormal = vec4(texture(texSamplerNormal, fragTexCoord).rg, 1, 1);
     //outNormal = vec4(fragTangentFrame[2], 1);
     outColor = vec4(diffuseColor, 1);
