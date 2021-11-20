@@ -5,6 +5,7 @@
 #include <new>
 #include "Hash.h"
 #include "Pool.h"
+#include <unordered_map>
 
 // https://en.cppreference.com/w/cpp/thread/hardware_destructive_interference_size
 // Since Clang and GCC (<12) do not support it
@@ -361,117 +362,118 @@ namespace Utility {
 			return occupancy.test(idx);
 		}
 	};
-	template<typename Key, typename Value, size_t hashBucketSize = 4>
-	class KeyHashMap {
-	private:
-		using Bucket = KeyHashBucket<Key, Value, hashBucketSize>;
-		constexpr size_t capacity() {
-			return 1ull << size;
-		}
-		constexpr size_t mask() {
-			return capacity() - 1ull;
-		}
-		constexpr size_t mod(size_t idx) {
-			return idx & mask();
-		}
-	public:
-		KeyHashMap() {
-			data = new Bucket[1];
-		}
-		~KeyHashMap() {
-			if (data)
-				delete[] data;
-		}
-		KeyHashMap(KeyHashMap& other) = delete;
-		void operator=(KeyHashMap& other) = delete;
-		void clear() {
-			if (data) {
-				memset(data, 0, sizeof(Bucket) * capacity());
-			}
-		}
-		std::optional<Value> get(Key key) {
-			auto hash = Hash<Key>()(key);
-			size_t idx = mod(hash);
-			return data[idx].get(key);
-		}
-		bool try_insert(const Key& key, const Value& value) {
-			auto hash = Hash<Key>()(key);
-			size_t idx = mod(hash);
-			if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
-				// data[idx][bucket_idx] = std::make_pair(key, value);
-				data[idx][bucket_idx].first = key;
-				data[idx][bucket_idx].second = value;
-				data[idx].occupancy.set(bucket_idx);
-				return true;
-			}
-			return false;
-		}
-		
-		void insert(const Key& key, const Value& value) {
-			//Check if bucket is full
-			if (!try_insert(key, value)) {
-				bool succeded = true;
-				auto oldSize = size;
-				do {
-					succeded = true;
-					auto oldData = data;
-					data = new Bucket[1ull << ++size];
-					for (size_t i = 0; i < (1ull << oldSize); i++) {
-						for (size_t j = 0; j < oldData[i].end(); j++) {
-							if (!oldData[i].contains_direct(j))
-								continue;
-							auto [tmpKey, tmpData] = oldData[i][j];
-							succeded &= try_insert(tmpKey, tmpData);
-							if (!succeded)
-								goto cleanup;
-						}
-					}
-					succeded &= try_insert(key, value);
-					if (!succeded) {
-					cleanup:
-						delete[] data;
-						data = oldData;
-					}
-				} while (!succeded);
-			}
-		}
-		void remove(Key key) {
-			auto hash = Hash<Key>()(key);
-			size_t idx = mod(hash);
-			data[idx].remove(key);
-		}
-		bool contains(Key key) {
-			auto hash = Hash<Key>()(key);
-			size_t idx = mod(hash);
-			return data[idx].contains(key);
-		}
-		//Key get_key(const Value& value) {
-		//	for (size_t i = 0; i < capacity(); i++) {
-		//		for (size_t j = 0; j < oldData[i].end(); j++) {
+	//template<typename Key, typename Value, size_t hashBucketSize = 4>
+	//class KeyHashMap {
+	//private:
+	//	using Bucket = KeyHashBucket<Key, Value, hashBucketSize>;
+	//	constexpr size_t capacity() {
+	//		return 1ull << size;
+	//	}
+	//	constexpr size_t mask() {
+	//		return capacity() - 1ull;
+	//	}
+	//	constexpr size_t mod(size_t idx) {
+	//		return idx & mask();
+	//	}
+	//public:
+	//	KeyHashMap() {
+	//		data = new Bucket[1];
+	//	}
+	//	~KeyHashMap() {
+	//		if (data)
+	//			delete[] data;
+	//	}
+	//	KeyHashMap(KeyHashMap& other) = delete;
+	//	void operator=(KeyHashMap& other) = delete;
+	//	void clear() {
+	//		if (data) {
+	//			memset(data, 0, sizeof(Bucket) * capacity());
+	//		}
+	//	}
+	//	std::optional<Value> get(const Key& key) {
+	//		auto hash = Hash<Key>()(key);
+	//		size_t idx = mod(hash);
+	//		return data[idx].get(key);
+	//	}
+	//	bool try_insert(const Key& key, const Value& value) {
+	//		auto hash = Hash<Key>()(key);
+	//		size_t idx = mod(hash);
+	//		if (auto bucket_idx = data[idx].get_first_empty(); bucket_idx != data[idx].end()) {
+	//			// data[idx][bucket_idx] = std::make_pair(key, value);
+	//			data[idx][bucket_idx].first = key;
+	//			data[idx][bucket_idx].second = value;
+	//			data[idx].occupancy.set(bucket_idx);
+	//			return true;
+	//		}
+	//		return false;
+	//	}
+	//	
+	//	void insert(const Key& key, const Value& value) {
+	//		//Check if bucket is full
+	//		if (!try_insert(key, value)) {
+	//			bool succeded = true;
+	//			auto oldSize = size;
+	//			do {
+	//				succeded = true;
+	//				auto oldData = data;
+	//				data = new Bucket[1ull << ++size];
+	//				for (size_t i = 0; i < (1ull << oldSize); i++) {
+	//					for (size_t j = 0; j < oldData[i].end(); j++) {
+	//						if (!oldData[i].contains_direct(j))
+	//							continue;
+	//						auto [tmpKey, tmpData] = oldData[i][j];
+	//						succeded &= try_insert(tmpKey, tmpData);
+	//						if (!succeded)
+	//							goto cleanup;
+	//					}
+	//				}
+	//				succeded &= try_insert(key, value);
+	//				if (!succeded) {
+	//				cleanup:
+	//					delete[] data;
+	//					data = oldData;
+	//				}
+	//			} while (!succeded);
+	//		}
+	//	}
+	//	void remove(Key key) {
+	//		auto hash = Hash<Key>()(key);
+	//		size_t idx = mod(hash);
+	//		data[idx].remove(key);
+	//	}
+	//	bool contains(Key key) {
+	//		auto hash = Hash<Key>()(key);
+	//		size_t idx = mod(hash);
+	//		return data[idx].contains(key);
+	//	}
+	//	//Key get_key(const Value& value) {
+	//	//	for (size_t i = 0; i < capacity(); i++) {
+	//	//		for (size_t j = 0; j < oldData[i].end(); j++) {
 
-		//		}
-		//	}
-		//}
-	private:
-		Bucket* data = nullptr;
-		size_t size = 0;
-	};
+	//	//		}
+	//	//	}
+	//	//}
+	//private:
+	//	Bucket* data = nullptr;
+	//	size_t size = 0;
+	//};
+
 	template<typename Key, typename Value>
 	class NonInvalidatingMap {
 	public:
 		template<class... Args>
-		Value& emplace(Key key, Args&&... args) {
-			if (auto val = m_hashMap.get(key); val) {
-				m_storage.remove(*val);
+		Value& emplace(const Key& key, Args&&... args) {
+			if (auto val = m_hashMap.find(key); val != m_hashMap.end()) {
+				m_storage.remove(val->second);
 			}
 			auto id = m_storage.emplace_intrusive(std::forward<Args>(args)...);
-			m_hashMap.insert(key, id);
+			m_hashMap[key] = id;
 			return m_storage.get(id);
 		}
 		Value& get(const Key& key) {
-			auto id = m_hashMap.get(key);
-			assert(id);
-			return m_storage.get(*id);
+			auto id = m_hashMap.find(key);
+			assert(id!= m_hashMap.end());
+			return m_storage.get(id->second);
 		}
 		Value& get_direct(size_t id) {
 			return m_storage.get(id);
@@ -480,12 +482,12 @@ namespace Utility {
 		void for_each(Functor functor) {
 			m_storage.for_each(functor);
 		}
-		bool contains(Key key) {
-			auto id = m_hashMap.get(key);
-			return id.has_value();
+		bool contains(const Key& key) {
+			return m_hashMap.contains(key);
 		}
 	private:
-		KeyHashMap<Key, size_t> m_hashMap;
+		//KeyHashMap<Key, size_t> m_hashMap;
+		std::unordered_map<Key, size_t> m_hashMap;
 		LinkedBucketList<Value> m_storage;
 	};
 }

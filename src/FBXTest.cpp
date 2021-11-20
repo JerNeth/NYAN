@@ -51,12 +51,12 @@ int main() {
 		normal.clearColor = Math::vec4({ 0.f, 0.f, 1.f, 0.f});
 		pass.add_output("color", color);
 		pass.add_output("normal", normal);
-		auto& pass2 = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
-		pass2.add_input("color");
-		//pass2.add_read_dependency("depth");
-		pass2.add_input("depth");
-		pass2.add_input("normal");
-		pass2.add_swapchain_output();
+		auto& ScreenPass = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
+		ScreenPass.add_input("color");
+		//ScreenPass.add_read_dependency("depth");
+		ScreenPass.add_input("depth");
+		ScreenPass.add_input("normal");
+		ScreenPass.add_swapchain_output();
 		rendergraph.build();
 
 		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);
@@ -68,7 +68,7 @@ int main() {
 			Math::vec4 lightColor = Math::vec3(0.9, 0.9, 0.9);
 			Math::vec4 camPos { 0.0f, -4.0f, 0.0f };
 		} shaderstuff;
-		pass2.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
+		ScreenPass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
 			cmd->bind_program(fullscreenProgram);
 			cmd->disable_depth();
 			cmd->set_cull_mode(VK_CULL_MODE_NONE);

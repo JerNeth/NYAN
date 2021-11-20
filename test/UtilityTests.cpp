@@ -241,6 +241,44 @@ namespace Utility {
         EXPECT_EQ(test.size(), 1);
         EXPECT_EQ(*a, 1);
     }
+    TEST(Utility, NonInvalidatingMapTest) {
+        Utility::NonInvalidatingMap<std::string, std::string> testMap;
+        EXPECT_FALSE(testMap.contains("test"));
+        testMap.emplace("test", "testval");
+        EXPECT_TRUE(testMap.contains("test"));        
+        EXPECT_EQ(testMap.get("test"), "testval");
+        testMap.emplace("test", "testval2");
+        EXPECT_TRUE(testMap.contains("test"));
+        EXPECT_EQ(testMap.get("test"), "testval2");
+        testMap.emplace("test1", "testval3");
+        testMap.emplace("test2", "testval4");
+        testMap.emplace("test3", "testval5");
+        testMap.emplace("test4", "testval6");
+        testMap.emplace("test5", "testval7");
+        testMap.emplace("test6", "testval8");
+        testMap.emplace("test7", "testval9");
+        testMap.emplace("test8", "testval10");
+        testMap.emplace("test9", "testval11");
+        EXPECT_TRUE(testMap.contains("test"));
+        EXPECT_TRUE(testMap.contains("test1"));
+        EXPECT_TRUE(testMap.contains("test2"));
+        EXPECT_TRUE(testMap.contains("test3"));
+        EXPECT_TRUE(testMap.contains("test4"));
+        EXPECT_TRUE(testMap.contains("test5"));
+        EXPECT_TRUE(testMap.contains("test6"));
+        EXPECT_TRUE(testMap.contains("test7"));
+        EXPECT_TRUE(testMap.contains("test8"));
+        EXPECT_TRUE(testMap.contains("test9"));
+        EXPECT_EQ(testMap.get("test1"), "testval3");
+        EXPECT_EQ(testMap.get("test2"), "testval4");
+        EXPECT_EQ(testMap.get("test3"), "testval5");
+        EXPECT_EQ(testMap.get("test4"), "testval6");
+        EXPECT_EQ(testMap.get("test5"), "testval7");
+        EXPECT_EQ(testMap.get("test6"), "testval8");
+        EXPECT_EQ(testMap.get("test7"), "testval9");
+        EXPECT_EQ(testMap.get("test8"), "testval10");
+        EXPECT_EQ(testMap.get("test9"), "testval11");
+    }
     TEST(Utility, OwningHashMapExtreme) {
         Utility::OwningHashMap<int> test;
         {
