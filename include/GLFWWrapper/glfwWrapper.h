@@ -279,7 +279,7 @@ namespace glfww {
 			#if defined(_WIN32)
 			io.ImeWindowHandle = (void*)glfwGetWin32Window(m_window);
 			#endif
-			glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods) { 
+			glfwSetKeyCallback(m_window, []([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
 				ImGuiIO& io = ImGui::GetIO();
 				if (action == GLFW_PRESS)
 					io.KeysDown[key] = true;
@@ -296,13 +296,13 @@ namespace glfww {
 				io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 				#endif
 			});
-			glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xoffset, double yoffset)
+			glfwSetScrollCallback(m_window, []([[maybe_unused]] GLFWwindow* window, double xoffset, double yoffset)
 			{
 				ImGuiIO& io = ImGui::GetIO();
 				io.MouseWheelH += (float)xoffset;
 				io.MouseWheel += (float)yoffset;
 			});
-			glfwSetCharCallback(m_window, [](GLFWwindow* window, unsigned int c)
+			glfwSetCharCallback(m_window, []([[maybe_unused]] GLFWwindow* window, unsigned int c)
 			{
 				ImGuiIO& io = ImGui::GetIO();
 				io.AddInputCharacter(c);

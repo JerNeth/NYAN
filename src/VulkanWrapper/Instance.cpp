@@ -168,7 +168,7 @@ void vulkan::Instance::create_instance()
 	}
 	volkLoadInstance(m_instance);
 	if constexpr (debug) {
-		auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugReportCallbackEXT");
+		//auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugReportCallbackEXT");
 		if (vkCreateDebugReportCallbackEXT == NULL) {
 			throw std::runtime_error("VK: could not find debug report callback ext");
 		}

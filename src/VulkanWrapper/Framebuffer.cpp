@@ -109,7 +109,7 @@ void vulkan::FramebufferAllocator::clear()
 
 vulkan::Framebuffer* vulkan::FramebufferAllocator::request_framebuffer(const RenderpassCreateInfo& info)
 {
-	auto compatibleRenderpass = r_device.request_compatible_render_pass(info);
+	[[maybe_unused]] auto compatibleRenderpass = r_device.request_compatible_render_pass(info);
 	Utility::Hasher hasher;
 
 	for (uint32_t i = 0; i < info.colorAttachmentsCount; i++) {
@@ -119,7 +119,6 @@ vulkan::Framebuffer* vulkan::FramebufferAllocator::request_framebuffer(const Ren
 	if (info.depthStencilAttachment)
 		hasher(info.depthStencilAttachment);
 
-	auto hashVal = hasher();
 	if (auto res = m_framebufferIds.find(hasher()); res != m_framebufferIds.end())
 		return m_framebufferStorage.get_ptr(res->second);
 

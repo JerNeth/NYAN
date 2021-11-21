@@ -170,7 +170,7 @@ namespace Utility {
 		}
 		bitset& set() noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
-				m_data[i] = ~bitType{0};
+				m_data[i] = static_cast<bitType>(~bitType{0});
 			}
 			return *this;
 		}

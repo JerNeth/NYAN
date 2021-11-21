@@ -62,7 +62,7 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 				vertex.uv.x() = 0;
 				vertex.uv.y() = 0;
 				for (int j = 0; j < 3; j++)
-					vertex.pos[j] = lControlPoints[i].mData[j];
+					vertex.pos[j] = static_cast<float>(lControlPoints[i].mData[j]);
 				vertices.push_back(vertex);
 			}
 			std::vector <Math::vec3> normals{};
@@ -91,8 +91,8 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 					auto uv = uvs->operator[](uvIdx);
 					auto index = findices[polyIndex + j];
 					auto& vertex = vertices[index];
-					float tarX = uv[0];// *UINT16_MAX;
-					float tarY = (1.0f - uv[1]);// *UINT16_MAX;
+					float tarX = static_cast<float>(uv[0]);// *UINT16_MAX;
+					float tarY = (1.0f - static_cast<float>(uv[1]));// *UINT16_MAX;
 					Hasher h;
 					h(tarX);
 					h(tarY);
@@ -110,7 +110,7 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 								splitVertices.emplace(index, index);
 						}
 						else {
-							auto newIndex = vertices.size();
+							auto newIndex = static_cast<uint32_t>(vertices.size());
 							vertexIndex.emplace(h(), newIndex);
 							if constexpr (usesTangentSpace)
 								splitVertices.emplace(index, newIndex);
@@ -132,18 +132,18 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 						auto& v2 = vertices[tmpIndices[(j + 2) % k]];
 						auto q1 = v1.pos - v0.pos;
 						auto q2 = v2.pos - v0.pos;
-						float s1 = -uv0[0];
-						float s2 = s1;
-						s1 += uv1[0];
-						s2 += uv2[0];
+						float s1 = static_cast<float>(-uv0[0]);
+						float s2 = static_cast<float>(s1);
+						s1 += static_cast<float>(uv1[0]);
+						s2 += static_cast<float>(uv2[0]);
 						//float t1 = -(1.0f - uv0[1]);
 						//float t2 = t1;
 						//t1 += (1.0f - uv1[1]);
 						//t2 += (1.0f - uv2[1]);
-						float t1 = -(uv0[1]);
-						float t2 = t1;
-						t1 += (uv1[1]);
-						t2 += (uv2[1]);
+						float t1 = static_cast<float>(-(uv0[1]));
+						float t2 = static_cast<float>(t1);
+						t1 += static_cast<float>(uv1[1]);
+						t2 += static_cast<float>(uv2[1]);
 
 						auto TS = 1.0f / (s1 * t2 - s2 * t1) * Math::mat22(t2, -t1, -s2, s1) * Math::mat32(q1.x(), q1.y(), q1.z(), q2.x(), q2.y(), q2.z());
 
@@ -158,22 +158,22 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 				}
 				assert(k == 4 || k == 3);
 				//TODO Triangulate non-square polygons
-				indices.push_back(tmpIndices[0]);
-				indices.push_back(tmpIndices[1]);
-				indices.push_back(tmpIndices[2]);
+				indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
+				indices.push_back(static_cast<T::value_type>(tmpIndices[1]));
+				indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
 				if (k == 4) {
-					indices.push_back(tmpIndices[0]);
-					indices.push_back(tmpIndices[2]);
-					indices.push_back(tmpIndices[3]);
+					indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
+					indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
+					indices.push_back(static_cast<T::value_type>(tmpIndices[3]));
 				}
 			}
 			if constexpr (usesTangentSpace) {
-				for (int i = 0; i < normals.size(); i++) {
+				for (size_t i = 0; i < normals.size(); i++) {
 					auto& normal = normals[i].normalize();
 					auto& tangent = tangents[i].normalize();
 					auto snormal = Math::snormVec<int8_t>(normal);
 					auto stangent = Math::snormVec<int8_t>(tangent);
-					auto range = splitVertices.equal_range(i);
+					auto range = splitVertices.equal_range(static_cast<uint32_t>(i));
 					vertices[i].normal = snormal;
 					vertices[i].tangent = stangent;
 					for (auto b = range.first; b != range.second; b++) {

@@ -1,29 +1,22 @@
-﻿cmake_minimum_required (VERSION 3.14)
+﻿cmake_minimum_required (VERSION 3.19)
 #set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
+cmake_policy(SET CMP0091 NEW)
 project(SmallEngine)
 include("UserSettings.txt")
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 #Project Wide Settings
 #All Options which change the ABI come here
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     message("Detected MSVC")
-    #add_compile_options(/WX)
-    #set(CMAKE_CXX_FLAGS_RELEASE "/MT")
-    #set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
+    string(REGEX REPLACE "/W[3|4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     add_compile_options(/wd26812)
-    add_compile_options("$<$<CONFIG:RELEASE>:/MT>")
-    add_compile_options("$<$<CONFIG:DEBUG>:/MTd>")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     message("Detected Clang")
-    #set(CMAKE_CXX_FLAGS_RELEASE "-MT")
-    #set(CMAKE_CXX_FLAGS_DEBUG "-MTd")
-    #add_compile_options(-MTd)
-    add_compile_options("$<$<CONFIG:RELEASE>:-MT>")
-    add_compile_options("$<$<CONFIG:DEBUG>:-MTd>")
-    #add_compile_options(-Wall -Wextra -Wno-error=documentation -Wno-error=reserved-id-macro -Wno-error=documentation-unknown-command)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -88,21 +81,19 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # ---------------------------------------------------------------------------
 
 
-add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC} ${IMGUI_SRC})
+add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
 add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC})
 add_dependencies(Engine shaders)
 
-add_executable(Demo ${DEMO_SRC})# )
+add_executable(Demo ${DEMO_SRC})
 add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
 
-target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk::volk)
+target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)
-
-include_directories("${FBXSDK_DIR}/include")
-target_link_libraries(FBXTest Engine ${FBX_REQUIRED_LIBS_DEPENDENCY})
+target_link_libraries(FBXTest Engine)
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 

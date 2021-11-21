@@ -16,7 +16,7 @@ namespace vulkan {
 		}
 		~Instance() {
 			if constexpr (debug) {
-				auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugReportCallbackEXT");
+				//auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugReportCallbackEXT");
 				vkDestroyDebugReportCallbackEXT(m_instance, m_debugReport, m_allocator);
 			}
 			vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);

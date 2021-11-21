@@ -6,7 +6,6 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 {
 	std::tie(m_compatibleHashValue, m_hashValue) = createInfo.get_hash();
 	uint32_t subpassCount = createInfo.subpassCount;
-	auto s = createInfo.subpasses.data();
 	const RenderpassCreateInfo::SubpassCreateInfo* subpasses = createInfo.subpasses.data();
 	RenderpassCreateInfo::SubpassCreateInfo defaultPass;
 	if (subpassCount == 0) {
@@ -15,7 +14,7 @@ vulkan::Renderpass::Renderpass(LogicalDevice& parent, const RenderpassCreateInfo
 			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::Read;
 		else
 			defaultPass.depthStencil = RenderpassCreateInfo::DepthStencil::ReadWrite;
-		for (uint32_t i = 0; i < createInfo.colorAttachmentsCount; i++) {
+		for (uint8_t i = 0; i < createInfo.colorAttachmentsCount; i++) {
 			defaultPass.colorAttachments[i] = i;
 		}
 		subpassCount = 1;

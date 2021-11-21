@@ -13,7 +13,7 @@ namespace nyan {
 		vulkan::Image* request_texture(const std::string& name);
 		void change_mip(const std::string& name, uint32_t targetMip);
 		void set_minimum_mip_level(uint32_t mipLevel) {
-			m_minimumMipLevel = m_minimumMipLevel;
+			m_minimumMipLevel = mipLevel;
 		}
 	private:
 		vulkan::ImageHandle create_image(const std::string& name, uint32_t mipLevel = 0);

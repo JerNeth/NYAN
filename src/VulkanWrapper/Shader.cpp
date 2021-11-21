@@ -51,7 +51,7 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	//bool usesBinding = false;
 	Compiler comp(shaderCode); 
 	auto executionModel = comp.get_execution_model();
-	if (executionModel > NUM_SHADER_STAGES)
+	if (static_cast<uint32_t>(executionModel) > NUM_SHADER_STAGES)
 		throw std::runtime_error("Unsupported Shadertype");
 	m_stage = static_cast<ShaderStage>(executionModel);
 	ShaderResources resources = comp.get_shader_resources();/*
@@ -128,7 +128,8 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 		if (m_stage == vulkan::ShaderStage::Vertex) {
 			auto& type = comp.get_type(attrib.type_id);
 			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			m_layout.attributeElementCounts[location] = type.vecsize;
+			assert(type.vecsize <= 255);
+			m_layout.attributeElementCounts[location] = static_cast<uint8_t>(type.vecsize);
 			m_layout.inputs.set(location);
 		}
 	}

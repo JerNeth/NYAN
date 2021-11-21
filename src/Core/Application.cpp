@@ -88,7 +88,7 @@ bool nyan::Application::setup_vulkan_instance()
 {
 	try {
 		auto instanceExtensions = m_glfwLibrary->get_required_extensions();
-		m_vulkanInstance = std::make_unique<vulkan::Instance>(instanceExtensions.data(), instanceExtensions.size(), m_name, m_engineName);
+		m_vulkanInstance = std::make_unique<vulkan::Instance>(instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;

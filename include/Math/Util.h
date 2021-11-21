@@ -6,16 +6,17 @@
 namespace Math {
 	template<typename T>
 	concept ScalarT = std::is_arithmetic<T>::value;
-	template<ScalarT S>
-		inline constexpr const S& min(const S& a, const S& b) noexcept {
+
+	template<ScalarT S, ScalarT B>
+	inline constexpr const S& min(const S& a, const B& b) noexcept {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE => min(a,b) gives you the opposite result compared to max(a,b)
 		if (!(a > b))
 			return a;
 		return b;
 	}
-	template<ScalarT S>
-		inline constexpr const S& max(const S& a, const S& b) noexcept {
+	template<ScalarT S, ScalarT B>
+	inline constexpr const S& max(const S& a, const B& b) noexcept {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE
 		if (a > b)

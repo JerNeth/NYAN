@@ -94,11 +94,11 @@ uint32_t vulkan::Swapchain::get_height() const
 	return m_state.swapchainExtent.height;
 }
 
-uint32_t vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fence, uint64_t timeout)
-{
-	
-	return imageIndex;
-}
+//uint32_t vulkan::Swapchain::aquire_next_image(VkSemaphore semaphore, VkFence fence, uint64_t timeout)
+//{
+//	
+//	return imageIndex;
+//}
 
 void vulkan::Swapchain::present_queue()
 {

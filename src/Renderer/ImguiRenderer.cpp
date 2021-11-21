@@ -5,8 +5,8 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager&
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize.x = r_device.get_swapchain_width();
-	io.DisplaySize.y = r_device.get_swapchain_height();
+	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
+	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	io.BackendRendererName = "imgui_custom_vulkan";
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 	set_up_program(shaderManager);
@@ -27,8 +27,8 @@ void nyan::ImguiRenderer::next_frame()
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.DeltaTime = delta.count();
-	io.DisplaySize.x = r_device.get_swapchain_width();
-	io.DisplaySize.y = r_device.get_swapchain_height();
+	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
+	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	ImGui::NewFrame();
 	ImGui::Begin("Metrics");                          // Create a window called "Hello, world!" and append into it.
 

@@ -5,7 +5,7 @@ r_device(parent)
 {
 	
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	for (int i = 0; i < r_device.get_thread_count(); i++)
+	for (uint32_t i = 0; i < r_device.get_thread_count(); i++)
 		perThread.emplace_back(new PerThread());
 
 
@@ -142,8 +142,8 @@ std::pair<VkDescriptorSet, bool> vulkan::DescriptorSetAllocator::find(unsigned t
 {
 	auto& state = *perThread[threadId];
 	if (state.removeStale) {
-		for (auto& hash : state.stale)
-			state.hashMap.remove(hash);
+		for (auto& hashIt : state.stale)
+			state.hashMap.remove(hashIt);
 		state.stale.clear();
 		state.removeStale = false;
 	}

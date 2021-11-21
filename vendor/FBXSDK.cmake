@@ -19,6 +19,12 @@ IF(NOT FBX_ARCH)
         SET(FBX_ARCH "x86")
     ENDIF()
 ENDIF()
+
+IF(FBX_SHARED)   
+    add_library(fbx SHARED IMPORTED)
+ELSE()
+    add_library(fbx STATIC IMPORTED)
+ENDIF()
 IF(WIN32)   
     SET(FBX_VARIANT "${CMAKE_BUILD_TYPE}")
     
@@ -45,11 +51,19 @@ IF(WIN32)
         #    SET(FBX_CC_RTL "/MD")
         #    SET(FBX_CC_RTLd "/MDd")
         #    SET(FBX_RTL_SUFFX "-md")
-        #ENDIF()        
-        SET(FBX_REQUIRED_LIBS_DEPENDENCY 
-            ${FBX_TARGET_LIBS_PATH}/libfbxsdk${FBX_RTL_SUFFX}${LIB_EXTENSION} 
-            ${FBX_TARGET_LIBS_PATH}/libxml2${FBX_RTL_SUFFX}${LIB_EXTENSION} 
-            ${FBX_TARGET_LIBS_PATH}/zlib${FBX_RTL_SUFFX}${LIB_EXTENSION})
+        #ENDIF()
+        
+        set_property(TARGET fbx PROPERTY IMPORTED_LOCATION ${FBX_TARGET_LIBS_PATH}/libfbxsdk${FBX_RTL_SUFFX}${LIB_EXTENSION})
+        IF(FBX_SHARED)   
+            add_library(z SHARED IMPORTED)
+            add_library(xml2 SHARED IMPORTED)
+        ELSE()
+            add_library(z STATIC IMPORTED)
+            add_library(xml2 STATIC IMPORTED)
+        ENDIF()
+        
+        set_property(TARGET z PROPERTY IMPORTED_LOCATION ${FBX_TARGET_LIBS_PATH}/zlib${FBX_RTL_SUFFX}${LIB_EXTENSION})
+        set_property(TARGET xml2 PROPERTY IMPORTED_LOCATION ${FBX_TARGET_LIBS_PATH}/libxml2${FBX_RTL_SUFFX}${LIB_EXTENSION})
     ENDIF()
 ELSE()
     SET(FBX_COMPILER "gcc")
@@ -57,5 +71,12 @@ ELSE()
     SET(FBX_TARGET_LIBS_PATH "${FBXSDK_DIR}/lib/${FBX_COMPILER}/${FBX_ARCH}/${FBX_VARIANT}")
     SET(FBX_EXTRA_LIBS_PATH ${FBX_TARGET_LIBS_PATH}/lib)
     SET(FBX_SDK_ABS ${FBX_EXTRA_LIBS_PATH}fbxsdk${LIB_EXTENSION})
-    SET(FBX_REQUIRED_LIBS_DEPENDENCY ${FBX_SDK_ABS} z xml2)
+    set_property(TARGET fbx PROPERTY IMPORTED_LOCATION ${FBX_SDK_ABS})
 ENDIF()
+target_include_directories(fbx SYSTEM INTERFACE
+  "${FBXSDK_DIR}/include"
+)
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    target_link_options(fbx INTERFACE "/ignore:4099")
+endif()

@@ -1,21 +1,5 @@
 #include "LogicalDevice.h"
 
-
-static std::vector<uint32_t> read_binary_file(const std::string& filename) {
-
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
-	if (!(file.is_open())) {
-		throw std::runtime_error("Could not open file: \"" + filename + "\"");
-	}
-
-	auto fileSize = file.tellg();
-	std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
-
-	file.seekg(0);
-	file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
-	file.close();
-	return buffer;
-}
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkDevice device, uint32_t graphicsFamilyQueueIndex,
 					uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDevice physicalDevice) :
 	r_instance(parentInstance),
@@ -35,8 +19,7 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, VkD
 	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
 	vkGetDeviceQueue(m_device, m_transfer.familyIndex, 0, &m_transfer.queue);
 	create_vma_allocator();
-	create_default_sampler();	
-	VkPhysicalDeviceProperties properties;
+	create_default_sampler();
 	vkGetPhysicalDeviceProperties(m_physicalDevice, &m_physicalProperties);
 	uint32_t count;
 	vkEnumerateDeviceExtensionProperties(physicalDevice,nullptr, &count, nullptr);
@@ -163,7 +146,7 @@ void vulkan::LogicalDevice::next_frame()
 			}
 		}
 		for (auto fence : clear) {
-			auto range = m_fenceCallbacks.equal_range(fence);
+			range = m_fenceCallbacks.equal_range(fence);
 			m_fenceCallbacks.erase(range.first, range.second);
 			m_fenceManager.reset_fence(fence);
 		}
@@ -420,9 +403,9 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 	else {
 		auto computeStages = stages & (VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | 
 			VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-		auto computeAccess = access & (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
-			VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT |
-			VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+		//auto computeAccess = access & (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+		//	VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT |
+		//	VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
 		auto graphicStages = stages;
 		if (srcQueue == m_graphics.queue) {
 			cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, graphicStages, access);
@@ -556,13 +539,13 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 				.depth = mip.depth
 			}
 			});
-		uint32_t blockStride = format_block_size(info.format);
+		size_t blockStride = format_block_size(info.format);
 		auto [blockSizeX, blockSizeY] = format_to_block_size(info.format);
 		size_t rowSize = mip.blockCountX * blockStride;
 		size_t dstLayerSize = mip.blockCountY * rowSize;
 
-		uint32_t srcRowStride = (mip.width + blockSizeX - 1) / blockSizeX * blockStride;
-		uint32_t srcLayerStride = (mip.height + blockSizeY - 1) / blockSizeY * srcRowStride;
+		size_t srcRowStride = (mip.width + blockSizeX - 1) / blockSizeX * blockStride;
+		size_t srcLayerStride = (mip.height + blockSizeY - 1) / blockSizeY * srcRowStride;
 		for (uint32_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
 			uint8_t* dst = static_cast<uint8_t*>(map) + (mip.offset - mipInfo.mipLevels[baseMipLevel].offset) + arrayLayer*dstLayerSize;
 			const uint8_t* src = static_cast<const uint8_t*>(initialData[arrayLayer].data) + initialData[arrayLayer].mipOffsets[level];
@@ -828,7 +811,7 @@ void vulkan::LogicalDevice::transition_image(ImageHandle& handle, VkImageLayout 
 void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence)
 {
 	VkAccessFlags finalTransitionSrcAccess = info.generate_mips() ? VK_ACCESS_TRANSFER_READ_BIT : VK_ACCESS_TRANSFER_WRITE_BIT;
-	VkAccessFlags prepareSrcAccess = m_graphics.queue == m_transfer.queue ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
+	//VkAccessFlags prepareSrcAccess = m_graphics.queue == m_transfer.queue ? VK_ACCESS_TRANSFER_WRITE_BIT : 0;
 
 	bool needMipBarrier = true;
 	bool needInitialBarrier = true;
@@ -840,7 +823,7 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 
 	transferCmd->image_barrier(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-	transferCmd->copy_buffer_to_image(image, *buffer.buffer, buffer.blits.size(), buffer.blits.data());
+	transferCmd->copy_buffer_to_image(image, *buffer.buffer, static_cast<uint32_t>(buffer.blits.size()), buffer.blits.data());
 
 	if (m_transfer.queue != m_graphics.queue) {
 		VkPipelineStageFlags dstStages = info.generate_mips() ? VK_PIPELINE_STAGE_TRANSFER_BIT : image.get_stage_flags();
@@ -890,7 +873,7 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 	submit(graphicsCmd, 0 ,nullptr, fence);
 	image.set_optimal(true);
 }
-void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence, uint32_t mipLevel)
+void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence, [[maybe_unused]] uint32_t mipLevel)
 {
 	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
 	auto transferCmd = graphicsCmd;
@@ -901,7 +884,7 @@ void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& inf
 	transferCmd->image_barrier(image, image.is_optimal()?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
 	image.set_optimal(true);
-	transferCmd->copy_buffer_to_image(image, *buffer.buffer, buffer.blits.size(), buffer.blits.data());
+	transferCmd->copy_buffer_to_image(image, *buffer.buffer, static_cast<uint32_t>(buffer.blits.size()), buffer.blits.data());
 
 	if (m_transfer.queue != m_graphics.queue) {
 		VkPipelineStageFlags dstStages = image.get_stage_flags();
@@ -959,8 +942,8 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	assert((sparseMemoryRequirement.imageMipTailSize % memoryRequirements.alignment) == 0);
 
 	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
-	uint32_t allocationSize = memoryRequirements.alignment;
-	uint32_t mipTailSize = sparseMemoryRequirement.imageMipTailSize;
+	VkDeviceSize allocationSize = memoryRequirements.alignment;
+	VkDeviceSize mipTailSize = sparseMemoryRequirement.imageMipTailSize;
 	if (!singleMipTail)
 		mipTailSize *= image.get_info().arrayLayers;
 
@@ -968,7 +951,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
 	};
 
-	uint32_t allocationCount = 0;
+	size_t allocationCount = 0;
 	for (uint32_t mipLevel = image.get_available_mip(); mipLevel-- > baseMipLevel;) {
 		VkExtent3D extent{
 			.width = image.get_width(mipLevel) ,
@@ -1204,6 +1187,9 @@ std::vector<vulkan::CommandBufferHandle>& vulkan::LogicalDevice::get_current_sub
 		return frame().submittedTransferCmds;
 	case CommandBuffer::Type::Compute:
 		return frame().submittedComputeCmds;
+	default:
+		assert(false);
+		return frame().submittedGraphicsCmds;
 	}
 }
 
@@ -1216,6 +1202,9 @@ vulkan::CommandPool& vulkan::LogicalDevice::get_pool(uint32_t threadId, CommandB
 		return frame().graphicsPool[threadId];
 	case CommandBuffer::Type::Transfer:
 		return frame().transferPool[threadId];
+	default:
+		assert(false);
+		return frame().graphicsPool[threadId];
 	}
 }
 
@@ -1362,7 +1351,7 @@ bool vulkan::LogicalDevice::upsize_sparse_image(Image& image, InitialImageData* 
 		image.change_view_mip_level(targetMipLevel);
 		image.set_being_resized(false);
 	});
-
+	return true;
 }
 
 

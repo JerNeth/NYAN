@@ -36,12 +36,12 @@ namespace Utility {
 	template <typename T, typename C>
 	inline void for_each_bitrange(const C& bitset, const T& func) {
 		if (bitset.all()) {
-			func(0, bitset.size());
+			func(0, static_cast<uint32_t>(bitset.size()));
 			return;
 		}
 		uint32_t first = 0;
 		bool ones = false;
-		for (size_t i = 0; i < bitset.size(); i++) {
+		for (uint32_t i = 0; i < bitset.size(); i++) {
 			if (bitset.test(i)) {
 				if (!ones) {
 					first = i;
@@ -51,7 +51,7 @@ namespace Utility {
 			else {
 				if (ones) {
 					ones = false;
-					func(first, i - first);
+					func(first, static_cast<uint32_t>(i - first));
 				}
 			}
 		}

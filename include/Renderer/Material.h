@@ -16,6 +16,7 @@ namespace nyan {
 			return m_shaderName;
 		}
 		void add_texture(vulkan::Image* texture);
+		void set_texture(size_t idx, vulkan::Image* texture);
 	private:
 		MaterialId m_id = invalidMaterialId;
 		std::vector<vulkan::Image*> m_textures;

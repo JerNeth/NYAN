@@ -152,7 +152,7 @@ namespace vulkan {
 		void bind_texture(uint32_t set, uint32_t binding, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
 		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
 		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer);
-		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate, VkDeviceSize vertexStride = 0);
+		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate);
 		VkCommandBuffer get_handle() const noexcept;
 		void end();
 		void begin_region(const char* name, const float* color = nullptr);

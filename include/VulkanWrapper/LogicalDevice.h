@@ -75,10 +75,14 @@ namespace vulkan {
 		0, 1, 2, 2, 3, 0,
 		//4, 5, 6, 6, 7, 4
 	};
+	//Alignment due to Graphicscard alignment requirements
+	//TODO currently hard-coded for minimum Nvidia reqs.
 	struct alignas(256) Ubo   {
 		Math::mat44 model;
 		Math::mat44 view;
 		Math::mat44 proj;
+	private:
+		std::array<std::byte, 256-(3* sizeof(Math::mat44))> _pad;
 	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 	enum class SwapchainRenderpassType {
@@ -320,6 +324,9 @@ namespace vulkan {
 				return m_compute;
 			case CommandBuffer::Type::Transfer:
 				return m_transfer;
+			default:
+				assert(false);
+				return m_graphics;
 			}
 		}
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);

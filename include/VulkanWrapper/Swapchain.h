@@ -31,7 +31,7 @@ namespace vulkan {
 		uint32_t get_width() const;
 		uint32_t get_height() const;
 		VkExtent2D get_swapchain_extent() const;
-		uint32_t aquire_next_image(VkSemaphore semaphore = VK_NULL_HANDLE, VkFence fence = VK_NULL_HANDLE, uint64_t timeout = UINT64_MAX);
+		//uint32_t aquire_next_image(VkSemaphore semaphore = VK_NULL_HANDLE, VkFence fence = VK_NULL_HANDLE, uint64_t timeout = UINT64_MAX);
 		void present_queue();
 		ImageInfo get_swapchain_image_info() const noexcept;
 		ImageView* get_swapchain_image_view(uint32_t imageIdx) const noexcept;

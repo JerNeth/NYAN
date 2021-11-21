@@ -36,8 +36,8 @@ namespace nyan {
 
 			m_usedBuffers.push_back(vbo);
 
-			mesh.set_indices(vbo, vertices.size() * sizeof(V), indices.size());
-			mesh.set_vertices(vbo, 0, vertices.size());
+			mesh.set_indices(vbo, static_cast<uint32_t>(vertices.size() * sizeof(V)), static_cast<uint32_t>(indices.size()));
+			mesh.set_vertices(vbo, 0, static_cast<uint32_t>(vertices.size()));
 			if constexpr (std::is_same_v < M, StaticMesh>) {
 				auto res = m_staticMeshes.emplace(name, mesh);
 				return &res.first->second;

@@ -25,8 +25,7 @@ void vulkan::Buffer::unmap_data() noexcept
 }
 void vulkan::Buffer::flush(uint32_t offset, uint32_t size)
 {
-	auto updateSize = size == ~0u ? m_info.size : size;
-	r_device.get_vma_allocator()->flush(m_allocation, offset, updateSize);
+	r_device.get_vma_allocator()->flush(m_allocation, offset,static_cast<uint32_t>(size == ~0u ? m_info.size : size));
 }
 vulkan::Buffer::~Buffer()
 {

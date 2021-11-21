@@ -10,9 +10,12 @@ int main() {
 	char meshName[255] = "cube.fbx";
 	//auto meshes = fbxReader.parse_meshes(meshName);
 	//auto& mesh = meshes.back();
-	//auto texName = "textureDX2Mips";
-	auto texName = "tex";
-	auto texNameNormal = "NormalTangent";
+	////auto texName = "textureDX2Mips";
+	//auto texName = "tex";
+	//auto texNameNormal = "NormalTangent";
+
+	char texName[255] = "tex.dds";
+	char texNameNormal[255] = "NormalTangent.dds";
 	//auto texNameNormal = "Normal";
 	//auto texNameNormal = "FGD";
 
@@ -237,7 +240,20 @@ int main() {
 						}
 						ImGui::TreePop();
 					}
+					if (ImGui::TreeNode("Material")) {
+						if (ImGui::Button("Load albedo")) {
+						}
+						ImGui::SameLine();
+						ImGui::InputText("", texName, 255);
+						if (ImGui::Button("Load normal")) {
+						}
+						ImGui::SameLine();
+						ImGui::InputText("", texNameNormal, 255);
+
+						ImGui::TreePop();
+					}
 				}
+
 				ImGui::End();
 
 				renderer.queue_mesh(viewPortMesh);

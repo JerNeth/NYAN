@@ -22,7 +22,7 @@ constexpr std::size_t hardware_destructive_interference_size
 namespace Utility {
 	
 	template<typename T, size_t bucketSize = (hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
-	struct alignas(hardware_constructive_interference_size) HashBucket {
+	struct HashBucket {
 		HashBucket() {
 			memset(data.data(), 0, data.size() * sizeof(std::pair<HashValue, T>));
 		}
@@ -81,7 +81,7 @@ namespace Utility {
 			return occupancy.test(idx);
 		}
 	};
-	template<typename T, size_t hashBucketSize = (hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T)))>
+	template<typename T, size_t hashBucketSize = std::max((hardware_constructive_interference_size / (sizeof(HashValue) + sizeof(T))), 1ull)>
 	class HashMap {
 	private:
 		constexpr size_t capacity() {

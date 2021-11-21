@@ -16,5 +16,9 @@ set(IMGUI_SRC
 
 	)
 include_directories(${imgui_SOURCE_DIR})
+add_library(imgui STATIC ${IMGUI_SRC})
+target_include_directories(imgui SYSTEM PUBLIC
+  ${imgui_SOURCE_DIR}
+)
 #message(${imgui_SOURCE_DIR})
 #message(${IMGUI_SRC})

@@ -37,7 +37,7 @@ void vulkan::WindowSystemInterface::update_swapchain()
 	m_staleSwapchain = false;
 	drain_swapchain();
 
-	if(init_swapchain());
+	if(init_swapchain())//; Not sure if this was intentional
 		r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
 }
 

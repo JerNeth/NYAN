@@ -296,7 +296,7 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& fi
 	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10) && (fileSize <= 148))
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small for DX10)");
 
-	DDSHeaderDXT10 extHeader;
+	DDSHeaderDXT10 extHeader{};
 	if((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10))
 		file.read(reinterpret_cast<char*>(&extHeader), sizeof(Utility::DDSHeaderDXT10));
 	file.close();
@@ -480,16 +480,16 @@ std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const Utili
 	//TODO could directly read from file into vulkan buffer ?
 	std::vector<vulkan::InitialImageData> initalData;
 	std::vector<uint32_t> levelSizes(info.mipLevels);
-	size_t totalSize = 0;
+	uint32_t totalSize = 0;
 	startMipLevel = Math::min(startMipLevel, info.mipLevels);
 	std::array<uint32_t, 16> mipOffsets{};
 	for (uint32_t mipLevel = 0; mipLevel < info.mipLevels; mipLevel++) {
 		auto [blockWidth, blockHeight] = vulkan::format_to_block_size(info.format);
 		auto blockStride = vulkan::format_block_size(info.format);
-		uint32_t mipWidth = Math::max(1u, info.width >> mipLevel);
-		uint32_t mipHeight = Math::max(1u, info.height >> mipLevel);
-		uint32_t mipSize = Math::max(1u, (mipWidth + blockWidth - 1) / blockWidth) *
-			Math::max(1u, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
+		uint32_t mipWidth = Math::max(1ul, info.width >> mipLevel);
+		uint32_t mipHeight = Math::max(1ul, info.height >> mipLevel);
+		uint32_t mipSize = Math::max(1ul, (mipWidth + blockWidth - 1) / blockWidth) *
+			Math::max(1ul, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
 		if(mipLevel >= startMipLevel)
 			mipOffsets[mipLevel- startMipLevel] = totalSize;
 		totalSize += mipSize;

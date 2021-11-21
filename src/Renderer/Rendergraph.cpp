@@ -113,7 +113,8 @@ void nyan::Renderpass::add_post_barrier(const std::string& name)
 		}
 
 		barrier.imageBarrierCount = 1;
-		barrier.imageBarrierOffset = m_imageBarriers.size();
+		assert(m_imageBarriers.size() <= USHRT_MAX);
+		barrier.imageBarrierOffset = static_cast<uint16_t>(m_imageBarriers.size());
 		barrier.resourceId = resource.m_id;
 
 		m_imageBarriers.push_back(imageBarrier);
@@ -217,7 +218,7 @@ void nyan::Rendergraph::build()
 			for (auto read : pass.m_reads) {
 				auto& resource = m_renderresources.get_direct(read);
 				if (resource.m_type == RenderResource::Type::Image) {
-					auto& attachment = std::get<ImageAttachment>(resource.attachment);
+					//auto& attachment = std::get<ImageAttachment>(resource.attachment);
 					auto* info = pass.m_rpInfo.get();
 					auto& subpass = info->subpasses[0];
 					info->subpassCount = 1;
@@ -246,9 +247,8 @@ void nyan::Rendergraph::build()
 			if (pass.m_depthStencilRead != InvalidResourceId) {
 				auto& resource = m_renderresources.get_direct(pass.m_depthStencilRead);
 				assert(resource.m_type == RenderResource::Type::Image);
-				auto& attachment = std::get<ImageAttachment>(resource.attachment);
+				//auto& attachment = std::get<ImageAttachment>(resource.attachment);
 				auto* info = pass.m_rpInfo.get();
-				auto& subpass = info->subpasses[0];
 				info->opFlags.set(vulkan::RenderpassCreateInfo::OpFlags::DepthStencilReadOnly);
 			}
 			if (pass.m_depthStencilWrite != InvalidResourceId) {
@@ -256,7 +256,6 @@ void nyan::Rendergraph::build()
 				assert(resource.m_type == RenderResource::Type::Image);
 				auto& attachment = std::get<ImageAttachment>(resource.attachment);
 				auto* info = pass.m_rpInfo.get();
-				auto& subpass = info->subpasses[0];
 				info->opFlags.set(vulkan::RenderpassCreateInfo::OpFlags::DepthStencilStore);
 				//Are we the first to read this
 				assert(!resource.m_writeToIn.empty());
@@ -616,8 +615,9 @@ void nyan::Rendergraph::set_up_barrier(const ImageBarrier& imageBarrier_, const 
 	barrier.resourceId = resource.m_id;
 	barrier.src = imageBarrier_.srcStage;
 	barrier.dst = imageBarrier_.dstStage;
-	barrier.imageBarrierCount = 1;
-	barrier.imageBarrierOffset = src.m_imageBarriers.size();
+	barrier.imageBarrierCount = static_cast<uint16_t>(1);
+	assert(src.m_imageBarriers.size() <= USHRT_MAX);
+	barrier.imageBarrierOffset = static_cast<uint16_t>(src.m_imageBarriers.size());
 	if (src.get_type() != dst.get_type() && r_device.get_graphics_family() != r_device.get_compute_family()) {
 		if (src.get_type() == Renderpass::Type::Graphics) {
 			imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();

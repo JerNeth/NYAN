@@ -380,7 +380,8 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 					.offset = offsets[binding]
 		};
 		bindings.set(binding);
-		offsets[binding] += format_bytesize(format);
+		assert(format_bytesize(format) + offsets[binding] <= 255);
+		offsets[binding] += static_cast<uint8_t>(format_bytesize(format));
 		attributeDescriptions.push_back(desc);
 	});
 	bindingDescriptions.reserve(bindings.count());

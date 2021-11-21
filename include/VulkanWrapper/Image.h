@@ -23,7 +23,7 @@ namespace vulkan {
 		"VK_IMAGE_LAYOUT_PREINITIALIZED"
 	};
 	
-	inline size_t format_block_size(VkFormat format) {
+	inline uint32_t format_block_size(VkFormat format) {
 		switch (format) {
 			case VK_FORMAT_R4G4_UNORM_PACK8	 :
 			case VK_FORMAT_R8_UNORM			 :

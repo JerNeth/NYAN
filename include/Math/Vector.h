@@ -358,7 +358,7 @@ namespace Math {
 	constexpr Vec<T, size> unormVec(const Vec<float, size>& vec) {
 		//c = convertFloatToUInt(f * (2^b-1), b)
 		Vec<T, size> ret;
-		float max = static_cast<float>(T(~0u));
+		float max = static_cast<float>(T(-1));
 		for (size_t i = 0; i < size; i++) {
 			auto temp = clamp(vec[i], 0.f, 1.f);
 			ret[i] = static_cast<T>(temp * max);

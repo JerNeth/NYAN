@@ -220,7 +220,7 @@ void vulkan::CommandBuffer::flush_descriptor_set(uint32_t set)
 			hasher(m_resourceBindings.bindings[set][binding + i].buffer.range);
 			assert(m_resourceBindings.bindings[set][binding + i].buffer.buffer != VK_NULL_HANDLE);
 			assert(dynamicOffsetCount < MAX_BINDINGS);
-			dynamicOffsets[dynamicOffsetCount++] = m_resourceBindings.bindings[set][binding + i].dynamicOffset;
+			dynamicOffsets[dynamicOffsetCount++] = static_cast<uint32_t>(m_resourceBindings.bindings[set][binding + i].dynamicOffset);
 		}
 	});
 
@@ -317,7 +317,7 @@ void vulkan::CommandBuffer::rebind_descriptor_set(uint32_t set)
 		for (uint32_t i = 0; i < arraySize; i++) 
 		{
 			assert(dynamicOffsetCount < MAX_BINDINGS);
-			dynamicOffsets[dynamicOffsetCount++] = m_resourceBindings.bindings[set][binding + i].dynamicOffset;
+			dynamicOffsets[dynamicOffsetCount++] = static_cast<uint32_t>(m_resourceBindings.bindings[set][binding + i].dynamicOffset);
 		}
 	});
 	vkCmdBindDescriptorSets(m_vkHandle, m_isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -651,7 +651,7 @@ void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, 
 	bind_uniform_buffer(set, binding, buffer, 0, buffer.get_info().size);
 }
 
-void vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate, VkDeviceSize vertexStride)
+void vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate)
 {
 	assert(binding < MAX_VERTEX_BINDINGS);
 	assert(m_currentFramebuffer);
@@ -856,7 +856,7 @@ void vulkan::CommandBuffer::set_vertex_attribute(uint32_t location, uint32_t bin
 	if (format_ == format && binding_ == binding)
 		return;
 	m_invalidFlags.set(InvalidFlags::StaticVertex);
-	m_pipelineState.attributes.bindings[location] = binding;
+	m_pipelineState.attributes.bindings[location] = static_cast<uint8_t>(binding);
 	m_pipelineState.attributes.formats[location] = format;
 
 }

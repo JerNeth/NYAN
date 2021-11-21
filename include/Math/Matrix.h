@@ -120,7 +120,7 @@ namespace Math {
 				size_t idx = 0;
 				for (size_t y = 0; y < Size_y; y++) {
 					for (size_t x = 0; x < Size_x; x++) {
-						m_data[at<Size_y>(x, y)] = list[idx++];
+						m_data[at<Size_y>(x, y)] = static_cast<Scalar>(list[idx++]);
 					}
 				}
 			}
