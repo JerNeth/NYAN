@@ -65,13 +65,13 @@ r_device(parent)
 				bindings.push_back(VkDescriptorSetLayoutBinding
 					{
 						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
 						.descriptorCount = layout.arraySizes[i],
 						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
 						.pImmutableSamplers = nullptr
 					}
 				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, poolSize });
+				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, poolSize });
 			}
 			if (layout.inputAttachment.test(i)) {
 				bindings.push_back(VkDescriptorSetLayoutBinding
@@ -147,7 +147,7 @@ std::pair<VkDescriptorSet, bool> vulkan::DescriptorSetAllocator::find(unsigned t
 		state.stale.clear();
 		state.removeStale = false;
 	}
-	if (auto r = state.hashMap.get(hash); r.has_value()) {
+	if (auto r = state.hashMap.get(hash); r) {
 		//TODO technically memory "leak" i.e. we never clear stale
 		state.stale.push_back(hash);
 		return {*r, true};

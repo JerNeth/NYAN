@@ -132,13 +132,10 @@ namespace Utility {
 	template<typename T, typename Container>
 	class ObjectHandle {
 	public:
-		ObjectHandle() {
-			//I don't like having invalid invariants, but otherwise pretty uncomfortable to use
-		}
+		ObjectHandle() = delete;
 		ObjectHandle(size_t id, Container* container) : m_id(id), ptr_container(container) {
 			assert(ptr_container);
 		}
-	public:
 		~ObjectHandle() {
 			destructor();
 		}
@@ -191,7 +188,7 @@ namespace Utility {
 			}
 			return *this;
 		}
-		ObjectHandle& operator=(ObjectHandle&& other)
+		ObjectHandle& operator=(ObjectHandle&& other) noexcept
 		{
 			if (this != &other) {
 				destructor();
@@ -202,9 +199,6 @@ namespace Utility {
 				other.ptr_count = nullptr;
 			}
 			return *this;
-		}
-		bool is_valid() const {
-			return ptr_container != nullptr;
 		}
 		void remove() {
 			assert(ptr_container);

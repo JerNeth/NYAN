@@ -22,12 +22,12 @@ vulkan::ShaderStage vulkan::Shader::get_stage()
 	return m_stage;
 }
 
-inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> vulkan::Shader::get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const
+static inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp)
 {
 	auto set = comp.get_decoration(resource.id, spv::DecorationDescriptorSet);
 	auto binding = comp.get_decoration(resource.id, spv::DecorationBinding);
-	auto type = comp.get_type(resource.type_id);
-	return std::make_tuple(set, binding, type);
+	const auto& type = comp.get_type(resource.type_id);
+	return { set, binding, type };
 }
 
 inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
@@ -44,16 +44,49 @@ inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCR
 		size = static_cast<uint8_t>(type.array.front());
 	}
 }
+static vulkan::ShaderStage convert_spriv_execution_model(spv::ExecutionModel model) {
+	switch (model) {
+	case spv::ExecutionModel::ExecutionModelVertex:
+		return vulkan::ShaderStage::Vertex;
+	case spv::ExecutionModel::ExecutionModelTessellationControl:
+		return vulkan::ShaderStage::TesselationControl;
+	case spv::ExecutionModel::ExecutionModelTessellationEvaluation:
+		return vulkan::ShaderStage::TesselationEvaluation;
+	case spv::ExecutionModel::ExecutionModelGeometry:
+		return vulkan::ShaderStage::Geometry;
+	case spv::ExecutionModel::ExecutionModelFragment:
+		return vulkan::ShaderStage::Fragment;
+	case spv::ExecutionModel::ExecutionModelGLCompute:
+		return vulkan::ShaderStage::Compute;
+	case spv::ExecutionModel::ExecutionModelTaskNV:
+		return vulkan::ShaderStage::Task;
+	case spv::ExecutionModel::ExecutionModelMeshNV:
+		return vulkan::ShaderStage::Mesh;
+	case spv::ExecutionModel::ExecutionModelRayGenerationKHR:
+		return vulkan::ShaderStage::Raygen;
+	case spv::ExecutionModel::ExecutionModelIntersectionKHR:
+		return vulkan::ShaderStage::Intersection;
+	case spv::ExecutionModel::ExecutionModelAnyHitKHR:
+		return vulkan::ShaderStage::AnyHit;
+	case spv::ExecutionModel::ExecutionModelClosestHitKHR:
+		return vulkan::ShaderStage::ClosestHit;
+	case spv::ExecutionModel::ExecutionModelMissKHR:
+		return vulkan::ShaderStage::Miss;
+	case spv::ExecutionModel::ExecutionModelCallableKHR:
+		return vulkan::ShaderStage::Callable;
+	default:
+		return vulkan::ShaderStage::Size;
+	}
+}
 
 void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 {
 	using namespace spirv_cross;
 	//bool usesBinding = false;
 	Compiler comp(shaderCode); 
-	auto executionModel = comp.get_execution_model();
-	if (static_cast<uint32_t>(executionModel) > NUM_SHADER_STAGES)
+	m_stage = convert_spriv_execution_model(comp.get_execution_model());
+	if (m_stage == vulkan::ShaderStage::Size)
 		throw std::runtime_error("Unsupported Shadertype");
-	m_stage = static_cast<ShaderStage>(executionModel);
 	ShaderResources resources = comp.get_shader_resources();/*
 	auto specs = comp.get_specialization_constants();
 	const auto& val = comp.get_constant(specs[0].id);

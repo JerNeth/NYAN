@@ -1,3 +1,8 @@
+#include "..\..\include\VulkanWrapper\CommandBuffer.h"
+#include "..\..\include\VulkanWrapper\CommandBuffer.h"
+#include "..\..\include\VulkanWrapper\CommandBuffer.h"
+#include "..\..\include\VulkanWrapper\CommandBuffer.h"
+#include "..\..\include\VulkanWrapper\CommandBuffer.h"
 #include "CommandBuffer.h"
 #include "LogicalDevice.h"
 vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type, uint32_t threadIdx) :
@@ -75,7 +80,7 @@ bool vulkan::CommandBuffer::flush_graphics()
 	}
 	if (m_currentPipeline == VK_NULL_HANDLE)
 		return false;
-	flush_descriptor_sets();
+	flush_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 	if (m_invalidFlags.get_and_clear(InvalidFlags::PushConstants)) {
 		auto& pushConstants = m_currentPipelineLayout->get_shader_layout().pushConstantRange;
@@ -156,7 +161,7 @@ bool vulkan::CommandBuffer::flush_compute()
 	}
 	if (m_currentPipeline == VK_NULL_HANDLE)
 		return false;
-	flush_descriptor_sets();
+	flush_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE);
 
 	if (m_invalidFlags.get_and_clear(InvalidFlags::PushConstants)) {
 		auto& pushConstants = m_currentPipelineLayout->get_shader_layout().pushConstantRange;
@@ -168,6 +173,11 @@ bool vulkan::CommandBuffer::flush_compute()
 		}
 	}
 	return true;
+}
+
+bool vulkan::CommandBuffer::flush_ray()
+{
+	return false;
 }
 
 bool vulkan::CommandBuffer::flush_graphics_pipeline()
@@ -183,145 +193,151 @@ bool vulkan::CommandBuffer::flush_compute_pipeline()
 	return m_currentPipeline != VK_NULL_HANDLE;
 }
 
-void vulkan::CommandBuffer::flush_descriptor_sets()
+bool vulkan::CommandBuffer::flush_ray_pipeline()
+{
+	return false;
+}
+
+void vulkan::CommandBuffer::flush_descriptor_sets(VkPipelineBindPoint bindPoint)
 {
 	auto& shaderLayout = m_currentPipelineLayout->get_shader_layout();
 	
 	auto setUpdate = shaderLayout.used & m_dirtyDescriptorSets;
-	Utility::for_each_bit(setUpdate, [&](uint32_t set) {
-		flush_descriptor_set(set);
+	Utility::for_each_bit(setUpdate, [&](size_t set) {
+		flush_descriptor_set(static_cast<uint32_t>(set), bindPoint);
 	});
 	m_dirtyDescriptorSets &= ~setUpdate;
 
 	m_dirtyDescriptorSetsDynamicOffsets &= ~setUpdate;
 
 	auto dynamicOffsetUpdates = shaderLayout.used & m_dirtyDescriptorSetsDynamicOffsets;
-	Utility::for_each_bit(dynamicOffsetUpdates, [&](uint32_t set) {
-		rebind_descriptor_set(set);
+	Utility::for_each_bit(dynamicOffsetUpdates, [&](size_t set) {
+		rebind_descriptor_set(static_cast<uint32_t>(set), bindPoint);
 	});
 	m_dirtyDescriptorSetsDynamicOffsets &= ~dynamicOffsetUpdates;
 
 }
 
-void vulkan::CommandBuffer::flush_descriptor_set(uint32_t set)
+void vulkan::CommandBuffer::flush_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint)
 {
 	auto& shaderLayout = m_currentPipelineLayout->get_shader_layout();
 	auto& setLayout = shaderLayout.descriptors[set];
-	uint32_t dynamicOffsetCount = 0;
-	std::array<uint32_t, MAX_BINDINGS> dynamicOffsets{};
+	std::vector<uint32_t> dynamicOffsets{};
 	Utility::Hasher hasher;
 
 	hasher(setLayout.fp);
 
-	Utility::for_each_bit(setLayout.uniformBuffer, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			hasher(m_resourceBindings.bindings[set][binding + i].buffer.range);
-			assert(m_resourceBindings.bindings[set][binding + i].buffer.buffer != VK_NULL_HANDLE);
-			assert(dynamicOffsetCount < MAX_BINDINGS);
-			dynamicOffsets[dynamicOffsetCount++] = static_cast<uint32_t>(m_resourceBindings.bindings[set][binding + i].dynamicOffset);
-		}
-	});
-
-	Utility::for_each_bit(setLayout.storageBuffer, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			hasher(m_resourceBindings.bindings[set][binding + i].buffer.range);
-			hasher(m_resourceBindings.bindings[set][binding + i].buffer.offset);
-			assert(m_resourceBindings.bindings[set][binding + i].buffer.buffer != VK_NULL_HANDLE);
-		}
-	});
-
-	Utility::for_each_bit(setLayout.sampledBuffer, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			assert(m_resourceBindings.bindings[set][binding + i].bufferView != VK_NULL_HANDLE);
-		}
-	});
-
-	Utility::for_each_bit(setLayout.imageSampler, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			if (!setLayout.immutableSampler.test(binding + i)) {
-				hasher(m_resourceBindings.samplerIds[set][binding + i]);
-				assert(m_resourceBindings.bindings[set][binding + i].image.fp.sampler != VK_NULL_HANDLE);
+	size_t bindingSize = 0;
+	for (size_t binding = 0; binding < MAX_BINDINGS; ++binding) {
+		bindingSize += setLayout.arraySizes[binding];
+		if (setLayout.uniformBuffer.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				hasher(m_resourceBindings.bindings[set][binding][i].buffer.range);
+				assert(m_resourceBindings.bindings[set][binding][i].buffer.buffer != VK_NULL_HANDLE);
+				dynamicOffsets.push_back(static_cast<uint32_t>(m_resourceBindings.dynamicOffsets[set][binding][i]));
 			}
-			hasher(m_resourceBindings.bindings[set][binding + i].image.fp.imageLayout);
-			assert(m_resourceBindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
 		}
-	});
-	Utility::for_each_bit(setLayout.separateImage, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			hasher(m_resourceBindings.bindings[set][binding + i].image.fp.imageLayout);
-			assert(m_resourceBindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
+		else if (setLayout.storageBuffer.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				hasher(m_resourceBindings.bindings[set][binding][i].buffer.range);
+				assert(m_resourceBindings.bindings[set][binding][i].buffer.buffer != VK_NULL_HANDLE);
+				dynamicOffsets.push_back(static_cast<uint32_t>(m_resourceBindings.dynamicOffsets[set][binding][i]));
+			}
 		}
-	});
-	Utility::for_each_bit(setLayout.seperateSampler, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.samplerIds[set][binding + i]);
-			assert(m_resourceBindings.bindings[set][binding + i].image.fp.sampler != VK_NULL_HANDLE);
+		else if (setLayout.sampledBuffer.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				assert(m_resourceBindings.bindings[set][binding][i].bufferView != VK_NULL_HANDLE);
+			}
 		}
-	});
-
-	Utility::for_each_bit(setLayout.storageImage, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			hasher(m_resourceBindings.bindings[set][binding + i].image.fp.imageLayout);
-			assert(m_resourceBindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
+		else if (setLayout.imageSampler.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				if (!setLayout.immutableSampler.test(binding)) {
+					hasher(m_resourceBindings.samplerIds[set][binding][i]);
+					assert(m_resourceBindings.bindings[set][binding][i].image.fp.sampler != VK_NULL_HANDLE);
+				}
+				hasher(m_resourceBindings.bindings[set][binding][i].image.fp.imageLayout);
+				assert(m_resourceBindings.bindings[set][binding][i].image.fp.imageView != VK_NULL_HANDLE);
+			}
 		}
-	});
-	Utility::for_each_bit(setLayout.inputAttachment, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) {
-			hasher(m_resourceBindings.bindingIds[set][binding + i]);
-			hasher(m_resourceBindings.bindings[set][binding + i].image.fp.imageLayout);
-			assert(m_resourceBindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
+		else if (setLayout.separateImage.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				hasher(m_resourceBindings.bindings[set][binding][i].image.fp.imageLayout);
+				assert(m_resourceBindings.bindings[set][binding][i].image.fp.imageView != VK_NULL_HANDLE);
+			}
 		}
-	});
+		else if (setLayout.seperateSampler.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.samplerIds[set][binding][i]);
+				assert(m_resourceBindings.bindings[set][binding][i].image.fp.sampler != VK_NULL_HANDLE);
+			}
+		}
+		else if (setLayout.storageImage.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				hasher(m_resourceBindings.bindings[set][binding][i].image.fp.imageLayout);
+				assert(m_resourceBindings.bindings[set][binding][i].image.fp.imageView != VK_NULL_HANDLE);
+			}
+		}
+		else if (setLayout.inputAttachment.test(binding)) {
+			for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+				hasher(m_resourceBindings.bindingIds[set][binding][i]);
+				hasher(m_resourceBindings.bindings[set][binding][i].image.fp.imageLayout);
+				assert(m_resourceBindings.bindings[set][binding][i].image.fp.imageView != VK_NULL_HANDLE);
+			}
+		}
+	}
 	auto hash = hasher();
 
-	VkDescriptorSet descriptorSet;
-	bool allocated;
-	std::tie(descriptorSet, allocated) =m_currentPipelineLayout->get_allocator(set)->find(m_threadIdx, hash);
+	auto [descriptorSet, allocated] = m_currentPipelineLayout->get_allocator(set)->find(m_threadIdx, hash);
 	if (!allocated) {
 		auto updateTemplate = m_currentPipelineLayout->get_update_template(set);
 
 		if (updateTemplate != VK_NULL_HANDLE) {
-			vkUpdateDescriptorSetWithTemplate(r_device.get_device(), descriptorSet, updateTemplate, m_resourceBindings.bindings[set].data());
+			//TODO redo
+			m_bindingBuffer.clear();
+			m_bindingBuffer.resize(bindingSize);
+			size_t count = 0;
+			for (size_t binding = 0; binding < MAX_BINDINGS; ++binding) {
+				for (size_t i = 0; i < setLayout.arraySizes[binding]; i++) {
+					m_bindingBuffer[count++] = m_resourceBindings.bindings[set][binding][i];
+				}
+			}
+			vkUpdateDescriptorSetWithTemplate(r_device.get_device(), descriptorSet, updateTemplate, m_bindingBuffer.data());
 			//vkCmdPushDescriptorSetWithTemplateKHR(m_vkHandle, updateTemplate, m_currentPipelineLayout->get_layout(),set, m_resourceBindings.bindings[set].data());
 		}
+		//Fallback maybe?
 
 	}
-	vkCmdBindDescriptorSets(m_vkHandle, m_isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-		m_currentPipelineLayout->get_layout(), set, 1, &descriptorSet, dynamicOffsetCount, dynamicOffsets.data() );
+	vkCmdBindDescriptorSets(m_vkHandle, bindPoint,
+		m_currentPipelineLayout->get_layout(), set, 1, &descriptorSet, static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data() );
 	m_allocatedDescriptorSets[set] = descriptorSet;
 }
 
-void vulkan::CommandBuffer::rebind_descriptor_set(uint32_t set)
+void vulkan::CommandBuffer::rebind_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint)
 {
 	auto& shaderLayout = m_currentPipelineLayout->get_shader_layout();
 	auto& setLayout = shaderLayout.descriptors[set];
-	uint32_t dynamicOffsetCount = 0;
-	std::array<uint32_t, MAX_BINDINGS> dynamicOffsets;
+	std::vector<uint32_t> dynamicOffsets{};
 
-	Utility::for_each_bit(setLayout.uniformBuffer, [&](uint32_t binding) {
-		uint32_t arraySize = setLayout.arraySizes[binding];
-		for (uint32_t i = 0; i < arraySize; i++) 
+	Utility::for_each_bit(setLayout.uniformBuffer, [&](size_t binding) {
+		for (size_t i = 0; i < setLayout.arraySizes[binding]; i++)
 		{
-			assert(dynamicOffsetCount < MAX_BINDINGS);
-			dynamicOffsets[dynamicOffsetCount++] = static_cast<uint32_t>(m_resourceBindings.bindings[set][binding + i].dynamicOffset);
+			dynamicOffsets.push_back(static_cast<uint32_t>(m_resourceBindings.dynamicOffsets[set][binding][i]));
 		}
-	});
-	vkCmdBindDescriptorSets(m_vkHandle, m_isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_currentPipelineLayout->get_layout(), set, 1, &m_allocatedDescriptorSets[set], dynamicOffsetCount, dynamicOffsets.data());
+		});
+	Utility::for_each_bit(setLayout.storageBuffer, [&](size_t binding) {
+		for (size_t i = 0; i < setLayout.arraySizes[binding]; i++)
+		{
+			dynamicOffsets.push_back(static_cast<uint32_t>(m_resourceBindings.dynamicOffsets[set][binding][i]));
+		}
+		});
+	vkCmdBindDescriptorSets(m_vkHandle, bindPoint,
+				m_currentPipelineLayout->get_layout(), set, 1, &m_allocatedDescriptorSets[set], static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size)
@@ -414,6 +430,19 @@ void vulkan::CommandBuffer::copy_buffer_to_image(const Image& image, const Buffe
 {
 	vkCmdCopyBufferToImage(m_vkHandle, buffer.get_handle(), image.get_handle(),
 		image.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL , blitCounts, blits);
+}
+
+void vulkan::CommandBuffer::copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact)
+{
+	assert(src.is_compactable() == compact && "Tried to compact a non compactable acceleration structure");
+	VkCopyAccelerationStructureInfoKHR info{
+		.sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
+		.pNext = nullptr,
+		.src = src.get_handle(),
+		.dst = dst.get_handle(),
+		.mode = src.is_compactable() == compact ? VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR : VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR,
+	};
+	vkCmdCopyAccelerationStructureKHR(m_vkHandle, &info);
 }
 
 void vulkan::CommandBuffer::mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier)
@@ -524,9 +553,21 @@ void vulkan::CommandBuffer::draw_indexed(uint32_t indexCount, uint32_t instanceC
 
 void vulkan::CommandBuffer::dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
 {
-	assert(m_isCompute);
 	if (flush_compute()) {
 		vkCmdDispatch(m_vkHandle, groupsX, groupsY, groupsZ);
+	}
+	else {
+		std::cout << "Could not flush compute state, dropped dispatch.\n";
+	}
+}
+
+void vulkan::CommandBuffer::trace_rays(uint32_t width, uint32_t height, uint32_t depth)
+{
+	if (flush_ray()) {
+		vkCmdTraceRaysKHR(m_vkHandle, nullptr, nullptr, nullptr, nullptr, width, height, depth);
+	}
+	else {
+		std::cout << "Could not flush ray state, dropped ray trace call.\n";
 	}
 }
 
@@ -540,27 +581,33 @@ void vulkan::CommandBuffer::touch_swapchain() noexcept
 	m_swapchainTouched = true;
 }
 
-void vulkan::CommandBuffer::bind_storage_image(uint32_t set, uint32_t binding, const ImageView& view)
+void vulkan::CommandBuffer::bind_storage_image(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view)
 {
 	assert(view.get_image()->get_usage() & VK_IMAGE_USAGE_STORAGE_BIT);
-	bind_texture(set, binding, view.get_image_view(), view.get_image_view(), view.get_image()->get_info().layout, view.get_id());
+	bind_texture(set, binding, arrayIndex, view.get_image_view(), view.get_image_view(), view.get_image()->get_info().layout, view.get_id());
 }
 
 void vulkan::CommandBuffer::bind_input_attachment(uint32_t set, uint32_t startBinding)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	uint32_t inputAttachmentCount = m_currentRenderpass->get_num_input_attachments(m_pipelineState.subpassIndex);
-	assert(startBinding + inputAttachmentCount <= MAX_BINDINGS);
-	for (uint32_t i = 0; i < inputAttachmentCount; i++ ){
-		auto& inputAttachmentReference = m_currentRenderpass->get_input_attachment(i, m_pipelineState.subpassIndex);
+
+	if (m_resourceBindings.bindings[set][startBinding].size() < inputAttachmentCount) {
+		m_resourceBindings.bindings[set][startBinding].resize(m_resourceBindings.bindings[set][startBinding].size() + inputAttachmentCount);
+	}
+	if (m_resourceBindings.bindingIds[set][startBinding].size() < inputAttachmentCount) {
+		m_resourceBindings.bindingIds[set][startBinding].resize(m_resourceBindings.bindingIds[set][startBinding].size() + inputAttachmentCount);
+	}
+	for (size_t i = 0; i < inputAttachmentCount; i++ ){
+		auto& inputAttachmentReference = m_currentRenderpass->get_input_attachment(static_cast<uint32_t>(i), m_pipelineState.subpassIndex);
 		if (inputAttachmentReference.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
 		const auto* view = m_framebufferAttachments[inputAttachmentReference.attachment];
-		auto& image = m_resourceBindings.bindings[set][startBinding + i].image;
+		auto& image = m_resourceBindings.bindings[set][startBinding][i].image;
 		assert(view);
 		assert(view->get_image()->get_usage() & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-		if (view->get_id() == m_resourceBindings.bindingIds[set][startBinding + i] &&
+		if (view->get_id() == m_resourceBindings.bindingIds[set][startBinding][i] &&
 			image.fp.imageLayout == inputAttachmentReference.layout)
 			continue;
 
@@ -568,49 +615,83 @@ void vulkan::CommandBuffer::bind_input_attachment(uint32_t set, uint32_t startBi
 		image.fp.imageView = view->get_image_view();
 		image.integer.imageLayout = inputAttachmentReference.layout;
 		image.integer.imageView = view->get_image_view();
-		m_resourceBindings.bindingIds[set][startBinding + i] = view->get_id();
+		m_resourceBindings.bindingIds[set][startBinding][i] = view->get_id();
 		m_dirtyDescriptorSets.set(set);
 	}
 }
 
-void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, const ImageView& view, const Sampler* sampler)
-{
-	bind_sampler(set, binding, sampler);
-	bind_texture(set, binding, view.get_image_view(), view.get_image_view(),view.get_image()->get_info().layout, view.get_id());
-}
-
-void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, const ImageView& view, DefaultSampler sampler)
-{
-	assert(view.get_image()->get_usage() & VK_IMAGE_USAGE_SAMPLED_BIT);
-	bind_texture(set, binding, view, r_device.get_default_sampler(sampler));
-}
-
-void vulkan::CommandBuffer::bind_sampler(uint32_t set, uint32_t binding, const Sampler* sampler)
+void vulkan::CommandBuffer::bind_acceleration_structure(uint32_t set, uint32_t binding, uint32_t arrayIndex, const AccelerationStructure& accelerationStructure)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	assert(binding < MAX_BINDINGS);
-	if (sampler->get_id() == m_resourceBindings.samplerIds[set][binding])
+
+	if (m_resourceBindings.bindings[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindings[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (m_resourceBindings.bindingIds[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindingIds[set][binding].resize(arrayIndex + 1ull);
+	}
+
+	if (accelerationStructure.get_id() == m_resourceBindings.bindingIds[set][binding][arrayIndex])
 		return;
-	auto& image = m_resourceBindings.bindings[set][binding].image;
+	m_dirtyDescriptorSets.set(set);
+	m_resourceBindings.bindingIds[set][binding][arrayIndex] = accelerationStructure.get_id();
+	m_resourceBindings.bindings[set][binding][arrayIndex].accelerationStructure;
+
+}
+
+void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, const Sampler* sampler)
+{
+	bind_sampler(set, binding, arrayIndex, sampler);
+	bind_texture(set, binding, arrayIndex, view.get_image_view(), view.get_image_view(),view.get_image()->get_info().layout, view.get_id());
+}
+
+void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, DefaultSampler sampler)
+{
+	assert(view.get_image()->get_usage() & VK_IMAGE_USAGE_SAMPLED_BIT);
+	bind_texture(set, binding, arrayIndex, view, r_device.get_default_sampler(sampler));
+}
+
+void vulkan::CommandBuffer::bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Sampler* sampler)
+{
+	assert(set < MAX_DESCRIPTOR_SETS);
+	assert(binding < MAX_BINDINGS);
+
+
+	if (m_resourceBindings.bindings[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindings[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (m_resourceBindings.samplerIds[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.samplerIds[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (sampler->get_id() == m_resourceBindings.samplerIds[set][binding][arrayIndex])
+		return;
+	auto& image = m_resourceBindings.bindings[set][binding][arrayIndex].image;
 	image.fp.sampler = sampler->get_handle();
 	image.integer.sampler = sampler->get_handle();
 	m_dirtyDescriptorSets.set(set);
-	m_resourceBindings.samplerIds[set][binding] = sampler->get_id();
+	m_resourceBindings.samplerIds[set][binding][arrayIndex] = sampler->get_id();
 }
 
-void vulkan::CommandBuffer::bind_sampler(uint32_t set, uint32_t binding, DefaultSampler sampler)
+void vulkan::CommandBuffer::bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, DefaultSampler sampler)
 {
-	bind_sampler(set, binding, r_device.get_default_sampler(sampler));
+	bind_sampler(set, binding, arrayIndex, r_device.get_default_sampler(sampler));
 }
 
-void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID)
+void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	assert(binding < MAX_BINDINGS);
 
 
-	auto& image = m_resourceBindings.bindings[set][binding].image;
-	auto& id = m_resourceBindings.bindingIds[set][binding];
+	if (m_resourceBindings.bindings[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindings[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (m_resourceBindings.bindingIds[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindingIds[set][binding].resize(arrayIndex + 1ull);
+	}
+	auto& image = m_resourceBindings.bindings[set][binding][arrayIndex].image;
+	auto& id = m_resourceBindings.bindingIds[set][binding][arrayIndex];
 	if (id == bindingID && image.fp.imageLayout == layout)
 		return;
 	image.fp.imageLayout = layout;
@@ -622,15 +703,26 @@ void vulkan::CommandBuffer::bind_texture(uint32_t set, uint32_t binding, VkImage
 
 }
 
-void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size)
+void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size)
 {
 	assert(set < MAX_DESCRIPTOR_SETS);
 	assert(binding < MAX_BINDINGS);
-	auto& bind = m_resourceBindings.bindings[set][binding];
-	if (buffer.get_id() == m_resourceBindings.bindingIds[set][binding] && bind.buffer.range == size) {
-		if (bind.dynamicOffset != offset) {
+	if (m_resourceBindings.bindings[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindings[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (m_resourceBindings.bindingIds[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.bindingIds[set][binding].resize(arrayIndex + 1ull);
+	}
+	if (m_resourceBindings.samplerIds[set][binding].size() <= arrayIndex) {
+		m_resourceBindings.samplerIds[set][binding].resize(arrayIndex + 1ull);
+	}
+	auto& bind = m_resourceBindings.bindings[set][binding][arrayIndex];
+	if (buffer.get_id() == m_resourceBindings.bindingIds[set][binding][arrayIndex] && bind.buffer.range == size) {
+		if (m_resourceBindings.dynamicOffsets[set][binding].size() <= arrayIndex ||
+			m_resourceBindings.dynamicOffsets[set][binding][arrayIndex] != offset) {
 			m_dirtyDescriptorSetsDynamicOffsets.set(set);
-			bind.dynamicOffset = offset;
+			m_resourceBindings.dynamicOffsets[set][binding].resize(static_cast<size_t>(arrayIndex) + 1);
+			m_resourceBindings.dynamicOffsets[set][binding][arrayIndex] = offset;
 		}
 	}
 	else {
@@ -639,16 +731,19 @@ void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, 
 			.offset = 0,
 			.range = size
 		};
-		bind.dynamicOffset = offset;
-		m_resourceBindings.bindingIds[set][binding] = buffer.get_id();
-		m_resourceBindings.samplerIds[set][binding] = 0;
+		if (m_resourceBindings.dynamicOffsets[set][binding].size() <= arrayIndex) {
+			m_resourceBindings.dynamicOffsets[set][binding].resize(static_cast<size_t>(arrayIndex) + 1);
+		}
+		m_resourceBindings.dynamicOffsets[set][binding][arrayIndex] = offset;
+		m_resourceBindings.bindingIds[set][binding][arrayIndex] = buffer.get_id();
+		m_resourceBindings.samplerIds[set][binding][arrayIndex] = 0;
 		m_dirtyDescriptorSets.set(set);
 	}
 }
 
-void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer)
+void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer)
 {
-	bind_uniform_buffer(set, binding, buffer, 0, buffer.get_info().size);
+	bind_uniform_buffer(set, binding, arrayIndex, buffer, 0, buffer.get_info().size);
 }
 
 void vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate)
@@ -661,13 +756,16 @@ void vulkan::CommandBuffer::bind_vertex_buffer(uint32_t binding, const Buffer& b
 		m_vertexState.dirty.set(binding);
 	
 	
-	if (m_pipelineState.state.dynamic_vertex_input_binding_stride)
+	if (m_pipelineState.state.dynamic_vertex_input_binding_stride) {
 		m_dynamicState.vertexStrides[binding] = inputRate;
-	if (m_pipelineState.inputRates[binding] != inputRate)
-		m_invalidFlags.set(InvalidFlags::StaticVertex);
-	m_vertexState.buffers[binding] = buffer.get_handle();
-	m_vertexState.offsets[binding] = offset;
-	m_pipelineState.inputRates.set(binding, inputRate);
+	} 
+	else {
+		if (m_pipelineState.inputRates[binding] != inputRate)
+			m_invalidFlags.set(InvalidFlags::StaticVertex);
+		m_vertexState.buffers[binding] = buffer.get_handle();
+		m_vertexState.offsets[binding] = offset;
+		m_pipelineState.inputRates.set(binding, inputRate);
+	}
 }
 
 VkCommandBuffer vulkan::CommandBuffer::get_handle() const noexcept
@@ -736,6 +834,148 @@ void vulkan::CommandBuffer::end_region()
 			vkCmdDebugMarkerEndEXT(m_vkHandle);
 		}
 	}
+}
+
+vulkan::CommandBuffer::Type vulkan::CommandBuffer::get_type() const noexcept {
+	return m_type;
+}
+
+void vulkan::CommandBuffer::set_depth_test(VkBool32 enabled) noexcept {
+	if (m_pipelineState.state.dynamic_depth_test) {
+		if (m_dynamicState.depth_test != static_cast<unsigned>(enabled)) {
+			m_dynamicState.depth_test = static_cast<unsigned>(enabled);
+			m_invalidFlags.set(InvalidFlags::DepthTest);
+		}
+	}
+	else {
+		if (m_pipelineState.state.depth_test != static_cast<unsigned>(enabled)) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.depth_test = static_cast<unsigned>(enabled);
+		}
+	}
+}
+void vulkan::CommandBuffer::set_depth_write(VkBool32 enabled) noexcept {
+	if (m_pipelineState.state.dynamic_depth_write) {
+		if (m_dynamicState.depth_write != static_cast<unsigned>(enabled)) {
+			m_dynamicState.depth_write = static_cast<unsigned>(enabled);
+			m_invalidFlags.set(InvalidFlags::DepthWrite);
+		}
+	}
+	else {
+		if (m_pipelineState.state.depth_write != enabled) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.depth_write = enabled;
+		}
+	}
+}
+void vulkan::CommandBuffer::set_depth_compare(VkCompareOp compare) noexcept {
+	if (m_pipelineState.state.dynamic_depth_compare) {
+		if (m_dynamicState.depth_compare != static_cast<unsigned>(compare)) {
+			m_dynamicState.depth_compare = static_cast<unsigned>(compare);
+			m_invalidFlags.set(InvalidFlags::DepthCompare);
+		}
+	}
+	else {
+		if (m_pipelineState.state.depth_compare != static_cast<unsigned>(compare)) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.depth_compare = static_cast<unsigned>(compare);
+		}
+	}
+}
+void vulkan::CommandBuffer::set_cull_mode(VkCullModeFlags cullMode) noexcept {
+	if (m_pipelineState.state.dynamic_cull_mode) {
+		if (m_dynamicState.cull_mode != static_cast<unsigned>(cullMode)) {
+			m_dynamicState.cull_mode = static_cast<unsigned>(cullMode);
+			m_invalidFlags.set(InvalidFlags::CullMode);
+		}
+	}
+	else {
+		if (m_pipelineState.state.cull_mode != static_cast<unsigned>(cullMode)) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.cull_mode = static_cast<unsigned>(cullMode);
+		}
+	}
+}
+void vulkan::CommandBuffer::set_front_face(VkFrontFace frontFace) noexcept {
+	if (m_pipelineState.state.dynamic_front_face) {
+		if (m_dynamicState.front_face != static_cast<unsigned>(frontFace)) {
+			m_dynamicState.front_face = static_cast<unsigned>(frontFace);
+			m_invalidFlags.set(InvalidFlags::FrontFace);
+		}
+	}
+	else {
+		if (m_pipelineState.state.front_face != static_cast<unsigned>(frontFace)) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.front_face = static_cast<unsigned>(frontFace);
+		}
+	}
+}
+void vulkan::CommandBuffer::set_topology(VkPrimitiveTopology topology) noexcept {
+	if (m_pipelineState.state.dynamic_primitive_topology) {
+		if (m_dynamicState.topology != static_cast<unsigned>(topology)) {
+			m_dynamicState.topology = static_cast<unsigned>(topology);
+			m_invalidFlags.set(InvalidFlags::FrontFace);
+		}
+	}
+	else {
+		if (m_pipelineState.state.topology != static_cast<unsigned>(topology)) {
+			m_invalidFlags.set(InvalidFlags::StaticPipeline);
+			m_pipelineState.state.topology = static_cast<unsigned>(topology);
+		}
+	}
+}
+void vulkan::CommandBuffer::set_blend_enable(VkBool32 enabled) noexcept {
+	if (m_pipelineState.state.blend_enable != static_cast<unsigned>(enabled)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.blend_enable = static_cast<unsigned>(enabled);
+	}
+}
+void vulkan::CommandBuffer::set_src_color_blend(VkBlendFactor blendFactor) noexcept {
+	if (m_pipelineState.state.src_color_blend != static_cast<unsigned>(blendFactor)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.src_color_blend = static_cast<unsigned>(blendFactor);
+	}
+}
+void vulkan::CommandBuffer::set_dst_color_blend(VkBlendFactor blendFactor) noexcept {
+	if (m_pipelineState.state.dst_color_blend != static_cast<unsigned>(blendFactor)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.dst_color_blend = static_cast<unsigned>(blendFactor);
+	}
+}
+void vulkan::CommandBuffer::set_src_alpha_blend(VkBlendFactor blendFactor) noexcept {
+	if (m_pipelineState.state.src_alpha_blend != static_cast<unsigned>(blendFactor)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.src_alpha_blend = static_cast<unsigned>(blendFactor);
+	}
+}
+void vulkan::CommandBuffer::set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept {
+	if (m_pipelineState.state.dst_alpha_blend != static_cast<unsigned>(blendFactor)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.dst_alpha_blend = static_cast<unsigned>(blendFactor);
+	}
+}
+void vulkan::CommandBuffer::reset_pipeline_state() noexcept {
+	if (m_pipelineState.state != defaultPipelineState) {
+		m_pipelineState.state = defaultPipelineState;
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+	}
+}
+void vulkan::CommandBuffer::set_polygon_mode(VkPolygonMode polygon_mode) noexcept {
+	if (m_pipelineState.state.polygon_mode != static_cast<unsigned>(polygon_mode)) {
+		m_invalidFlags.set(InvalidFlags::StaticPipeline);
+		m_pipelineState.state.polygon_mode = static_cast<unsigned>(polygon_mode);
+	}
+}
+void vulkan::CommandBuffer::disable_depth() noexcept {
+	set_depth_test(VK_FALSE);
+	set_depth_write(VK_FALSE);
+}
+void vulkan::CommandBuffer::enable_alpha() noexcept {
+	set_blend_enable(VK_TRUE);
+	set_src_color_blend(VK_BLEND_FACTOR_SRC_ALPHA);
+	set_dst_color_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
+	set_src_alpha_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
+	set_dst_alpha_blend(VK_BLEND_FACTOR_ZERO);
 }
 
 void vulkan::CommandBuffer::bind_vertex_buffers() noexcept
@@ -823,7 +1063,6 @@ void vulkan::CommandBuffer::begin_render_pass(const RenderpassCreateInfo& render
 	};
 
 	vkCmdBeginRenderPass(m_vkHandle, &renderPassBeginInfo, contents);
-	m_swapchainTouched = true;
 	m_currentContents = contents;
 	begin_graphics();
 }

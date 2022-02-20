@@ -27,7 +27,7 @@ namespace Utility {
 	}
 	template <typename T, typename C>
 	inline void for_each_bit(const C& bitset, const T& func) {
-		for (uint32_t i = 0; i < bitset.size(); i++) {
+		for (size_t i = 0; i < bitset.size(); i++) {
 			if (bitset.test(i))
 				func(i);
 		}

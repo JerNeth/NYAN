@@ -73,7 +73,7 @@ namespace vulkan {
 		unsigned subgroup_max_size_log2 : 3;
 		unsigned conservative_raster : 1;
 
-		unsigned padding : 3{};
+		unsigned padding : 3;
 		//96
 		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
 		//
@@ -123,7 +123,7 @@ namespace vulkan {
 		.padding {},
 		.color_write_mask = (1ull<<(WRITE_MASK_BITS * MAX_ATTACHMENTS))-1ull,
 	};
-	struct Attributes {
+	struct VertexAttributes {
 		std::array<VkFormat, MAX_VERTEX_ATTRIBUTES> formats;
 		std::array<uint8_t, MAX_VERTEX_ATTRIBUTES> bindings;
 		std::pair<VkFormat, uint8_t> operator[](size_t idx) {
@@ -135,7 +135,7 @@ namespace vulkan {
 			assert(idx < MAX_VERTEX_ATTRIBUTES);
 			return { formats[idx], bindings[idx] };
 		}
-		friend bool operator==(const Attributes& lhs, const Attributes& rhs) {
+		friend bool operator==(const VertexAttributes& lhs, const VertexAttributes& rhs) {
 			return lhs.formats == rhs.formats && lhs.bindings == rhs.bindings;
 		}
 	};
@@ -157,12 +157,12 @@ namespace vulkan {
 	};
 	struct PipelineCompile {
 		PipelineState state;
-		Program* program = nullptr;
+		const Program* program = nullptr;
 		Renderpass* compatibleRenderPass = nullptr;
-		Attributes attributes;
+		VertexAttributes attributes{};
 		InputRates inputRates;
 
-		uint32_t subpassIndex;
+		uint32_t subpassIndex = 0;
 		friend bool operator==(const PipelineCompile& lhs, const PipelineCompile& rhs) {
 			if (!lhs.program || !rhs.program)
 				return false;
@@ -224,7 +224,7 @@ namespace vulkan {
 		Pipeline& operator=(const Pipeline& other) = default;
 		Pipeline& operator=(Pipeline&& other) = default;
 		VkPipeline get_pipeline() const noexcept;
-		//static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex);
+		//static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, VertexAttributes attributes, InputRates inputRates, uint32_t subpassIndex);
 		static void reset_static_pipeline();
 		static void set_depth_write(bool depthWrite);
 		static void set_depth_test(bool depthTest);
@@ -278,6 +278,20 @@ namespace vulkan {
 	private:
 		LogicalDevice& r_device;
 		std::unordered_map<PipelineCompile, Pipeline, PipelineCompileHasher> m_hashMap;
+	};
+	class PipelineCache {
+	public:
+		PipelineCache(LogicalDevice& device, const std::string& path);
+		PipelineCache(PipelineCache&) = delete;
+		PipelineCache(PipelineCache&&) = delete;
+		PipelineCache& operator=(PipelineCache&) = delete;
+		PipelineCache& operator=(PipelineCache&&) = delete;
+		~PipelineCache() noexcept;
+		VkPipelineCache get_handle() const noexcept;
+	private:
+		LogicalDevice& r_parent;
+		std::string m_path;
+		VkPipelineCache m_handle;
 	};
 }
 

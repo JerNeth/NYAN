@@ -475,6 +475,9 @@ namespace Utility {
 			assert(id!= m_hashMap.end());
 			return m_storage.get(id->second);
 		}
+		Value& operator[](const Key& key) {
+			return get(key);
+		}
 		Value& get_direct(size_t id) {
 			return m_storage.get(id);
 		}

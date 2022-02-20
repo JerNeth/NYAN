@@ -64,4 +64,5 @@ The engine depends on the following libraries:
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
 - [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross): automatically fetched
 - [volk](https://github.com/zeux/volk): automatically fetched
-- [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): included in this repository
+- [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): automatically fetched
+- [Optick](https://github.com/bombomby/optick): included in this repository

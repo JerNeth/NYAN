@@ -78,6 +78,7 @@ void nyan::Renderpass::add_post_barrier(const std::string& name)
 			.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			.newLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			//TODO
 			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.image = VK_NULL_HANDLE,
@@ -305,7 +306,7 @@ void nyan::Rendergraph::execute()
 		}
 	});
 
-	m_renderpasses.for_each([&](Renderpass& pass) {
+	m_renderpasses.for_each([this](Renderpass& pass) {
 		uint32_t attachmentId = 0;
 		if (pass.get_type() == Renderpass::Type::Graphics) {
 			for (auto read : pass.m_reads) {
@@ -350,7 +351,7 @@ void nyan::Rendergraph::execute()
 				info->depthStencilAttachment = resource.handle;
 			}
 		}
-		auto barrierUpdate = [&](const std::vector<Barrier>& barriers) {
+		auto barrierUpdate = [this, &pass](const std::vector<Barrier>& barriers) {
 			for (auto& barrier : barriers) {
 				assert(barrier.resourceId != InvalidResourceId);
 				auto& resource = m_renderresources.get_direct(barrier.resourceId);
@@ -599,10 +600,8 @@ void nyan::Rendergraph::set_up_barrier(const ImageBarrier& imageBarrier_, const 
 		.dstAccessMask = imageBarrier_.dstAccess,
 		.oldLayout = imageBarrier_.srcLayout,
 		.newLayout = imageBarrier_.dstLayout,
-		//.srcQueueFamilyIndex = imageBarrier_.srcFamily, //TODO
-		//.dstQueueFamilyIndex = imageBarrier_.dstFamily, //TODO
-		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
-		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //TODO
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.image = VK_NULL_HANDLE, //This gets updated each frame
 		.subresourceRange {
 			.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),

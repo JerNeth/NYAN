@@ -14,6 +14,7 @@ void main() {
     vec3 lightDir = vec3(1, 1, 1);
     vec3 normal = vec3(texture(texSamplerNormal, fragTexCoord).rg * 2.0 - 1.0, 0);
     normal.z = 1-normal.x*normal.x - normal.y*normal.y;
+    //vec3 diffuseColor = texture(texSampler, fragTexCoord).rgb;
     vec3 diffuseColor = texture(texSampler, fragTexCoord).rgb;
     float diffuse = dot(normal, lightDir);
     normal = fragTangentFrame * normal;

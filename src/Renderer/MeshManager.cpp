@@ -19,10 +19,10 @@ StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 	buffInfo.size = sizeof(nyan::cubeVertices) + sizeof(nyan::cubeIndices);
 	buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-	std::byte* tmp = new std::byte[sizeof(nyan::cubeVertices) + sizeof(nyan::cubeIndices)];
-	memcpy(tmp, nyan::cubeVertices.data(), sizeof(nyan::cubeVertices));
-	memcpy(tmp + sizeof(nyan::cubeVertices), nyan::cubeIndices.data(), sizeof(nyan::cubeIndices));
-	auto vbo = r_device.create_buffer(buffInfo, tmp);
+	std::vector<vulkan::InputData> data;
+	data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeVertices.data())) ,sizeof(nyan::cubeVertices) });
+	data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeIndices.data())) ,  sizeof(nyan::cubeIndices) });
+	auto vbo = r_device.create_buffer(buffInfo, data);
 
 	m_usedBuffers.push_back(vbo);
 
@@ -30,7 +30,6 @@ StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 	mesh.set_vertices(vbo, 0, static_cast<uint32_t>(nyan::cubeVertices.size()));
 	auto res = m_staticMeshes.emplace(name, mesh);
 
-	delete[] tmp;
 	return &res.first->second;
 }
 //

@@ -38,11 +38,9 @@ namespace vulkan {
 		VkSurfaceCapabilitiesKHR get_surface_capabilites() const;
 		VkSurfaceKHR get_surface() const;
 	private:
-		void create_instance();
+		void create_instance(uint32_t applicationVersion = 0, uint32_t engineVersion = 0);
 		
-		bool device_supports_features(const VkPhysicalDevice& device) const;
 		bool device_supports_extensions(const VkPhysicalDevice& device) const;
-		bool device_has_properties(const VkPhysicalDevice& device) const;
 		bool device_swapchain_suitable(const VkPhysicalDevice& device) const;
 		bool is_device_suitable(const VkPhysicalDevice& device) const;
 		uint32_t get_graphics_family_queue_index(const VkPhysicalDevice& device) const;

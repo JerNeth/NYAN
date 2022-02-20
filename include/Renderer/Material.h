@@ -20,7 +20,7 @@ namespace nyan {
 	private:
 		MaterialId m_id = invalidMaterialId;
 		std::vector<vulkan::Image*> m_textures;
-		vulkan::BufferHandle m_materialData;
+		//vulkan::BufferHandle m_materialData;
 		std::string m_shaderName;
 	};
 }

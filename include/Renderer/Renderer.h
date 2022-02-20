@@ -72,8 +72,8 @@ namespace nyan {
 		void add_light();
 		void update_camera(const RendererCamera& camera);
 		void render(vulkan::CommandBufferHandle& cmd);
-		void next_frame();
-		void end_frame();
+		void next_frame() override;
+		void end_frame() override;
 	private:
 		vulkan::LogicalDevice& r_device;
 		RenderQueue m_renderQueue;

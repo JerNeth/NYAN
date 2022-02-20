@@ -158,7 +158,7 @@ namespace Utility {
 	private:
 		std::bitset<bucketSize> occupancy = 0;
 		static_assert(sizeof(std::byte) == 1u);
-		std::array<std::byte, sizeof(T)* bucketSize> m_storage;
+		std::array<std::byte, sizeof(T)* bucketSize> m_storage{};
 		std::unique_ptr<Bucket> next = nullptr;
 	};
 	/// <summary>

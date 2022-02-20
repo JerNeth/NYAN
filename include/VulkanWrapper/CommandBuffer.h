@@ -11,6 +11,7 @@ namespace vulkan {
 	class ImageView;
 	class Buffer;
 	class Sampler;
+	class AccelerationStructure;
 	enum class DefaultSampler;
 	struct RenderpassCreateInfo;
 	struct IndexState {
@@ -36,9 +37,10 @@ namespace vulkan {
 		}
 	};
 	struct ResourceBindings {
-		std::array<std::array<ResourceBinding, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindings;
-		std::array<std::array<Utility::UID, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindingIds;
-		std::array<std::array<Utility::UID, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> samplerIds;
+		std::array<std::array<std::vector<ResourceBinding>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindings;
+		std::array<std::array<std::vector<VkDeviceSize>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> dynamicOffsets;
+		std::array<std::array<std::vector<Utility::UID>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindingIds;
+		std::array<std::array<std::vector<Utility::UID>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> samplerIds;
 		std::array<std::byte, PUSH_CONSTANT_SIZE> pushConstantData;
 	};
 	struct DynamicState {
@@ -73,7 +75,8 @@ namespace vulkan {
 		enum class Type {
 			Generic,
 			Compute,
-			Transfer
+			Transfer,
+			Ray
 		};
 		enum class InvalidFlags {
 			Pipeline,
@@ -105,11 +108,13 @@ namespace vulkan {
 		void begin_compute();
 		bool flush_graphics();
 		bool flush_compute();
+		bool flush_ray();
 		bool flush_graphics_pipeline();
 		bool flush_compute_pipeline();
-		void flush_descriptor_sets();
-		void flush_descriptor_set(uint32_t set);
-		void rebind_descriptor_set(uint32_t set);
+		bool flush_ray_pipeline();
+		void flush_descriptor_sets(VkPipelineBindPoint bindPoint);
+		void flush_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint);
+		void rebind_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint);
 		void copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size);
 		void copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount);
 		void copy_buffer(const Buffer& dst, const Buffer& src);
@@ -117,7 +122,8 @@ namespace vulkan {
 						const VkOffset3D &srcOffset, const VkOffset3D &srcExtent, uint32_t dstLevel, uint32_t srcLevel,
 						uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter);
 		void generate_mips(const Image& image);
-		void copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy *blits);
+		void copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits);
+		void copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact);
 		void mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier);
 		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount,
 			const VkMemoryBarrier * globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
@@ -129,6 +135,7 @@ namespace vulkan {
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 		void draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
 		void dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ);
+		void trace_rays(uint32_t width, uint32_t height, uint32_t depth);
 
 		void push_constants(const void* data, VkDeviceSize offset, VkDeviceSize range);
 		void bind_index_buffer(IndexState indexState);
@@ -143,160 +150,37 @@ namespace vulkan {
 		void next_subpass(VkSubpassContents subpass);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
-		void bind_storage_image(uint32_t set, uint32_t binding, const ImageView& view);
+		void bind_storage_image(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view);
 		void bind_input_attachment(uint32_t set, uint32_t startBinding);
-		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, const Sampler* sampler);
-		void bind_texture(uint32_t set, uint32_t binding, const ImageView& view, DefaultSampler sampler);
-		void bind_sampler(uint32_t set, uint32_t binding, const Sampler* sampler);
-		void bind_sampler(uint32_t set, uint32_t binding, DefaultSampler sampler);
-		void bind_texture(uint32_t set, uint32_t binding, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
-		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
-		void bind_uniform_buffer(uint32_t set, uint32_t binding, const Buffer& buffer);
+		void bind_acceleration_structure(uint32_t set, uint32_t binding, uint32_t arrayIndex, const AccelerationStructure& accelerationStructure);
+		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, const Sampler* sampler);
+		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, DefaultSampler sampler);
+		void bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Sampler* sampler);
+		void bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, DefaultSampler sampler);
+		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
+		void bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
+		void bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer);
 		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate);
 		VkCommandBuffer get_handle() const noexcept;
 		void end();
 		void begin_region(const char* name, const float* color = nullptr);
 		void end_region();
-		Type get_type() const noexcept {
-			return m_type;
-		}
-		void set_depth_test(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.dynamic_depth_test) {
-				if (m_dynamicState.depth_test != static_cast<unsigned>(enabled)) {
-					m_dynamicState.depth_test = static_cast<unsigned>(enabled);
-					m_invalidFlags.set(InvalidFlags::DepthTest);
-				}
-			}
-			else {
-				if (m_pipelineState.state.depth_test != static_cast<unsigned>(enabled)) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-						m_pipelineState.state.depth_test = static_cast<unsigned>(enabled);
-				}
-			}
-		}
-		void set_depth_write(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.dynamic_depth_write) {
-				if (m_dynamicState.depth_write != static_cast<unsigned>(enabled)) {
-					m_dynamicState.depth_write = static_cast<unsigned>(enabled);
-					m_invalidFlags.set(InvalidFlags::DepthWrite);
-				}
-			}
-			else {
-				if (m_pipelineState.state.depth_write != enabled) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.depth_write = enabled;
-				}
-			}
-		}
-		void set_depth_compare(VkCompareOp compare) noexcept {
-			if (m_pipelineState.state.dynamic_depth_compare) {
-				if (m_dynamicState.depth_compare != static_cast<unsigned>(compare)) {
-					m_dynamicState.depth_compare = static_cast<unsigned>(compare);
-					m_invalidFlags.set(InvalidFlags::DepthCompare);
-				}
-			}
-			else {
-				if (m_pipelineState.state.depth_compare != static_cast<unsigned>(compare)) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-						m_pipelineState.state.depth_compare = static_cast<unsigned>(compare);
-				}
-			}
-		}
-		void set_cull_mode(VkCullModeFlags cullMode) noexcept {
-			if (m_pipelineState.state.dynamic_cull_mode) {
-				if (m_dynamicState.cull_mode != static_cast<unsigned>(cullMode)) {
-					m_dynamicState.cull_mode = static_cast<unsigned>(cullMode);
-					m_invalidFlags.set(InvalidFlags::CullMode);
-				}
-			}
-			else {
-				if (m_pipelineState.state.cull_mode != static_cast<unsigned>(cullMode)) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-						m_pipelineState.state.cull_mode = static_cast<unsigned>(cullMode);
-				}
-			}
-		}
-		void set_front_face(VkFrontFace frontFace) noexcept {
-			if (m_pipelineState.state.dynamic_front_face) {
-				if (m_dynamicState.front_face != static_cast<unsigned>(frontFace)) {
-					m_dynamicState.front_face = static_cast<unsigned>(frontFace);
-					m_invalidFlags.set(InvalidFlags::FrontFace);
-				}
-			}
-			else {
-				if (m_pipelineState.state.front_face != static_cast<unsigned>(frontFace)) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-						m_pipelineState.state.front_face = static_cast<unsigned>(frontFace);
-				}
-			}
-		}
-		void set_topology(VkPrimitiveTopology topology) noexcept {
-			if (m_pipelineState.state.dynamic_primitive_topology) {
-				if (m_dynamicState.topology != static_cast<unsigned>(topology)) {
-					m_dynamicState.topology = static_cast<unsigned>(topology);
-					m_invalidFlags.set(InvalidFlags::FrontFace);
-				}
-			}
-			else {
-				if (m_pipelineState.state.topology != static_cast<unsigned>(topology)) {
-					m_invalidFlags.set(InvalidFlags::StaticPipeline);
-						m_pipelineState.state.topology = static_cast<unsigned>(topology);
-				}
-			}
-		}
-		void set_blend_enable(VkBool32 enabled) noexcept {
-			if (m_pipelineState.state.blend_enable != static_cast<unsigned>(enabled)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.blend_enable = static_cast<unsigned>(enabled);
-			}
-		}
-		void set_src_color_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.src_color_blend != static_cast<unsigned>(blendFactor)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.src_color_blend = static_cast<unsigned>(blendFactor);
-			}
-		}
-		void set_dst_color_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.dst_color_blend != static_cast<unsigned>(blendFactor)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.dst_color_blend = static_cast<unsigned>(blendFactor);
-			}
-		}
-		void set_src_alpha_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.src_alpha_blend != static_cast<unsigned>(blendFactor)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.src_alpha_blend = static_cast<unsigned>(blendFactor);
-			}
-		}
-		void set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept {
-			if (m_pipelineState.state.dst_alpha_blend != static_cast<unsigned>(blendFactor)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-					m_pipelineState.state.dst_alpha_blend = static_cast<unsigned>(blendFactor);
-			}
-		}
-		void reset_pipeline_state() noexcept {
-			if (m_pipelineState.state != defaultPipelineState) {
-				m_pipelineState.state = defaultPipelineState;
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-			}
-		}
-		void set_polygon_mode(VkPolygonMode polygon_mode) noexcept {
-			if (m_pipelineState.state.polygon_mode != static_cast<unsigned>(polygon_mode)) {
-				m_invalidFlags.set(InvalidFlags::StaticPipeline);
-				m_pipelineState.state.polygon_mode = static_cast<unsigned>(polygon_mode);
-			}
-		}
-		void disable_depth() noexcept {
-			set_depth_test(VK_FALSE);
-			set_depth_write(VK_FALSE);
-		}
-		void enable_alpha() noexcept {
-			set_blend_enable(VK_TRUE);
-			set_src_color_blend(VK_BLEND_FACTOR_SRC_ALPHA);
-			set_dst_color_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
-			set_src_alpha_blend(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
-			set_dst_alpha_blend(VK_BLEND_FACTOR_ZERO);
-		}
+		Type get_type() const noexcept;
+		void set_depth_test(VkBool32 enabled) noexcept;
+		void set_depth_write(VkBool32 enabled) noexcept;
+		void set_depth_compare(VkCompareOp compare) noexcept;
+		void set_cull_mode(VkCullModeFlags cullMode) noexcept;
+		void set_front_face(VkFrontFace frontFace) noexcept;
+		void set_topology(VkPrimitiveTopology topology) noexcept;
+		void set_blend_enable(VkBool32 enabled) noexcept;
+		void set_src_color_blend(VkBlendFactor blendFactor) noexcept;
+		void set_dst_color_blend(VkBlendFactor blendFactor) noexcept;
+		void set_src_alpha_blend(VkBlendFactor blendFactor) noexcept;
+		void set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept;
+		void reset_pipeline_state() noexcept;
+		void set_polygon_mode(VkPolygonMode polygon_mode) noexcept;
+		void disable_depth() noexcept;
+		void enable_alpha() noexcept;
 	private:
 		/// *******************************************************************
 		/// Private functions
@@ -328,6 +212,7 @@ namespace vulkan {
 		std::array<VkDescriptorSet, MAX_DESCRIPTOR_SETS> m_allocatedDescriptorSets;
 		DynamicState m_dynamicState;
 		ResourceBindings m_resourceBindings;
+		std::vector<ResourceBinding> m_bindingBuffer;
 		Type m_type;
 	};
 	using CommandBufferHandle = Utility::ObjectHandle<CommandBuffer ,Utility::Pool<CommandBuffer>>;

@@ -281,7 +281,7 @@ namespace vulkan {
 			if (mipLevelCount == 0)
 				mipLevelCount = calculate_mip_levels(width, height, depth);
 
-			size_t offset = 0;
+			uint32_t offset = 0;
 			for (uint32_t level = 0; level < mipLevelCount; level++) {
 				offset = (offset + 15ull) & ~15ull;
 				uint32_t width_ = Math::max(width >> level, 1u);
@@ -291,7 +291,7 @@ namespace vulkan {
 				uint32_t blockCountX = (width_ + blockSizeX - 1) / blockSizeX;
 				uint32_t blockCountY = (height_ + blockSizeY - 1) / blockSizeY;
 
-				mipLevels[level].offset = static_cast<uint32_t>(offset);
+				mipLevels[level].offset = offset;
 				mipLevels[level].width = width_;
 				mipLevels[level].height = height_;
 				mipLevels[level].depth = depth_;
@@ -520,11 +520,11 @@ namespace vulkan {
 	};
 	class Image : public Utility::UIDC {
 	public:
-		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail = 0);
+		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations = {}, uint32_t mipTail = 0);
 		Image(Image&) = delete;
 		Image(Image&&) noexcept;
 		Image& operator=(Image&) = delete;
-		Image& operator=(Image&& other);
+		Image& operator=(Image&& other) noexcept;
 		~Image() noexcept;
 		void append_allocations(const std::vector< AllocationHandle>& allocations);
 		void drop_allocations(uint32_t count);

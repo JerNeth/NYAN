@@ -10,7 +10,7 @@ void nyan::Material::bind(vulkan::CommandBufferHandle& cmd)
 {
 	uint32_t binding = 0;
 	for (auto texture : m_textures) {
-		cmd->bind_texture(1, binding++, *texture->get_view(), vulkan::DefaultSampler::TrilinearClamp);
+		cmd->bind_texture(1, binding++, 0, *texture->get_view(), vulkan::DefaultSampler::TrilinearClamp);
 	}
 }
 void nyan::Material::add_texture(vulkan::Image* texture)

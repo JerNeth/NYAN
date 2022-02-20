@@ -29,3 +29,5 @@ set(DEMO2_SRC "${PROJECT_SOURCE_DIR}/src/Demo_two.cpp"
 )
 set(FBXTest_SRC "${PROJECT_SOURCE_DIR}/src/FBXTest.cpp"
 )
+set(RTTest_SRC "${PROJECT_SOURCE_DIR}/src/RTTest.cpp"
+)

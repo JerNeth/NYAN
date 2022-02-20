@@ -25,6 +25,7 @@ namespace Utility {
 			m_size(other.m_size) 
 		{
 			m_occupancy = static_cast<size_t*>(malloc(m_size));
+			assert(m_occupancy);
 			memcpy(m_occupancy, other.m_occupancy, m_size);
 		}
 		DynamicBitset(DynamicBitset&& other) noexcept : 
@@ -39,6 +40,7 @@ namespace Utility {
 			if (this != &other) {
 				m_size = other.m_size;
 				m_occupancy = static_cast<size_t*>(malloc(m_size));
+				assert(m_occupancy);
 				memcpy(m_occupancy, other.m_occupancy, m_size);
 			}
 			return *this;

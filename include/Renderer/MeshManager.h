@@ -29,10 +29,10 @@ namespace nyan {
 			buffInfo.size = vertices.size() * sizeof(V) + indices.size() * sizeof(I);
 			buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 			buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-			std::byte* tmp = (std::byte*)malloc(buffInfo.size);
-			memcpy(tmp, vertices.data(), vertices.size() * sizeof(V));
-			memcpy(tmp + vertices.size() * sizeof(V), indices.data(), indices.size() * sizeof(I));
-			auto vbo = r_device.create_buffer(buffInfo, tmp);
+			std::vector<vulkan::InputData> data;
+			data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(vertices.data())), vertices.size() * sizeof(V) });
+			data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(indices.data())), indices.size() * sizeof(I) });
+			auto vbo = r_device.create_buffer(buffInfo, data);
 
 			m_usedBuffers.push_back(vbo);
 

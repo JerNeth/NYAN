@@ -15,3 +15,7 @@ FetchContent_Declare(
   GIT_SHALLOW    true
 )
 FetchContent_MakeAvailable(volk)
+
+target_compile_definitions(volk INTERFACE 
+    VK_NO_PROTOTYPES
+)

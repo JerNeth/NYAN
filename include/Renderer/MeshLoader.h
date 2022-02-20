@@ -11,7 +11,7 @@ namespace nyan {
 			Skinned,
 			StaticTangentSpace,
 			SkinnedTangentSpace
-		} type;
+		} type = Type::Static;
 		std::string name;
 		std::variant<
 			std::vector<nyan::StaticMesh::Vertex>,

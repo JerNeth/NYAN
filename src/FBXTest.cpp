@@ -23,6 +23,7 @@ int main() {
 	//try {
 
 		auto& device = application.get_device();
+		device.create_pipeline_cache("pipeline.cache");
 		auto& window = application.get_window();
 		vulkan::ShaderManager shaderManager(device);
 		nyan::ImguiRenderer imgui(device, shaderManager);
@@ -45,8 +46,8 @@ int main() {
 		pass.add_depth_output("depth", depth);
 		nyan::ImageAttachment color;
 		//color.format = VK_FORMAT_R8G8B8A8_UNORM;
-		//color.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-		color.format = VK_FORMAT_R8G8B8A8_SRGB;
+		color.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+		//color.format = VK_FORMAT_R8G8B8A8_SRGB;
 		color.clearColor = Math::vec4(.1f, .3f, .7f, 0.f);
 
 		nyan::ImageAttachment normal;
@@ -77,6 +78,8 @@ int main() {
 			cmd->set_cull_mode(VK_CULL_MODE_NONE);
 			cmd->push_constants(&shaderstuff, 0, sizeof(ShaderStuff));
 			cmd->bind_input_attachment(0, 0);
+			cmd->bind_input_attachment(0, 1);
+			cmd->bind_input_attachment(0, 2);
 			cmd->draw(3, 1, 0, 0);
 		});
 		//pass2.add_post_barrier("depth");
@@ -99,9 +102,10 @@ int main() {
 		//camera.view = Math::mat44::look_at(Math::vec3({ 0.0f, -4.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 		//camera.proj = Math::mat44::perspectiveX(1.f, 10.f, fov, aspect);
 
-		//device.create_stuff(tex->get_view()->get_image_view());
 		bool is_fullscreen_window = false;
 		bool should_fullscreen_window = false;
+		bool should_fullscreen = false;
+		bool is_fullscreen = false;
 		bool culling = true;
 		int mipLevel = 0;
 		pass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
@@ -120,6 +124,7 @@ int main() {
 		});
 		while (!window.should_close())
 		{
+			OPTICK_FRAME("MainThread");
 			//window.swap_buffers();
 			glfwPollEvents();
 			window.imgui_update_mouse_keyboard();
@@ -130,6 +135,13 @@ int main() {
 				else
 					window.change_mode(glfww::WindowMode::Windowed);
 			}
+			if (should_fullscreen != is_fullscreen) {
+				is_fullscreen = should_fullscreen;
+				if (is_fullscreen)
+					window.change_mode(glfww::WindowMode::Fullscreen);
+				else
+					window.change_mode(glfww::WindowMode::Windowed);
+			}
 			if (!window.is_iconified()) {
 				aspect = static_cast<float>(application.get_width())/ application.get_height();
 				if (transform) {
@@ -137,7 +149,7 @@ int main() {
 					transform->transform(3, 3) = 1;
 					transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
 				}
-				camera.proj = Math::mat44::perspectiveY(0.01f, 10.f, fovY, aspect);
+				camera.proj = Math::mat44::perspectiveY(0.01f, 100.f, fovY, aspect);
 				//camera.proj = Math::mat44::perspectiveXY(0.01f, 100.f, fovX, fovY);
 				camera.view = Math::mat44::look_at(shaderstuff.camPos * distance, Math::vec3({ 0.0f, 0.0f, 0.0f }), Math::vec3({ 0.0f, 0.0f, 1.0f }));
 				renderer.update_camera(camera);
@@ -179,6 +191,7 @@ int main() {
 				ImGui::Text("%d", mipLevel);
 
 				ImGui::Checkbox("Fullscreen Windowed", &should_fullscreen_window);
+				ImGui::Checkbox("Fullscreen", &should_fullscreen);
 				ImGui::Checkbox("Backface Culling", &culling);
 				ImGui::Checkbox("Wireframe", &wireframe);
 				ImGui::End();
@@ -197,7 +210,7 @@ int main() {
 					auto meshes = fbxReader.parse_meshes(meshName, true);
 					if (!meshes.empty()) {
 						auto& mesh = meshes.back();
-						if (mesh.get_static_tangent_vertices().size() < UINT16_MAX)
+						if (mesh.get_static_tangent_vertices().size() < std::numeric_limits<uint16_t>::max())
 							viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_tangent_vertices(), mesh.get_indices16());
 						else
 							viewPortMesh = meshManager.request_mesh<StaticMesh>(mesh.name, mesh.get_static_tangent_vertices(), mesh.get_indices32());
@@ -206,7 +219,7 @@ int main() {
 					}
 				}
 				ImGui::SameLine();
-				ImGui::InputText("", meshName, 255);
+				ImGui::InputText("##something", meshName, 255);
 				if (viewPortMesh) {
 					if (ImGui::TreeNode("Transform")) {
 						ImGui::Text("Orientation");

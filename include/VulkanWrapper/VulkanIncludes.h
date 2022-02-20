@@ -22,7 +22,6 @@ constexpr bool debug = true;
 #pragma clang diagnostic pop
 #endif
 
-#define VK_NO_PROTOTYPES
 #ifdef _WIN32
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
@@ -70,6 +69,7 @@ constexpr bool debug = true;
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
+#include <optick.h>
 #include <array>
 #include <bitset>
 #include <vector>

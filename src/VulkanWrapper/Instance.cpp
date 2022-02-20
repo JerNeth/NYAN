@@ -67,10 +67,10 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 	};
 	if (auto result = vkCreateXlibSurfaceKHR(m_instance, &createInfo, m_allocator, &m_surface); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create win32 surface, out of host memory");
+			throw std::runtime_error("VK: could not create Xlib surface, out of host memory");
 		}
 		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create win32 surface, out of device memory");
+			throw std::runtime_error("VK: could not create Xlib surface, out of device memory");
 		}
 		else {
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
@@ -119,15 +119,15 @@ VkSurfaceKHR vulkan::Instance::get_surface() const
 	return m_surface;
 }
 
-void vulkan::Instance::create_instance()
+void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t engineVersion)
 {
 	VkApplicationInfo applicationInfo{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 				.pApplicationName = m_applicationName.c_str(),
-				.applicationVersion = VK_MAKE_VERSION(0, 0, 0),
+				.applicationVersion = applicationVersion,
 				.pEngineName = m_engineName.c_str(),
-				.engineVersion = VK_MAKE_VERSION(0, 0, 0),
-				.apiVersion = VK_API_VERSION_1_2
+				.engineVersion = engineVersion,
+				.apiVersion = VK_API_VERSION_1_3
 	};
 
 	if constexpr (debug) {
@@ -184,126 +184,6 @@ void vulkan::Instance::create_instance()
 	}
 }
 
-
-bool vulkan::Instance::device_supports_features(const VkPhysicalDevice& device) const
-{
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-	if (m_requiredFeatures) {
-		if ((*m_requiredFeatures)[0] != static_cast<bool>(deviceFeatures.alphaToOne))
-			return false;
-		if ((*m_requiredFeatures)[1] != static_cast<bool>(deviceFeatures.depthBiasClamp))
-			return false;
-		if ((*m_requiredFeatures)[2] != static_cast<bool>(deviceFeatures.depthBounds))
-			return false;
-		if ((*m_requiredFeatures)[3] != static_cast<bool>(deviceFeatures.depthClamp))
-			return false;
-		if ((*m_requiredFeatures)[4] != static_cast<bool>(deviceFeatures.drawIndirectFirstInstance))
-			return false;
-		if ((*m_requiredFeatures)[5] != static_cast<bool>(deviceFeatures.dualSrcBlend))
-			return false;
-		if ((*m_requiredFeatures)[6] != static_cast<bool>(deviceFeatures.fillModeNonSolid))
-			return false;
-		if ((*m_requiredFeatures)[7] != static_cast<bool>(deviceFeatures.fragmentStoresAndAtomics))
-			return false;
-		if ((*m_requiredFeatures)[8] != static_cast<bool>(deviceFeatures.fullDrawIndexUint32))
-			return false;
-		if ((*m_requiredFeatures)[9] != static_cast<bool>(deviceFeatures.geometryShader))
-			return false;
-		if ((*m_requiredFeatures)[10] != static_cast<bool>(deviceFeatures.imageCubeArray))
-			return false;
-		if ((*m_requiredFeatures)[11] != static_cast<bool>(deviceFeatures.independentBlend))
-			return false;
-		if ((*m_requiredFeatures)[12] != static_cast<bool>(deviceFeatures.inheritedQueries))
-			return false;
-		if ((*m_requiredFeatures)[13] != static_cast<bool>(deviceFeatures.largePoints))
-			return false;
-		if ((*m_requiredFeatures)[14] != static_cast<bool>(deviceFeatures.logicOp))
-			return false;
-		if ((*m_requiredFeatures)[15] != static_cast<bool>(deviceFeatures.multiDrawIndirect))
-			return false;
-		if ((*m_requiredFeatures)[16] != static_cast<bool>(deviceFeatures.multiViewport))
-			return false;
-		if ((*m_requiredFeatures)[17] != static_cast<bool>(deviceFeatures.occlusionQueryPrecise))
-			return false;
-		if ((*m_requiredFeatures)[18] != static_cast<bool>(deviceFeatures.pipelineStatisticsQuery))
-			return false;
-		if ((*m_requiredFeatures)[19] != static_cast<bool>(deviceFeatures.robustBufferAccess))
-			return false;
-		if ((*m_requiredFeatures)[20] != static_cast<bool>(deviceFeatures.samplerAnisotropy))
-			return false;
-		if ((*m_requiredFeatures)[21] != static_cast<bool>(deviceFeatures.sampleRateShading))
-			return false;
-		if ((*m_requiredFeatures)[22] != static_cast<bool>(deviceFeatures.shaderClipDistance))
-			return false;
-		if ((*m_requiredFeatures)[23] != static_cast<bool>(deviceFeatures.shaderCullDistance))
-			return false;
-		if ((*m_requiredFeatures)[24] != static_cast<bool>(deviceFeatures.shaderFloat64))
-			return false;
-		if ((*m_requiredFeatures)[25] != static_cast<bool>(deviceFeatures.shaderImageGatherExtended))
-			return false;
-		if ((*m_requiredFeatures)[26] != static_cast<bool>(deviceFeatures.shaderInt16))
-			return false;
-		if ((*m_requiredFeatures)[27] != static_cast<bool>(deviceFeatures.shaderInt64))
-			return false;
-		if ((*m_requiredFeatures)[28] != static_cast<bool>(deviceFeatures.shaderResourceMinLod))
-			return false;
-		if ((*m_requiredFeatures)[29] != static_cast<bool>(deviceFeatures.shaderResourceResidency))
-			return false;
-		if ((*m_requiredFeatures)[30] != static_cast<bool>(deviceFeatures.shaderSampledImageArrayDynamicIndexing))
-			return false;
-		if ((*m_requiredFeatures)[31] != static_cast<bool>(deviceFeatures.shaderStorageBufferArrayDynamicIndexing))
-			return false;
-		if ((*m_requiredFeatures)[32] != static_cast<bool>(deviceFeatures.shaderStorageImageArrayDynamicIndexing))
-			return false;
-		if ((*m_requiredFeatures)[33] != static_cast<bool>(deviceFeatures.shaderStorageImageExtendedFormats))
-			return false;
-		if ((*m_requiredFeatures)[34] != static_cast<bool>(deviceFeatures.shaderStorageImageMultisample))
-			return false;
-		if ((*m_requiredFeatures)[35] != static_cast<bool>(deviceFeatures.shaderStorageImageReadWithoutFormat))
-			return false;
-		if ((*m_requiredFeatures)[36] != static_cast<bool>(deviceFeatures.shaderStorageImageWriteWithoutFormat))
-			return false;
-		if ((*m_requiredFeatures)[37] != static_cast<bool>(deviceFeatures.shaderTessellationAndGeometryPointSize))
-			return false;
-		if ((*m_requiredFeatures)[38] != static_cast<bool>(deviceFeatures.shaderUniformBufferArrayDynamicIndexing))
-			return false;
-		if ((*m_requiredFeatures)[39] != static_cast<bool>(deviceFeatures.sparseBinding))
-			return false;
-		if ((*m_requiredFeatures)[40] != static_cast<bool>(deviceFeatures.sparseResidency16Samples))
-			return false;
-		if ((*m_requiredFeatures)[41] != static_cast<bool>(deviceFeatures.sparseResidency2Samples))
-			return false;
-		if ((*m_requiredFeatures)[42] != static_cast<bool>(deviceFeatures.sparseResidency4Samples))
-			return false;
-		if ((*m_requiredFeatures)[43] != static_cast<bool>(deviceFeatures.sparseResidency8Samples))
-			return false;
-		if ((*m_requiredFeatures)[44] != static_cast<bool>(deviceFeatures.sparseResidencyAliased))
-			return false;
-		if ((*m_requiredFeatures)[45] != static_cast<bool>(deviceFeatures.sparseResidencyBuffer))
-			return false;
-		if ((*m_requiredFeatures)[46] != static_cast<bool>(deviceFeatures.sparseResidencyImage2D))
-			return false;
-		if ((*m_requiredFeatures)[47] != static_cast<bool>(deviceFeatures.sparseResidencyImage3D))
-			return false;
-		if ((*m_requiredFeatures)[48] != static_cast<bool>(deviceFeatures.tessellationShader))
-			return false;
-		if ((*m_requiredFeatures)[49] != static_cast<bool>(deviceFeatures.textureCompressionASTC_LDR))
-			return false;
-		if ((*m_requiredFeatures)[50] != static_cast<bool>(deviceFeatures.textureCompressionBC))
-			return false;
-		if ((*m_requiredFeatures)[51] != static_cast<bool>(deviceFeatures.textureCompressionETC2))
-			return false;
-		if ((*m_requiredFeatures)[52] != static_cast<bool>(deviceFeatures.variableMultisampleRate))
-			return false;
-		if ((*m_requiredFeatures)[53] != static_cast<bool>(deviceFeatures.vertexPipelineStoresAndAtomics))
-			return false;
-		if ((*m_requiredFeatures)[54] != static_cast<bool>(deviceFeatures.wideLines))
-			return false;
-	}
-	return true;
-}
-
 bool vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
 {
 	uint32_t extensionCount;
@@ -313,19 +193,12 @@ bool vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
 	for (const auto& requiredExtension : m_requiredExtensions) {
-		if (std::find_if(availableExtensions.cbegin(), availableExtensions.cend(),
+		if (std::none_of(availableExtensions.cbegin(), availableExtensions.cend(),
 			[&requiredExtension](const auto& availableExtension) {
 			return strcmp(availableExtension.extensionName, requiredExtension) == 0;
-		}) == availableExtensions.cend())
+		}))
 			return false;
 	}
-	return true;
-}
-
-bool vulkan::Instance::device_has_properties(const VkPhysicalDevice& device) const
-{
-	VkPhysicalDeviceProperties deviceProperties;
-	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 	return true;
 }
 
@@ -347,7 +220,7 @@ bool vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device)
 
 bool vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
 {
-	return device_supports_extensions(device) && device_supports_features(device) && device_has_properties(device) && device_swapchain_suitable(device);
+	return device_supports_extensions(device) && device_swapchain_suitable(device);
 }
 
 uint32_t vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
@@ -441,19 +314,18 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 			.pQueuePriorities = &queuePriority
 			});
 	}
-	VkPhysicalDeviceFeatures2 deviceFeatures2;
-	VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState;
+	std::vector<void*> allocs;
+	VkPhysicalDeviceFeatures2 deviceFeatures2{};
 	deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	dynamicState.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-	deviceFeatures2.pNext = &dynamicState;
-	dynamicState.pNext = nullptr;
-	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
+	deviceFeatures2.pNext = nullptr;
 	uint32_t count;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
 	std::vector<VkExtensionProperties> extensions(count);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
 	std::vector<const char*> usedExtensions(m_requiredExtensions);
+	auto** pNext = &deviceFeatures2.pNext;
 	for (auto& extension : extensions) {
+		//TODO maybe move some of them to required Extensions or not use them
 		if (strcmp(extension.extensionName, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME) == 0) {
 			usedExtensions.push_back(VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME);
 		}
@@ -466,8 +338,56 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 		//else if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
 		//	usedExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
 		//}
+		//else if (strcmp(extension.extensionName, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) == 0) {
+		//	usedExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+		//}
 		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+			auto* alloc = malloc(sizeof(VkPhysicalDeviceExtendedDynamicStateFeaturesEXT));
+			if (!alloc) {
+				throw std::runtime_error("Out of memory");
+			}
+			allocs.push_back(alloc);
+
+			auto* ext = reinterpret_cast<VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*>(alloc);
+			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
+			*pNext = alloc;
+			ext->pNext = nullptr;
+			pNext = &ext->pNext;
+
 			usedExtensions.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
+			auto* alloc = malloc(sizeof(VkPhysicalDeviceAccelerationStructureFeaturesKHR));
+			if (!alloc) {
+				throw std::runtime_error("Out of memory");
+			}
+			allocs.push_back(alloc);
+
+			auto* ext = reinterpret_cast<VkPhysicalDeviceAccelerationStructureFeaturesKHR*>(alloc);
+			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+			*pNext = alloc;
+			ext->pNext = nullptr;
+			pNext = &ext->pNext;
+
+			usedExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
+			auto* alloc = malloc(sizeof(VkPhysicalDeviceRayTracingPipelineFeaturesKHR));
+			if (!alloc) {
+				throw std::runtime_error("Out of memory");
+			}
+			allocs.push_back(alloc);
+
+			auto* ext = reinterpret_cast<VkPhysicalDeviceRayTracingPipelineFeaturesKHR*>(alloc);
+			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+			*pNext = alloc;
+			ext->pNext = nullptr;
+			pNext = &ext->pNext;
+
+			usedExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		}
+		else if (strcmp(extension.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0) {
+			usedExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 		}
 		if constexpr (debug) {
 			if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
@@ -478,7 +398,9 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 			//}
 		}
 	}
-	
+
+	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
+
 	VkDeviceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 		.pNext = &deviceFeatures2,
@@ -524,6 +446,9 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 		else {
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
+	}
+	for (auto* alloc : allocs) {
+		free(alloc);
 	}
 	return { logicalDevice, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex };
 }

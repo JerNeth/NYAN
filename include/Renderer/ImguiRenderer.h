@@ -22,9 +22,9 @@ namespace nyan {
 		vulkan::Program* m_program;
 		std::chrono::high_resolution_clock::time_point start;
 
-		vulkan::ImageHandle m_font;
-		vulkan::BufferHandle m_vbo;
-		vulkan::BufferHandle m_ibo;
+		std::optional < vulkan::ImageHandle> m_font;
+		std::optional < vulkan::BufferHandle> m_vbo;
+		std::optional<vulkan::BufferHandle> m_ibo;
 		float values[230] = {};
 		int values_offset = 0;
 		//BufferHandle m_ubo;

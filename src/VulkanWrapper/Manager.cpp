@@ -61,7 +61,7 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 	if (m_semaphores.empty()) {
 		VkSemaphore semaphore;
 		VkSemaphoreCreateInfo semaphoreCreateInfo{
-			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		};
 		if (auto result = vkCreateSemaphore(r_device.get_device(), &semaphoreCreateInfo, r_device.get_allocator(), &semaphore); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {

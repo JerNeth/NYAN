@@ -72,9 +72,16 @@ bool nyan::Application::setup_glfw_window()
 {
 	try {
 		auto monitors = glfww::get_monitors();
-		auto width = m_settings.get_or_default(Setting::Width, 1920);
-		auto height = m_settings.get_or_default(Setting::Height, 1080);
-		glfww::WindowMode windowMode = static_cast<glfww::WindowMode>(m_settings.get_or_default(Setting::WindowMode, static_cast<int>(glfww::WindowMode::Windowed)));
+		auto monitorName = m_settings.get_or_default<std::string>(Settings::Setting::Monitor, "");
+		for (const auto& monitor : monitors) {
+			if (monitor.get_identifier() == monitorName) {
+				m_monitor = std::make_unique<glfww::Monitor>(monitor);
+				break;
+			}
+		}
+		auto width = m_settings.get_or_default(Settings::Setting::Width, 1920);
+		auto height = m_settings.get_or_default(Settings::Setting::Height, 1080);
+		glfww::WindowMode windowMode = m_settings.get_or_default(Settings::Setting::WindowMode,glfww::WindowMode::Windowed);
 		m_monitor = std::make_unique<glfww::Monitor>();
 		m_window = std::make_unique<glfww::Window>(width, height, *m_monitor, windowMode, m_name);
 	}

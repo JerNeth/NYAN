@@ -24,10 +24,9 @@ namespace vulkan {
 		Swapchain& operator=(Swapchain&&) = delete;
 		void recreate_swapchain();
 		uint32_t get_image_count() const;
-		void enable_vsync() noexcept;
-		void disable_vsync() noexcept;
-		VkFormat get_swapchain_format() const;
-		const std::vector<std::unique_ptr<Image>>& get_swapchain_images() const;
+		void set_present_mode(VkPresentModeKHR mode) noexcept;
+		VkFormat get_swapchain_format() const noexcept;
+		const std::vector<std::unique_ptr<Image>>& get_swapchain_images() const noexcept;
 		uint32_t get_width() const;
 		uint32_t get_height() const;
 		VkExtent2D get_swapchain_extent() const;

@@ -86,9 +86,9 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 	cmd->set_vertex_attribute(0, 0, VK_FORMAT_R32G32_SFLOAT);
 	cmd->set_vertex_attribute(1, 0, VK_FORMAT_R32G32_SFLOAT);
 	cmd->set_vertex_attribute(2, 0, VK_FORMAT_R8G8B8A8_UNORM);
-	cmd->bind_texture(0, 0, *m_font->get_view(), DefaultSampler::LinearWrap);
-	cmd->bind_index_buffer(IndexState{.buffer = m_ibo->get_handle(),.offset = 0,.indexType = sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 });
-	cmd->bind_vertex_buffer(0, *m_vbo, 0, VK_VERTEX_INPUT_RATE_VERTEX);
+	cmd->bind_texture(0, 0, 0, *(*m_font)->get_view(), DefaultSampler::LinearWrap);
+	cmd->bind_index_buffer(IndexState{.buffer = (*m_ibo)->get_handle(),.offset = 0,.indexType = sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 });
+	cmd->bind_vertex_buffer(0, **m_vbo, 0, VK_VERTEX_INPUT_RATE_VERTEX);
 	float scale[2];
 	scale[0] = 2.0f / draw_data->DisplaySize.x;
 	scale[1] = 2.0f / draw_data->DisplaySize.y;
@@ -159,27 +159,27 @@ void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 {
 	auto vertSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
 	auto idxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
-	if (!m_vbo.is_valid() || m_vbo->get_size() < vertSize) {
+	if (!m_vbo || (*m_vbo)->get_size() < vertSize) {
 		BufferInfo info{
 			.size = vertSize,
 			.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.offset = 0,
 			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
 		};
-		m_vbo = r_device.create_buffer(info);
+		m_vbo = r_device.create_buffer(info, {});
 	}
-	if (!m_ibo.is_valid() || m_ibo->get_size() < idxSize) {
+	if (!m_ibo || (*m_ibo)->get_size() < idxSize) {
 		BufferInfo info{
 			.size = idxSize,
 			.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			.offset = 0,
 			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
 		};
-		m_ibo = r_device.create_buffer(info);
+		m_ibo = r_device.create_buffer(info, {});
 	}
 	
-	auto vertMap = m_vbo->map_data();
-	auto idxMap = m_ibo->map_data();
+	auto vertMap = (*m_vbo)->map_data();
+	auto idxMap = (*m_ibo)->map_data();
 	size_t vertOffset = 0;
 	size_t idxOffset = 0;
 	for (int n = 0; n < drawData->CmdListsCount; n++)

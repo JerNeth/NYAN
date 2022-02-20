@@ -1,3 +1,6 @@
+#include "..\..\include\VulkanWrapper\Pipeline.h"
+#include "..\..\include\VulkanWrapper\Pipeline.h"
+#include "..\..\include\VulkanWrapper\Pipeline.h"
 #include "Pipeline.h"
 
 #include "LogicalDevice.h"
@@ -100,11 +103,11 @@ void vulkan::PipelineLayout::create_update_template()
 		uint32_t updateCount{};
 
 		auto& descriptor = m_shaderLayout.descriptors[descriptorIdx];
-		Utility::for_each_bit(descriptor.uniformBuffer, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.uniformBuffer, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
@@ -113,24 +116,24 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.storageBuffer, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.storageBuffer, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
 				.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding,
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.sampledBuffer, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.sampledBuffer, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
@@ -139,11 +142,11 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.imageSampler, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.imageSampler, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -153,11 +156,11 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.separateImage, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.separateImage, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -167,11 +170,11 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.seperateSampler, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.seperateSampler, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
@@ -180,11 +183,11 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.storageImage, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.storageImage, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -194,11 +197,11 @@ void vulkan::PipelineLayout::create_update_template()
 			};
 			entries[updateCount++] = entry;
 		});
-		Utility::for_each_bit(descriptor.inputAttachment, [&](uint32_t binding) {
+		Utility::for_each_bit(descriptor.inputAttachment, [&](size_t binding) {
 			uint32_t arraySize = descriptor.arraySizes[binding];
 			assert(updateCount < MAX_BINDINGS);
 			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = binding,
+				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
 				.descriptorCount = arraySize,
 				.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
@@ -207,17 +210,30 @@ void vulkan::PipelineLayout::create_update_template()
 				.stride = sizeof(ResourceBinding)
 			};
 			entries[updateCount++] = entry;
-		});
+			});
+		Utility::for_each_bit(descriptor.accelerationStructures, [&](size_t binding) {
+			uint32_t arraySize = descriptor.arraySizes[binding];
+			assert(updateCount < MAX_BINDINGS);
+			VkDescriptorUpdateTemplateEntry entry{
+				.dstBinding = static_cast<uint32_t>(binding),
+				.dstArrayElement = 0,
+				.descriptorCount = arraySize,
+				.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+				.offset = offsetof(ResourceBinding, accelerationStructure) + sizeof(ResourceBinding) * binding,
+				.stride = sizeof(ResourceBinding)
+			};
+			entries[updateCount++] = entry;
+			});
 		VkDescriptorUpdateTemplateCreateInfo createInfo{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
 			.descriptorUpdateEntryCount = updateCount,
 			.pDescriptorUpdateEntries = entries.data(),
 			.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
 			.descriptorSetLayout = m_descriptors[descriptorIdx]->get_layout(),
-			//TODO handle compute and RT case
-			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-			.pipelineLayout = m_layout,
-			.set = descriptorIdx,
+			//Ignored since not VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR
+			//.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+			//.pipelineLayout = m_layout,
+			//.set = descriptorIdx,
 		};
 		if (auto result = vkCreateDescriptorUpdateTemplate(r_device.m_device, &createInfo, r_device.m_allocator, &m_updateTemplate[descriptorIdx]); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
@@ -245,7 +261,8 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const Program& program)
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = -1
 	};
-	vkCreateComputePipelines(parent.get_device(), VK_NULL_HANDLE, 1, &createInfo, parent.get_allocator(), &m_pipeline);
+	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
+
 }
 
 vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile)
@@ -334,8 +351,8 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 	}
 	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = VK_TRUE,
-		.depthWriteEnable = VK_TRUE,
+		.depthTestEnable = VK_FALSE,
+		.depthWriteEnable = VK_FALSE,
 		.depthCompareOp = static_cast<VkCompareOp>(compile.state.depth_compare),
 		.depthBoundsTestEnable = VK_FALSE,
 		.stencilTestEnable = VK_FALSE,
@@ -365,29 +382,28 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	std::array<uint8_t, MAX_VERTEX_BINDINGS> offsets{};
+	std::array<uint32_t, MAX_VERTEX_BINDINGS> offsets{};
 	std::bitset<MAX_VERTEX_BINDINGS> bindings{};
 	const auto& resourceLayout = compile.program->get_pipeline_layout()->get_shader_layout();// .attributeElementCounts;
 	attributeDescriptions.reserve(resourceLayout.inputs.count());
-	Utility::for_each_bit(resourceLayout.inputs, [&](uint32_t location) {
+	Utility::for_each_bit(resourceLayout.inputs, [&](size_t location) {
 		auto [format, binding] = compile.attributes[location];
 		assert(resourceLayout.attributeElementCounts[location] == format_element_count(format));
 		VkVertexInputAttributeDescription desc{
-					.location = location,
+					.location = static_cast<uint32_t>(location),
 					.binding = binding,
 					.format = format,
 					//This design assumes that the elements are ordered
 					.offset = offsets[binding]
 		};
 		bindings.set(binding);
-		assert(format_bytesize(format) + offsets[binding] <= 255);
-		offsets[binding] += static_cast<uint8_t>(format_bytesize(format));
+		offsets[binding] += static_cast<uint32_t>(format_bytesize(format));
 		attributeDescriptions.push_back(desc);
 	});
 	bindingDescriptions.reserve(bindings.count());
-	Utility::for_each_bit(bindings, [&](uint32_t binding) {
+	Utility::for_each_bit(bindings, [&](size_t binding) {
 		VkVertexInputBindingDescription desc{
-			.binding = binding,
+			.binding = static_cast<uint32_t>(binding),
 			.stride = offsets[binding],
 			.inputRate = compile.inputRates[binding]
 		};
@@ -456,7 +472,7 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.basePipelineIndex = -1
 	};
 
-	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
+	if (auto result = vkCreateGraphicsPipelines(parent.get_device(),parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
 		result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
@@ -495,7 +511,7 @@ VkPipeline vulkan::Pipeline::get_pipeline() const noexcept
 
 
 
-//vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, Attributes attributes, InputRates inputRates, uint32_t subpassIndex)
+//vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, VertexAttributes attributes, InputRates inputRates, uint32_t subpassIndex)
 //{
 //	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
 //}
@@ -708,7 +724,76 @@ VkPipeline vulkan::PipelineStorage::request_pipeline(const Program& program)
 	//TODO seperate Storage maybe, wasting ~200Bytes
 	PipelineCompile compile{};
 	memset(&compile, 0, sizeof(PipelineCompile));
-	compile.program = const_cast<Program*>(&program); //Cast const away, not ideal but we still consider program const
+	compile.program = &program; 
 	const auto& [ret, _] = m_hashMap.try_emplace(compile, r_device, program);
 	return ret->second.get_pipeline();
+}
+
+vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& path) :
+	r_parent(device),
+	m_path(path)
+{
+	size_t size = 0;
+	std::vector<std::byte> data;
+	std::ifstream in(m_path, std::ios::binary);
+	if (in.is_open()) {
+		in.ignore(std::numeric_limits<std::streamsize>::max());
+		std::streamsize length = in.gcount();
+		if (length > 0) {
+			in.clear();   //  Since ignore will have set eof.
+			in.seekg(0, std::ios_base::beg);
+			data.resize(length);
+			in.read(reinterpret_cast<char*>(data.data()), length);
+			in.close();
+		}
+		else {
+			size = 0;
+		}
+	}
+	VkPipelineCacheCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.initialDataSize = size,
+		.pInitialData = data.data(),
+	};
+	if (auto result = vkCreatePipelineCache(r_parent.get_device(), &createInfo, r_parent.get_allocator(), &m_handle); result != VK_SUCCESS) {
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("PipelineCache: Out of memory");
+		}
+		else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("PipelineCache: Out of device memory");
+		}
+	}
+}
+
+vulkan::PipelineCache::~PipelineCache() noexcept
+{
+	size_t dataSize;
+	VkResult result;
+	std::vector<std::byte> data;
+	do {
+		vkGetPipelineCacheData(r_parent.get_device(), m_handle, &dataSize, nullptr);
+		data.resize(dataSize);
+		result = vkGetPipelineCacheData(r_parent.get_device(), m_handle, &dataSize, data.data());
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
+			return;
+		}
+		else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
+			return;
+		}
+	} while (result != VK_SUCCESS);
+	std::ofstream out(m_path, std::ios::binary);
+	if (out.is_open()) {
+		out.write(reinterpret_cast<char*>(data.data()), dataSize);
+		out.close();
+	}
+	vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
+}
+
+VkPipelineCache vulkan::PipelineCache::get_handle() const noexcept
+{
+	return m_handle;
 }

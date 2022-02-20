@@ -2,6 +2,11 @@
 #ifndef FBXREADER_H
 #define FBXREADER_H
 #undef PropertyNotify
+
+#ifdef __INTELLISENSE__
+#pragma warning disable 26495
+#pragma warning disable 26451
+#endif
 #include <fbxsdk.h>
 #include <Renderer/MeshLoader.h>
 namespace Utility {

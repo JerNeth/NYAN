@@ -10,14 +10,14 @@ void nyan::RenderQueue::clear()
 
 nyan::VulkanRenderer::VulkanRenderer(vulkan::LogicalDevice& device,vulkan::ShaderManager* shaderManager) :
 	r_device( device),
-	m_shaderManager(shaderManager)
+	m_shaderManager(shaderManager),
+	m_cameraBuffer(r_device.create_buffer(
+		BufferInfo{
+			.size = sizeof(RendererCamera),
+			.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+		}, {}))
 {
-	RendererCamera init{};
-	BufferInfo buffInfo;
-	buffInfo.size = sizeof(RendererCamera);
-	buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	buffInfo.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-	m_cameraBuffer = r_device.create_buffer(buffInfo, &init);
 }
 
 void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
@@ -54,7 +54,7 @@ void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
 {
 	//TODO good place to parallelize
 
-	cmd->bind_uniform_buffer(0, 0, *m_cameraBuffer, 0, sizeof(RendererCamera));
+	cmd->bind_uniform_buffer(0, 0, 0, *m_cameraBuffer, 0, sizeof(RendererCamera));
 
 	RenderId current = invalidId;
 	for (auto& it : m_renderQueue.m_staticMeshes) {

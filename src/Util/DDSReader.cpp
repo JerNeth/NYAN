@@ -480,7 +480,7 @@ std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const Utili
 	//TODO could directly read from file into vulkan buffer ?
 	std::vector<vulkan::InitialImageData> initalData;
 	std::vector<uint32_t> levelSizes(info.mipLevels);
-	uint32_t totalSize = 0;
+	size_t totalSize = 0;
 	startMipLevel = Math::min(startMipLevel, info.mipLevels);
 	std::array<uint32_t, 16> mipOffsets{};
 	for (uint32_t mipLevel = 0; mipLevel < info.mipLevels; mipLevel++) {
@@ -491,13 +491,14 @@ std::vector<vulkan::InitialImageData> Utility::DDSReader::parseImage(const Utili
 		uint32_t mipSize = Math::max(1ul, (mipWidth + blockWidth - 1) / blockWidth) *
 			Math::max(1ul, (mipHeight + blockHeight - 1) / blockHeight) * blockStride;
 		if(mipLevel >= startMipLevel)
-			mipOffsets[mipLevel- startMipLevel] = totalSize;
+			mipOffsets[mipLevel- startMipLevel] = static_cast<uint32_t>(totalSize);
 		totalSize += mipSize;
 		//std::cout << "Level (" << mipLevel << "): " << mipSize << " Bytes\t\tTotal: " << totalSize << " Bytes \n";
 	}
 	//std::cout << "Mipoffset: " << mipOffset << '\n';
 	const std::byte* ptr = data.data();
-	for (uint32_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
+	initalData.reserve(info.arrayLayers);
+	for (size_t arrayLayer = 0; arrayLayer < info.arrayLayers; arrayLayer++) {
 		vulkan::InitialImageData initialImageData{
 			.data = reinterpret_cast<const void*>(ptr  + totalSize * arrayLayer ),
 			.mipOffsets = mipOffsets,

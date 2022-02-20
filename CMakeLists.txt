@@ -8,13 +8,13 @@ cmake_policy(SET CMP0091 NEW)
 project(SmallEngine)
 include("UserSettings.txt")
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 #Project Wide Settings
 #All Options which change the ABI come here
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     message("Detected MSVC")
     string(REGEX REPLACE "/W[3|4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     add_compile_options(/wd26812)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     message("Detected Clang")
 endif()
@@ -34,7 +34,6 @@ if(NOT spirv-cross-core_FOUND)
     include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 endif()
 
-
 # GLFW
 include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
 
@@ -44,6 +43,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
 # Imgui
 include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 
+# VMA
+include("${CMAKE_SOURCE_DIR}/vendor/VMA.cmake")
+
 # SDL2
 #include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
 # Would work, but why use it instead of GLFW
@@ -52,10 +54,10 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
 
 # FBX SDK
-
 include("${CMAKE_SOURCE_DIR}/vendor/FBXSDK.cmake")
 
-
+# Optick
+add_subdirectory("vendor/optick")
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -81,19 +83,24 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 # ---------------------------------------------------------------------------
 
 
-add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
+#add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
 add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC})
+
+
 add_dependencies(Engine shaders)
 
 add_executable(Demo ${DEMO_SRC})
 add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
+add_executable(RTTest ${RTTest_SRC})
 
-target_link_libraries(Third-Party-Dependencies spirv-cross-core Vulkan::Vulkan volk::volk imgui fbx z xml2)
-target_link_libraries(Engine glfw Vulkan::Vulkan Third-Party-Dependencies)
+#target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
+target_link_libraries(vma PUBLIC volk::volk)
+target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore)
 target_link_libraries(Demo Engine)
 target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine)
+target_link_libraries(RTTest Engine)
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
@@ -104,10 +111,10 @@ target_compile_options(Engine PRIVATE
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)
     target_compile_options(Demo PRIVATE /WX)
-    target_compile_options(Third-Party-Dependencies PRIVATE /w)
+    #target_compile_options(Third-Party-Dependencies PRIVATE /w)
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     target_compile_options(Demo PRIVATE -W4)
-    target_compile_options(Third-Party-Dependencies PRIVATE -Wno-everything)
+    #target_compile_options(Third-Party-Dependencies PRIVATE -Wno-everything)
     #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
 endif()
 

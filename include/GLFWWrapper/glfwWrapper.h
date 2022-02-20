@@ -56,25 +56,30 @@ namespace glfww {
 	};
 	class Monitor {
 	public:
-		Monitor() : m_monitor(glfwGetPrimaryMonitor()) {
+		explicit Monitor(GLFWmonitor* monitor = nullptr) :
+			m_monitor(monitor == nullptr? glfwGetPrimaryMonitor() : monitor) {
+			if (!m_monitor)
+				throw std::runtime_error("GLFW: Couldn't find monitor");
 			int count;
 			auto l = glfwGetVideoModes(m_monitor, &count);
 			m_modes.reserve(count);
 			for (int i = 0; i < count; i++) {
 				m_modes.push_back(l[i]);
 			}
-			m_defaultMode = *glfwGetVideoMode(m_monitor);
-			m_name = glfwGetMonitorName(m_monitor);
-		}
-		Monitor(GLFWmonitor* monitor) : m_monitor(monitor){
-			int count;
-			auto l = glfwGetVideoModes(m_monitor, &count);
-			m_modes.reserve(count);
-			for (int i = 0; i < count; i++) {
-				m_modes.push_back(l[i]);
-			}
-			m_defaultMode = *glfwGetVideoMode(m_monitor);
-			m_name = glfwGetMonitorName(m_monitor);
+			const auto* mode = glfwGetVideoMode(m_monitor);
+			if (!mode)
+				throw std::runtime_error("GLFW: Couldn't find video mode for monitor");
+			m_defaultMode = *mode;
+
+			const auto* name = glfwGetMonitorName(m_monitor);
+			if (!name)
+				throw std::runtime_error("GLFW: Couldn't find name for monitor");
+			m_name = name;
+#ifdef GLFW_EXPOSE_NATIVE_WIN32
+			m_identifier = glfwGetWin32Monitor(m_monitor);
+#else 
+			m_identifier = m_name;
+#endif
 		}
 		const GLFWvidmode* get_default_mode() const {
 			return &m_defaultMode;
@@ -85,9 +90,16 @@ namespace glfww {
 		std::pair<int, int> get_default_extent() const {
 			return {m_defaultMode.width, m_defaultMode.height};
 		}
+		const std::string& get_name() const {
+			return m_name;
+		}
+		const std::string& get_identifier() const {
+			return m_identifier;
+		}
 	private:
 		GLFWmonitor* m_monitor = nullptr;
 		std::string m_name;
+		std::string m_identifier;
 		std::vector<GLFWvidmode> m_modes;
 		GLFWvidmode m_defaultMode;
 	};
@@ -244,7 +256,7 @@ namespace glfww {
 		
 		}
 		void configure_imgui() {
-			ImGuiIO& io = ImGui::GetIO();
+			auto& io = ImGui::GetIO();
 			io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
 			io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
 			io.BackendPlatformName = "imgui_impl_glfw";
@@ -337,7 +349,7 @@ namespace glfww {
 		const Monitor* ptr_monitor = nullptr;
 		int m_width = 0;
 		int m_height = 0;
-		WindowMode m_mode;
+		WindowMode m_mode = WindowMode::Windowed;
 	};
 
 }

@@ -156,16 +156,22 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 						tangents[findices[polyIndex + (j + 2) % k]] += TS.row(0);
 					}
 				}
-				assert(k == 4 || k == 3);
+				//assert(k == 4 || k == 3);
 				//TODO Triangulate non-square polygons
-				indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
-				indices.push_back(static_cast<T::value_type>(tmpIndices[1]));
-				indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
-				if (k == 4) {
+				//indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
+				//indices.push_back(static_cast<T::value_type>(tmpIndices[1]));
+				//indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
+				//Assuming convex polys
+				for (size_t l = 2; l < k; l++) {
 					indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
-					indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
-					indices.push_back(static_cast<T::value_type>(tmpIndices[3]));
+					indices.push_back(static_cast<T::value_type>(tmpIndices[l-1ull]));
+					indices.push_back(static_cast<T::value_type>(tmpIndices[l]));
 				}
+				//if (k == 4) {
+				//	indices.push_back(static_cast<T::value_type>(tmpIndices[0]));
+				//	indices.push_back(static_cast<T::value_type>(tmpIndices[2]));
+				//	indices.push_back(static_cast<T::value_type>(tmpIndices[3]));
+				//}
 			}
 			if constexpr (usesTangentSpace) {
 				for (size_t i = 0; i < normals.size(); i++) {

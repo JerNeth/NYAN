@@ -50,31 +50,22 @@ uint32_t vulkan::Swapchain::get_image_count() const
 	return imageCount;
 }
 
-void vulkan::Swapchain::enable_vsync() noexcept
+void vulkan::Swapchain::set_present_mode(VkPresentModeKHR mode) noexcept
 {
-	if (m_state.presentMode != VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR) {
-		m_state.presentMode = VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR;
-		m_dirtyState = true;
-	}
-}
-
-void vulkan::Swapchain::disable_vsync() noexcept
-{
-	if (m_state.presentMode != VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR) {
+	if (m_state.presentMode != mode) {
 		auto presentModes = r_device.r_instance.get_present_modes();
-		if (std::find(presentModes.cbegin(), presentModes.cend(), VK_PRESENT_MODE_MAILBOX_KHR) != presentModes.cend()) {
-			m_state.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+		if (std::find(presentModes.cbegin(), presentModes.cend(), mode) != presentModes.cend()) {
+			m_state.presentMode = mode;
 			m_dirtyState = true;
 		}
 	}
 }
-
-VkFormat vulkan::Swapchain::get_swapchain_format() const
+VkFormat vulkan::Swapchain::get_swapchain_format() const noexcept
 {
 	return m_state.surfaceFormat.format;
 }
 
-const std::vector<std::unique_ptr<vulkan::Image>>& vulkan::Swapchain::get_swapchain_images() const
+const std::vector<std::unique_ptr<vulkan::Image>>& vulkan::Swapchain::get_swapchain_images() const noexcept
 {
 	return m_swapchainImages;
 }
@@ -226,8 +217,7 @@ void vulkan::Swapchain::create_images()
 		.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 	for (auto image : images) {
-		std::vector< AllocationHandle> allocs;
-		m_swapchainImages.emplace_back(new Image(r_device, image, info, allocs));
+		m_swapchainImages.emplace_back(new Image(r_device, image, info));
 	}
 }
 

@@ -134,6 +134,7 @@ namespace nyan {
 		std::vector<Barrier> m_preBarriers;
 		std::vector<VkImageMemoryBarrier> m_imageBarriers;
 		std::vector<VkBufferMemoryBarrier> m_bufferBarriers;
+		std::vector<RenderpassId> m_preceeding;
 	};
 	class Rendergraph {
 	private:
@@ -159,6 +160,7 @@ namespace nyan {
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;
+		std::vector<Renderpass*> m_submissionOrder;
 		Utility::NonInvalidatingMap<std::string, Renderpass> m_renderpasses;
 		Utility::NonInvalidatingMap<std::string, RenderResource> m_renderresources;
 		RenderResourceId m_swapchainResource = InvalidResourceId;

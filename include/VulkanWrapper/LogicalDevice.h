@@ -16,10 +16,12 @@
 #include "CommandBuffer.h"
 #include "Manager.h"
 #include "Buffer.h"
+#include "AccelerationStructure.h"
 namespace vulkan {
 	class LogicalDevice;
 	class Instance;
 	//Important to delete the device after everything else
+
 	class DeviceWrapper {
 	public:
 		DeviceWrapper(VkDevice device, const VkAllocationCallbacks* allocator) :
@@ -47,34 +49,19 @@ namespace vulkan {
 			other.m_vkHandle = VK_NULL_HANDLE;
 			return *this;
 		};
-		operator VkDevice() const { return m_vkHandle; }
+		operator VkDevice() const noexcept { return m_vkHandle; }
+		const VkDevice& get_handle() const noexcept { return m_vkHandle; };
+		VkDevice& get_handle() noexcept { return m_vkHandle; };
 	private:
 		VkDevice m_vkHandle = VK_NULL_HANDLE;
 		const VkAllocationCallbacks* m_allocator;
 	};
-	
-	struct Vertex {
-		std::array<float, 3> pos;
-		std::array<float, 3> color;
-		std::array<float, 2> texcoords;
+
+	struct InputData {
+		void* ptr;
+		size_t size;
 	};
-	
-	constexpr std::array<Vertex, 8> vertices{
-		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-		Vertex{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-		/*
-		Vertex{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-		Vertex{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-		Vertex{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-		Vertex{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
-		*/
-	};
-	constexpr std::array<uint16_t, 6> indices = {
-		0, 1, 2, 2, 3, 0,
-		//4, 5, 6, 6, 7, 4
-	};
+
 	//Alignment due to Graphicscard alignment requirements
 	//TODO currently hard-coded for minimum Nvidia reqs.
 	struct alignas(256) Ubo   {
@@ -99,13 +86,18 @@ namespace vulkan {
 	class LogicalDevice {
 		
 		struct Extensions {
-			unsigned descriptor_update_template : 1;
-			unsigned swapchain : 1;
-			unsigned timeline_semaphore : 1;
-			unsigned fullscreen_exclusive : 1;
-			unsigned extended_dynamic_state : 1;
-			unsigned debug_utils : 1;
-			unsigned debug_marker : 1;
+			uint32_t descriptor_update_template : 1;
+			uint32_t swapchain : 1;
+			uint32_t timeline_semaphore : 1;
+			uint32_t fullscreen_exclusive : 1;
+			uint32_t extended_dynamic_state : 1;
+			uint32_t debug_utils : 1;
+			uint32_t debug_marker : 1;
+			uint32_t acceleration_structure : 1;
+			uint32_t ray_tracing_pipeline : 1;
+			uint32_t ray_query : 1;
+			uint32_t pipeline_library : 1;
+			uint32_t deferred_host_operations : 1;
 		};
 		struct WSIState {
 			VkSemaphore aquire = VK_NULL_HANDLE;
@@ -129,29 +121,38 @@ namespace vulkan {
 			BufferHandle buffer;
 			std::vector<VkBufferImageCopy> blits;
 		};
-		struct FrameResource {
-			FrameResource(LogicalDevice& device) : r_device(device){
-				/*commandPool.reserve(device.get_thread_count());
-				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					commandPool.emplace_back(device, device.m_graphicsFamilyQueueIndex);
-				}*/
-				graphicsPool.reserve(device.get_thread_count());
-				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					graphicsPool.emplace_back(device, device.m_graphics.familyIndex);
-				}
-				computePool.reserve(device.get_thread_count());
-				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					computePool.emplace_back(device, device.m_compute.familyIndex);
-				}
-				transferPool.reserve(device.get_thread_count());
-				for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-					transferPool.emplace_back(device, device.m_transfer.familyIndex);
-				}
-			}
+		class FrameResource {
+		public:
+			FrameResource(LogicalDevice& device);
+			~FrameResource();
+			void recycle_semaphore(VkSemaphore sempahore);
+			std::vector<CommandBufferHandle>& get_submissions(CommandBuffer::Type type) noexcept;
+			vulkan::CommandPool& get_pool(CommandBuffer::Type type) noexcept;
+			std::vector<VkSemaphore>& get_signal_semaphores() noexcept;
+			void signal_semaphore(VkSemaphore semaphore) noexcept;
+			void wait_for_fence(FenceHandle&& fence) noexcept;
+			void recycle_signal_semaphores() noexcept;
+			void begin();
+			void clear_fences();
+			void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
+			void queue_image_deletion(VkImage image) noexcept;
+			void queue_image_view_deletion(VkImageView imageView) noexcept;
+			void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
+			void queue_image_sampler_deletion(VkSampler sampler) noexcept;
+			void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
+			void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
+			void queue_buffer_deletion(VkBuffer buffer) noexcept;
+			void queue_allocation_deletion(VmaAllocation allocation) noexcept;
+			bool has_graphics_cmd() const noexcept;
+			bool has_transfer_cmd() const noexcept;
+			bool has_compute_cmd() const noexcept;
+		private:
+			void reset_command_pools();
+			void delete_resources();
+
 			LogicalDevice& r_device;
 			uint32_t frameIndex = 0;
 
-			~FrameResource();
 
 			std::vector<CommandPool> graphicsPool;
 			std::vector<CommandPool> computePool;
@@ -166,6 +167,7 @@ namespace vulkan {
 			std::vector<VkSampler> deletedSampler;
 			std::vector<VkImage> deletedImages;
 			std::vector<VkBuffer> deletedBuffer;
+			std::vector<VkAccelerationStructureKHR> deletedAccelerationStructures;
 			std::vector<VmaAllocation> deletedAllocations;
 			std::vector<VkFramebuffer> deletedFramebuffer;
 			std::vector<VkSemaphore> deletedSemaphores;
@@ -174,7 +176,6 @@ namespace vulkan {
 			std::vector<VkSemaphore> signalSemaphores;
 			std::vector<FenceHandle> waitForFences;
 
-			void begin();
 		};
 		friend class Swapchain;
 		friend class DeviceWrapper;
@@ -197,7 +198,7 @@ namespace vulkan {
 		void wait_idle();
 
 
-		BufferHandle create_buffer(const BufferInfo& info, const void * initialData = nullptr);
+		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
 		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
 		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
@@ -239,6 +240,7 @@ namespace vulkan {
 		void queue_image_view_deletion(VkImageView imageView) noexcept;
 		void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
 		void queue_image_sampler_deletion(VkSampler sampler) noexcept;
+		void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
 		void queue_buffer_deletion(VkBuffer buffer) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
@@ -249,6 +251,8 @@ namespace vulkan {
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
 		void add_fence_callback(VkFence fence, std::function<void(void)> callback);
+
+		void create_pipeline_cache(const std::string& path);
 
 		FrameResource& frame();
 
@@ -288,8 +292,8 @@ namespace vulkan {
 			VkBool32 ret = true;
 			ret &= m_physicalProperties.sparseProperties.residencyStandard2DBlockShape; //Desired
 			//m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
-			ret &= m_physicalFeatures.features.sparseBinding; //Required
-			ret &= m_physicalFeatures.features.sparseResidencyImage2D; //Required
+			ret &= m_physicalFeatures2.features.sparseBinding; //Required
+			ret &= m_physicalFeatures2.features.sparseResidencyImage2D; //Required
 			//m_physicalFeatures.features.sparseResidencyAliased; //Ignore for now
 			return ret;
 		}
@@ -315,6 +319,13 @@ namespace vulkan {
 		}
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 
+		VkPipelineCache get_pipeline_cache() const noexcept {
+			if (m_pipelineCache)
+				return m_pipelineCache->get_handle();
+			else
+				return VK_NULL_HANDLE;
+		}
+
 	private:
 		Queue& get_queue(CommandBuffer::Type type) noexcept {
 			switch (type) {
@@ -339,7 +350,7 @@ namespace vulkan {
 		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel);
 
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
-		CommandPool& get_pool(uint32_t threadId, CommandBuffer::Type type);
+		CommandPool& get_pool(CommandBuffer::Type type);
 		void create_vma_allocator();
 		void create_default_sampler();
 
@@ -373,7 +384,7 @@ namespace vulkan {
 		Queue m_compute;
 		Queue m_transfer;
 		VkPhysicalDeviceProperties m_physicalProperties;
-		VkPhysicalDeviceFeatures2 m_physicalFeatures;
+		VkPhysicalDeviceFeatures2 m_physicalFeatures2;
 
 		size_t m_currentFrame = 0;
 		
@@ -396,6 +407,8 @@ namespace vulkan {
 		std::unordered_map<Utility::HashValue, size_t> m_renderpassIds;
 		std::unordered_map<Utility::HashValue, size_t> m_compatibleRenderpassIds;
 		Utility::LinkedBucketList<Renderpass> m_renderpassStorage;
+
+		std::unique_ptr<PipelineCache> m_pipelineCache;
 
 		PipelineStorage m_pipelineStorage;
 	};

@@ -45,7 +45,7 @@ namespace vulkan {
 			other.m_vkHandle = VK_NULL_HANDLE;
 		}
 		FenceHandle& operator=(FenceHandle&) = delete;
-		FenceHandle& operator=(FenceHandle&& other) 
+		FenceHandle& operator=(FenceHandle&& other) noexcept
 		{
 			if (this != &other && &r_manager == &other.r_manager) {
 				VkFence temp_handle = other.m_vkHandle;

@@ -16,9 +16,9 @@ namespace vulkan {
 				VkDescriptorImageInfo fp;
 				VkDescriptorImageInfo integer;
 			} image;
-			VkBufferView bufferView;
+			VkBufferView bufferView; 
+			VkAccelerationStructureKHR accelerationStructure;
 		};
-		VkDeviceSize dynamicOffset;
 	};	
 	enum class ShaderStage : uint32_t{
 		Vertex = Utility::bit_pos(VK_SHADER_STAGE_VERTEX_BIT),// 0,
@@ -27,13 +27,15 @@ namespace vulkan {
 		Geometry = Utility::bit_pos(VK_SHADER_STAGE_GEOMETRY_BIT), //3,
 		Fragment = Utility::bit_pos(VK_SHADER_STAGE_FRAGMENT_BIT), //4,
 		Compute = Utility::bit_pos(VK_SHADER_STAGE_COMPUTE_BIT),//5,
-		Size,
+		Task = Utility::bit_pos(VK_SHADER_STAGE_TASK_BIT_NV), //6,
+		Mesh = Utility::bit_pos(VK_SHADER_STAGE_MESH_BIT_NV), //7,
 		Raygen = Utility::bit_pos(VK_SHADER_STAGE_RAYGEN_BIT_NV),//8
 		AnyHit = Utility::bit_pos(VK_SHADER_STAGE_ANY_HIT_BIT_NV),//9
 		ClosestHit = Utility::bit_pos(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV),//10
 		Miss = Utility::bit_pos(VK_SHADER_STAGE_MISS_BIT_NV),//11
 		Intersection = Utility::bit_pos(VK_SHADER_STAGE_INTERSECTION_BIT_NV),//12
 		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
+		Size,
 		
 	};
 	constexpr uint32_t NUM_SHADER_STAGES = static_cast<uint32_t>(ShaderStage::Size);
@@ -49,8 +51,9 @@ namespace vulkan {
 		Utility::bitset<MAX_BINDINGS> seperateSampler;
 		Utility::bitset<MAX_BINDINGS> fp;
 		Utility::bitset<MAX_BINDINGS> immutableSampler;
-		Utility::bitarray<DefaultSampler, MAX_BINDINGS> immutableSamplers;
-		std::array<uint8_t, MAX_BINDINGS> arraySizes;
+		Utility::bitset<MAX_BINDINGS> accelerationStructures;
+		Utility::bitarray<DefaultSampler, MAX_BINDINGS> immutableSamplers{};
+		std::array<uint32_t, MAX_BINDINGS> arraySizes{};
 		std::array<Utility::bitset<static_cast<size_t>(ShaderStage::Size), ShaderStage>, MAX_BINDINGS> stages{};
 		//std::array<uint32_t, MAX_BINDINGS> stages{};
 		friend bool operator==(DescriptorSetLayout& left, DescriptorSetLayout& right) {
@@ -64,6 +67,7 @@ namespace vulkan {
 				left.seperateSampler == right.seperateSampler &&
 				left.fp == right.fp &&
 				left.immutableSampler == right.immutableSampler &&
+				left.accelerationStructures == right.accelerationStructures &&
 				left.arraySizes == right.arraySizes &&
 				left.stages == right.stages;
 		}
@@ -78,6 +82,7 @@ namespace vulkan {
 				left.seperateSampler == right.seperateSampler &&
 				left.fp == right.fp &&
 				left.immutableSampler == right.immutableSampler &&
+				left.accelerationStructures == right.accelerationStructures &&
 				left.arraySizes == right.arraySizes &&
 				left.stages == right.stages;
 		}
@@ -142,6 +147,7 @@ namespace vulkan {
 				descriptors[descriptor].seperateSampler |= other.descriptors[descriptor].seperateSampler;
 				descriptors[descriptor].fp |= other.descriptors[descriptor].fp;
 				descriptors[descriptor].immutableSampler |= other.descriptors[descriptor].immutableSampler;
+				descriptors[descriptor].accelerationStructures |= other.descriptors[descriptor].accelerationStructures;
 				for (uint32_t binding = 0; binding < MAX_BINDINGS; binding++) {
 					if(other.descriptors[descriptor].immutableSampler.test(binding))
 						descriptors[descriptor].immutableSamplers.set(other.descriptors[descriptor].immutableSamplers.get(binding), binding);
@@ -419,7 +425,7 @@ namespace vulkan {
 	}
 	template< >
 	constexpr VkFormat get_format<int8_t>() {
-		return VK_FORMAT_R8_UINT;
+		return VK_FORMAT_R8_SNORM;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::uvec2>() {
@@ -524,7 +530,6 @@ namespace vulkan {
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
 	private:
-		inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp) const;
 		void inline array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const;
 		void create_module(const std::vector<uint32_t>& shaderCode);
 
