@@ -61,6 +61,7 @@ namespace vulkan {
 			
 		}
 		void resize(VkDeviceSize newSize, bool copyData = false);
+		operator VkBuffer() const noexcept { return m_vkHandle; }
 		VkBufferUsageFlags get_usage() const noexcept {
 			return m_info.usage;
 		}
@@ -94,6 +95,7 @@ namespace vulkan {
 		void* map_data() noexcept;
 		void unmap_data() noexcept;
 		void flush(uint32_t offset = 0, uint32_t size = ~0u);
+		void invalidate(uint32_t offset = 0, uint32_t size = ~0u);
 		~Buffer();
 	private:
 		LogicalDevice& r_device;

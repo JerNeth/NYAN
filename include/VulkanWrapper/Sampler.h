@@ -18,26 +18,10 @@ namespace vulkan {
 		LinearShadow,
 		Size
 	};
-	struct SamplerCreateInfo {
-		VkFilter magFilter;
-		VkFilter minFilter;
-		VkSamplerMipmapMode mipmapMode;
-		VkSamplerAddressMode addressModeU;
-		VkSamplerAddressMode addressModeV;
-		VkSamplerAddressMode addressModeW;
-		float mipLodBias;
-		VkBool32 anisotropyEnable;
-		float maxAnisotropy;
-		VkBool32 compareEnable;
-		VkCompareOp compareOp;
-		float minLod;
-		float maxLod;
-		VkBorderColor borderColor;
-		VkBool32 unnormalizedCoordinates;
-	};
+
 	class Sampler : public Utility::UIDC{
 	public:
-		Sampler(LogicalDevice& parent, const SamplerCreateInfo& createInfo);
+		Sampler(LogicalDevice& parent, const VkSamplerCreateInfo& createInfo);
 		explicit operator VkSampler() const noexcept { return m_vkHandle; }
 		VkSampler get_handle() const noexcept { return m_vkHandle; }
 		~Sampler() noexcept;
@@ -48,7 +32,7 @@ namespace vulkan {
 	private:
 		LogicalDevice& r_device;
 		VkSampler m_vkHandle = VK_NULL_HANDLE;
-		SamplerCreateInfo m_createInfo;
+		VkSamplerCreateInfo m_createInfo;
 	};
 }
 

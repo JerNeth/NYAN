@@ -6,7 +6,7 @@
 #include "Util.h"
 
 namespace Math {
-	template<ScalarT Scalar, size_t Size_x, size_t Size_y> class Mat;
+	template<ScalarT Scalar, size_t Size_x, size_t Size_y, bool column_major> class Mat;
 	template<ScalarT Scalar> class Quaternion;
 
 	template<

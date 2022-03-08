@@ -26,6 +26,7 @@ namespace vulkan {
 		unsigned cull_mode : CULL_MODE_BITS;
 		unsigned front_face : FRONT_FACE_BITS;
 		unsigned depth_bias_enable : 1;
+		//7
 		
 		unsigned dynamic_cull_mode : 1;
 		unsigned dynamic_front_face : 1;
@@ -37,7 +38,9 @@ namespace vulkan {
 		unsigned dynamic_depth_bounds_test : 1;
 		unsigned dynamic_stencil_test : 1;
 		unsigned dynamic_stencil_op : 1;
+		unsigned dynamic_depth_bias_enable : 1;
 		unsigned depth_compare : COMPARE_OP_BITS;
+		//21
 		
 		unsigned stencil_test : 1;
 		unsigned stencil_front_fail : STENCIL_OP_BITS;
@@ -73,12 +76,14 @@ namespace vulkan {
 		unsigned subgroup_max_size_log2 : 3;
 		unsigned conservative_raster : 1;
 
-		unsigned padding : 3;
+		//Put here because of alignment
+		unsigned dynamic_primitive_restart : 1;
+		unsigned dynamic_rasterizer_discard : 1;
+		unsigned dynamic_vertex_input : 1;
 		//96
 		unsigned color_write_mask : WRITE_MASK_BITS * MAX_ATTACHMENTS;
 		//
 		friend bool operator==(const PipelineState& left, const PipelineState& right) {
-			assert(left.padding == 0 && right.padding == 0);
 			return memcmp(&left, &right, sizeof(PipelineState))== 0;
 		}
 	};
@@ -101,6 +106,7 @@ namespace vulkan {
 		.dynamic_depth_bounds_test = 0,
 		.dynamic_stencil_test = 0,
 		.dynamic_stencil_op = 0,
+		.dynamic_depth_bias_enable = 0,
 		.depth_compare = VK_COMPARE_OP_LESS,
 		.stencil_test = VK_FALSE,
 		.alpha_to_coverage = VK_FALSE,
@@ -120,7 +126,9 @@ namespace vulkan {
 		.subgroup_min_size_log2 = 0,
 		.subgroup_max_size_log2 = 0,
 		.conservative_raster = 0,
-		.padding {},
+		.dynamic_primitive_restart = 0,
+		.dynamic_rasterizer_discard = 0,
+		.dynamic_vertex_input = 0,
 		.color_write_mask = (1ull<<(WRITE_MASK_BITS * MAX_ATTACHMENTS))-1ull,
 	};
 	struct VertexAttributes {
@@ -183,8 +191,10 @@ namespace vulkan {
 			if(compile.compatibleRenderPass)
 				h(compile.compatibleRenderPass->get_compatible_hash());
 			h(compile.subpassIndex);
-			h(compile.attributes);
-			h(compile.inputRates);
+			if (!compile.state.dynamic_vertex_input) {
+				h(compile.attributes);
+				h(compile.inputRates);
+			}
 			//Dont't hash pipeline layout since it depends entirely on the shaders, which we already hashed
 
 			return h();

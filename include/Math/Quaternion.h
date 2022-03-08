@@ -5,7 +5,7 @@
 #include "Constants.h"
 #include <cmath>
 namespace Math {
-	template<ScalarT Scalar, size_t Size_x, size_t Size_y> class Mat;
+	template<ScalarT Scalar, size_t Size_x, size_t Size_y, bool column_major> class Mat;
 	template<ScalarT Scalar, size_t Size> class Vec;
 
 	template<ScalarT Scalar>
@@ -221,7 +221,7 @@ namespace Math {
 		// ============================================================================================================
 		// Frens
 		// ============================================================================================================
-		template<ScalarT, size_t, size_t> friend class Mat;
+		template<ScalarT, size_t, size_t, bool> friend class Mat;
 		template<ScalarT, size_t> friend class Vec;
 	private:
 		Scalar m_real;

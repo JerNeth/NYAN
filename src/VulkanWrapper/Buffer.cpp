@@ -27,6 +27,10 @@ void vulkan::Buffer::flush(uint32_t offset, uint32_t size)
 {
 	r_device.get_vma_allocator()->flush(m_allocation, offset,static_cast<uint32_t>(size == ~0u ? m_info.size : size));
 }
+void vulkan::Buffer::invalidate(uint32_t offset, uint32_t size)
+{
+	r_device.get_vma_allocator()->invalidate(m_allocation, offset, static_cast<uint32_t>(size == ~0u ? m_info.size : size));
+}
 vulkan::Buffer::~Buffer()
 {
 	if(maped)

@@ -17,6 +17,15 @@ namespace nyan {
 	};
 	class Mesh {
 	public:
+		struct Vertex {
+			Math::vec3 pos;
+		};
+		struct VertexData {
+			Math::vec2 uv; //normalized [0,1] coordinates
+			Math::bvec4 normal;
+			Math::bvec4 tangent;
+		};
+
 		friend class MeshManager;
 		/*Mesh() {
 			transform.transform = Math::mat44::identity();
@@ -53,6 +62,27 @@ namespace nyan {
 		void set_material(Material* material_) noexcept {
 			material = material_;
 		}
+		vulkan::Buffer* get_vertex_buffer() noexcept {
+			return vertexBuffer;
+		}
+		vulkan::Buffer* get_index_buffer() noexcept {
+			return indexBuffer;
+		}
+		uint32_t get_vertex_count() noexcept {
+			return vertexCount;
+		}
+		uint32_t get_index_count() noexcept {
+			return indexCount;
+		}
+		VkDeviceSize get_vertex_offset() noexcept {
+			return vertexOffset;
+		}
+		VkDeviceSize get_index_offset() noexcept {
+			return indexOffset;
+		}
+		VkIndexType get_index_type() noexcept {
+			return indexType;
+		}
 	protected:
 		Transform transform;
 		vulkan::Buffer* vertexBuffer = nullptr;
@@ -73,7 +103,7 @@ namespace nyan {
 			Math::vec3 pos;
 			Math::vec2 uv; //normalized [0,1] coordinates
 			Math::ubvec4 color;
-		}; 
+		};
 		struct TangentVertex {
 			Math::vec3 pos;
 			Math::vec2 uv; //normalized [0,1] coordinates
@@ -93,7 +123,6 @@ namespace nyan {
 		void render(vulkan::CommandBufferHandle& cmd);
 	private:
 	};
-	
 	class BlendShape {
 		friend class SkinnedMesh;
 	public:
@@ -145,6 +174,10 @@ namespace nyan {
 		BlendShape* blendshape = nullptr;
 		uint32_t blendshapeCount = 0;
 	};
+
+	//struct Vertex {
+	//	Math::vec3 pos
+	//}
 	constexpr std::array<StaticMesh::Vertex, 4> vertices{
 		StaticMesh::Vertex{Math::vec3({-0.5f, -0.5f, 0.0f}) , (Math::vec2({0.0f, 1.0f})), Math::unormVec<uint8_t>(Math::vec4({1.0f, 0.0f, 0.0f, 1.0f})) },
 		StaticMesh::Vertex{Math::vec3({0.5f, -0.5f, 0.0f}) , (Math::vec2({1.0f, 1.0f})) , Math::unormVec<uint8_t>(Math::vec4({0.0f, 1.0f, 0.0f, 1.0f})) },

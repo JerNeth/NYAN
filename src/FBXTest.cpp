@@ -18,7 +18,8 @@ int main() {
 	char texNameNormal[255] = "NormalTangent.dds";
 	//auto texNameNormal = "Normal";
 	//auto texNameNormal = "FGD";
-
+	auto name = "Demo";
+	OPTICK_THREAD("Main Thread");
 	nyan::Application application("Demo");
 	//try {
 
@@ -69,7 +70,7 @@ int main() {
 		auto* fullscreenProgram = shaderManager.request_program("fullscreen_vert", "deferredPBR_frag");
 		struct ShaderStuff {
 			Math::vec4 lightDir = Math::vec3(-1, -2, 1);
-			Math::vec4 lightColor = Math::vec3(0.9, 0.9, 0.9);
+			Math::vec4 lightColor = Math::vec3(0.1, 0.9, 0.9);
 			Math::vec4 camPos { 0.0f, -4.0f, 0.0f };
 		} shaderstuff;
 		ScreenPass.add_renderfunction([&](vulkan::CommandBufferHandle& cmd) {
@@ -125,6 +126,7 @@ int main() {
 		while (!window.should_close())
 		{
 			OPTICK_FRAME("MainThread");
+			OPTICK_GPU_FLIP(nullptr);
 			//window.swap_buffers();
 			glfwPollEvents();
 			window.imgui_update_mouse_keyboard();
@@ -145,9 +147,10 @@ int main() {
 			if (!window.is_iconified()) {
 				aspect = static_cast<float>(application.get_width())/ application.get_height();
 				if (transform) {
-					transform->transform = Math::mat44(Math::mat33::rotation_matrix(rotation));
-					transform->transform(3, 3) = 1;
-					transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
+					//transform->transform = Math::mat34(Math::mat33::rotation_matrix(rotation));
+					//transform->transform(3, 3) = 1;
+					transform->transform = Math::mat44::affine_transformation_matrix(rotation, position);
+					//transform->transform = Math::mat44::translation_matrix(position) * transform->transform;
 				}
 				camera.proj = Math::mat44::perspectiveY(0.01f, 100.f, fovY, aspect);
 				//camera.proj = Math::mat44::perspectiveXY(0.01f, 100.f, fovX, fovY);

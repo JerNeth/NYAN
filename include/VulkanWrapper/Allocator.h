@@ -23,6 +23,7 @@ namespace vulkan {
 		void unmap_memory(VmaAllocation allocation);
 		void destroy_buffer(VkBuffer buffer, VmaAllocation allocation);
 		void flush(VmaAllocation allocation, uint32_t offset, uint32_t size);
+		void invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size);
 		void free_allocation(VmaAllocation allocation) const noexcept {
 			vmaFreeMemory(m_VmaHandle, allocation);
 		}

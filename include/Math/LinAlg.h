@@ -11,8 +11,6 @@
 #include <cstdint>
 #include <array>
 #include <compare>
-#undef min
-#undef max
 
 namespace Math
 {
@@ -65,10 +63,12 @@ namespace Math
 
 	
 	typedef Mat<float, 2, 2> mat22;
+	typedef Mat<float, 2, 3> mat23;
 	typedef Mat<float, 3, 3> mat33;
 	typedef Mat<float, 4, 4> mat44;
 	typedef Mat<float, 3, 2> mat32;
 	typedef Mat<float, 4, 3> mat43;
+	typedef Mat<float, 3, 4> mat34;
 	typedef Mat<double, 2, 2> dmat22;
 	typedef Mat<double, 3, 3> dmat33;
 	typedef Mat<double, 4, 4> dmat44;
@@ -81,7 +81,7 @@ namespace Math
 	typedef Mat<int8_t, 2, 2> bmat22;
 	typedef Mat<int8_t, 3, 3> bmat33;
 	typedef Mat<int8_t, 4, 4> bmat44;
-	/* Unsigned integer matrices do not really make that much sense right now
+
 	typedef Mat<uint32_t, 2, 2> mat22_ui;
 	typedef Mat<uint32_t, 3, 3> mat33_ui;
 	typedef Mat<uint32_t, 4, 4> mat44_ui;
@@ -91,7 +91,7 @@ namespace Math
 	typedef Mat<uint8_t, 2, 2> mat22_ub;
 	typedef Mat<uint8_t, 3, 3> mat33_ub;
 	typedef Mat<uint8_t, 4, 4> mat44_ub;
-	*/
+	
 
 	typedef Quaternion<float>  quat;
 	typedef Quaternion<double> quatd;

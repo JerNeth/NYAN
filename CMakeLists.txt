@@ -94,6 +94,9 @@ add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
 add_executable(RTTest ${RTTest_SRC})
 
+#set_target_properties(FBXTest PROPERTIES 
+#    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
+
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
 target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore)

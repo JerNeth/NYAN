@@ -12,10 +12,7 @@ namespace vulkan {
 	struct ResourceBinding {
 		union {
 			VkDescriptorBufferInfo buffer;
-			struct {
-				VkDescriptorImageInfo fp;
-				VkDescriptorImageInfo integer;
-			} image;
+			VkDescriptorImageInfo image;
 			VkBufferView bufferView; 
 			VkAccelerationStructureKHR accelerationStructure;
 		};
@@ -40,53 +37,44 @@ namespace vulkan {
 	};
 	constexpr uint32_t NUM_SHADER_STAGES = static_cast<uint32_t>(ShaderStage::Size);
 
-	struct DescriptorSetLayout {
-		Utility::bitset<MAX_BINDINGS> imageSampler;
-		Utility::bitset<MAX_BINDINGS> sampledBuffer;
-		Utility::bitset<MAX_BINDINGS> storageImage;
-		Utility::bitset<MAX_BINDINGS> uniformBuffer;
-		Utility::bitset<MAX_BINDINGS> storageBuffer;
-		Utility::bitset<MAX_BINDINGS> inputAttachment;
-		Utility::bitset<MAX_BINDINGS> separateImage;
-		Utility::bitset<MAX_BINDINGS> seperateSampler;
-		Utility::bitset<MAX_BINDINGS> fp;
-		Utility::bitset<MAX_BINDINGS> immutableSampler;
-		Utility::bitset<MAX_BINDINGS> accelerationStructures;
-		Utility::bitarray<DefaultSampler, MAX_BINDINGS> immutableSamplers{};
-		std::array<uint32_t, MAX_BINDINGS> arraySizes{};
-		std::array<Utility::bitset<static_cast<size_t>(ShaderStage::Size), ShaderStage>, MAX_BINDINGS> stages{};
-		//std::array<uint32_t, MAX_BINDINGS> stages{};
-		friend bool operator==(DescriptorSetLayout& left, DescriptorSetLayout& right) {
-			return left.imageSampler == right.imageSampler &&
-				left.sampledBuffer == right.sampledBuffer &&
-				left.storageImage == right.storageImage &&
-				left.uniformBuffer == right.uniformBuffer &&
-				left.storageBuffer == right.storageBuffer &&
-				left.inputAttachment == right.inputAttachment &&
-				left.separateImage == right.separateImage &&
-				left.seperateSampler == right.seperateSampler &&
-				left.fp == right.fp &&
-				left.immutableSampler == right.immutableSampler &&
-				left.accelerationStructures == right.accelerationStructures &&
-				left.arraySizes == right.arraySizes &&
-				left.stages == right.stages;
-		}
-		friend bool operator==(const DescriptorSetLayout& left, const DescriptorSetLayout& right) {
-			return left.imageSampler == right.imageSampler &&
-				left.sampledBuffer == right.sampledBuffer &&
-				left.storageImage == right.storageImage &&
-				left.uniformBuffer == right.uniformBuffer &&
-				left.storageBuffer == right.storageBuffer &&
-				left.inputAttachment == right.inputAttachment &&
-				left.separateImage == right.separateImage &&
-				left.seperateSampler == right.seperateSampler &&
-				left.fp == right.fp &&
-				left.immutableSampler == right.immutableSampler &&
-				left.accelerationStructures == right.accelerationStructures &&
-				left.arraySizes == right.arraySizes &&
+	enum class DescriptorType : uint32_t {
+		Sampler = VK_DESCRIPTOR_TYPE_SAMPLER,
+		CombinedImageSampler = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		SampledImage = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		StorageImage = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		UniformTexelBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		StorageTexelBuffer = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		UniformBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		StorageBuffer = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		UniformDynamicBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		StorageBufferDynamic = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		InputAttachment = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+		InlineUniformBlock = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK,
+		AccelerationStructure = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+		Invalid
+	};
+	struct DescriptorLayout {
+		uint32_t arraySize = 0;
+		DescriptorType type = DescriptorType::Invalid;
+		Utility::bitset <static_cast<size_t>(ShaderStage::Size), ShaderStage> stages {};
+		friend bool operator==(const DescriptorLayout& left, const DescriptorLayout& right) {
+			return left.type == right.type && 
+				left.arraySize == right.arraySize &&
 				left.stages == right.stages;
 		}
 	};
+	struct DescriptorSetLayout {
+		std::array<DescriptorLayout, MAX_BINDINGS> descriptors;
+		friend bool operator==(const DescriptorSetLayout& left, const DescriptorSetLayout& right) {
+			//if (left.descriptors.size() != right.descriptors.size())
+			//	return false;
+			for (size_t i = 0; i < left.descriptors.size(); i++)
+				if (left.descriptors[i] != right.descriptors[i])
+					return false;
+			return true;
+		}
+	};
+
 	struct ShaderLayout {
 		std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptors;
 		Utility::bitset<MAX_DESCRIPTOR_SETS> used;
@@ -126,35 +114,22 @@ namespace vulkan {
 			pushConstantRange.stageFlags |= other.pushConstantRange.stageFlags;
 			pushConstantRange.size = Math::max(pushConstantRange.size, other.pushConstantRange.size);
 			assert(pushConstantRange.size <= 128u);
-			for (uint32_t descriptor = 0; descriptor < MAX_DESCRIPTOR_SETS; descriptor++) {
-				assert((descriptors[descriptor].imageSampler & other.descriptors[descriptor].imageSampler).none());
-				assert((descriptors[descriptor].sampledBuffer & other.descriptors[descriptor].sampledBuffer).none());
-				assert((descriptors[descriptor].storageImage & other.descriptors[descriptor].storageImage).none());
-				assert((descriptors[descriptor].uniformBuffer & other.descriptors[descriptor].uniformBuffer).none());
-				assert((descriptors[descriptor].storageBuffer & other.descriptors[descriptor].storageBuffer).none());
-				assert((descriptors[descriptor].inputAttachment & other.descriptors[descriptor].inputAttachment).none());
-				assert((descriptors[descriptor].separateImage & other.descriptors[descriptor].separateImage).none());
-				assert((descriptors[descriptor].seperateSampler & other.descriptors[descriptor].seperateSampler).none());
-				assert((descriptors[descriptor].fp & other.descriptors[descriptor].fp).none());
-				assert((descriptors[descriptor].immutableSampler & other.descriptors[descriptor].immutableSampler).none());
-				descriptors[descriptor].imageSampler |= other.descriptors[descriptor].imageSampler;
-				descriptors[descriptor].sampledBuffer |= other.descriptors[descriptor].sampledBuffer;
-				descriptors[descriptor].storageImage |= other.descriptors[descriptor].storageImage;
-				descriptors[descriptor].uniformBuffer |= other.descriptors[descriptor].uniformBuffer;
-				descriptors[descriptor].storageBuffer |= other.descriptors[descriptor].storageBuffer;
-				descriptors[descriptor].inputAttachment |= other.descriptors[descriptor].inputAttachment;
-				descriptors[descriptor].separateImage |= other.descriptors[descriptor].separateImage;
-				descriptors[descriptor].seperateSampler |= other.descriptors[descriptor].seperateSampler;
-				descriptors[descriptor].fp |= other.descriptors[descriptor].fp;
-				descriptors[descriptor].immutableSampler |= other.descriptors[descriptor].immutableSampler;
-				descriptors[descriptor].accelerationStructures |= other.descriptors[descriptor].accelerationStructures;
-				for (uint32_t binding = 0; binding < MAX_BINDINGS; binding++) {
-					if(other.descriptors[descriptor].immutableSampler.test(binding))
-						descriptors[descriptor].immutableSamplers.set(other.descriptors[descriptor].immutableSamplers.get(binding), binding);
-					assert(!(descriptors[descriptor].arraySizes[binding] != 0) || (other.descriptors[descriptor].arraySizes[binding] == 0));
-					if(descriptors[descriptor].arraySizes[binding] == 0)
-						descriptors[descriptor].arraySizes[binding] = other.descriptors[descriptor].arraySizes[binding];
-					descriptors[descriptor].stages[binding] |= other.descriptors[descriptor].stages[binding];
+			for (uint32_t descriptor = 0; descriptor < descriptors.size(); descriptor++) {
+				auto& descriptorSetLayouts = descriptors[descriptor].descriptors;
+				const auto& otherDescriptorSetLayouts = other.descriptors[descriptor].descriptors;
+
+				assert(descriptorSetLayouts.size() == otherDescriptorSetLayouts.size());
+
+				for (uint32_t binding = 0; binding < descriptorSetLayouts.size(); binding++) {
+					auto& descriptorSetLayout = descriptorSetLayouts[binding];
+					const auto& otherDescriptorSetLayout = otherDescriptorSetLayouts[binding];
+					if (descriptorSetLayout.type == otherDescriptorSetLayout.type &&
+						descriptorSetLayout.arraySize == otherDescriptorSetLayout.arraySize) {
+						descriptorSetLayout.stages |= otherDescriptorSetLayout.stages;
+					}
+					else if(descriptorSetLayout.arraySize == 0) {
+						descriptorSetLayout = otherDescriptorSetLayout;
+					}
 				}
 			}
 		}

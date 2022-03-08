@@ -48,9 +48,7 @@ namespace vulkan {
 		FenceHandle& operator=(FenceHandle&& other) noexcept
 		{
 			if (this != &other && &r_manager == &other.r_manager) {
-				VkFence temp_handle = other.m_vkHandle;
-				other.m_vkHandle = m_vkHandle;
-				m_vkHandle = temp_handle;
+				std::swap(other.m_vkHandle, m_vkHandle);
 			}
 			return *this;
 		}

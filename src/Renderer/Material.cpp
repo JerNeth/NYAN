@@ -9,8 +9,9 @@ nyan::Material::Material(MaterialId id, const std::string& shaderName) :
 void nyan::Material::bind(vulkan::CommandBufferHandle& cmd)
 {
 	uint32_t binding = 0;
+	cmd->bind_sampler(1, 1, 0, vulkan::DefaultSampler::TrilinearClamp);
 	for (auto texture : m_textures) {
-		cmd->bind_texture(1, binding++, 0, *texture->get_view(), vulkan::DefaultSampler::TrilinearClamp);
+		cmd->bind_texture(1, 0, binding++, *texture->get_view());
 	}
 }
 void nyan::Material::add_texture(vulkan::Image* texture)

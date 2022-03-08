@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 namespace Utility {
-	typedef uint64_t HashValue;
+	using HashValue = uint64_t;
 	struct Hasher {
 		Hasher() : hash(0xcbf29ce484222325ull){
 		}
@@ -19,6 +19,13 @@ namespace Utility {
 				hash ^= static_cast<HashValue>(bytes[i]);
 				hash *= prime;
 			}
+			return hash;
+		}
+		template<>
+		HashValue operator()(const HashValue& t) {
+			constexpr const HashValue prime = 0x100000001b3ull;
+			hash ^= t;
+			hash *= prime;
 			return hash;
 		}
 		HashValue operator()() {

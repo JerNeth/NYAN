@@ -19,7 +19,9 @@
 #include "AccelerationStructure.h"
 namespace vulkan {
 	class LogicalDevice;
+	class PhysicalDevice;
 	class Instance;
+	struct Extensions;
 	//Important to delete the device after everything else
 
 	class DeviceWrapper {
@@ -58,7 +60,7 @@ namespace vulkan {
 	};
 
 	struct InputData {
-		void* ptr;
+		const void* ptr;
 		size_t size;
 	};
 
@@ -84,21 +86,7 @@ namespace vulkan {
 		uint32_t height = 0;
 	};
 	class LogicalDevice {
-		
-		struct Extensions {
-			uint32_t descriptor_update_template : 1;
-			uint32_t swapchain : 1;
-			uint32_t timeline_semaphore : 1;
-			uint32_t fullscreen_exclusive : 1;
-			uint32_t extended_dynamic_state : 1;
-			uint32_t debug_utils : 1;
-			uint32_t debug_marker : 1;
-			uint32_t acceleration_structure : 1;
-			uint32_t ray_tracing_pipeline : 1;
-			uint32_t ray_query : 1;
-			uint32_t pipeline_library : 1;
-			uint32_t deferred_host_operations : 1;
-		};
+
 		struct WSIState {
 			VkSemaphore aquire = VK_NULL_HANDLE;
 			VkSemaphore present = VK_NULL_HANDLE;
@@ -109,6 +97,7 @@ namespace vulkan {
 		struct Queue {
 			Queue() = default;
 			Queue(uint32_t family) : familyIndex(family) {}
+			operator VkQueue() const noexcept { return queue; }
 			std::vector<VkSemaphore> waitSemaphores;
 			std::vector<VkPipelineStageFlags> waitStages;
 			bool needsFence = false;
@@ -131,7 +120,9 @@ namespace vulkan {
 			std::vector<VkSemaphore>& get_signal_semaphores() noexcept;
 			void signal_semaphore(VkSemaphore semaphore) noexcept;
 			void wait_for_fence(FenceHandle&& fence) noexcept;
-			void recycle_signal_semaphores() noexcept;
+			//Queue signal sempahores for deletion
+			//Can't reuse them for some reason
+			void delete_signal_semaphores() noexcept;
 			void begin();
 			void clear_fences();
 			void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
@@ -186,10 +177,13 @@ namespace vulkan {
 		friend class Pipeline;
 		friend class Renderpass;
 		friend class DescriptorSetAllocator;
-		
+
 	public:
 
-		LogicalDevice(const Instance& parentInstance, VkDevice device, uint32_t graphicsQueueFamilyIndex , uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex, VkPhysicalDevice physicalDevice);
+		LogicalDevice(const vulkan::Instance& parentInstance,
+			const vulkan::PhysicalDevice& physicalDevice,
+			VkDevice device, uint32_t graphicsFamilyQueueIndex,
+			uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
@@ -198,13 +192,14 @@ namespace vulkan {
 		void wait_idle();
 
 
-		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData);
+		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, bool flush = true);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
 		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
 		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
 		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
+		VkDescriptorSetLayout request_descriptor_set_layout(const DescriptorSetLayout& layout);
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
 		size_t register_shader(const std::vector<uint32_t>& shaderCode);
 		//Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
@@ -218,11 +213,12 @@ namespace vulkan {
 		VkPipeline request_pipeline(const Program& program) noexcept;
 		RenderpassCreateInfo request_swapchain_render_pass(SwapchainRenderpassType type) noexcept;
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
+		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
-		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
+		CommandBufferHandle request_command_buffer(CommandBuffer::Type type, bool tiny = false);
 		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
-		
+
 		VkSemaphore get_present_semaphore();
 		bool swapchain_touched() const noexcept;
 		VkQueue get_graphics_queue()  const noexcept;
@@ -247,7 +243,8 @@ namespace vulkan {
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
 		void submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
-		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore *semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
+		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
+		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
 		void add_fence_callback(VkFence fence, std::function<void(void)> callback);
@@ -256,75 +253,29 @@ namespace vulkan {
 
 		FrameResource& frame();
 
-		const Extensions& get_supported_extensions() const noexcept {
-			return m_supportedExtensions;
-		}
-		uint32_t get_thread_index() const noexcept {
-			return 0;
-		}
-		uint32_t get_thread_count() const noexcept {
-			return 1;
-		}
-		VkDevice get_device() const noexcept {
-			return m_device;
-		}
-		VkAllocationCallbacks* get_allocator() const noexcept {
-			return m_allocator;
-		}
-		Allocator* get_vma_allocator() const noexcept {
-			return m_vmaAllocator.get();
-		}
-		
+		const Extensions& get_supported_extensions() const noexcept;
+		uint32_t get_thread_index() const noexcept;
+		uint32_t get_thread_count() const noexcept;
+		VkDevice get_device() const noexcept;
+		operator VkDevice() const noexcept;
+		VkAllocationCallbacks* get_allocator() const noexcept;
+		Allocator* get_vma_allocator() const noexcept;
+		const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
 
-		uint32_t get_swapchain_image_index() const noexcept {
-			return m_wsiState.index;
-		}
-		uint32_t get_swapchain_image_count() const noexcept {
-			return static_cast<uint32_t>(m_wsiState.swapchainImages.size());
-		}
-		uint32_t get_swapchain_width() const noexcept {
-			return get_swapchain_image_view()->get_image()->get_width();
-		}
-		uint32_t get_swapchain_height() const noexcept {
-			return get_swapchain_image_view()->get_image()->get_height();
-		}
-		VkBool32 supports_sparse_textures() const noexcept {
-			VkBool32 ret = true;
-			ret &= m_physicalProperties.sparseProperties.residencyStandard2DBlockShape; //Desired
-			//m_physicalProperties.sparseProperties.residencyNonResidentStrict; //Optional
-			ret &= m_physicalFeatures2.features.sparseBinding; //Required
-			ret &= m_physicalFeatures2.features.sparseResidencyImage2D; //Required
-			//m_physicalFeatures.features.sparseResidencyAliased; //Ignore for now
-			return ret;
-		}
-		VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect) {
-			uint32_t sparseMemoryRequirementsCount;
-			vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, NULL);
-			std::vector<VkSparseImageMemoryRequirements> sparseMemoryRequirements(sparseMemoryRequirementsCount);
-			vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, sparseMemoryRequirements.data());
-			VkSparseImageMemoryRequirements sparseMemoryRequirement = sparseMemoryRequirements[0];
-			assert(sparseMemoryRequirementsCount);
-			for (uint32_t i = 0; i < sparseMemoryRequirementsCount; i++) {
-				if (sparseMemoryRequirements[i].formatProperties.aspectMask & aspect) {
-					return sparseMemoryRequirements[i];
-				}
-			}
-			return sparseMemoryRequirement;
-		}
-		uint32_t get_compute_family() const noexcept {
-			return m_compute.familyIndex;
-		}
-		uint32_t get_graphics_family() const noexcept {
-			return m_graphics.familyIndex;
-		}
+
+		uint32_t get_swapchain_image_index() const noexcept;
+		uint32_t get_swapchain_image_count() const noexcept;
+		uint32_t get_swapchain_width() const noexcept;
+		uint32_t get_swapchain_height() const noexcept;
+		VkBool32 supports_sparse_textures() const noexcept;
+		VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect);
+		uint32_t get_compute_family() const noexcept;
+		uint32_t get_graphics_family() const noexcept;
+		VkPipelineCache get_pipeline_cache() const noexcept;
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 
-		VkPipelineCache get_pipeline_cache() const noexcept {
-			if (m_pipelineCache)
-				return m_pipelineCache->get_handle();
-			else
-				return VK_NULL_HANDLE;
-		}
+		void wait_on_idle_queue(CommandBuffer::Type type);
+		AccelerationStructureBuilder& get_acceleration_structure_builder() noexcept;
 
 	private:
 		Queue& get_queue(CommandBuffer::Type type) noexcept {
@@ -359,13 +310,13 @@ namespace vulkan {
 		/// *******************************************************************
 		//Last to destroy
 		const Instance& r_instance;
+		const PhysicalDevice& r_physicalDevice;
 		DeviceWrapper m_device;
-		VkPhysicalDevice m_physicalDevice;
-		Extensions m_supportedExtensions{};
+
 		VkAllocationCallbacks* m_allocator = NULL;
 		std::unique_ptr<Allocator> m_vmaAllocator;
 
-		
+
 		FenceManager m_fenceManager;
 		SemaphoreManager m_semaphoreManager;
 
@@ -376,6 +327,7 @@ namespace vulkan {
 		Utility::LinkedBucketList<Buffer> m_bufferPool;
 		Utility::LinkedBucketList<ImageView> m_imageViewPool;
 		Utility::LinkedBucketList<Image> m_imagePool;
+		AccelerationStructureBuilder m_accelerationStructureBuilder;
 		WSIState m_wsiState;
 
 		AttachmentAllocator m_attachmentAllocator;
@@ -383,12 +335,13 @@ namespace vulkan {
 		Queue m_graphics;
 		Queue m_compute;
 		Queue m_transfer;
-		VkPhysicalDeviceProperties m_physicalProperties;
-		VkPhysicalDeviceFeatures2 m_physicalFeatures2;
 
 		size_t m_currentFrame = 0;
 		
 		std::unordered_multimap<VkFence, std::function<void(void)>> m_fenceCallbacks;
+
+
+		std::unordered_map< DescriptorSetLayout, VkDescriptorSetLayout, Utility::Hash<DescriptorSetLayout>> m_descriptorSetLayouts;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;

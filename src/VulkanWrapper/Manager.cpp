@@ -59,7 +59,7 @@ vulkan::SemaphoreManager::~SemaphoreManager() noexcept
 VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 {
 	if (m_semaphores.empty()) {
-		VkSemaphore semaphore;
+		VkSemaphore semaphore = VK_NULL_HANDLE;
 		VkSemaphoreCreateInfo semaphoreCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		};

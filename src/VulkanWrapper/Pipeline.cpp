@@ -1,6 +1,3 @@
-#include "..\..\include\VulkanWrapper\Pipeline.h"
-#include "..\..\include\VulkanWrapper\Pipeline.h"
-#include "..\..\include\VulkanWrapper\Pipeline.h"
 #include "Pipeline.h"
 
 #include "LogicalDevice.h"
@@ -25,7 +22,7 @@ static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 */
 vulkan::PipelineLayout::PipelineLayout(LogicalDevice& parent, const ShaderLayout& layout) :r_device(parent), m_shaderLayout(layout) {
 	m_hashValue = Utility::Hasher()(layout);
-	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets;
+	std::array<VkDescriptorSetLayout, MAX_DESCRIPTOR_SETS> descriptorSets {VK_NULL_HANDLE};
 	for (size_t i = 0; i < layout.used.count(); i++) {
 		if (layout.used.test(i)) {
 			m_descriptors[i] = r_device.request_descriptor_set_allocator(layout.descriptors[i]);
@@ -99,134 +96,29 @@ void vulkan::PipelineLayout::create_update_template()
 	for (uint32_t descriptorIdx = 0; descriptorIdx < MAX_DESCRIPTOR_SETS; descriptorIdx++) {
 		if (!m_shaderLayout.used.test(descriptorIdx))
 			continue;
-		std::array<VkDescriptorUpdateTemplateEntry, MAX_BINDINGS> entries;
-		uint32_t updateCount{};
+		std::vector<VkDescriptorUpdateTemplateEntry> entries;
+		entries.reserve(MAX_BINDINGS);
+		size_t offset{ 0 };
 
-		auto& descriptor = m_shaderLayout.descriptors[descriptorIdx];
-		Utility::for_each_bit(descriptor.uniformBuffer, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
+		auto& descriptorSetLayout = m_shaderLayout.descriptors[descriptorIdx].descriptors;
+		for (size_t binding = 0; binding < descriptorSetLayout.size(); binding++) {
+			const auto& descriptorLayout = descriptorSetLayout[binding];
+			if (descriptorLayout.type == DescriptorType::Invalid)
+				continue;
 			VkDescriptorUpdateTemplateEntry entry{
 				.dstBinding = static_cast<uint32_t>(binding),
 				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-				.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding,
+				.descriptorCount = descriptorLayout.arraySize,
+				.descriptorType = static_cast<VkDescriptorType>(descriptorLayout.type),
+				.offset = offset,
 				.stride = sizeof(ResourceBinding)
 			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.storageBuffer, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-				.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.sampledBuffer, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-				.offset = offsetof(ResourceBinding, bufferView) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.imageSampler, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.offset = (descriptor.fp.test(binding) ?offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.separateImage, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.seperateSampler, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-				.offset = offsetof(ResourceBinding, image.fp) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.storageImage, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-		});
-		Utility::for_each_bit(descriptor.inputAttachment, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-				.offset = (descriptor.fp.test(binding) ? offsetof(ResourceBinding, image.fp) :
-					offsetof(ResourceBinding, image.integer)) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-			});
-		Utility::for_each_bit(descriptor.accelerationStructures, [&](size_t binding) {
-			uint32_t arraySize = descriptor.arraySizes[binding];
-			assert(updateCount < MAX_BINDINGS);
-			VkDescriptorUpdateTemplateEntry entry{
-				.dstBinding = static_cast<uint32_t>(binding),
-				.dstArrayElement = 0,
-				.descriptorCount = arraySize,
-				.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-				.offset = offsetof(ResourceBinding, accelerationStructure) + sizeof(ResourceBinding) * binding,
-				.stride = sizeof(ResourceBinding)
-			};
-			entries[updateCount++] = entry;
-			});
+			offset += descriptorLayout.arraySize * sizeof(ResourceBinding);
+			entries.push_back(entry);
+		}
 		VkDescriptorUpdateTemplateCreateInfo createInfo{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
-			.descriptorUpdateEntryCount = updateCount,
+			.descriptorUpdateEntryCount = static_cast<uint32_t>(entries.size()),
 			.pDescriptorUpdateEntries = entries.data(),
 			.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
 			.descriptorSetLayout = m_descriptors[descriptorIdx]->get_layout(),
@@ -274,7 +166,7 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.viewportCount = 1,
 		.scissorCount = 1
 	};
-	std::array<VkDynamicState, 19> dynamicStates{
+	std::array<VkDynamicState, 22> dynamicStates{
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
 		VK_DYNAMIC_STATE_LINE_WIDTH
@@ -292,45 +184,55 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
 		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
 	}
-	if (parent.get_supported_extensions().extended_dynamic_state) {
-		if (compile.state.dynamic_cull_mode) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
-		}
-		if (compile.state.dynamic_front_face) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
-		}
-		if (compile.state.dynamic_primitive_topology) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT;
-		}
-		if (compile.state.dynamic_vertex_input_binding_stride) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
-		}
-		if (compile.state.dynamic_depth_test) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT;
-		}
-		if (compile.state.dynamic_depth_write) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT;
-		}
-		if (compile.state.dynamic_depth_compare) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT;
-		}
-		if (compile.state.dynamic_depth_bounds_test) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT;
-		}
-		if (compile.state.dynamic_stencil_test) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
-		}
-		if (compile.state.dynamic_stencil_op) {
-			dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
-		}
+	if (compile.state.dynamic_cull_mode) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
 	}
-	VkPipelineColorBlendAttachmentState colorBlendAttachments[MAX_ATTACHMENTS];
+	if (compile.state.dynamic_front_face) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
+	}
+	if (compile.state.dynamic_primitive_topology) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT;
+	}
+	if (compile.state.dynamic_vertex_input_binding_stride) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
+	}
+	if (compile.state.dynamic_depth_test) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT;
+	}
+	if (compile.state.dynamic_depth_write) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT;
+	}
+	if (compile.state.dynamic_depth_compare) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT;
+	}
+	if (compile.state.dynamic_depth_bounds_test) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT;
+	}
+	if (compile.state.dynamic_stencil_test) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
+	}
+	if (compile.state.dynamic_stencil_op) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
+	}
+	if (compile.state.dynamic_depth_bias_enable) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE;
+	}
+	if (compile.state.dynamic_primitive_restart) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE;
+	}
+	if (compile.state.dynamic_rasterizer_discard) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE;
+	}
+	if (compile.state.dynamic_vertex_input) {
+		dynamicStates[dynamicStateCreateInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_EXT;
+	}
+	std::array<VkPipelineColorBlendAttachmentState, MAX_ATTACHMENTS> colorBlendAttachments{};
 	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 		.logicOpEnable = VK_FALSE,
 		.logicOp = VK_LOGIC_OP_COPY,
 		.attachmentCount = compile.compatibleRenderPass->get_num_color_attachments(compile.subpassIndex),
-		.pAttachments = colorBlendAttachments,
+		.pAttachments = colorBlendAttachments.data(),
 		.blendConstants{0.0f, 0.0f, 0.0f, 0.0f}
 	};
 	for (uint32_t i = 0; i < colorBlendStateCreateInfo.attachmentCount; i++) {
@@ -405,7 +307,7 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		VkVertexInputBindingDescription desc{
 			.binding = static_cast<uint32_t>(binding),
 			.stride = offsets[binding],
-			.inputRate = compile.inputRates[binding]
+			.inputRate = compile.inputRates[binding],
 		};
 		bindingDescriptions.push_back(desc);
 	});

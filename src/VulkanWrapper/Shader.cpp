@@ -33,9 +33,9 @@ static inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(c
 inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
 {
 
-	layouts[set].stages[binding].set(m_stage);
+	layouts[set].descriptors[binding].stages.set(m_stage);
 	//layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
-	auto& size = layouts[set].arraySizes[binding];
+	auto& size = layouts[set].descriptors[binding].arraySize;
 	if (type.array.empty()) {
 		size = 1;
 	}
@@ -87,74 +87,64 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	m_stage = convert_spriv_execution_model(comp.get_execution_model());
 	if (m_stage == vulkan::ShaderStage::Size)
 		throw std::runtime_error("Unsupported Shadertype");
-	ShaderResources resources = comp.get_shader_resources();/*
-	auto specs = comp.get_specialization_constants();
-	const auto& val = comp.get_constant(specs[0].id);
-	auto t =val.constant_type;*/
+	ShaderResources resources = comp.get_shader_resources();
+	
+	//auto specs = comp.get_specialization_constants();
+	//const auto& val = comp.get_constant(specs[0].id);
+	//auto t =val.constant_type;
+
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
 		m_layout.used.set(set);
-		m_layout.descriptors[set].uniformBuffer.set(binding);
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformDynamicBuffer;
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& sampledImage : resources.sampled_images) {
 		auto [set, binding, type] = get_values(sampledImage, comp);
 		m_layout.used.set(set);
 		if (type.image.dim == spv::DimBuffer) {
-			m_layout.descriptors[set].sampledBuffer.set(binding);
+			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
 		}
 		else {
-			m_layout.descriptors[set].imageSampler.set(binding);
-		}
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			m_layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::CombinedImageSampler;
 		}
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& subpassInput : resources.subpass_inputs) {
 		auto [set, binding, type] = get_values(subpassInput, comp);
 		m_layout.used.set(set);
-		m_layout.descriptors[set].inputAttachment.set(binding);
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::InputAttachment;
 
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			m_layout.descriptors[set].fp.set(binding);
-		}
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& separateImage : resources.separate_images) {
 		auto [set, binding, type] = get_values(separateImage, comp);
 		m_layout.used.set(set);
 		if (type.image.dim == spv::DimBuffer) {
-			m_layout.descriptors[set].sampledBuffer.set(binding);
+			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
 		}
 		else {
-			m_layout.descriptors[set].separateImage.set(binding);
-		}
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			m_layout.descriptors[set].fp.set(binding);
+			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::SampledImage;
 		}
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& separateSampler : resources.separate_samplers) {
 		auto [set, binding, type] = get_values(separateSampler, comp);
-		m_layout.used.set(set);
-		m_layout.descriptors[set].seperateSampler.set(binding);
+		m_layout.used.set(set); 
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::Sampler;
 
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& storageImage : resources.storage_images) {
 		auto [set, binding, type] = get_values(storageImage, comp);
 		m_layout.used.set(set);
-		m_layout.descriptors[set].storageImage.set(binding);
-		if (comp.get_type(type.image.type).basetype == SPIRType::BaseType::Float) {
-			m_layout.descriptors[set].fp.set(binding);
-		}
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageImage;
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& storageImage : resources.storage_buffers) {
 		auto [set, binding, type] = get_values(storageImage, comp);
-		m_layout.used.set(set);
-		m_layout.descriptors[set].storageBuffer.set(binding);
+		m_layout.used.set(set); 
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageBufferDynamic;
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& attrib : resources.stage_inputs) {

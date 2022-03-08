@@ -8,7 +8,7 @@ namespace Math {
 	concept ScalarT = std::is_arithmetic<T>::value;
 
 	template<ScalarT S, ScalarT B>
-	inline constexpr const S& min(const S& a, const B& b) noexcept {
+	inline constexpr auto min(const S& a, const B& b) noexcept -> decltype(a + b)  {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE => min(a,b) gives you the opposite result compared to max(a,b)
 		if (!(a > b))
@@ -16,7 +16,7 @@ namespace Math {
 		return b;
 	}
 	template<ScalarT S, ScalarT B>
-	inline constexpr const S& max(const S& a, const B& b) noexcept {
+	inline constexpr auto max(const S& a, const B& b) noexcept-> decltype(a + b) {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE
 		if (a > b)
@@ -27,7 +27,7 @@ namespace Math {
 	If val is NaN => returns min
 	*/
 	template<ScalarT S>
-	inline constexpr const S& clamp(const S& val, const S& min, const S& max) noexcept {
+	inline constexpr S clamp(const S& val, const S& min, const S& max) noexcept {
 		return Math::max(Math::min(val, max), min);
 	}
 	template<ScalarT S>
@@ -38,13 +38,23 @@ namespace Math {
 	inline constexpr const T square(const T& a) noexcept {
 		return a * a;
 	}
-	template<int height>
+	template<int size, bool column_major = true>
 	inline constexpr int at(int x, int y) {
-		return x*height + y;
+		if constexpr (column_major) {
+			return x * size + y;
+		}
+		else {
+			return y * size + x;
+		}
 	}
-	template<size_t height>
+	template<size_t size, bool column_major = true>
 	inline constexpr size_t at(size_t x, size_t y) {
-		return x * height + y;
+		if constexpr (column_major) {
+			return x * size + y;
+		}
+		else {
+			return y * size + x;
+		}
 	}
 	//This function does not handle limits well
 	//This function is also stable

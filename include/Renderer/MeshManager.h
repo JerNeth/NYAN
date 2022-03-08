@@ -28,6 +28,8 @@ namespace nyan {
 			vulkan::BufferInfo buffInfo;
 			buffInfo.size = vertices.size() * sizeof(V) + indices.size() * sizeof(I);
 			buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+			if(r_device.get_supported_extensions().acceleration_structure)
+				buffInfo.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 			buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 			std::vector<vulkan::InputData> data;
 			data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(vertices.data())), vertices.size() * sizeof(V) });

@@ -13,8 +13,9 @@ namespace Math {
 
 	template<
 		ScalarT Scalar,
-		size_t Size_x, //width
-		size_t Size_y> //height
+		size_t Size_y, //height, row_count
+		size_t Size_x, //width, column_count 
+		bool column_major = true> 
 	class Mat
 	{
 	public:
@@ -35,17 +36,17 @@ namespace Math {
 			Scalar q2 = quaternion.m_imaginary[1];
 			Scalar q3 = quaternion.m_imaginary[2];
 
-			m_data[at<Size_y>(0, 0)] = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
-			m_data[at<Size_y>(0, 1)] = s2 * (q1 * q2 + q0 * q3);
-			m_data[at<Size_y>(0, 2)] = s2 * (q1 * q3 - q0 * q2);
+			at(0, 0) = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
+			at(0, 1) = s2 * (q1 * q2 + q0 * q3);
+			at(0, 2) = s2 * (q1 * q3 - q0 * q2);
 
-			m_data[at<Size_y>(1, 0)] = s2 * (q1 * q2 - q0 * q3);
-			m_data[at<Size_y>(1, 1)] = q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3;
-			m_data[at<Size_y>(1, 2)] = s2 * (q0 * q1 + q2 * q3);
+			at(1, 0) = s2 * (q1 * q2 - q0 * q3);
+			at(1, 1) = q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3;
+			at(1, 2) = s2 * (q0 * q1 + q2 * q3);
 
-			m_data[at<Size_y>(2, 0)] = s2 * (q0 * q2 + q1 * q3);
-			m_data[at<Size_y>(2, 1)] = s2 * (q2 * q3 - q0 * q1);
-			m_data[at<Size_y>(2, 2)] = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+			at(2, 0) = s2 * (q0 * q2 + q1 * q3);
+			at(2, 1) = s2 * (q2 * q3 - q0 * q1);
+			at(2, 2) = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
 			/*			
 			Scalar x2 = rotation.m_imaginary[0] + rotation.m_imaginary[0];
 			Scalar y2 = rotation.m_imaginary[1] + rotation.m_imaginary[1];
@@ -59,30 +60,30 @@ namespace Math {
 			Scalar wx = x2 * rotation.m_real;
 			Scalar wy = y2 * rotation.m_real;
 			Scalar wz = z2 * rotation.m_real;
-			m_data[at<Size_x>(0, 0)] = Scalar(1) - (yy+zz);
-			m_data[at<Size_x>(1, 0)] = xy-wz;
-			m_data[at<Size_x>(2, 0)] = xz + wy;
+			at(0, 0) = Scalar(1) - (yy+zz);
+			at(1, 0) = xy-wz;
+			at(2, 0) = xz + wy;
 
-			m_data[at<Size_x>(0, 1)] = xy + wz;
-			m_data[at<Size_x>(1, 1)] = Scalar(1) - (xx+zz);
-			m_data[at<Size_x>(2, 1)] = yz -wx;
+			at(0, 1) = xy + wz;
+			at(1, 1) = Scalar(1) - (xx+zz);
+			at(2, 1) = yz -wx;
 
-			m_data[at<Size_x>(0, 2)] = xz - wy;
-			m_data[at<Size_x>(1, 2)] = yz + wx;
-			m_data[at<Size_x>(2, 2)] = Scalar(1) - (xx+yy);
+			at(0, 2) = xz - wy;
+			at(1, 2) = yz + wx;
+			at(2, 2) = Scalar(1) - (xx+yy);
 			*/
 			if constexpr (Size_x == 4) {
-				m_data[at<Size_y>(3, 0)] = Scalar(0);
-				m_data[at<Size_y>(3, 1)] = Scalar(0);
-				m_data[at<Size_y>(3, 2)] = Scalar(0);
+				at(3, 0) = Scalar(0);
+				at(3, 1) = Scalar(0);
+				at(3, 2) = Scalar(0);
 			}
 			if constexpr (Size_y == 4) {
-				m_data[at<Size_y>(0, 3)] = Scalar(0);
-				m_data[at<Size_y>(1, 3)] = Scalar(0);
-				m_data[at<Size_y>(2, 3)] = Scalar(0);
+				at(0, 3) = Scalar(0);
+				at(1, 3) = Scalar(0);
+				at(2, 3) = Scalar(0);
 			}
 			if constexpr (Size_x == 4 && Size_x == 4) {
-				m_data[at<Size_y>(3, 3)] = Scalar(1);
+				at(3, 3) = Scalar(1);
 			}
 		}
 		explicit Mat(const Vec<Scalar, Size_x>& vec) : m_data() {
@@ -101,7 +102,7 @@ namespace Math {
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = 0; x < Size_x; x++) {
 					//Memory layout differs from user expectation
-					m_data[at<Size_y>(x, y)] = Scalar(list[at<Size_x>(y, x)]);
+					at(x, y) = Scalar(list[Math::at<Size_x, false>(x, y)]);
 				}
 			}
 		}
@@ -117,10 +118,9 @@ namespace Math {
 			}
 			else {
 				std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
-				size_t idx = 0;
 				for (size_t y = 0; y < Size_y; y++) {
 					for (size_t x = 0; x < Size_x; x++) {
-						m_data[at<Size_y>(x, y)] = static_cast<Scalar>(list[idx++]);
+						at(x, y) = Scalar(list[Math::at<Size_x, false>(x, y)]);
 					}
 				}
 			}
@@ -129,7 +129,7 @@ namespace Math {
 		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other>& other) : m_data() {
 			for (size_t y = 0; y < min(Size_y, Size_y_other); y++) {
 				for (size_t x = 0; x < min(Size_x, Size_x_other); x++) {
-					m_data[at<Size_y>(x, y)] = other[at<Size_y_other>(x, y)];
+					at(x, y) = other.at(x, y);
 				}
 			}
 		}
@@ -176,20 +176,20 @@ namespace Math {
 			std::string result("(");
 			for (size_t y = 0; y < (Size_y - 1); y++) {
 				for (size_t x = 0; x < Size_x; x++)
-					result += std::to_string(m_data[at<Size_y>(x, y)]) + ", ";
+					result += std::to_string(at(x, y)) + ", ";
 				result += "\n";
 			}
 			for (size_t x = 0; x < Size_x-1; x++)
-				result += std::to_string(m_data[at<Size_y>(x , Size_y - 1)]) + ", ";
+				result += std::to_string(at(x , Size_y - 1)) + ", ";
 			result += std::to_string(m_data[Size_x*Size_y - 1]) + ")";
 			return result;
 		}
-		friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_y>& rhs) noexcept {
+		friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_x>& rhs) noexcept {
 			Vec<Scalar, Size_y> result;
 			for (size_t y = 0; y < Size_y; y++) {
 				Scalar tmp = Scalar(0);
 				for (size_t x = 0; x < Size_x; x++)
-					tmp += lhs.m_data[at<Size_y>( x, y)] * rhs[x];
+					tmp += lhs( x, y) * rhs[x];
 				result[y] = tmp;
 			}
 			return result;
@@ -241,7 +241,7 @@ namespace Math {
 			for (size_t y = 0; y < Size_y; y++) {
 				Vec<Scalar, Size_x> old_row = row(y);
 				for (size_t x = 0; x < Size_x; x++) {
-					m_data[at<Size_y>(x, y)] = old_row.dot(rhs.col(x));
+					at(x, y) = old_row.dot(rhs.col(x));
 				}
 			}
 			return *this;
@@ -271,20 +271,32 @@ namespace Math {
 			return *this;
 		}
 		inline Vec<Scalar, Size_x> row(const size_t index) const {
-			Vec<Scalar, Size_x> ret;
-			if (Size_y <= index)
-				throw std::out_of_range("Index out of range");
-			for (size_t x = 0; x < Size_x; x++)
-				ret[x] = m_data[at<Size_y>(static_cast<int>(x), static_cast<int>(index))];
-			return ret;
+			assert(Size_y > index);
+			//if (Size_y <= index)
+			//	throw std::out_of_range("Index out of range");
+			if constexpr (!column_major) {
+				return m_vectors[index];
+			}
+			else {
+				Vec<Scalar, Size_x> ret;
+				for (size_t x = 0; x < Size_x; x++)
+					ret[x] =at(x, index);
+				return ret;
+			}
 		}
 		inline Vec<Scalar, Size_y> col(const size_t index) const {
-			Vec<Scalar, Size_y> ret;
-			if (Size_x <= index)
-				throw std::out_of_range("Index out of range");
-			for (size_t y = 0; y < Size_y; y++)
-				ret[y] = m_data[at<Size_y>(static_cast<int>(index), static_cast<int>(y))];
-			return ret;
+			assert(Size_x > index);
+			//if (Size_x <= index)
+			//	throw std::out_of_range("Index out of range");
+			if constexpr (column_major) {
+				return m_vectors[index];
+			}
+			else {
+				Vec<Scalar, Size_y> ret;
+				for (size_t y = 0; y < Size_y; y++)
+					ret[y] = at(index, y);
+				return ret;
+			}
 		}
 		inline const Scalar& operator[] (const size_t index) const {
 			//Just pass through, User responsible for bounds
@@ -298,17 +310,17 @@ namespace Math {
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
-		inline const Scalar& operator()(const size_t x, const size_t y) const {
+		inline const Scalar& operator()(const size_t col, const size_t  row) const {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[at<Size_y>(y, x)];
+			return at(col, row);
 		}
-		inline constexpr Scalar& operator()(const size_t x, const size_t y) {
+		inline constexpr Scalar& operator()(const size_t col, const size_t row) {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
-			return m_data[at<Size_y>(y, x)];
+			return at(col, row);
 		}
 		//TODO, this is ugly
 		Mat<Scalar, Size_x - 1, Size_y - 1> cofactor(const size_t i, const size_t j) const {
@@ -328,7 +340,7 @@ namespace Math {
 			static_assert(Size_x == Size_y);
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = y+1; x < Size_x; x++) {
-					std::swap(m_data[at<Size_y>(x, y)],m_data[at<Size_y>(y, x)]);
+					std::swap(at(x, y),at(y, x));
 				}
 			}
 			return *this;
@@ -337,8 +349,8 @@ namespace Math {
 			Mat<Scalar, Size_y, Size_x> ret;
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = y; x < Size_x; x++) {
-					ret.m_data[at<Size_x>(x,y)] = m_data[at<Size_y>(y, x)];
-					ret.m_data[at<Size_x>(y,x)] = m_data[at<Size_y>(x, y)];
+					ret(x,y) = at(y, x);
+					ret(y,x) = at(x, y);
 				}
 			}
 			return ret;
@@ -434,7 +446,7 @@ namespace Math {
 		static Mat eye(const Scalar& val) {
 			Mat ret;
 			for (int i = 0; i < min(Size_x, Size_y); i++)
-				ret.m_data[at<Size_y>(i, i)] = val;
+				ret.at(i, i) = val;
 			return ret;
 		}
 		static Mat identity() {
@@ -449,14 +461,14 @@ namespace Math {
 		void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
 			//assert(offset + Size < Size_y);
 			for (size_t i = offset; i < Size + offset; i++) {
-				m_data[at<Size_y>(colNum, i)] = column[i];
+				at(colNum, i) = column[i];
 			}
 		}
 		template<size_t Size>
 		void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
 			//assert(offset + Size < Size_x);
 			for (size_t i = offset; i < Size + offset; i++) {
-				m_data[at<Size_y>(i, rowNum)] = row[i];
+				at(i, rowNum) = row[i];
 			}
 		}
 		Mat& set_to_identity() {
@@ -464,13 +476,13 @@ namespace Math {
 				m_data[i] = 0;
 			}
 			for (int i = 0; i < min(Size_x, Size_y); i++)
-				m_data[at<Size_y>(i, i)] = 1;
+				at(i, i) = 1;
 			return *this;
 		}
 		/*	Rotates first around Z, then around Y and then around Z
 		*	yaw (Z) , pitch (Y), roll (X) in degrees
 		*/
-		static Mat<Scalar, Size_x, Size_y> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) {
+		static Mat<Scalar, Size_y, Size_x, column_major> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) {
 			
 			static_assert(Size_x == 3 || Size_x == 4);
 			static_assert(Size_y == 3 || Size_y == 4);
@@ -483,21 +495,31 @@ namespace Math {
 			auto sr = sin(roll * deg_to_rad);
 
 			
-			return Mat<Scalar, 3, 3>({ cy * cp,		cy * sp * sr - sy * cr,		cy * sp * cr + sy * sr,
+			return Mat<Scalar, 3, 3, column_major>({ cy * cp,		cy * sp * sr - sy * cr,		cy * sp * cr + sy * sr,
 										sy * cp,	sy * sp * sr + cr * cy,		sy * sp * cr - cy * sr,
 										-sp,			cp * sr,							cp * cr });
 		}
-		static inline Mat<Scalar, 3, 3> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
+
+		static inline Mat<Scalar, Size_y, Size_x, column_major> affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
+			static_assert(Size_x == 4);
+			static_assert(Size_y == 4 || Size_y == 3);
+			Mat<Scalar, Size_y, Size_x, column_major> mat{ Mat<Scalar, 3,3, column_major>::rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]) };
+			mat.set_col(translation_vector, 3);
+			if constexpr(Size_y == 4)
+				mat(3, 3) = 1;
+			return mat;
+		}
+		static inline Mat<Scalar, 3, 3, column_major> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw) { // roll (x), pitch (y), yaw (z)
 			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
 		}
-		static inline Mat<Scalar, 4, 4> translation_matrix(Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
-			Mat<Scalar, 4, 4> matrix = Mat<Scalar, 4, 4>::identity();
+		static inline Mat<Scalar, 4, 4, column_major> translation_matrix(Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
+			Mat<Scalar, 4, 4, column_major> matrix = Mat<Scalar, 4, 4>::identity();
 			matrix.set_col(translation_vector, 3);
 			return matrix;
 		}
-		static inline Mat<Scalar, Size_x, Size_y> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
+		static inline Mat<Scalar, Size_y , Size_x, column_major> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
 			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
-			Mat<Scalar, Size_x, Size_y> matrix = Mat<Scalar, Size_x, Size_y>::identity();
+			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y>::identity();
 			Vec<Scalar, 3> zAxis = at - eye;
 			zAxis.normalize();
 			Vec<Scalar, 3> xAxis = zAxis.cross(up);
@@ -506,56 +528,56 @@ namespace Math {
 			matrix.set_row(xAxis, 0);
 			matrix.set_row(yAxis, 1);
 			matrix.set_row(-zAxis, 2);
-			//matrix[Math::at<Size_x>(0, 0)] = xAxis.x();
-			//matrix[Math::at<Size_x>(1, 0)] = xAxis.y();
-			//matrix[Math::at<Size_x>(2, 0)] = xAxis.z();
-			//matrix[Math::at<Size_x>(0, 1)] = yAxis.x();
-			//matrix[Math::at<Size_x>(1, 1)] = yAxis.y();
-			//matrix[Math::at<Size_x>(2, 1)] = yAxis.z();
-			//matrix[Math::at<Size_x>(0, 2)] = -(zAxis.x());
-			//matrix[Math::at<Size_x>(1, 2)] = -(zAxis.y());
-			//matrix[Math::at<Size_x>(2, 2)] = -(zAxis.z());
-			matrix[Math::at<Size_y>(3, 0)] = -(xAxis.dot(eye));
-			matrix[Math::at<Size_y>(3, 1)] = -(yAxis.dot(eye));
-			matrix[Math::at<Size_y>(3, 2)] =  (zAxis.dot(eye));
+			//matrix.at(0, 0) = xAxis.x();
+			//matrix.at(1, 0) = xAxis.y();
+			//matrix.at(2, 0) = xAxis.z();
+			//matrix.at(0, 1) = yAxis.x();
+			//matrix.at(1, 1) = yAxis.y();
+			//matrix.at(2, 1) = yAxis.z();
+			//matrix.at(0, 2) = -(zAxis.x());
+			//matrix.at(1, 2) = -(zAxis.y());
+			//matrix.at(2, 2) = -(zAxis.z());
+			matrix.at(3, 0) = -(xAxis.dot(eye));
+			matrix.at(3, 1) = -(yAxis.dot(eye));
+			matrix.at(3, 2) =  (zAxis.dot(eye));
 			return matrix;
 		}
 		
-		static inline Mat<Scalar, 4, 4> perspectiveY(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
+		static inline Mat<Scalar, 4, 4, column_major> perspectiveY(Scalar nearPlane, Scalar farPlane, Scalar fovY, Scalar aspectRatio) {
 			//Right handed, zero to one
-			Mat<Scalar, 4, 4> matrix;
+			Mat<Scalar, 4, 4, column_major> matrix;
 			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
 			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
 			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
-			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
-			matrix[Math::at<Size_y>(2, 2)] =  farPlane / (nearPlane  - farPlane);
-			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
-			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix.at(0, 0) = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
+			matrix.at(1, 1) = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix.at(2, 2) =  farPlane / (nearPlane  - farPlane);
+			matrix.at(2, 3) = -Scalar(1);
+			matrix.at(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
-		static inline Mat<Scalar, 4, 4> perspectiveX(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar aspectRatio) {
+		static inline Mat<Scalar, 4, 4, column_major> perspectiveX(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar aspectRatio) {
 			//Right handed, zero to one
-			Mat<Scalar, 4, 4> matrix;
+			Mat<Scalar, 4, 4, column_major> matrix;
 			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovX) * 0.5 * deg_to_rad));
 			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
 			//matrix(1, 1) = Scalar(1) / (tanHalfFovy);
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / ( tanHalfFovx);
-			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
-			matrix[Math::at<Size_y>(2, 2)] = farPlane / (nearPlane - farPlane);
-			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
-			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix(0, 0) = static_cast<Scalar>(1) / ( tanHalfFovx);
+			matrix(1, 1) = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
+			matrix(2, 2) = farPlane / (nearPlane - farPlane);
+			matrix(2, 3) = -Scalar(1);
+			matrix(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
-		static inline Mat<Scalar, 4, 4> perspectiveXY(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar fovY) {
+		static inline Mat<Scalar, 4, 4, column_major> perspectiveXY(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar fovY) {
 			//Right handed, zero to one
-			Mat<Scalar, 4, 4> matrix;
+			Mat<Scalar, 4, 4, column_major> matrix;
 			const Scalar tanHalfFovx = static_cast<Scalar>(tan(static_cast<double>(fovX) * 0.5 * deg_to_rad));
 			const Scalar tanHalfFovy = static_cast<Scalar>(tan(static_cast<double>(fovY) * 0.5 * deg_to_rad));
 			//matrix(0, 0) = Scalar(1) / ( aspect * tanHalfFovy);
@@ -563,16 +585,35 @@ namespace Math {
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix[Math::at<Size_y>(0, 0)] = static_cast<Scalar>(1) / (tanHalfFovx);
-			matrix[Math::at<Size_y>(1, 1)] = static_cast<Scalar>(1) / (tanHalfFovy);
-			matrix[Math::at<Size_y>(2, 2)] = farPlane / (nearPlane - farPlane);
-			matrix[Math::at<Size_y>(2, 3)] = -Scalar(1);
-			matrix[Math::at<Size_y>(3, 2)] = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix(0, 0) = static_cast<Scalar>(1) / (tanHalfFovx);
+			matrix(1, 1) = static_cast<Scalar>(1) / (tanHalfFovy);
+			matrix(2, 2) = farPlane / (nearPlane - farPlane);
+			matrix(2, 3) = -Scalar(1);
+			matrix(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
+		}
+
+		inline constexpr Scalar& at(size_t col, size_t row) {
+			if constexpr (column_major) {
+				return m_data[col * Size_y + row];
+			}
+			else {
+				return m_data[row * Size_x + col];
+			}
+		}
+		inline constexpr const Scalar& at(size_t col, size_t row) const {
+			if constexpr (column_major) {
+				return m_data[col * Size_y + row];
+			}
+			else {
+				return m_data[row * Size_x + col];
+			}
 		}
 	private:
-
-		std::array<Scalar, Size_x* Size_y> m_data;
+		union {
+			std::array<Scalar, Size_x* Size_y> m_data;
+			std::array<Vec<Scalar, column_major ?Size_y : Size_x>, column_major ? Size_x : Size_y> m_vectors;//Columns if columnmajor, rows otherwise
+		};
 	};
 	
 	template<typename Scalar, size_t Size_x, size_t Size_y>
@@ -583,13 +624,19 @@ namespace Math {
 		return true;
 	}
 	
-	template<typename Scalar, size_t rows, size_t equal, size_t cols>
-	inline Mat<Scalar, rows, cols> operator*(const Mat<Scalar, equal, cols>& lhs, const Mat<Scalar, rows, equal>& rhs) {
+	template<typename Scalar, size_t rows, size_t equal, size_t cols, bool column_major>
+	inline Mat<Scalar, rows, cols, column_major> operator*(const Mat<Scalar, rows, equal, column_major>& lhs, const Mat<Scalar, equal, cols, column_major>& rhs) {
 		Mat<Scalar, rows, cols> result;
-		for (size_t y = 0; y < cols; y++) {
-			Vec<Scalar, equal> old_row = lhs.row(y);
-			for (size_t x = 0; x < rows; x++) {
-				result[at<cols>(x, y)] = old_row.dot(rhs.col(x));
+		for (size_t col = 0; col < cols; col++) {
+			//Vec<Scalar, equal> old_row = lhs.row(col);
+			for (size_t row = 0; row < rows; row++) {
+				//result(col, row) = old_row.dot(rhs.col(row));
+				Scalar tmp{ 0 };
+				for (size_t i = 0; i < equal; i++) {
+					tmp += lhs(i, row) * rhs(col, i);
+				}
+				result(col, row) = tmp;
+				//result[at<column_major ? cols : rows, column_major>(x, y)] = tmp;
 			}
 		}
 		return result;

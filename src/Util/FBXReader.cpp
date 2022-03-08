@@ -37,15 +37,22 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 		auto mesh = node->GetMesh();
 		ret.name = node->GetName();
 
-		//for (int i = 0; i < node->GetMaterialCount(); i++) {
-		//	fbxsdk::FbxSurfaceMaterial* mat= node->GetMaterial(i);
-		//	std::cout<< mat->GetName() << ' ';
-		//	auto s = mat->ShadingModel.Get();
-		//	assert(s == "Phong");
-		//	auto phong = reinterpret_cast<fbxsdk::FbxSurfacePhong*>(mat);
-		//	std::cout << phong->ShadingModel.Get() << ' ';
-		//	//std::cout << phong->Diffuse. << '\n';
-		//}
+		for (int i = 0; i < node->GetMaterialCount(); i++) {
+			fbxsdk::FbxSurfaceMaterial* mat= node->GetMaterial(i);
+			std::cout<< mat->GetName() << ' ';
+			auto s = mat->ShadingModel.Get();
+			//assert(s == "Phong");
+			if (s == "Phong") {
+				auto phong = reinterpret_cast<fbxsdk::FbxSurfacePhong*>(mat);
+				std::cout << phong->ShadingModel.Get() << ' ';
+				std::cout << phong->sBump << ' ';
+				std::cout << phong->sAmbient << ' ';
+				std::cout << phong->sDiffuse << ' ';
+				std::cout << phong->sDisplacementColor << ' ';
+				std::cout << phong->sEmissive << '\n';
+			}
+			//std::cout << phong->Diffuse. << '\n';
+		}
 
 		fbxsdk::FbxVector4* lControlPoints = mesh->GetControlPoints();
 		auto* findices = mesh->GetPolygonVertices();
@@ -123,7 +130,7 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 					}
 				}
 				if constexpr (usesTangentSpace) {
-					for (int j = 0; j < k - 3; j++) {
+					for (size_t j = 0; j < k - 3; j++) {
 						auto uv0 = uvs->operator[](uvIndices[j + 0]);
 						auto uv1 = uvs->operator[](uvIndices[(j + 1) % k]);
 						auto uv2 = uvs->operator[](uvIndices[(j + 2) % k]);
@@ -145,15 +152,15 @@ std::vector<nyan::MeshData> Utility::FBXReader::parse_meshes(std::string fbxFile
 						t1 += static_cast<float>(uv1[1]);
 						t2 += static_cast<float>(uv2[1]);
 
-						auto TS = 1.0f / (s1 * t2 - s2 * t1) * Math::mat22(t2, -t1, -s2, s1) * Math::mat32(q1.x(), q1.y(), q1.z(), q2.x(), q2.y(), q2.z());
+						auto TS = 1.0f / (s1 * t2 - s2 * t1) *  Math::mat22(t2, -t1, -s2, s1) * Math::mat23(q1.x(), q1.y(), q1.z(), q2.x(), q2.y(), q2.z());
 
 						auto normal = TS.row(0).cross(TS.row(1));
-						normals[findices[polyIndex + j + 0]] += normal;
-						normals[findices[polyIndex + (j + 1) % k]] += normal;
-						normals[findices[polyIndex + (j + 2) % k]] += normal;
-						tangents[findices[polyIndex + j + 0]] += TS.row(0);
-						tangents[findices[polyIndex + (j + 1) % k]] += TS.row(0);
-						tangents[findices[polyIndex + (j + 2) % k]] += TS.row(0);
+						normals[static_cast<size_t>(findices[polyIndex + j + 0])] += normal;
+						normals[static_cast<size_t>(findices[polyIndex + (j + 1) % k])] += normal;
+						normals[static_cast<size_t>(findices[polyIndex + (j + 2) % k])] += normal;
+						tangents[static_cast<size_t>(findices[polyIndex + j + 0])] += TS.row(0);
+						tangents[static_cast<size_t>(findices[polyIndex + (j + 1) % k])] += TS.row(0);
+						tangents[static_cast<size_t>(findices[polyIndex + (j + 2) % k])] += TS.row(0);
 					}
 				}
 				//assert(k == 4 || k == 3);

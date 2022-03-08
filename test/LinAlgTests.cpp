@@ -245,9 +245,9 @@ namespace Math {
         std::uniform_real_distribution<float> dist_vec(-100000.0, 100000.0);
 
         for (int i = 0; i < 10000; i++) {
-            mat44 t({dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
-                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng), 
-                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng), 
+            mat44 t({ dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
+                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
+                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
                 dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng), });
             mat44 t_t = t.transpose();
             ASSERT_TRUE(close(t, t.transpose().transpose()));
@@ -255,11 +255,41 @@ namespace Math {
         }
         //EXPECT_EQ(a.dot(b), 0);
     }
+    TEST(Matrices, rowMajor) {
+
+        Math::Mat<float, 3, 3, false> a(1, 1, 1,
+            0, 0, 0,
+            0, 0, 0
+        );
+        std::array<float, 9> b{ 1, 1, 1, 0, 0,0 ,0,0 ,0 };
+        bool res = true;
+        for (size_t i = 0; i < b.size(); i++) {
+            res &= b[i] == a[i];
+        }
+
+        EXPECT_TRUE(res);
+        //EXPECT_EQ(a.dot(b), 0);
+    }
+    TEST(Matrices, colMajor) {
+
+        Math::Mat<float, 3, 3, true> a(1, 1, 1,
+            0, 0, 0,
+            0, 0, 0
+        );
+        std::array<float, 9> b{ 1, 0, 0, 1, 0,0 ,1,0 ,0 };
+        bool res = true;
+        for (size_t i = 0; i < b.size(); i++) {
+            res &= b[i] == a[i];
+        }
+
+        EXPECT_TRUE(res);
+        //EXPECT_EQ(a.dot(b), 0);
+    }
     TEST(Matrices, multiplication) {
 
-        mat33 a({1, 0, 0,
+        mat33 a({ 1, 0, 0,
                  0, 1, 0,
-                 0, 1, 0});
+                 0, 1, 0 });
         mat33 b({ 1, 0, 1,
                  0, 1, 0,
                  0, 0, 0 });
@@ -269,6 +299,23 @@ namespace Math {
         auto res = a * b;
         EXPECT_TRUE(close(res, c)) << res.convert_to_string() << " not equal to:\n" << c.convert_to_string() << "\n";
 
+        {
+            mat33 a({ 1, 0, 0,
+                     0, 1, 0,
+                     0, 0, 1 });
+            auto res = a * a;
+            EXPECT_TRUE(close(res, a)) << res.convert_to_string() << " not equal to:\n" << a.convert_to_string() << "\n";
+        }
+        {
+            mat33 a({ 1, 0, 0,
+                     0, 1, 0,
+                     0, 0, 1 });
+            mat33 b({ 1, 1, 5,
+                     3, 1, 2,
+                     4, 2, 1 });
+            auto res = a * b;
+            EXPECT_TRUE(close(res, b)) << res.convert_to_string() << " not equal to:\n" << b.convert_to_string() << "\n";
+        }
         mat33 d({ 2, 0, 2,
                  0, 2, 0,
                  0, 2, 0 });
@@ -285,45 +332,98 @@ namespace Math {
         EXPECT_TRUE(close(res, f)) << res.convert_to_string() << " not equal to:\n" << f.convert_to_string() << "\n";
         res = e * d;
         EXPECT_TRUE(close(res, g)) << res.convert_to_string() << " not equal to:\n" << g.convert_to_string() << "\n";
+        {
+
+            mat34 d({ 2, 0, 2, 0,
+                     0, 2, 0, 0,
+                     0, 2, 0, 0});
+            mat43 e({ 1, 0, 1,
+                     0, 1, 0,
+                     1, 0, 0,
+                     0, 0, 0});
+            mat33 r({ 4, 0, 2,
+                     0, 2, 0,
+                     0, 2, 0 });
+            mat44 r2({ 2, 2, 2, 0,
+                     0, 2, 0, 0,
+                     2, 0, 2, 0,
+                     0, 0, 0, 0});
+            auto res = d * e;
+            auto res2 = e * d;
+            EXPECT_TRUE(close(res, r)) << res.convert_to_string() << " should be:\n" << r.convert_to_string() << "\n";
+            EXPECT_TRUE(close(res2, r2)) << res2.convert_to_string() << " should be:\n" << r2.convert_to_string() << "\n";
+        }
+        {
+
+            Mat<float, 2, 4> d({ 2, 0, 2, 0,
+                                0, 2, 0, 0 });
+            Mat<float, 4, 2> e({ 1, 0,
+                                0, 1,
+                                1, 0,
+                                0, 0, });
+            mat22 r(4, 0,
+                0, 2);
+            mat44 r2({ 2, 0, 2, 0,
+                     0, 2, 0, 0,
+                     2, 0, 2, 0,
+                     0, 0, 0, 0 });
+            auto res = d * e;
+            auto res2 = e * d;
+            EXPECT_TRUE(close(res, r)) << res.convert_to_string() << " should be:\n" << r.convert_to_string() << "\n";
+            EXPECT_TRUE(close(res2, r2)) << res2.convert_to_string() << " should be:\n" << r2.convert_to_string() << "\n";
+        } 
+        {
+
+            Mat<float, 2, 4> d({ 2, 0, 2, 0,
+                                0, 2, 0, 0 });
+            Mat<float, 4, 3> e({ 1, 0, 1,
+                                0, 1, 1,
+                                1, 0, 3,
+                                0, 0, 2 });
+            Mat<float, 2, 3> r(4, 0,8,
+                                0, 2, 2);
+            auto res = d * e;
+            EXPECT_TRUE(close(res, r)) << res.convert_to_string() << " should be:\n" << r.convert_to_string() << "\n";
+        }
     }
-    //TEST(Matrices, rotationMatrices) {
-    //      TODO: This Test is flawed currently
-    //    static std::default_random_engine rng;
+    TEST(Matrices, rotationMatrices) {
+         // TODO: This Test is flawed currently
+        static std::default_random_engine rng;
 
-    //    std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
-    //    std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
-    //    std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
-    //    int counter1_2 = 0;
-    //    for (int i = 0; i < 100000; i++) {
-    //        vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
-    //        double yaw = angles[2], pitch = angles[1], roll = angles[0];
-    //        float cy = (float)cos(yaw * deg_to_rad);
-    //        float sy = (float)sin(yaw * deg_to_rad);
-    //        float cp = (float)cos(pitch * deg_to_rad);
-    //        float sp = (float)sin(pitch * deg_to_rad);
-    //        float cr = (float)cos(roll * deg_to_rad);
-    //        float sr = (float)sin(roll * deg_to_rad);
-    //        mat33 roll_m({ 1, 0, 0,
-    //                                    0, cr, -sr,
-    //                                    0, sr, cr });
-    //        mat33  pitch_m({ cp, 0, sp,
-    //                                0, 1, 0,
-    //                                -sp, 0, cp });
-    //        mat33  yaw_m({ cy, -sy, 0,
-    //                                sy, cy, 0,
-    //                                0, 0, 1 });
-    //        mat33 rot = (yaw_m * pitch_m) * roll_m;
+        std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
+        std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
+        std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
+        int counter1_2 = 0;
+        for (int i = 0; i < 100000; i++) {
+            vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
+            double yaw = angles[2], pitch = angles[1], roll = angles[0];
+            float cy = (float)cos(yaw * deg_to_rad);
+            float sy = (float)sin(yaw * deg_to_rad);
+            float cp = (float)cos(pitch * deg_to_rad);
+            float sp = (float)sin(pitch * deg_to_rad);
+            float cr = (float)cos(roll * deg_to_rad);
+            float sr = (float)sin(roll * deg_to_rad);
+            mat33 roll_m( 1, 0, 0,
+                                        0, cr, -sr,
+                                        0, sr, cr );
+            mat33  pitch_m( cp, 0, sp,
+                                    0, 1, 0,
+                                    -sp, 0, cp );
+            mat33  yaw_m( cy, -sy, 0,
+                                    sy, cy, 0,
+                                    0, 0, 1 );
+            mat33 rot = (yaw_m * pitch_m) * roll_m;
 
-    //        vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
-    //        vec3 result1 = mat33::rotation_matrix(angles) * pos;
-    //        vec3 result2 = rot * pos;
-    //       
-    //        if (!close(result1, result2, 0.01f))
-    //            counter1_2++;
-    //    }
-    //    EXPECT_EQ(counter1_2, 0);
-    //    
-    //}
+            vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
+            vec3 result1 = mat33::rotation_matrix(angles) * pos;
+            vec3 result2 = rot * pos;
+           
+            if (!close(result1, result2, 0.01f))
+                counter1_2++;
+        }
+        EXPECT_EQ(counter1_2, 0);
+        
+    }
     TEST(Quaternions, Dot) {
         quat a, b;
         EXPECT_EQ(dot(a,b), 0);

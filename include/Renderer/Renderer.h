@@ -18,6 +18,35 @@ namespace nyan {
 	//second bit = blendShapes
 	//I.e. [Material] ... [Blendshape][TangentSpace]
 	using RenderId = uint64_t;
+	namespace GBuffer {
+		constexpr uint32_t set = 0;
+	}
+	namespace Scene {
+		constexpr uint32_t set = 1;
+		constexpr uint32_t cameraBinding = 0;
+		constexpr uint32_t materialBinding = 1;
+		constexpr uint32_t textureBinding = 2;
+		constexpr uint32_t transformBinding = 3;
+		constexpr uint32_t lightBinding = 4;
+
+		struct Material {
+			int albedoTexture = 0;
+			int normalTexture = 0;
+			int metalTexture = 0;
+			int roughnessTexture = 0;
+			int displacementTexture = 0;
+		};
+		struct Transform {
+			Math::mat43 transform;
+		};
+	}
+	namespace Objects {
+		constexpr uint32_t set = 2;
+		constexpr uint32_t vertexBuffer = 0;
+		constexpr uint32_t indexBuffer = 1;
+	}
+
+
 	constexpr RenderId tangentSpaceBit	= 0b01ull;
 	constexpr RenderId blendShapeBit	= 0b10ull;
 	constexpr RenderId invalidId = ((~0ul) & ~tangentSpaceBit) & ~blendShapeBit;

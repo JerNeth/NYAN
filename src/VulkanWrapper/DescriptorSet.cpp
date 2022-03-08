@@ -9,106 +9,23 @@ r_device(parent)
 		perThread.emplace_back(new PerThread());
 
 
-	for (uint32_t i = 0; i < MAX_BINDINGS; i++) {
-		if (layout.stages[i].any()) {
-			uint32_t poolSize = layout.arraySizes[i] * MAX_SETS_PER_POOL;
-			VkSampler immutableSampler = layout.immutableSampler.test(i)? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
-			if (layout.imageSampler.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
-					}
-				);
-				poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, poolSize});
-			}
-			if (layout.sampledBuffer.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, poolSize });
-			}
-			if (layout.storageImage.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, poolSize });
-			}
-			if (layout.uniformBuffer.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				); 
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, poolSize });
-			}
-			if (layout.storageBuffer.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, poolSize });
-			}
-			if (layout.inputAttachment.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, poolSize });
-			}
-			if (layout.separateImage.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = nullptr
-					}
-				);
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, poolSize });
-			}
-			if (layout.seperateSampler.test(i)) {
-				bindings.push_back(VkDescriptorSetLayoutBinding
-					{
-						.binding = i,
-						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-						.descriptorCount = layout.arraySizes[i],
-						.stageFlags = static_cast<VkShaderStageFlags>(layout.stages[i].to_ulong()),
-						.pImmutableSamplers = layout.immutableSampler.test(i) ? &immutableSampler : nullptr
-					}
-				); 
-				poolSizes.push_back({ VK_DESCRIPTOR_TYPE_SAMPLER, poolSize });
-			}
+	for (uint32_t i = 0; i < layout.descriptors.size(); i++) {
+		const auto& descriptorLayout = layout.descriptors[i];
+		if (descriptorLayout.stages.any()) {
+			uint32_t poolSize = descriptorLayout.arraySize * MAX_SETS_PER_POOL;
+			//VkSampler immutableSampler = layout.immutableSampler.test(i) ? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
+			VkSampler immutableSampler = VK_NULL_HANDLE;
+			assert(descriptorLayout.arraySize != 0);
+			bindings.push_back(VkDescriptorSetLayoutBinding
+				{
+					.binding = i,
+					.descriptorType = static_cast<VkDescriptorType>(descriptorLayout.type),
+					.descriptorCount = descriptorLayout.arraySize,
+					.stageFlags = static_cast<VkShaderStageFlags>(descriptorLayout.stages.to_ulong()),
+					.pImmutableSamplers = nullptr
+				}
+			);
+			poolSizes.push_back({ static_cast<VkDescriptorType>(descriptorLayout.type), poolSize });
 		}
 	}
 
@@ -117,6 +34,7 @@ r_device(parent)
 		.bindingCount = static_cast<uint32_t>(bindings.size()),
 		.pBindings = bindings.data()
 	};
+
 	if (auto result = vkCreateDescriptorSetLayout(r_device.m_device, &createInfo, r_device.m_allocator, &m_layout); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
@@ -159,7 +77,7 @@ std::pair<VkDescriptorSet, bool> vulkan::DescriptorSetAllocator::find(unsigned t
 		state.hashMap.insert(hash, r);
 		return { r, false };
 	}
-	VkDescriptorPool pool;
+	VkDescriptorPool pool{ VK_NULL_HANDLE };
 	VkDescriptorPoolCreateInfo createInfo {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 		.maxSets = MAX_SETS_PER_POOL,
@@ -212,7 +130,7 @@ void vulkan::DescriptorSetAllocator::clear()
 		state->vacant.clear();
 		state->stale.clear();
 		for (auto& pool : state->pools) {
-			vkResetDescriptorPool(r_device.m_device, pool, 0);
+			//vkResetDescriptorPool(r_device.m_device, pool, 0);
 			vkDestroyDescriptorPool(r_device.m_device, pool, r_device.m_allocator);
 		}
 		state->pools.clear();

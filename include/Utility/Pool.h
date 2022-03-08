@@ -200,6 +200,14 @@ namespace Utility {
 			}
 			return *this;
 		}
+		operator const T& () const noexcept {
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
+		operator T& () noexcept {
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
 		void remove() {
 			assert(ptr_container);
 			ptr_container->remove(m_id);

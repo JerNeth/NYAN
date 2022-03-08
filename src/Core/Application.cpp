@@ -1,7 +1,8 @@
 #include "Application.h"
 #include <chrono>
-nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") {
-
+nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
+{
+	OPTICK_EVENT("")
 	if (!setup_glfw())
 		throw InitializationError("Could not initialize GLFW");
 	if (!setup_vulkan_instance())//OpenGL fallback maybe?
@@ -107,7 +108,21 @@ bool nyan::Application::setup_vulkan_instance()
 bool nyan::Application::setup_vulkan_device()
 {
 	try {
-		m_vulkanDevice = m_vulkanInstance->setup_device();
+		std::vector<const char*> requiredExtensions = {
+			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+		};
+		std::vector<const char*> optionalExtensions = {
+			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+			VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
+			VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+			VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+			VK_KHR_RAY_QUERY_EXTENSION_NAME,
+			VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
+		};
+		m_vulkanDevice = m_vulkanInstance->setup_device(requiredExtensions, optionalExtensions);
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);
 	}
 	catch (const std::runtime_error& error) {

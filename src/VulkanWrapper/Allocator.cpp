@@ -38,6 +38,10 @@ void vulkan::Allocator::flush(VmaAllocation allocation, uint32_t offset, uint32_
 
 	vmaFlushAllocation(m_VmaHandle, allocation, offset, size);
 }
+void vulkan::Allocator::invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size)
+{
+	vmaInvalidateAllocation(m_VmaHandle, allocation, offset, size);
+}
 vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent)
 {

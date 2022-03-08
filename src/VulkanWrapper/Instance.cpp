@@ -9,12 +9,26 @@
 	return VK_FALSE;
 }
 
-//vulkan::LogicalDevice vulkan::Instance::setup_device_direct()
-//{
-//	return *setup_device().release();
-//}
+vulkan::Instance::Instance(const char** extensions, uint32_t extensionCount, std::string applicationName, std::string engineName)
+	: m_applicationName(applicationName),
+	m_engineName(engineName) 
+{
+	volkInitialize();
+	m_extensions.assign(extensions, extensions + extensionCount);
+	create_instance();
 
-std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device()
+}
+
+vulkan::Instance::~Instance() {
+	if constexpr (debug) {
+		//auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugReportCallbackEXT");
+		vkDestroyDebugReportCallbackEXT(m_instance, m_debugReport, m_allocator);
+	}
+	vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
+	vkDestroyInstance(m_instance, m_allocator);
+
+}
+std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std::vector<const char*>& requiredExtensions, const std::vector<const char*>& optionalExtensions)
 {
 	uint32_t numDevices;
 	std::vector<VkPhysicalDevice> devices;
@@ -25,18 +39,28 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device()
 	
 	devices.resize(numDevices);
 	vkEnumeratePhysicalDevices(m_instance, &numDevices, devices.data());
-	if (auto selectedDevice = std::find_if(devices.cbegin(), devices.cend(),
-		[this](const auto& device) {return this->is_device_suitable(device); }); selectedDevice != devices.cend()) {
-		m_physicalDevice = *selectedDevice;
-		/*VkSurfaceCapabilitiesKHR surfaceCapabilites;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilites);*/
-		auto [device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex] = setup_logical_device(*selectedDevice);
-		return std::make_unique<LogicalDevice>(*this, device, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex, *selectedDevice);
-		
+	size_t bestDevice = 0;
+	int bestDeviceOptCount = 0;
+	for (size_t i = 0; i < numDevices; i++) {
+		m_physicalDevices.emplace_back(devices[i]);
+		bool required = true;
+		int optional = 0;
+		auto& dev = m_physicalDevices.back();
+		for (const auto& extension : requiredExtensions)
+			required &= dev.use_extension(extension);
+		if (!required)
+			continue;
+		for (const auto& extension : optionalExtensions)
+			optional += dev.use_extension(extension);
+		if (optional > bestDeviceOptCount) {
+			bestDevice = i;
+			bestDeviceOptCount = optional;
+		}
+
 	}
-	else {
-		throw std::runtime_error("VK: available devices do not support the required features");
-	}
+	m_physicalDevice = m_physicalDevices[bestDevice];
+
+	return m_physicalDevices[bestDevice].create_logical_device(*this);
 }
 
 #ifdef WIN32
@@ -78,16 +102,6 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 	}
 }
 #endif
-uint32_t vulkan::Instance::find_memory_type(uint32_t typeFilter, VkMemoryPropertyFlags properties)const 
-{
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-	vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
-	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) &&((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
-			return i;
-	}
-	throw std::runtime_error("VK: Could not find suitable memory type");
-}
 
 std::vector<VkPresentModeKHR> vulkan::Instance::get_present_modes() const
 {
@@ -117,6 +131,11 @@ VkSurfaceCapabilitiesKHR vulkan::Instance::get_surface_capabilites() const
 VkSurfaceKHR vulkan::Instance::get_surface() const
 {
 	return m_surface;
+}
+
+vulkan::Instance::operator VkInstance() const noexcept
+{
+	return m_instance;
 }
 
 void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t engineVersion)
@@ -184,24 +203,6 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 	}
 }
 
-bool vulkan::Instance::device_supports_extensions(const VkPhysicalDevice& device) const
-{
-	uint32_t extensionCount;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-	for (const auto& requiredExtension : m_requiredExtensions) {
-		if (std::none_of(availableExtensions.cbegin(), availableExtensions.cend(),
-			[&requiredExtension](const auto& availableExtension) {
-			return strcmp(availableExtension.extensionName, requiredExtension) == 0;
-		}))
-			return false;
-	}
-	return true;
-}
-
 bool vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
 {
 	uint32_t numFormats;
@@ -214,214 +215,144 @@ bool vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device)
 	if (numModes == 0) {
 		return false;
 	}
+
+	//vkGetPhysicalDeviceSurfaceSupportKHR(device, graphicsQueueFamilyIndex, m_surface, &presentSupport);
 	return true;
 }
 
 
 bool vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
 {
-	return device_supports_extensions(device) && device_swapchain_suitable(device);
+	return device_swapchain_suitable(device);
 }
 
-uint32_t vulkan::Instance::get_graphics_family_queue_index(const VkPhysicalDevice& device) const
+vulkan::PhysicalDevice::PhysicalDevice(VkPhysicalDevice device):
+	m_vkHandle(device)
 {
-	uint32_t numQueueFamilies = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
-	std::vector<VkQueueFamilyProperties> queueFamilies(numQueueFamilies);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, queueFamilies.data());
-	uint32_t i = 0;
-	uint32_t graphicsQueueFamilyIndex = 0;
-	auto graphicsQueue = std::find_if(queueFamilies.cbegin(), queueFamilies.cend(),
-		[this, &device, &i, &graphicsQueueFamilyIndex](const auto& queueFamily) {
-		graphicsQueueFamilyIndex = i++;
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, graphicsQueueFamilyIndex, m_surface, &presentSupport);
-		return (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport;
-	});
-	if (graphicsQueue == queueFamilies.cend()) {
-		throw std::runtime_error("VK: available device has no graphics queue or no present support or they are not the same");
-	}
-	return graphicsQueueFamilyIndex;
+	init_extensions();
+	init_queues();
+	init_features();
+	init_properties();
+	//std::vector<std::pair<VkFormat, VkFormatProperties2>> formatProperties;
+	//std::vector<std::pair<VkFormat, VkFormatProperties2>> formatProperties2;
+	//std::vector<std::pair<VkFormat, VkFormatProperties2>> formatProperties3;
+	//for (auto format = VK_FORMAT_UNDEFINED; format != VK_FORMAT_ASTC_12x12_SRGB_BLOCK; format = static_cast<VkFormat>(static_cast<size_t>(format) + 1)) {
+	//	VkFormatProperties2 pFormatProperties{
+	//		.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2
+	//	};
+	//	vkGetPhysicalDeviceFormatProperties2(device,format,&pFormatProperties);
+	//	if (pFormatProperties.formatProperties.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+	//		formatProperties.push_back({ format, pFormatProperties });
+	//	if (pFormatProperties.formatProperties.bufferFeatures & VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR)
+	//		formatProperties2.push_back({ format, pFormatProperties });
+	//	if ((pFormatProperties.formatProperties.bufferFeatures & (VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT | VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR)) == 
+	//		(VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT | VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR))
+	//		formatProperties3.push_back({ format, pFormatProperties });
+	//}
 }
-uint32_t vulkan::Instance::get_compute_family_queue_index(const VkPhysicalDevice& device) const
+vulkan::PhysicalDevice::operator VkPhysicalDevice() const noexcept
 {
-	uint32_t numQueueFamilies = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
-	std::vector<VkQueueFamilyProperties> queueFamilies(numQueueFamilies);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, queueFamilies.data());
-	uint32_t i = 0;
-	uint32_t computeQueueFamily = 0;
-	auto transferQueue = std::find_if(queueFamilies.cbegin(), queueFamilies.cend(),
-		[this, &device, &i, &computeQueueFamily](const auto& queueFamily) {
-		computeQueueFamily = i++;
-		return (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT);
-	});
-	if (transferQueue == queueFamilies.cend()) {
-		return ~0u;
-	}
-	return computeQueueFamily;
-}
-uint32_t vulkan::Instance::get_transfer_family_queue_index(const VkPhysicalDevice& device) const
-{
-	uint32_t numQueueFamilies = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, nullptr);
-	std::vector<VkQueueFamilyProperties> queueFamilies(numQueueFamilies);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &numQueueFamilies, queueFamilies.data());
-	uint32_t i = 0;
-	uint32_t transferQueueFamilyIndex = 0;
-	auto transferQueue = std::find_if(queueFamilies.cbegin(), queueFamilies.cend(),
-		[this, &device, &i, &transferQueueFamilyIndex](const auto& queueFamily) {
-		transferQueueFamilyIndex = i++;
-		return (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT  )&& !(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT);
-	});
-	if (transferQueue == queueFamilies.cend()) {
-		return ~0u;
-	}
-	return transferQueueFamilyIndex;
+	return m_vkHandle;
 }
 
-std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logical_device(const VkPhysicalDevice& device) const
+const VkPhysicalDevice& vulkan::PhysicalDevice::get_handle() const noexcept
 {
+	return m_vkHandle;
+}
 
-	auto graphicsQueueFamilyIndex = get_graphics_family_queue_index(device);
-	auto computeQueueFamilyIndex = get_compute_family_queue_index(device);
-	auto transferQueueFamilyIndex = get_transfer_family_queue_index(device);
-	//uint32_t computeQueueFamilyIndex = ~0u;
-	//uint32_t transferQueueFamilyIndex = ~0u;
+bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
+{
+	for (const auto& ext : m_availableExtensions) {
+		if (strcmp(ext.extensionName, extension) == 0) {
+			if (strcmp(ext.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
+				m_accelerationStructureFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_accelerationStructureFeatures;
+				m_extensions.acceleration_structure = m_accelerationStructureFeatures.accelerationStructure;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
+				m_rayTracingPipelineFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_rayTracingPipelineFeatures;
+				m_extensions.ray_tracing_pipeline = m_rayTracingPipelineFeatures.rayTracingPipeline;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+				m_vertexInputDynamicStateFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_vertexInputDynamicStateFeatures;
+				m_extensions.vertex_input_dynamic_state = m_vertexInputDynamicStateFeatures.vertexInputDynamicState;
+			}
+			else if (strcmp(ext.extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME) == 0) {
+				m_meshShaderFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_meshShaderFeatures;
+				m_extensions.mesh_shader = m_meshShaderFeatures.meshShader && m_meshShaderFeatures.taskShader;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
+				m_extensions.swapchain = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
+				m_extensions.fullscreen_exclusive = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
+				m_extensions.debug_marker = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+				m_extensions.debug_utils = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0) {
+				m_extensions.ray_query = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME) == 0) {
+				m_extensions.pipeline_library = 1;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0) {
+				m_extensions.deferred_host_operations = 1;
+			}
+			if(std::find(std::begin(m_usedExtensions), std::end(m_usedExtensions), extension) == std::end(m_usedExtensions))
+				m_usedExtensions.push_back(extension);
+			return true;
+		}
+	}
+	return false;
+}
+
+std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_device(const Instance& instance, uint32_t genericQueueCount, uint32_t transferQueueCount, uint32_t computeQueueCount)
+{
 	float queuePriority = 1.0f;
-
 	std::vector< VkDeviceQueueCreateInfo> queueCreateInfos;
 	queueCreateInfos.reserve(3);
 	queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-		.queueFamilyIndex = graphicsQueueFamilyIndex,
-		.queueCount = 1,
+		.queueFamilyIndex = m_genericQueueFamily,
+		.queueCount = genericQueueCount,
 		.pQueuePriorities = &queuePriority
 		});
-	if (computeQueueFamilyIndex != ~0u) {
+	if (m_computeQueueFamily != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = computeQueueFamilyIndex,
-			.queueCount = 1,
+			.queueFamilyIndex = m_computeQueueFamily,
+			.queueCount = transferQueueCount,
 			.pQueuePriorities = &queuePriority
 			});
 	}
-	if (transferQueueFamilyIndex != ~0u) {
+	if (m_transferQueueFamily != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = transferQueueFamilyIndex,
-			.queueCount = 1,
+			.queueFamilyIndex = m_transferQueueFamily,
+			.queueCount = computeQueueCount,
 			.pQueuePriorities = &queuePriority
 			});
 	}
-	std::vector<void*> allocs;
-	VkPhysicalDeviceFeatures2 deviceFeatures2{};
-	deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	deviceFeatures2.pNext = nullptr;
-	uint32_t count;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
-	std::vector<VkExtensionProperties> extensions(count);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
-	std::vector<const char*> usedExtensions(m_requiredExtensions);
-	auto** pNext = &deviceFeatures2.pNext;
-	for (auto& extension : extensions) {
-		//TODO maybe move some of them to required Extensions or not use them
-		if (strcmp(extension.extensionName, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME) == 0) {
-			usedExtensions.push_back(VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME);
-		}
-		else if (strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
-			usedExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		}
-		else if (strcmp(extension.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
-			usedExtensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
-		}
-		//else if (strcmp(extension.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
-		//	usedExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
-		//}
-		//else if (strcmp(extension.extensionName, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) == 0) {
-		//	usedExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
-		//}
-		else if (strcmp(extension.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
-			auto* alloc = malloc(sizeof(VkPhysicalDeviceExtendedDynamicStateFeaturesEXT));
-			if (!alloc) {
-				throw std::runtime_error("Out of memory");
-			}
-			allocs.push_back(alloc);
-
-			auto* ext = reinterpret_cast<VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*>(alloc);
-			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-			*pNext = alloc;
-			ext->pNext = nullptr;
-			pNext = &ext->pNext;
-
-			usedExtensions.push_back(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
-		}
-		else if (strcmp(extension.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
-			auto* alloc = malloc(sizeof(VkPhysicalDeviceAccelerationStructureFeaturesKHR));
-			if (!alloc) {
-				throw std::runtime_error("Out of memory");
-			}
-			allocs.push_back(alloc);
-
-			auto* ext = reinterpret_cast<VkPhysicalDeviceAccelerationStructureFeaturesKHR*>(alloc);
-			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-			*pNext = alloc;
-			ext->pNext = nullptr;
-			pNext = &ext->pNext;
-
-			usedExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-		}
-		else if (strcmp(extension.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
-			auto* alloc = malloc(sizeof(VkPhysicalDeviceRayTracingPipelineFeaturesKHR));
-			if (!alloc) {
-				throw std::runtime_error("Out of memory");
-			}
-			allocs.push_back(alloc);
-
-			auto* ext = reinterpret_cast<VkPhysicalDeviceRayTracingPipelineFeaturesKHR*>(alloc);
-			ext->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-			*pNext = alloc;
-			ext->pNext = nullptr;
-			pNext = &ext->pNext;
-
-			usedExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-		}
-		else if (strcmp(extension.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0) {
-			usedExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-		}
-		if constexpr (debug) {
-			if (strcmp(extension.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
-				usedExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-			}
-			//else if (strcmp(extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
-			//	usedExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-			//}
-		}
-	}
-
-	vkGetPhysicalDeviceFeatures2(device, &deviceFeatures2);
-
 	VkDeviceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		.pNext = &deviceFeatures2,
+		.pNext = &m_features,
 		.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
 		.pQueueCreateInfos = queueCreateInfos.data(),
-		.enabledLayerCount = static_cast<uint32_t>(m_layers.size()), //Ignored with vulkan 1.1
-		.ppEnabledLayerNames = m_layers.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(usedExtensions.size()),
-		.ppEnabledExtensionNames = usedExtensions.data(),
+		.enabledLayerCount = 0,
+		.ppEnabledLayerNames = nullptr,
+		.enabledExtensionCount = static_cast<uint32_t>(m_usedExtensions.size()),
+		.ppEnabledExtensionNames = m_usedExtensions.data(),
 		.pEnabledFeatures = NULL,
 	};
-
-	//std::vector<std::pair<VkFormat, VkFormatProperties>> formatProperties;
-	//for (auto format = VK_FORMAT_UNDEFINED; format != VK_FORMAT_ASTC_12x12_SRGB_BLOCK; format = static_cast<VkFormat>(static_cast<size_t>(format) + 1)) {
-	//	VkFormatProperties pFormatProperties;
-	//	vkGetPhysicalDeviceFormatProperties(device,format,&pFormatProperties);
-	//	if(pFormatProperties.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
-	//		formatProperties.push_back({format, pFormatProperties});
-	//}
 	VkDevice logicalDevice;
-	if (auto result = vkCreateDevice(device, &createInfo, nullptr, &logicalDevice); result != VK_SUCCESS) {
+	if (auto result = vkCreateDevice(m_vkHandle, &createInfo, nullptr, &logicalDevice); result != VK_SUCCESS) {
 		if (result == VK_ERROR_TOO_MANY_OBJECTS) {
 			throw std::runtime_error("VK: could not create device, too many objects");
 		}
@@ -447,8 +378,149 @@ std::tuple<VkDevice, uint32_t, uint32_t, uint32_t> vulkan::Instance::setup_logic
 			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
 		}
 	}
-	for (auto* alloc : allocs) {
-		free(alloc);
+	return std::make_unique<LogicalDevice>(instance,*this, logicalDevice, m_genericQueueFamily, m_computeQueueFamily, m_transferQueueFamily);
+}
+
+uint32_t vulkan::PhysicalDevice::get_generic_queue_family() const noexcept
+{
+	return m_genericQueueFamily;
+}
+
+uint32_t vulkan::PhysicalDevice::get_transfer_queue_family() const noexcept
+{
+	return m_transferQueueFamily;
+}
+
+uint32_t vulkan::PhysicalDevice::get_compute_queue_family() const noexcept
+{
+	return m_computeQueueFamily;
+}
+
+const std::vector<const char*>& vulkan::PhysicalDevice::get_used_extensions() const noexcept
+{
+	return m_usedExtensions;
+}
+
+const VkPhysicalDeviceFeatures& vulkan::PhysicalDevice::get_used_features() const noexcept
+{
+	return m_features.features;
+}
+
+const VkPhysicalDeviceAccelerationStructureFeaturesKHR& vulkan::PhysicalDevice::get_acceleration_structure_features() const noexcept
+{
+	return m_accelerationStructureFeatures;
+}
+
+const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& vulkan::PhysicalDevice::get_ray_tracing_pipeline_features() const noexcept
+{
+	return m_rayTracingPipelineFeatures;
+}
+
+const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT& vulkan::PhysicalDevice::get_vertex_input_dynamic_state_features() const noexcept
+{
+	return m_vertexInputDynamicStateFeatures;
+}
+
+const VkPhysicalDeviceMeshShaderFeaturesNV& vulkan::PhysicalDevice::get_mesh_shader_features() const noexcept
+{
+	return m_meshShaderFeatures;
+}
+
+const VkPhysicalDeviceProperties& vulkan::PhysicalDevice::get_properties() const noexcept
+{
+	return m_properties.properties;
+}
+
+const VkPhysicalDeviceAccelerationStructurePropertiesKHR& vulkan::PhysicalDevice::get_acceleration_structure_properties() const noexcept
+{
+	return m_accelerationStructureProperties;
+}
+
+const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& vulkan::PhysicalDevice::get_ray_tracing_pipeline_properties() const noexcept
+{
+	return m_rayTracingPipelineProperties;
+}
+
+const VkPhysicalDeviceMeshShaderPropertiesNV& vulkan::PhysicalDevice::get_mesh_shader_properties() const noexcept
+{
+	return m_meshShaderProperties;
+}
+
+const vulkan::Extensions& vulkan::PhysicalDevice::get_extensions() const noexcept
+{
+	return m_extensions;
+}
+
+void vulkan::PhysicalDevice::init_queues() noexcept
+{
+	uint32_t numQueueFamilies = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(m_vkHandle, &numQueueFamilies, nullptr);
+	m_queueFamilyProperties.resize(numQueueFamilies);
+	vkGetPhysicalDeviceQueueFamilyProperties(m_vkHandle, &numQueueFamilies, m_queueFamilyProperties.data());
+
+	for (int i = 0; i < m_queueFamilyProperties.size(); i++) {
+		const auto& queue = m_queueFamilyProperties[i];
+		if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT)) == VK_QUEUE_TRANSFER_BIT) {
+			m_transferQueueFamily = i;
+		}
+		else if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == VK_QUEUE_COMPUTE_BIT) {
+			m_computeQueueFamily = i;
+		}
+		else if ((queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) == VK_QUEUE_GRAPHICS_BIT) {
+			m_genericQueueFamily = i;
+		}
 	}
-	return { logicalDevice, graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex };
+}
+
+void vulkan::PhysicalDevice::init_extensions() noexcept
+{
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(m_vkHandle, nullptr, &extensionCount, nullptr);
+	m_availableExtensions.resize(extensionCount);
+	vkEnumerateDeviceExtensionProperties(m_vkHandle, nullptr, &extensionCount, m_availableExtensions.data());
+}
+
+void vulkan::PhysicalDevice::init_features() noexcept
+{
+	m_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	m_features.pNext = &m_12Features;
+
+	m_12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+	m_12Features.pNext = &m_13Features;
+
+	m_13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	m_13Features.pNext = &m_accelerationStructureFeatures;
+
+	m_accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+	m_accelerationStructureFeatures.pNext = &m_rayTracingPipelineFeatures;
+
+	m_rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+	m_rayTracingPipelineFeatures.pNext = &m_vertexInputDynamicStateFeatures;
+
+	m_vertexInputDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
+	m_vertexInputDynamicStateFeatures.pNext = &m_meshShaderFeatures;
+
+	m_meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+	m_meshShaderFeatures.pNext = nullptr;
+
+
+	vkGetPhysicalDeviceFeatures2(m_vkHandle, &m_features);
+	m_13Features.pNext = nullptr;
+}
+
+void vulkan::PhysicalDevice::init_properties() noexcept
+{
+	m_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	m_properties.pNext = &m_accelerationStructureProperties;
+
+	m_accelerationStructureProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+	m_accelerationStructureProperties.pNext = &m_rayTracingPipelineProperties;
+
+	m_rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+	m_rayTracingPipelineProperties.pNext = &m_meshShaderProperties;
+
+	m_meshShaderProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV;
+	m_meshShaderProperties.pNext = nullptr;
+
+	vkGetPhysicalDeviceProperties2(m_vkHandle, &m_properties);
 }
