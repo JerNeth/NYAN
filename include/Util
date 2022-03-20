@@ -5,6 +5,7 @@
 #include "Utility/Pool.h"
 #include "Utility/UID.h"
 #include "Utility/DynamicBitset.h"
+#include "Utility/Log.h"
 #include "Utility/Utility.h"
 //#include "Utility/DDSReader.h"
 //#include "Utility/FBXReader.h"

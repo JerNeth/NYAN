@@ -46,7 +46,7 @@ VkCommandBuffer vulkan::CommandPool::request_command_buffer()
 		return m_primaryBuffers[m_primaryBufferIdx++];
 	}
 	else {
-		VkCommandBuffer buffer;
+		VkCommandBuffer buffer {VK_NULL_HANDLE};
 		VkCommandBufferAllocateInfo commandBufferAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 			.commandPool = m_vkHandle,
@@ -77,7 +77,7 @@ VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 		return m_secondaryBuffers[m_secondaryBufferIdx++];
 	}
 	else {
-		VkCommandBuffer buffer;
+		VkCommandBuffer buffer{ VK_NULL_HANDLE };
 		VkCommandBufferAllocateInfo commandBufferAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 			.commandPool = m_vkHandle,

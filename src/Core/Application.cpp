@@ -2,7 +2,7 @@
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
-	OPTICK_EVENT("")
+	OPTICK_THREAD("Main Thread");
 	if (!setup_glfw())
 		throw InitializationError("Could not initialize GLFW");
 	if (!setup_vulkan_instance())//OpenGL fallback maybe?
@@ -13,7 +13,6 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 		throw InitializationError("Could not create Vulkan Surface");
 	if (!setup_vulkan_device())//OpenGL fallback maybe?
 		throw InitializationError("Could not create Vulkan Device, maybe update driver?");
-	
 }
 
 vulkan::LogicalDevice& nyan::Application::get_device()
@@ -38,24 +37,65 @@ int nyan::Application::get_height()
 
 void nyan::Application::next_frame()
 {
+	OPTICK_GPU_FLIP(nullptr);
 	m_windowSystemInterface->begin_frame();
-	for (auto* renderer : m_renderer) {
-		renderer->next_frame();
+	for (const auto& beginFrameFunction : m_beginFrameFunctions) {
+		beginFrameFunction();
 	}
 }
 
 void nyan::Application::end_frame()
 {
-	for (auto renderer = m_renderer.rbegin(); renderer != m_renderer.rend(); renderer++) {
-		(*renderer)->end_frame();
+	for (const auto& endFrameFunction : m_endFrameFunctions) {
+		endFrameFunction();
 	}
 	m_windowSystemInterface->end_frame();
 }
 
-void nyan::Application::add_renderer(nyan::Renderer* renderer)
+void nyan::Application::main_loop()
 {
-	if(const auto& res = std::find(m_renderer.cbegin(), m_renderer.cend(), renderer); res == m_renderer.cend())
-		m_renderer.push_back(renderer);
+	lastUpdate = std::chrono::steady_clock::now();
+	while (!m_window->should_close())
+	{
+		update();
+		//using namespace std::chrono_literals;
+		//std::this_thread::sleep_for(16ms);
+		if (!m_window->is_iconified()) {
+
+			next_frame();
+
+
+			end_frame();
+		}
+	}
+}
+
+void nyan::Application::each_frame_begin(std::function<void()> beginFrame)
+{
+	m_beginFrameFunctions.push_back(beginFrame);
+}
+
+void nyan::Application::each_frame_end(std::function<void()> endFrame)
+{
+	m_endFrameFunctions.push_back(endFrame);
+}
+
+void nyan::Application::each_update(std::function<void(std::chrono::nanoseconds)> update)
+{
+	m_updateFunctions.push_back(update);
+}
+
+void nyan::Application::update()
+{
+	auto now = std::chrono::steady_clock::now();
+	auto delta = now - lastUpdate;
+	lastUpdate = now;
+	OPTICK_FRAME("MainThread");
+	glfwPollEvents();
+	
+	for (const auto& update : m_updateFunctions) {
+		update(delta);
+	}
 }
 
 bool nyan::Application::setup_glfw()
@@ -124,6 +164,7 @@ bool nyan::Application::setup_vulkan_device()
 		};
 		m_vulkanDevice = m_vulkanInstance->setup_device(requiredExtensions, optionalExtensions);
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);
+		m_vulkanDevice->create_pipeline_cache("pipeline.cache");
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;

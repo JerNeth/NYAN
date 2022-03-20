@@ -96,7 +96,7 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	for (auto& uniformBuffer : resources.uniform_buffers) {
 		auto [set, binding, type] = get_values(uniformBuffer, comp);
 		m_layout.used.set(set);
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformDynamicBuffer;
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformBuffer;
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& sampledImage : resources.sampled_images) {
@@ -144,7 +144,7 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	for (auto& storageImage : resources.storage_buffers) {
 		auto [set, binding, type] = get_values(storageImage, comp);
 		m_layout.used.set(set); 
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageBufferDynamic;
+		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageBuffer;
 		array_info(m_layout.descriptors, type, set, binding);
 	}
 	for (auto& attrib : resources.stage_inputs) {
@@ -185,7 +185,10 @@ Utility::HashValue vulkan::Shader::get_hash()
 {
 	return m_hashValue;
 }
-
+VkShaderModule vulkan::Shader::get_module()
+{
+	return m_module;
+}
 void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 {
 	VkShaderModuleCreateInfo createInfo{
@@ -208,6 +211,67 @@ void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 		}
 	}
 	
+}
+
+vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage) :
+	m_module(module),
+	m_entryPoint("main"),
+	m_stage(stage),
+	m_specializationInfo(VkSpecializationInfo{
+		.mapEntryCount = static_cast<uint32_t>(m_specialization.size()),
+		.pMapEntries = m_specialization.data(),
+		.dataSize = m_dataStorage.size(),
+		.pData = m_dataStorage.data()
+	})
+{
+	
+}
+
+VkPipelineShaderStageCreateInfo vulkan::ShaderInstance::get_stage_info() const
+{
+	VkPipelineShaderStageCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = m_stage,
+		.module = m_module,
+		.pName = m_entryPoint.c_str(),
+		.pSpecializationInfo = &m_specializationInfo
+	};
+	return createInfo;
+}
+
+vulkan::ShaderStorage::ShaderStorage(LogicalDevice& device) : 
+	r_device(device)
+{
+
+}
+
+
+vulkan::ShaderId vulkan::ShaderStorage::add_instance(ShaderId shaderId) 
+{
+	auto* shader = get_shader(shaderId);
+	return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(shader->get_module()
+		,static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(shader->get_stage()))));
+}
+
+vulkan::ShaderId vulkan::ShaderStorage::add_shader(const std::vector<uint32_t>& shaderCode) 
+{
+	return static_cast<ShaderId>(m_shaderStorage.emplace_intrusive(r_device, shaderCode));
+}
+
+vulkan::Shader* vulkan::ShaderStorage::get_shader(ShaderId shaderId)
+{
+	return m_shaderStorage.get_ptr(shaderId);
+}
+
+vulkan::ShaderInstance* vulkan::ShaderStorage::get_instance(ShaderId instanceId)
+{
+	return m_instanceStorage.get_ptr(instanceId);
+}
+
+void vulkan::ShaderStorage::clear()
+{
+	m_instanceStorage.clear();
+	m_shaderStorage.clear();
 }
 
 vulkan::Program::Program(const std::vector<Shader*>& shaders)

@@ -11,5 +11,6 @@ namespace vulkan {
 	//32 on most 1.2 Device (64 on AMD) see maxVertexInputAttributes
 	constexpr uint8_t MAX_VERTEX_ATTRIBUTES = 32u;
 	constexpr uint8_t MAX_VERTEX_BINDINGS = 32u;
+	constexpr uint8_t MAX_VERTEX_INPUTS = 16u;
 }
 #endif

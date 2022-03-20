@@ -54,56 +54,56 @@ void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
 {
 	//TODO good place to parallelize
 
-	cmd->bind_uniform_buffer(0, 0, 0, *m_cameraBuffer, 0, sizeof(RendererCamera));
+	//cmd->bind_uniform_buffer(0, 0, 0, *m_cameraBuffer, 0, sizeof(RendererCamera));
 
-	RenderId current = invalidId;
-	for (auto& it : m_renderQueue.m_staticMeshes) {
-		if (it.first != current) {
-			std::string vertexShaderName = "static";
-			std::string fragmentShaderName = it.second->get_material()->get_shader_name();
-			if (it.first & tangentSpaceBit) {
-				//assert(false);
-				vertexShaderName = "staticTangent_vert";
-				fragmentShaderName += "Tangent_frag";
-			}
-			else {
-				vertexShaderName = "static_vert";
-				fragmentShaderName += "_frag";
-			}
-			auto* program = m_shaderManager->request_program(vertexShaderName, fragmentShaderName);
-			cmd->bind_program(program);
-			it.second->get_material()->bind(cmd);
-			current = it.first;
-		}
-		it.second->render(cmd);
-	}
+	//RenderId current = invalidId;
+	//for (auto& it : m_renderQueue.m_staticMeshes) {
+	//	if (it.first != current) {
+	//		std::string vertexShaderName = "static";
+	//		std::string fragmentShaderName = it.second->get_material()->get_shader_name();
+	//		if (it.first & tangentSpaceBit) {
+	//			//assert(false);
+	//			vertexShaderName = "staticTangent_vert";
+	//			fragmentShaderName += "Tangent_frag";
+	//		}
+	//		else {
+	//			vertexShaderName = "static_vert";
+	//			fragmentShaderName += "_frag";
+	//		}
+	//		auto* program = m_shaderManager->request_program(vertexShaderName, fragmentShaderName);
+	//		cmd->bind_program(program);
+	//		it.second->get_material()->bind(cmd);
+	//		current = it.first;
+	//	}
+	//	it.second->render(cmd);
+	//}
 
-	current = invalidId;
-	for (auto& it : m_renderQueue.m_skinnedMeshes) {
-		if (it.first != current) {
-			std::string vertexShaderName;
-			if (it.first & (tangentSpaceBit| blendShapeBit) && !(current & (tangentSpaceBit | blendShapeBit))) {
-				assert(false);
-				//Todo
-			} 
-			else if (it.first & blendShapeBit && !(current & blendShapeBit)) {
-				assert(false);
-				//Todo
-			}
-			else if (it.first & tangentSpaceBit && !(current & tangentSpaceBit)) {
-				assert(false);
-			}
-			else {
-				vertexShaderName = "skinned_vert";
-			}
-			//Todo replace with ShaderIDs
-			auto* program = m_shaderManager->request_program(vertexShaderName, it.second->get_material()->get_shader_name());
-			cmd->bind_program(program);
-			it.second->get_material()->bind(cmd);
-			current = it.first;
-		}
-		it.second->render(cmd);
-	}
+	//current = invalidId;
+	//for (auto& it : m_renderQueue.m_skinnedMeshes) {
+	//	if (it.first != current) {
+	//		std::string vertexShaderName;
+	//		if (it.first & (tangentSpaceBit| blendShapeBit) && !(current & (tangentSpaceBit | blendShapeBit))) {
+	//			assert(false);
+	//			//Todo
+	//		} 
+	//		else if (it.first & blendShapeBit && !(current & blendShapeBit)) {
+	//			assert(false);
+	//			//Todo
+	//		}
+	//		else if (it.first & tangentSpaceBit && !(current & tangentSpaceBit)) {
+	//			assert(false);
+	//		}
+	//		else {
+	//			vertexShaderName = "skinned_vert";
+	//		}
+	//		//Todo replace with ShaderIDs
+	//		auto* program = m_shaderManager->request_program(vertexShaderName, it.second->get_material()->get_shader_name());
+	//		cmd->bind_program(program);
+	//		it.second->get_material()->bind(cmd);
+	//		current = it.first;
+	//	}
+	//	it.second->render(cmd);
+	//}
 }
 
 void nyan::VulkanRenderer::next_frame()

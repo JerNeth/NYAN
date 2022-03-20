@@ -69,6 +69,7 @@ constexpr bool debug = true;
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
+#define DEBUGSUBMISSIONS
 #include <optick.h>
 #include <array>
 #include <bitset>

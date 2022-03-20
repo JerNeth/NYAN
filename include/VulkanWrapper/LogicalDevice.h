@@ -88,8 +88,10 @@ namespace vulkan {
 	class LogicalDevice {
 
 		struct WSIState {
-			VkSemaphore aquire = VK_NULL_HANDLE;
-			VkSemaphore present = VK_NULL_HANDLE;
+			//VkSemaphore aquire = VK_NULL_HANDLE;
+			//VkSemaphore present = VK_NULL_HANDLE;
+			std::vector<VkSemaphore> aquireSemaphores;
+			std::vector<VkSemaphore> presentSemaphores;
 			std::vector<ImageHandle> swapchainImages;
 			bool swapchain_touched = false;
 			uint32_t index = 0;
@@ -222,7 +224,7 @@ namespace vulkan {
 		VkSemaphore get_present_semaphore();
 		bool swapchain_touched() const noexcept;
 		VkQueue get_graphics_queue()  const noexcept;
-		void set_acquire_semaphore(uint32_t index, VkSemaphore semaphore) noexcept;
+		void aquired_image(uint32_t index, VkSemaphore semaphore) noexcept;
 
 		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format);
 		const ImageView* get_swapchain_image_view() const noexcept;
@@ -250,17 +252,25 @@ namespace vulkan {
 		void add_fence_callback(VkFence fence, std::function<void(void)> callback);
 
 		void create_pipeline_cache(const std::string& path);
+		ShaderStorage& get_shader_storage();
+		PipelineStorage2& get_pipeline_storage();
 
 		FrameResource& frame();
 
 		const Extensions& get_supported_extensions() const noexcept;
 		uint32_t get_thread_index() const noexcept;
 		uint32_t get_thread_count() const noexcept;
+		const PhysicalDevice& get_physical_device() const noexcept;
 		VkDevice get_device() const noexcept;
 		operator VkDevice() const noexcept;
 		VkAllocationCallbacks* get_allocator() const noexcept;
 		Allocator* get_vma_allocator() const noexcept;
 		const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
+
+		DescriptorSet& get_bindless_set() noexcept;
+		DescriptorPool& get_bindless_pool() noexcept;
+		PipelineLayout2& get_bindless_pipeline_layout() noexcept;
+
 
 
 		uint32_t get_swapchain_image_index() const noexcept;
@@ -346,8 +356,8 @@ namespace vulkan {
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
 
-
-		Utility::LinkedBucketList<Shader> m_shaderStorage;
+		ShaderStorage m_shaderStorage;
+		PipelineStorage2 m_pipelineStorage2;
 
 		std::unordered_map< std::vector<Shader*>, size_t, Utility::VectorHash<Shader*>> m_programIds;
 		Utility::LinkedBucketList<Program> m_programStorage;
@@ -364,6 +374,10 @@ namespace vulkan {
 		std::unique_ptr<PipelineCache> m_pipelineCache;
 
 		PipelineStorage m_pipelineStorage;
+
+		DescriptorPool m_bindlessPool;
+		DescriptorSet m_bindlessSet;
+		PipelineLayout2 m_bindlessPipelineLayout;
 	};
 }
 #endif // VKLOGICALDEVICE_H

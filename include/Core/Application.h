@@ -23,7 +23,11 @@ namespace nyan {
 
 		void next_frame();
 		void end_frame();
-		void add_renderer(nyan::Renderer* renderer);
+		void main_loop();
+		void each_frame_begin(std::function<void()> beginFrame);
+		void each_frame_end(std::function<void()> endFrame);
+		void each_update(std::function<void(std::chrono::nanoseconds)> update);
+		void update();
 	private:
 		bool setup_glfw();
 		bool setup_glfw_window();
@@ -41,7 +45,11 @@ namespace nyan {
 		std::unique_ptr<vulkan::Instance> m_vulkanInstance;
 		std::unique_ptr<vulkan::LogicalDevice> m_vulkanDevice;
 		std::unique_ptr<vulkan::WindowSystemInterface> m_windowSystemInterface;
-		std::vector<nyan::Renderer*> m_renderer;
+
+		std::vector< std::function<void(std::chrono::nanoseconds)>> m_updateFunctions;
+		std::vector< std::function<void()>> m_beginFrameFunctions;
+		std::vector< std::function<void()>> m_endFrameFunctions;
+		std::chrono::time_point<std::chrono::steady_clock> lastUpdate;
 	};
 }
 

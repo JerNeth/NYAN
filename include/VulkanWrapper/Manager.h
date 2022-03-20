@@ -89,7 +89,7 @@ namespace vulkan {
 		void recycle_semaphore(VkSemaphore semaphore);
 	private:
 		LogicalDevice& r_device;
-		std::vector<VkSemaphore> m_semaphores;
+		std::unordered_set<VkSemaphore> m_semaphores;
 	};
 }
 #endif //VKMANAGER_H!

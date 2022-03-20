@@ -1,8 +1,6 @@
 #include "Pipeline.h"
-
 #include "LogicalDevice.h"
 
-vulkan::PipelineState vulkan::Pipeline::s_pipelineState = vulkan::defaultPipelineState;
 /*
 static std::vector<uint32_t> read_binary_file(const std::string& filename) {
 
@@ -140,7 +138,48 @@ void vulkan::PipelineLayout::create_update_template()
 		}
 	}
 }
+vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets) :
+	r_device(device)
+{
+	VkPushConstantRange range{
+		.stageFlags = VK_SHADER_STAGE_ALL,
+		.offset = 0,
+		.size = device.get_physical_device().get_properties().limits.maxPushConstantsSize,
+	};
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.setLayoutCount = static_cast<uint32_t>(sets.size()),
+		.pSetLayouts = sets.data(),
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &range
+	};
 
+	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
+		Utility::log_error(std::to_string((int)result));
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not create pipeline layout, out of device memory");
+		}
+		else {
+			throw std::runtime_error("VK: error");
+		}
+	}
+}
+vulkan::PipelineLayout2::~PipelineLayout2()
+{
+	if (m_layout != VK_NULL_HANDLE)
+		vkDestroyPipelineLayout(r_device.get_device(), m_layout, r_device.get_allocator());
+}
+vulkan::PipelineLayout2::operator VkPipelineLayout() const
+{
+	return m_layout;
+}
+VkPipelineLayout vulkan::PipelineLayout2::get_layout() const noexcept
+{
+	return m_layout;
+}
 vulkan::Pipeline::Pipeline(LogicalDevice& parent, const Program& program)
 {
 	assert(program.get_shader(vulkan::ShaderStage::Compute) != nullptr);
@@ -361,6 +400,7 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 		.pStages = shaders.data(),
 		.pVertexInputState = &vertexInputStateCreateInfo,
 		.pInputAssemblyState = &inputAssemblyStateCreateInfo,
+		.pTessellationState = nullptr,
 		.pViewportState = &viewportStateCreateInfo,
 		.pRasterizationState = &rasterizationStateCreateInfo,
 		.pMultisampleState = &multisampleStateCreateInfo,
@@ -392,205 +432,11 @@ vulkan::Pipeline::Pipeline(LogicalDevice& parent, const PipelineCompile& compile
 }
 
 
-//vulkan::Pipeline::~Pipeline() noexcept
-//{
-//	if (m_pipeline != VK_NULL_HANDLE)
-//		vkDestroyPipeline(r_device.m_device, m_pipeline, r_device.m_allocator);
-//}
-
-
-//const vulkan::Pipeline& vulkan::Pipeline::operator=(vulkan::Pipeline&& other)
-//{
-//	this->r_device = other.r_device;
-//	this->m_pipeline = other.m_pipeline;
-//	other.m_pipeline = VK_NULL_HANDLE;
-//}
-
 VkPipeline vulkan::Pipeline::get_pipeline() const noexcept
 {
 	return m_pipeline;
 }
 
-
-
-//vulkan::Pipeline vulkan::Pipeline::request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, VertexAttributes attributes, InputRates inputRates, uint32_t subpassIndex)
-//{
-//	return Pipeline(parent, { s_pipelineState, program, compatibleRenderPass, attributes, inputRates, subpassIndex });
-//}
-
-void vulkan::Pipeline::reset_static_pipeline()
-{
-	s_pipelineState = defaultPipelineState;
-}
-
-void vulkan::Pipeline::set_depth_write(bool depthWrite)
-{
-	s_pipelineState.depth_write = depthWrite;
-}
-
-
-void vulkan::Pipeline::set_depth_test(bool depthTest)
-{
-	s_pipelineState.depth_test = depthTest;
-}
-
-void vulkan::Pipeline::set_blend_enabled(bool blendEnabled)
-{
-	s_pipelineState.blend_enable = blendEnabled;
-}
-
-void vulkan::Pipeline::set_cull_mode(VkCullModeFlags cullMode)
-{
-	s_pipelineState.cull_mode = cullMode;
-}
-
-void vulkan::Pipeline::set_front_face(VkFrontFace frontFace)
-{
-	s_pipelineState.front_face = frontFace;
-}
-
-void vulkan::Pipeline::set_depth_bias_enabled(bool depthBiasEnabled)
-{
-	s_pipelineState.depth_bias_enable = depthBiasEnabled;
-}
-
-void vulkan::Pipeline::set_stencil_test_enabled(bool stencilTestEnabled)
-{
-	s_pipelineState.stencil_test = stencilTestEnabled;
-}
-
-void vulkan::Pipeline::set_stencil_front_fail(VkStencilOp frontFail)
-{
-	s_pipelineState.stencil_front_fail = frontFail;
-}
-
-void vulkan::Pipeline::set_stencil_front_pass(VkStencilOp frontPass)
-{
-	s_pipelineState.stencil_front_pass = frontPass;
-}
-
-void vulkan::Pipeline::set_stencil_front_depth_fail(VkStencilOp frontDepthFail)
-{
-	s_pipelineState.stencil_front_depth_fail = frontDepthFail;
-}
-
-void vulkan::Pipeline::set_stencil_front_compare_op(VkCompareOp frontCompareOp)
-{
-	s_pipelineState.stencil_front_compare_op = frontCompareOp;
-}
-
-void vulkan::Pipeline::set_stencil_back_fail(VkStencilOp backFail)
-{
-	s_pipelineState.stencil_back_fail = backFail;
-}
-
-void vulkan::Pipeline::set_stencil_back_pass(VkStencilOp backPass)
-{
-	s_pipelineState.stencil_back_pass = backPass;
-}
-
-void vulkan::Pipeline::set_stencil_back_depth_fail(VkStencilOp backDepthFail)
-{
-	s_pipelineState.stencil_back_depth_fail = backDepthFail;
-}
-
-void vulkan::Pipeline::set_stencil_back_compare_op(VkCompareOp backCompareOp)
-{
-	s_pipelineState.stencil_back_compare_op = backCompareOp;
-}
-
-void vulkan::Pipeline::set_alpha_to_coverage(bool alphaToCoverage)
-{
-	s_pipelineState.alpha_to_coverage = alphaToCoverage;
-}
-
-void vulkan::Pipeline::set_alpha_to_one(bool alphaToOne)
-{
-	s_pipelineState.alpha_to_one = alphaToOne;
-}
-
-void vulkan::Pipeline::set_sample_shading(bool sampleShading)
-{
-	s_pipelineState.sample_shading = sampleShading;
-}
-
-void vulkan::Pipeline::set_src_color_blend(VkBlendFactor srcColorBlend)
-{
-	s_pipelineState.src_color_blend = srcColorBlend;
-}
-
-void vulkan::Pipeline::set_dst_color_blend(VkBlendFactor dstColorBlend)
-{
-	s_pipelineState.dst_color_blend = dstColorBlend;
-}
-
-void vulkan::Pipeline::set_color_blend_op(VkBlendOp colorBlendOp)
-{
-	s_pipelineState.color_blend_op = colorBlendOp;
-}
-
-void vulkan::Pipeline::set_src_alpha_blend(VkBlendFactor srcAlphaBlend)
-{
-	s_pipelineState.src_alpha_blend = srcAlphaBlend;
-}
-
-void vulkan::Pipeline::set_dst_alpha_blend(VkBlendFactor dstAlphaBlend)
-{
-	s_pipelineState.dst_alpha_blend = dstAlphaBlend;
-}
-
-void vulkan::Pipeline::set_alpha_blend_op(VkBlendOp alphaBlendOp)
-{
-	s_pipelineState.alpha_blend_op = alphaBlendOp;
-}
-
-void vulkan::Pipeline::set_color_write_mask(VkColorComponentFlags writeMask, uint32_t colorAttachment)
-{
-	s_pipelineState.color_write_mask &= ~(((1 << WRITE_MASK_BITS) - 1)<<(colorAttachment*WRITE_MASK_BITS));
-	s_pipelineState.color_write_mask |= writeMask << (colorAttachment*WRITE_MASK_BITS);
-}
-
-void vulkan::Pipeline::set_primitive_restart(bool primitiveRestart)
-{
-	s_pipelineState.primitive_restart = primitiveRestart;
-}
-
-void vulkan::Pipeline::set_topology(VkPrimitiveTopology primitiveTopology)
-{
-	s_pipelineState.topology = primitiveTopology;
-}
-
-void vulkan::Pipeline::set_wireframe(VkPolygonMode polygon_mode)
-{
-	s_pipelineState.polygon_mode = polygon_mode;
-}
-
-void vulkan::Pipeline::set_subgroup_control_size(bool controlSize)
-{
-	s_pipelineState.subgroup_control_size = controlSize;
-}
-
-void vulkan::Pipeline::set_subgroup_full_group(bool fullGroup)
-{
-	s_pipelineState.subgroup_full_group = fullGroup;
-}
-
-void vulkan::Pipeline::set_subgroup_min_size_log2(unsigned subgroupMinSize)
-{
-	assert(subgroupMinSize < (1 << 3));
-	s_pipelineState.subgroup_min_size_log2 = subgroupMinSize;
-}
-
-void vulkan::Pipeline::set_subgroup_max_size_log2(unsigned subgroupMaxSize)
-{
-	assert(subgroupMaxSize < (1 << 3));
-	s_pipelineState.subgroup_max_size_log2 = subgroupMaxSize;
-}
-
-void vulkan::Pipeline::set_conservative_raster(bool conservativeRaster)
-{
-	s_pipelineState.conservative_raster = conservativeRaster;
-}
 vulkan::PipelineStorage::PipelineStorage(LogicalDevice& device) :
 	r_device(device)
 {
@@ -698,4 +544,340 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 VkPipelineCache vulkan::PipelineCache::get_handle() const noexcept
 {
 	return m_handle;
+}
+
+vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config) :
+	m_layout(config.pipelineLayout),
+	m_type(VK_PIPELINE_BIND_POINT_GRAPHICS),
+	m_initialDynamicState(config.dynamicState)
+{
+
+	std::vector<VkPipelineShaderStageCreateInfo> shaders;
+	for (uint32_t i = 0; i < config.shaderCount; i++)
+		shaders.push_back(parent.get_shader_storage().get_instance(config.shaderInstances[i])->get_stage_info());
+
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	bindingDescriptions.reserve(config.vertexInputCount);
+	attributeDescriptions.reserve(config.vertexInputCount);
+	for (uint32_t location = 0; location < config.vertexInputCount; location++) {
+		auto format = static_cast<VkFormat>(config.vertexInputFormats[location]);
+		attributeDescriptions.push_back(VkVertexInputAttributeDescription{
+			.location = static_cast<uint32_t>(location),
+			.binding = location,
+			.format = format,
+			.offset = 0
+		});
+		bindingDescriptions.push_back(
+		VkVertexInputBindingDescription {
+			.binding = static_cast<uint32_t>(location),
+			.stride = static_cast<uint32_t>(format_bytesize(format)),
+			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+		});
+	}
+
+	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		.vertexBindingDescriptionCount = config.vertexInputCount,
+		.pVertexBindingDescriptions = bindingDescriptions.data(),
+		.vertexAttributeDescriptionCount = config.vertexInputCount,
+		.pVertexAttributeDescriptions = attributeDescriptions.data()
+	};
+	
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		.topology = config.dynamicState.primitive_topology,
+		.primitiveRestartEnable = config.dynamicState.primitive_restart_enable
+	};
+
+	VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		.pNext = nullptr,
+		.patchControlPoints = config.state.patch_control_points
+	};
+
+	VkPipelineViewportStateCreateInfo viewportStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		.viewportCount = 1,
+		.scissorCount = 1
+	};
+
+	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		.depthClampEnable = VK_FALSE,
+		.rasterizerDiscardEnable = VK_FALSE,
+		.polygonMode = config.state.polygon_mode,
+		.cullMode = config.dynamicState.cull_mode,
+		.frontFace = config.dynamicState.front_face,
+		.depthBiasEnable = config.dynamicState.depth_bias_enable,
+		.depthBiasConstantFactor = 0.f,
+		.depthBiasClamp = 0.f,
+		.depthBiasSlopeFactor = 0.f,
+		.lineWidth = 1.0f,
+	};
+
+	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		.rasterizationSamples = config.state.rasterization_samples,
+		.sampleShadingEnable = config.state.sample_shading,
+		.minSampleShading = 0.0f, // Optional
+		.pSampleMask = nullptr, // Optional
+		.alphaToCoverageEnable = config.state.alpha_to_coverage, // Optional
+		.alphaToOneEnable = config.state.alpha_to_one, // Optional
+	};
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		.depthTestEnable = config.dynamicState.depth_test_enable,
+		.depthWriteEnable = config.dynamicState.depth_write_enable,
+		.depthCompareOp = config.dynamicState.depth_compare_op,
+		.depthBoundsTestEnable = config.dynamicState.depth_bounds_test_enable,
+		.stencilTestEnable = config.dynamicState.stencil_test_enable,
+		.front
+		{
+			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_pass),
+			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_fail),
+			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_depth_fail),
+			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_front_compare_op),
+		},
+		.back{
+			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_pass),
+			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_fail),
+			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_depth_fail),
+			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_back_compare_op),
+		},
+		.minDepthBounds = 0.0f,
+		.maxDepthBounds = 1.0f,
+	};
+
+	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments{};
+	colorBlendAttachments.reserve(config.renderingCreateInfo.colorAttachmentCount);
+	for (uint32_t i = 0; i < config.renderingCreateInfo.colorAttachmentCount; i++) {
+		colorBlendAttachments.push_back(VkPipelineColorBlendAttachmentState
+			{
+				.blendEnable = config.state.blendAttachments[i].blend_enable,
+				.srcColorBlendFactor = config.state.blendAttachments[i].src_color_blend,
+				.dstColorBlendFactor = config.state.blendAttachments[i].dst_color_blend,
+				.colorBlendOp = config.state.blendAttachments[i].color_blend_op,
+				.srcAlphaBlendFactor = config.state.blendAttachments[i].src_alpha_blend,
+				.dstAlphaBlendFactor = config.state.blendAttachments[i].dst_alpha_blend,
+				.alphaBlendOp = config.state.blendAttachments[i].alpha_blend_op,
+				.colorWriteMask = config.state.blendAttachments[i].color_write_mask,
+			});
+	}
+	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		.logicOpEnable = config.state.logic_op_enable,
+		.logicOp = config.state.logic_op,
+		.attachmentCount = config.renderingCreateInfo.colorAttachmentCount,
+		.pAttachments = colorBlendAttachments.data(),
+		.blendConstants{0.0f, 0.0f, 0.0f, 0.0f}
+	};
+
+	std::array dynamicStates{
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+		//VK_DYNAMIC_STATE_LINE_WIDTH,
+		//VK_DYNAMIC_STATE_DEPTH_BIAS,
+		//VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+		//VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+		//VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+		//VK_DYNAMIC_STATE_CULL_MODE,
+		//VK_DYNAMIC_STATE_FRONT_FACE,
+		//VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+		//VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+		//VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+		//VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
+		//VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
+		//VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+		//VK_DYNAMIC_STATE_STENCIL_OP,
+		//VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
+		//VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
+		//VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
+	};
+
+	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+		.pDynamicStates = dynamicStates.data()
+	};
+
+	VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+		.viewMask = config.renderingCreateInfo.viewMask,
+		.colorAttachmentCount = config.renderingCreateInfo.colorAttachmentCount,
+		.pColorAttachmentFormats = config.renderingCreateInfo.colorAttachmentFormats.data(),
+		.depthAttachmentFormat = config.renderingCreateInfo.depthAttachmentFormat,
+		.stencilAttachmentFormat = config.renderingCreateInfo.stencilAttachmentFormat
+	};
+
+	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+		.pNext = &pipelineRenderingCreateInfo,
+		.stageCount = static_cast<uint32_t>(shaders.size()),
+		.pStages = shaders.data(),
+		.pVertexInputState = &vertexInputStateCreateInfo,
+		.pInputAssemblyState = &inputAssemblyStateCreateInfo,
+		.pTessellationState = config.state.patch_control_points == 0? nullptr:&tessellationStateCreateInfo,
+		.pViewportState = &viewportStateCreateInfo,
+		.pRasterizationState = &rasterizationStateCreateInfo,
+		.pMultisampleState = &multisampleStateCreateInfo,
+		.pDepthStencilState = &depthStencilStateCreateInfo,
+		.pColorBlendState = &colorBlendStateCreateInfo,
+		.pDynamicState = &dynamicStateCreateInfo,
+		.layout = config.pipelineLayout,
+		.renderPass = VK_NULL_HANDLE,
+		.subpass = 0,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1
+	};
+
+	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
+		result != VK_SUCCESS) {
+
+		Utility::log_error(std::to_string((int)result));
+		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
+		}
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+			throw std::runtime_error("VK: could not create graphics pipeline, out of device memory");
+		}
+		if (result == VK_ERROR_INVALID_SHADER_NV) {
+			throw std::runtime_error("VK: could not create graphics pipeline, invalid shader nv");
+		}
+		else {
+			throw std::runtime_error("VK: error");
+		}
+	}
+}
+
+
+vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config) : 
+	m_layout(config.pipelineLayout),
+	m_type(VK_PIPELINE_BIND_POINT_COMPUTE)
+{
+	VkComputePipelineCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0, // |VK_PIPELINE_CREATE_DISPATCH_BASE_BIT 
+		.stage = parent.get_shader_storage().get_instance(config.shaderInstance)->get_stage_info(),
+		.layout = m_layout,
+		.basePipelineHandle = VK_NULL_HANDLE,
+		.basePipelineIndex = -1
+	};
+	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
+
+}
+
+VkPipeline vulkan::Pipeline2::get_pipeline() const noexcept
+{
+	return m_pipeline;
+}
+
+VkPipelineLayout vulkan::Pipeline2::get_layout() const noexcept
+{
+	return m_layout;
+}
+
+const vulkan::DynamicGraphicsPipelineState& vulkan::Pipeline2::get_dynamic_state() const noexcept
+{
+	return m_initialDynamicState;
+}
+
+vulkan::PipelineStorage2::PipelineStorage2(LogicalDevice& device) :
+	r_device(device)
+{
+}
+
+vulkan::PipelineStorage2::~PipelineStorage2()
+{
+	m_pipelines.for_each([this](Pipeline2& pipeline)
+	{
+		vkDestroyPipeline(r_device.get_device(), pipeline.get_pipeline(), r_device.get_allocator());
+	});
+}
+
+vulkan::Pipeline2* vulkan::PipelineStorage2::get_pipeline(PipelineId pipelineId)
+{
+	return m_pipelines.get_ptr(pipelineId);
+}
+const vulkan::Pipeline2* vulkan::PipelineStorage2::get_pipeline(PipelineId pipelineId) const
+{
+	return m_pipelines.get_ptr(pipelineId);
+}
+
+vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const ComputePipelineConfig& config)
+{
+	return m_pipelines.emplace_intrusive(r_device, config);
+}
+
+vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const GraphicsPipelineConfig& config)
+{
+	return m_pipelines.emplace_intrusive(r_device, config);
+}
+
+vulkan::PipelineBind::PipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
+	m_cmd(cmd),
+	m_layout(layout),
+	m_bindPoint(bindPoint)
+{
+}
+
+void vulkan::PipelineBind::bind_descriptor_sets(uint32_t firstSet, const std::vector<VkDescriptorSet>& descriptorSets,
+	const std::vector<uint32_t>& dynamicOffsets)
+{
+	vkCmdBindDescriptorSets(m_cmd, m_bindPoint,m_layout, firstSet, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(),
+		static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+}
+
+vulkan::GraphicsPipelineBind::GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
+	PipelineBind(cmd, layout, bindPoint)
+{
+}
+
+void vulkan::GraphicsPipelineBind::set_scissor(VkRect2D scissor)
+{
+	vkCmdSetScissor(m_cmd, 0, 1, &scissor);
+}
+
+void vulkan::GraphicsPipelineBind::set_viewport(VkViewport viewport)
+{
+	vkCmdSetViewport(m_cmd, 0, 1, &viewport);
+}
+
+void vulkan::GraphicsPipelineBind::bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* buffers, const VkDeviceSize* offsets)
+{
+	vkCmdBindVertexBuffers(m_cmd, firstBinding, bindingCount, buffers, offsets);
+}
+
+void vulkan::GraphicsPipelineBind::bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType)
+{
+	vkCmdBindIndexBuffer(m_cmd, buffer, offset, indexType);
+}
+
+void vulkan::GraphicsPipelineBind::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+{
+	vkCmdDraw(m_cmd, vertexCount, instanceCount, firstVertex, firstInstance);
+}
+
+void vulkan::GraphicsPipelineBind::draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
+{
+	vkCmdDrawIndexed(m_cmd, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	
+}
+
+void vulkan::ComputePipelineBind::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+	vkCmdDispatch(m_cmd, groupCountX, groupCountY, groupCountZ);
+}
+
+vulkan::ComputePipelineBind::ComputePipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
+	PipelineBind(cmd, layout, bindPoint)
+{
+}
+
+vulkan::RaytracingPipelineBind::RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
+	PipelineBind(cmd, layout, bindPoint)
+{
 }

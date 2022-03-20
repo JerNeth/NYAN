@@ -19,7 +19,7 @@ vulkan::WindowSystemInterface::~WindowSystemInterface()
 
 void vulkan::WindowSystemInterface::drain_swapchain()
 {
-	r_device.set_acquire_semaphore(0, VK_NULL_HANDLE);
+	r_device.aquired_image(0, VK_NULL_HANDLE);
 	r_device.wait_idle();
 }
 
@@ -76,7 +76,7 @@ void vulkan::WindowSystemInterface::begin_frame()
 		}
 		else {
 			m_swapchainImageAcquired = true;
-			r_device.set_acquire_semaphore(m_swapchainImageIndex, semaphore);
+			r_device.aquired_image(m_swapchainImageIndex, semaphore);
 		}
 	} while (result != VK_SUCCESS);
 }
@@ -92,7 +92,7 @@ void vulkan::WindowSystemInterface::end_frame()
 	auto semaphore = r_device.get_present_semaphore();
 	VkPresentInfoKHR presentInfo{
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-		.waitSemaphoreCount = 1,
+		.waitSemaphoreCount = semaphore != VK_NULL_HANDLE,
 		.pWaitSemaphores = &semaphore,
 		.swapchainCount = 1,
 		.pSwapchains = &m_vkHandle,
@@ -155,7 +155,6 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	if (std::find(presentModes.cbegin(), presentModes.cend(), m_preferredPresentMode) != presentModes.cend()) {
 		presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 	}
-	
 	
 	auto capabilities = r_instance.get_surface_capabilites();
 	
@@ -227,7 +226,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	if (old != VK_NULL_HANDLE) {
 		vkDestroySwapchainKHR(r_device.get_device(), old, r_device.get_allocator());
 	}
-	uint32_t imageCount;
+	uint32_t imageCount {0};
 	if (auto result = vkGetSwapchainImagesKHR(r_device.get_device(), m_vkHandle, &imageCount, nullptr); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not get swapchain image count, out of host memory");

@@ -44,7 +44,7 @@ int main() {
 		//depth.format = VK_FORMAT_D24_UNORM_S8_UINT;
 		//depth.format = VK_FORMAT_D16_UNORM;
 		depth.format = VK_FORMAT_D32_SFLOAT;
-		pass.add_depth_output("depth", depth);
+		pass.add_depth_attachment("depth", depth);
 		nyan::ImageAttachment color;
 		//color.format = VK_FORMAT_R8G8B8A8_UNORM;
 		color.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
@@ -54,14 +54,14 @@ int main() {
 		nyan::ImageAttachment normal;
 		normal.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 		normal.clearColor = Math::vec4({ 0.f, 0.f, 1.f, 0.f});
-		pass.add_output("color", color);
-		pass.add_output("normal", normal);
+		pass.add_attachment("color", color);
+		pass.add_attachment("normal", normal);
 		auto& ScreenPass = rendergraph.add_pass("ScreenPass", nyan::Renderpass::Type::Graphics);
-		ScreenPass.add_input("color");
+		ScreenPass.add_read("color");
 		//ScreenPass.add_read_dependency("depth");
-		ScreenPass.add_input("depth");
-		ScreenPass.add_input("normal");
-		ScreenPass.add_swapchain_output();
+		ScreenPass.add_read("depth");
+		ScreenPass.add_read("normal");
+		ScreenPass.add_swapchain_attachment();
 		rendergraph.build();
 
 		auto& attachment = std::get<nyan::ImageAttachment>(rendergraph.get_resource("color").attachment);

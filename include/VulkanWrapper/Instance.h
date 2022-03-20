@@ -91,6 +91,9 @@ namespace vulkan {
 		const VkPhysicalDeviceMeshShaderFeaturesNV& get_mesh_shader_features() const noexcept;
 
 		const VkPhysicalDeviceProperties& get_properties() const noexcept;
+		const VkPhysicalDeviceVulkan11Properties& get_vulkan11_properties() const noexcept;
+		const VkPhysicalDeviceVulkan12Properties& get_vulkan12_properties() const noexcept;
+		const VkPhysicalDeviceVulkan13Properties& get_vulkan13_properties() const noexcept;
 		const VkPhysicalDeviceAccelerationStructurePropertiesKHR& get_acceleration_structure_properties() const noexcept;
 		const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& get_ray_tracing_pipeline_properties() const noexcept;
 		const VkPhysicalDeviceMeshShaderPropertiesNV& get_mesh_shader_properties() const noexcept;

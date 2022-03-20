@@ -5,11 +5,22 @@
 #include "ShaderManager.h"
 #include "Material.h"
 #include "Mesh.h"
+#include "Shader.h"
 #include <map>
 
 namespace nyan {
+	struct GraphicsModule {
+		std::array<vulkan::ShaderId, 5> shaderInstances;
+		uint32_t shaderCount;
+		vulkan::GraphicsPipelineState pipelineState;
+	};
+	struct ComputeModule {
+		vulkan::ShaderId shaderInstance;
+	};
 	class Renderer {
 	public:
+		virtual std::vector<GraphicsModule> get_graphics_modules() = 0;
+		virtual std::vector<ComputeModule> get_compute_modules() = 0;
 		virtual void next_frame() = 0;
 		virtual void end_frame() = 0;
 	};
@@ -18,33 +29,6 @@ namespace nyan {
 	//second bit = blendShapes
 	//I.e. [Material] ... [Blendshape][TangentSpace]
 	using RenderId = uint64_t;
-	namespace GBuffer {
-		constexpr uint32_t set = 0;
-	}
-	namespace Scene {
-		constexpr uint32_t set = 1;
-		constexpr uint32_t cameraBinding = 0;
-		constexpr uint32_t materialBinding = 1;
-		constexpr uint32_t textureBinding = 2;
-		constexpr uint32_t transformBinding = 3;
-		constexpr uint32_t lightBinding = 4;
-
-		struct Material {
-			int albedoTexture = 0;
-			int normalTexture = 0;
-			int metalTexture = 0;
-			int roughnessTexture = 0;
-			int displacementTexture = 0;
-		};
-		struct Transform {
-			Math::mat43 transform;
-		};
-	}
-	namespace Objects {
-		constexpr uint32_t set = 2;
-		constexpr uint32_t vertexBuffer = 0;
-		constexpr uint32_t indexBuffer = 1;
-	}
 
 
 	constexpr RenderId tangentSpaceBit	= 0b01ull;

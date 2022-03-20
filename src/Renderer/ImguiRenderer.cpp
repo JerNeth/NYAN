@@ -1,7 +1,10 @@
 #include "Renderer/ImguiRenderer.h"
 using namespace vulkan;
 
-nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager& shaderManager) : r_device(device) {
+nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window) :
+	r_device(device),
+	ptr_window(window)
+{
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -9,8 +12,19 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager&
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	io.BackendRendererName = "imgui_custom_vulkan";
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-	set_up_program(shaderManager);
+	set_up_pipeline(shaderManager, pass);
 	set_up_font();
+	pass.add_renderfunction([this](vulkan::CommandBufferHandle & cmd, nyan::Renderpass & pass)
+	{
+		ImGui::Render();
+		ImDrawData* drawData = ImGui::GetDrawData();
+		if (drawData->TotalVtxCount > 0)
+		{
+			prep_buffer(drawData);
+			create_cmds(drawData, cmd);
+		}
+	});
+	ptr_window->configure_imgui();
 }
 
 nyan::ImguiRenderer::~ImguiRenderer()
@@ -18,15 +32,17 @@ nyan::ImguiRenderer::~ImguiRenderer()
 	ImGui::DestroyContext();
 }
 
+void nyan::ImguiRenderer::update(std::chrono::nanoseconds dt)
+{
+	ptr_window->imgui_update_mouse_keyboard();	
+	values[values_offset] = dt.count();
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = dt.count();
+}
+
 void nyan::ImguiRenderer::next_frame()
 {
-
-	std::chrono::duration<float> delta = std::chrono::high_resolution_clock::now() - start;
-	values[values_offset] = delta.count();
-	start = std::chrono::high_resolution_clock::now();
-
 	ImGuiIO& io = ImGui::GetIO();
-	io.DeltaTime = delta.count();
 	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	ImGui::NewFrame();
@@ -53,58 +69,73 @@ void nyan::ImguiRenderer::next_frame()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
+	ImGui::Begin("Interaction");
+	//ImGui::AlignTextToFramePadding();
+	ImGui::Text("Mip Level:");
+	//ImGui::PopButtonRepeat();
+	//ImGui::SameLine();
+	ImGui::End();
+
 	//ImGui::ShowDemoWindow();
 }
 
 void nyan::ImguiRenderer::end_frame()
 {
-	auto rp = r_device.request_swapchain_render_pass(vulkan::SwapchainRenderpassType::Color);
-	rp.clearAttachments.reset();
-	rp.loadAttachments.set(0);
-	auto cmd = r_device.request_command_buffer(vulkan::CommandBuffer::Type::Generic);
-	ImGui::Render();
-	cmd->begin_render_pass(rp);
-	ImDrawData* drawData = ImGui::GetDrawData();
-	if (drawData->TotalVtxCount > 0)
-	{
-		prep_buffer(drawData);
-		create_cmds(drawData, cmd);
-	}
-	cmd->end_render_pass();
-	r_device.submit(cmd, 0, nullptr);
+
 }
 
 void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd)
 {
-	cmd->bind_program(m_program);
-	cmd->set_cull_mode(VK_CULL_MODE_NONE);
-	cmd->disable_depth();
-	cmd->enable_alpha();
-
+	auto pipelineBind = cmd->bind_graphics_pipeline(m_pipeline);
 	int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
 	int fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-	cmd->set_vertex_attribute(0, 0, VK_FORMAT_R32G32_SFLOAT);
-	cmd->set_vertex_attribute(1, 0, VK_FORMAT_R32G32_SFLOAT);
-	cmd->set_vertex_attribute(2, 0, VK_FORMAT_R8G8B8A8_UNORM);
-	cmd->bind_texture(0, 0, 0, *(*m_font)->get_view(), DefaultSampler::LinearWrap);
-	cmd->bind_index_buffer(IndexState{.buffer = (*m_ibo)->get_handle(),.offset = 0,.indexType = sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 });
-	cmd->bind_vertex_buffer(0, **m_vbo, 0, VK_VERTEX_INPUT_RATE_VERTEX);
-	float scale[2];
-	scale[0] = 2.0f / draw_data->DisplaySize.x;
-	scale[1] = 2.0f / draw_data->DisplaySize.y;
-	float translate[2];
-	translate[0] = -1.0f - draw_data->DisplayPos.x * scale[0];
-	translate[1] = -1.0f - draw_data->DisplayPos.y * scale[1];
-	cmd->push_constants(scale, 0, sizeof(float) * 2);
-	cmd->push_constants(translate, sizeof(float) * 2, sizeof(float) * 2);
+	pipelineBind.bind_index_buffer((*m_dataBuffer)->get_handle() , m_bufferOffsets[3], sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+	std::array buffers{
+		(*m_dataBuffer)->get_handle(),
+		(*m_dataBuffer)->get_handle(),
+		(*m_dataBuffer)->get_handle(),
+	};
+	pipelineBind.bind_vertex_buffers(0, 3, buffers.data(), m_bufferOffsets.data());
+	struct PushConstants {
+		float scale[2];
+		float translate[2];
+		int texId;
+		int samplerId;
+	} push {
+		.scale {
+			2.0f / draw_data->DisplaySize.x,
+			2.0f / draw_data->DisplaySize.y
+		},
+		.translate {
+			-1.0f - draw_data->DisplayPos.x * push.scale[0],
+			-1.0f - draw_data->DisplayPos.y * push.scale[1]
+		},
+		.texId {static_cast<int>(m_fontBind)},
+		.samplerId {static_cast<int>(vulkan::DefaultSampler::LinearWrap)}
+	};
+	//push.scale[0] = 2.0f / draw_data->DisplaySize.x;
+	//push.scale[1] = 2.0f / draw_data->DisplaySize.y;
+	//push.translate[0] = -1.0f - draw_data->DisplayPos.x * push.scale[0];
+	//push.translate[1] = -1.0f - draw_data->DisplayPos.y * push.scale[1];
+	//push.texId = m_fontBind;
+	//push.samplerId = static_cast<int>(vulkan::DefaultSampler::LinearWrap);
+	pipelineBind.push_constants(push);
 	// Will project scissor/clipping rectangles into framebuffer space
 	ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
 	ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-	auto oldScissor = cmd->get_scissor();
 	// Render command lists
 	// (Because we merged all buffers into a single one, we maintain our own offset into them)
 	int global_vtx_offset = 0;
 	int global_idx_offset = 0;
+	VkViewport viewport{
+	.x = 0,
+	.y = 0,
+	.width = static_cast<float>(r_device.get_swapchain_width()),
+	.height = static_cast<float>(r_device.get_swapchain_height()),
+	.minDepth = 0,
+	.maxDepth = 1,
+	};
+	pipelineBind.set_viewport(viewport);
 	for (int n = 0; n < draw_data->CmdListsCount; n++)
 	{
 		const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -138,63 +169,83 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 						clip_rect.y = 0.0f;
 
 					// Apply scissor/clipping rectangle
-					VkRect2D scissor;
-					scissor.offset.x = (int32_t)(clip_rect.x);
-					scissor.offset.y = (int32_t)(clip_rect.y);
-					scissor.extent.width = (uint32_t)(clip_rect.z - clip_rect.x);
-					scissor.extent.height = (uint32_t)(clip_rect.w - clip_rect.y);
-					cmd->set_scissor(scissor);
+					VkRect2D scissor {
+						.offset {
+							.x = (int32_t)(clip_rect.x),
+							.y = (int32_t)(clip_rect.y),
+						},
+						.extent {
+							.width = (uint32_t)(clip_rect.z - clip_rect.x),
+							.height = (uint32_t)(clip_rect.w - clip_rect.y),
+						}
+					};
+					pipelineBind.set_scissor(scissor);
 					// Draw
-					cmd->draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
+					pipelineBind.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
 				}
 			}
 		}
 		global_idx_offset += cmd_list->IdxBuffer.Size;
 		global_vtx_offset += cmd_list->VtxBuffer.Size;
 	}
-	cmd->set_scissor(oldScissor);
 }
 
 void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 {
-	auto vertSize = drawData->TotalVtxCount * sizeof(ImDrawVert);
-	auto idxSize = drawData->TotalIdxCount * sizeof(ImDrawIdx);
-	if (!m_vbo || (*m_vbo)->get_size() < vertSize) {
+	auto totalBufferSize = drawData->TotalVtxCount * sizeof(ImDrawVert) 
+						+ drawData->TotalIdxCount * sizeof(ImDrawIdx);
+	if (!m_dataBuffer || (*m_dataBuffer)->get_size() < totalBufferSize) {
 		BufferInfo info{
-			.size = vertSize,
-			.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			.size = totalBufferSize,
+			.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			.offset = 0,
 			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
 		};
-		m_vbo = r_device.create_buffer(info, {});
+		m_dataBuffer = r_device.create_buffer(info, {});
 	}
-	if (!m_ibo || (*m_ibo)->get_size() < idxSize) {
-		BufferInfo info{
-			.size = idxSize,
-			.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			.offset = 0,
-			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
-		};
-		m_ibo = r_device.create_buffer(info, {});
-	}
-	
-	auto vertMap = (*m_vbo)->map_data();
-	auto idxMap = (*m_ibo)->map_data();
-	size_t vertOffset = 0;
-	size_t idxOffset = 0;
+
+	auto bufferMap = (*m_dataBuffer)->map_data();
+	VkDeviceSize offset = 0;
+	m_bufferOffsets[0] = 0;
+	m_bufferOffsets[1] = sizeof(ImVec2) * drawData->TotalVtxCount;
+	m_bufferOffsets[2] = m_bufferOffsets[1] + sizeof(ImVec2) * drawData->TotalVtxCount;
+	m_bufferOffsets[3] = m_bufferOffsets[2] + sizeof(ImU32) * drawData->TotalVtxCount;
 	for (int n = 0; n < drawData->CmdListsCount; n++)
 	{
 		const ImDrawList* cmd_list = drawData->CmdLists[n];
-		memcpy(reinterpret_cast<char*>(vertMap) + vertOffset, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-		memcpy(reinterpret_cast<char*>(idxMap) + idxOffset, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-		vertOffset += cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
-		idxOffset += cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
+		for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[0], &cmd_list->VtxBuffer[i].pos, sizeof(ImVec2));
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[1], &cmd_list->VtxBuffer[i].uv, sizeof(ImVec2));
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[2], &cmd_list->VtxBuffer[i].col, sizeof(ImU32));
+		}
+		for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[3], &cmd_list->IdxBuffer[i], cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+		}
 	}
 }
 
-void nyan::ImguiRenderer::set_up_program(ShaderManager& shaderManager)
+void nyan::ImguiRenderer::set_up_pipeline(vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass)
 {
-	m_program = shaderManager.request_program("imgui_vert", "imgui_frag");
+	GraphicsPipelineConfig config{
+		.dynamicState = defaultDynamicGraphicsPipelineState,
+		.state = alphaBlendedGraphicsPipelineState,
+		.vertexInputCount = 3,
+		.shaderCount = 2,
+		.vertexInputFormats {
+			VK_FORMAT_R32G32_SFLOAT,
+			VK_FORMAT_R32G32_SFLOAT,
+			VK_FORMAT_R8G8B8A8_UNORM
+		},
+		.shaderInstances {
+			shaderManager.get_shader_instance_id("imgui_vert"),
+			shaderManager.get_shader_instance_id("imgui_frag")
+		},
+		.pipelineLayout = r_device.get_bindless_pipeline_layout(),
+	};
+	config.dynamicState.depth_write_enable = VK_FALSE;
+	config.dynamicState.depth_test_enable = VK_FALSE;
+	config.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	m_pipeline = pass.add_pipeline(config);
 }
 
 void nyan::ImguiRenderer::set_up_font()
@@ -211,4 +262,8 @@ void nyan::ImguiRenderer::set_up_font()
 			.height = 0,
 	};
 	m_font = r_device.create_image(info, &data);
+	m_fontBind = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ 
+		.imageView = (* m_font)->get_view()->get_image_view(),
+		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		});
 }

@@ -31,6 +31,50 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 	}
 }
 
+void vulkan::CommandBuffer::begin_rendering(const VkRenderingInfo* info)
+{
+	vkCmdBeginRendering(m_vkHandle, info);
+}
+
+void vulkan::CommandBuffer::end_rendering()
+{
+	vkCmdEndRendering(m_vkHandle);
+}
+
+vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(PipelineId pipelineIdentifier)
+{
+	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
+	vkCmdBindPipeline(m_vkHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_pipeline());
+	const auto& dynamicState = pipeline->get_dynamic_state();
+	//vkCmdSetRasterizerDiscardEnable(m_vkHandle, dynamicState.rasterizer_discard_enable);
+	//vkCmdSetDepthBiasEnable(m_vkHandle, dynamicState.depth_bias_enable);
+	//vkCmdSetPrimitiveRestartEnable(m_vkHandle, dynamicState.primitive_restart_enable);
+	//vkCmdSetPrimitiveTopology(m_vkHandle, dynamicState.primitive_topology);
+	//auto set = r_device.get_bindless_set().get_set();
+	//vkCmdBindDescriptorSets(m_vkHandle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	return GraphicsPipelineBind(m_vkHandle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+}
+
+vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(PipelineId pipelineIdentifier)
+{
+	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
+	vkCmdBindPipeline(m_vkHandle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_pipeline());
+	auto set = r_device.get_bindless_set().get_set();
+	vkCmdBindDescriptorSets(m_vkHandle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	return ComputePipelineBind(m_vkHandle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_COMPUTE);
+}
+
+vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(PipelineId pipelineIdentifier)
+{
+	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
+	vkCmdBindPipeline(m_vkHandle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_pipeline());
+	auto set = r_device.get_bindless_set().get_set();
+	vkCmdBindDescriptorSets(m_vkHandle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	return RaytracingPipelineBind(m_vkHandle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+}
+
+
+
 void vulkan::CommandBuffer::begin_context()
 {
 	assert(!m_tiny);
@@ -722,10 +766,11 @@ void vulkan::CommandBuffer::bind_uniform_buffer(uint32_t set, uint32_t binding, 
 	if (m_data->resourceBindings.samplerIds[set][binding].size() <= arrayIndex) {
 		m_data->resourceBindings.samplerIds[set][binding].resize(arrayIndex + 1ull);
 	}
-	const auto& shaderLayout = m_data->currentPipelineLayout->get_shader_layout();
-	const auto& setLayout = shaderLayout.descriptors[set].descriptors;
-	const auto& descriptorLayout = setLayout[binding];
-	bool dynamic = descriptorLayout.type == DescriptorType::UniformDynamicBuffer;
+	//const auto& shaderLayout = m_data->currentPipelineLayout->get_shader_layout();
+	//const auto& setLayout = shaderLayout.descriptors[set].descriptors;
+	//const auto& descriptorLayout = setLayout[binding];
+	//bool dynamic = descriptorLayout.type == DescriptorType::UniformDynamicBuffer;
+	bool dynamic = false;
 
 	auto& bind = m_data->resourceBindings.bindings[set][binding][arrayIndex];
 	if (buffer.get_id() == m_data->resourceBindings.bindingIds[set][binding][arrayIndex] && bind.buffer.range == size
@@ -1199,6 +1244,7 @@ void vulkan::CommandBuffer::update_push_constants() noexcept
 		if (pushConstants.stageFlags) {
 			assert(pushConstants.offset == 0);
 			//assert(false);
+			
 			vkCmdPushConstants(m_vkHandle, m_data->currentPipelineLayout->get_layout(), pushConstants.stageFlags, 0, pushConstants.size, m_data->resourceBindings.pushConstantData.data());
 		}
 	}

@@ -49,10 +49,6 @@ namespace vulkan {
 		std::array<std::array<std::vector<Utility::UID>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> samplerIds;
 		std::array<std::byte, PUSH_CONSTANT_SIZE> pushConstantData{};
 	};
-	struct DescriptorSet {
-		uint32_t set;
-
-	};
 	struct DynamicState {
 		float depthBias = 0.0f;
 		float depthBiasSlope = 0.0f;
@@ -119,6 +115,20 @@ namespace vulkan {
 		
 	
 		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type = Type::Generic, uint32_t threadIdx = 0, bool tiny = false);
+
+
+		//void begin_rendering()
+		//void bind_pipeline(pipelineIdentifier); -> also binds (actually used) input attachments according to renderpass
+		//PipelineReference current_pipeline(bindPoint);
+		void begin_rendering(const VkRenderingInfo* info);
+		void end_rendering();
+		GraphicsPipelineBind bind_graphics_pipeline(PipelineId pipelineIdentifier);
+		ComputePipelineBind bind_compute_pipeline(PipelineId pipelineIdentifier);
+		RaytracingPipelineBind bind_raytracing_pipeline(PipelineId pipelineIdentifier);
+
+
+
+
 		void begin_context();
 		void begin_graphics();
 		void begin_compute();

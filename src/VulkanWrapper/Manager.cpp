@@ -46,6 +46,8 @@ void vulkan::FenceManager::reset_fence(VkFence fence) {
 	if (fence == VK_NULL_HANDLE)
 		return;
 	auto fence_ = fence;
+	auto status = vkGetFenceStatus(r_device.get_device(), fence);
+	assert(status == VK_SUCCESS);
 	vkResetFences(r_device.get_device(), 1, &fence_);
 	m_fences.push_back(fence_);
 }
@@ -62,6 +64,7 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 		VkSemaphore semaphore = VK_NULL_HANDLE;
 		VkSemaphoreCreateInfo semaphoreCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			.flags = 0
 		};
 		if (auto result = vkCreateSemaphore(r_device.get_device(), &semaphoreCreateInfo, r_device.get_allocator(), &semaphore); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
@@ -77,8 +80,8 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 		return semaphore;
 	}
 	else {
-		auto semaphore = m_semaphores.back();
-		m_semaphores.pop_back();
+		auto semaphore = *m_semaphores.begin();
+		m_semaphores.erase(m_semaphores.begin());
 		return semaphore;
 	}
 }
@@ -87,5 +90,5 @@ void vulkan::SemaphoreManager::recycle_semaphore(VkSemaphore semaphore)
 {
 	if (semaphore == VK_NULL_HANDLE)
 		return;
-	m_semaphores.push_back(semaphore);
+	m_semaphores.insert(semaphore);
 }

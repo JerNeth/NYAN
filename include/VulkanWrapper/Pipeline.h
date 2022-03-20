@@ -18,7 +18,142 @@ namespace vulkan {
 	constexpr unsigned COMPARE_OP_BITS = Utility::bit_width(VK_COMPARE_OP_ALWAYS);
 	constexpr unsigned STENCIL_OP_BITS = Utility::bit_width(VK_STENCIL_OP_DECREMENT_AND_WRAP);
 	constexpr unsigned TOPOLOGY_BITS = Utility::bit_width(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
+	constexpr unsigned LOGIC_OP_BITS = Utility::bit_width(VK_LOGIC_OP_SET);
+	constexpr unsigned POLYGON_MODE_BITS = Utility::bit_width(VK_POLYGON_MODE_POINT);
+	constexpr unsigned RASTERIZATION_SAMPLE_BITS = Utility::bit_width(VK_SAMPLE_COUNT_16_BIT);
 	class Shader;
+	struct BlendAttachment {
+		VkBool32 blend_enable : 1;
+		VkBlendFactor src_color_blend : BLEND_FACTOR_BITS;
+		VkBlendFactor dst_color_blend : BLEND_FACTOR_BITS;
+		VkBlendOp color_blend_op : BLEND_OP_BITS; 
+		VkBlendFactor src_alpha_blend : BLEND_FACTOR_BITS;
+		VkBlendFactor dst_alpha_blend : BLEND_FACTOR_BITS;
+		VkBlendOp alpha_blend_op : BLEND_OP_BITS;
+		VkColorComponentFlags color_write_mask : WRITE_MASK_BITS;
+	};
+
+	struct DynamicGraphicsPipelineState {
+		VkBool32 depth_write_enable : 1;
+		VkBool32 depth_test_enable : 1;
+		VkBool32 depth_bias_enable : 1;
+		VkBool32 depth_bounds_test_enable : 1;
+		VkCompareOp depth_compare_op : COMPARE_OP_BITS;
+
+		VkBool32 stencil_test_enable : 1;
+		VkStencilOp stencil_front_fail : STENCIL_OP_BITS;
+		VkStencilOp stencil_front_pass : STENCIL_OP_BITS;
+		VkStencilOp stencil_front_depth_fail : STENCIL_OP_BITS;
+		VkCompareOp stencil_front_compare_op : COMPARE_OP_BITS;
+
+		VkStencilOp stencil_back_fail : STENCIL_OP_BITS;
+		VkStencilOp stencil_back_pass : STENCIL_OP_BITS;
+		VkStencilOp stencil_back_depth_fail : STENCIL_OP_BITS;
+		VkCompareOp stencil_back_compare_op : COMPARE_OP_BITS;
+
+		VkCullModeFlags cull_mode : CULL_MODE_BITS;
+		VkFrontFace front_face : 2;
+		VkBool32 primitive_restart_enable : 1;
+		VkBool32 rasterizer_discard_enable : 1;
+		VkPrimitiveTopology primitive_topology : TOPOLOGY_BITS;
+	};
+
+	struct GraphicsPipelineState {
+		VkPolygonMode polygon_mode : POLYGON_MODE_BITS;
+
+		VkSampleCountFlagBits rasterization_samples : RASTERIZATION_SAMPLE_BITS;
+		VkBool32 alpha_to_coverage : 1;
+		VkBool32 alpha_to_one : 1;
+		VkBool32 sample_shading : 1;
+
+		VkBool32 logic_op_enable : 1;
+		VkLogicOp logic_op : LOGIC_OP_BITS;
+
+		//All devices supporting tessellation use 32 as max value
+		uint32_t patch_control_points : Utility::bit_width(32);
+
+		std::array<BlendAttachment, MAX_ATTACHMENTS> blendAttachments{};
+
+		friend bool operator==(const GraphicsPipelineState& left, const GraphicsPipelineState& right) {
+			return memcmp(&left, &right, sizeof(GraphicsPipelineState)) == 0;
+		}
+	};
+	constexpr DynamicGraphicsPipelineState defaultDynamicGraphicsPipelineState{
+		.depth_write_enable {VK_TRUE},
+		.depth_test_enable {VK_TRUE},
+		.depth_bias_enable {VK_FALSE},
+		.depth_bounds_test_enable {VK_FALSE},
+		.depth_compare_op {VK_COMPARE_OP_LESS},
+
+		.stencil_test_enable {VK_FALSE},
+		.stencil_front_fail {},
+		.stencil_front_pass {},
+		.stencil_front_depth_fail {},
+		.stencil_front_compare_op {},
+
+		.stencil_back_fail {},
+		.stencil_back_pass {},
+		.stencil_back_depth_fail {},
+		.stencil_back_compare_op {},
+
+		.cull_mode {VK_CULL_MODE_BACK_BIT},
+		.front_face {VK_FRONT_FACE_CLOCKWISE},
+		.primitive_restart_enable {VK_FALSE},
+		.rasterizer_discard_enable {VK_FALSE},
+		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
+	};
+	constexpr GraphicsPipelineState defaultGraphicsPipelineState{
+		.polygon_mode {VK_POLYGON_MODE_FILL},
+		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
+		.logic_op_enable {VK_FALSE},
+		.patch_control_points {0},
+		.blendAttachments {
+			BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.src_color_blend {},
+			}
+		}
+	};
+	constexpr GraphicsPipelineState alphaBlendedGraphicsPipelineState{
+		.polygon_mode {VK_POLYGON_MODE_FILL},
+		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
+		.logic_op_enable {VK_FALSE},
+		.patch_control_points {0},
+		.blendAttachments {
+			BlendAttachment {
+				.blend_enable {VK_TRUE},
+				.src_color_blend {VK_BLEND_FACTOR_SRC_ALPHA},
+				.dst_color_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+				.color_blend_op {VK_BLEND_OP_ADD},
+				.src_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+				.dst_alpha_blend {VK_BLEND_FACTOR_ZERO},
+				.alpha_blend_op {VK_BLEND_OP_ADD}
+			}
+		}
+	};
+	struct RenderingCreateInfo {
+		uint32_t colorAttachmentCount;
+		uint32_t viewMask = 0;
+		std::array<VkFormat, MAX_ATTACHMENTS> colorAttachmentFormats{ VK_FORMAT_UNDEFINED };
+		VkFormat depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+		VkFormat stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+	};
+	struct GraphicsPipelineConfig {
+		DynamicGraphicsPipelineState dynamicState;
+		GraphicsPipelineState state;
+		RenderingCreateInfo renderingCreateInfo;
+		uint16_t vertexInputCount;
+		uint16_t shaderCount;
+		//Relevant vertex formats only go up to ~128
+		std::array<uint8_t, MAX_VERTEX_INPUTS> vertexInputFormats;
+		//Five 
+		std::array<ShaderId, 5> shaderInstances;
+		VkPipelineLayout pipelineLayout;
+	};
+	struct ComputePipelineConfig {
+		ShaderId shaderInstance;
+		VkPipelineLayout pipelineLayout;
+	};
 	struct PipelineState {
 		unsigned depth_write : 1;
 		unsigned depth_test : 1;
@@ -178,8 +313,8 @@ namespace vulkan {
 				return false;
 			return (lhs.program->get_hash() == rhs.program->get_hash()) &&
 					(lhs.compatibleRenderPass->get_compatible_hash() == rhs.compatibleRenderPass->get_compatible_hash()) &&
-					(lhs.attributes == rhs.attributes) &&
-					(lhs.inputRates == rhs.inputRates) &&
+					//(lhs.attributes == rhs.attributes) &&
+					//(lhs.inputRates == rhs.inputRates) &&
 					(lhs.subpassIndex == rhs.subpassIndex);
 		}
 	};
@@ -222,59 +357,42 @@ namespace vulkan {
 		VkPipelineLayout m_layout = VK_NULL_HANDLE;
 		Utility::HashValue m_hashValue;
 	};
+	class PipelineLayout2 {
+	public:
+		PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets);
+		~PipelineLayout2();
+		PipelineLayout2(PipelineLayout2&) = delete;
+		PipelineLayout2(PipelineLayout2&&) = delete;
+		PipelineLayout2& operator=(PipelineLayout2&) = delete;
+		PipelineLayout2& operator=(PipelineLayout2&&) = delete;
+
+		operator VkPipelineLayout() const;
+		VkPipelineLayout get_layout() const noexcept;
+
+	private:
+		LogicalDevice& r_device;
+		VkPipelineLayout m_layout{ VK_NULL_HANDLE };
+	};
+
 	class Pipeline {
 	public:
 		//Implicit compute
 		Pipeline(LogicalDevice& parent, const Program& program);
 		//Implicit graphics pipeline
 		Pipeline(LogicalDevice& parent, const PipelineCompile& compiled);
-		//~Pipeline() noexcept;
+
 		Pipeline(Pipeline& other) = default;
 		Pipeline(Pipeline&& other) = default;
 		Pipeline& operator=(const Pipeline& other) = default;
 		Pipeline& operator=(Pipeline&& other) = default;
 		VkPipeline get_pipeline() const noexcept;
-		//static Pipeline request_pipeline(LogicalDevice& parent, Program* program, Renderpass* compatibleRenderPass, VertexAttributes attributes, InputRates inputRates, uint32_t subpassIndex);
-		static void reset_static_pipeline();
-		static void set_depth_write(bool depthWrite);
-		static void set_depth_test(bool depthTest);
-		static void set_blend_enabled(bool blendEnabled);
-		static void set_cull_mode(VkCullModeFlags cullMode);
-		static void set_front_face(VkFrontFace frontFace);
-		static void set_depth_bias_enabled(bool depthBiasEnabled);
-		static void set_stencil_test_enabled(bool stencilTestEnabled);
-		static void set_stencil_front_fail(VkStencilOp frontFail);
-		static void set_stencil_front_pass(VkStencilOp frontPass);
-		static void set_stencil_front_depth_fail(VkStencilOp frontDepthFail);
-		static void set_stencil_front_compare_op(VkCompareOp frontCompareOp);
-		static void set_stencil_back_fail(VkStencilOp backFail);
-		static void set_stencil_back_pass(VkStencilOp backPass);
-		static void set_stencil_back_depth_fail(VkStencilOp backDepthFail);
-		static void set_stencil_back_compare_op(VkCompareOp backCompareOp);
-		static void set_alpha_to_coverage(bool alphaToCoverage);
-		static void set_alpha_to_one(bool alphaToOne);
-		static void set_sample_shading(bool sampleShading);
-		static void set_src_color_blend(VkBlendFactor srcColorBlend);
-		static void set_dst_color_blend(VkBlendFactor dstColorBlend);
-		static void set_color_blend_op(VkBlendOp colorBlendOp);
-		static void set_src_alpha_blend(VkBlendFactor srcAlphaBlend);
-		static void set_dst_alpha_blend(VkBlendFactor dstAlphaBlend);
-		static void set_alpha_blend_op(VkBlendOp alphaBlendOp);
-		static void set_color_write_mask(VkColorComponentFlags writeMask, uint32_t colorAttachment);
-		static void set_primitive_restart(bool primitiveRestart);
-		static void set_topology(VkPrimitiveTopology primitiveTopology);
-		static void set_wireframe(VkPolygonMode wireframe);
-		static void set_subgroup_control_size(bool controlSize);
-		static void set_subgroup_full_group(bool fullGroup);
-		static void set_subgroup_min_size_log2(unsigned subgroupMinSize);
-		static void set_subgroup_max_size_log2(unsigned subgroupMaxSize);
-		static void set_conservative_raster(bool conservativeRaster);
 
 	private:
 		VkPipeline m_pipeline = VK_NULL_HANDLE;
+		VkPipelineLayout m_layout = VK_NULL_HANDLE;
 		static PipelineState s_pipelineState;
-		
 	};
+
 	class PipelineStorage {
 	public:
 		PipelineStorage(LogicalDevice& device);
@@ -289,6 +407,7 @@ namespace vulkan {
 		LogicalDevice& r_device;
 		std::unordered_map<PipelineCompile, Pipeline, PipelineCompileHasher> m_hashMap;
 	};
+
 	class PipelineCache {
 	public:
 		PipelineCache(LogicalDevice& device, const std::string& path);
@@ -303,6 +422,80 @@ namespace vulkan {
 		std::string m_path;
 		VkPipelineCache m_handle;
 	};
+	class Pipeline2 {
+	public:
+		Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config);
+		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
+		VkPipeline get_pipeline() const noexcept;
+		VkPipelineLayout get_layout() const noexcept;
+		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
+	private:
+		VkPipeline m_pipeline = VK_NULL_HANDLE;
+		VkPipelineLayout m_layout = VK_NULL_HANDLE;
+		VkPipelineBindPoint m_type;
+		DynamicGraphicsPipelineState m_initialDynamicState;
+	};
+
+	using PipelineId = uint32_t;
+	class PipelineStorage2 {
+	public:
+		PipelineStorage2(LogicalDevice& device);
+		~PipelineStorage2();
+		Pipeline2* get_pipeline(PipelineId pipelineId);
+		const Pipeline2* get_pipeline(PipelineId pipelineId) const;
+		PipelineId add_pipeline(const ComputePipelineConfig& config);
+		PipelineId add_pipeline(const GraphicsPipelineConfig& config);
+	private:
+		LogicalDevice& r_device;
+		Utility::LinkedBucketList<Pipeline2> m_pipelines;
+	};
+
+	class PipelineBind {
+	public:
+		PipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		void bind_descriptor_sets(uint32_t firstSet, const std::vector<VkDescriptorSet>& descriptorSets,
+			const std::vector<uint32_t>& dynamicOffsets = {});
+		//void bind_descriptor_set(DescriptorSet)
+		template<typename T>
+		void push_constants(const T& t) {
+			vkCmdPushConstants(m_cmd, m_layout, VK_SHADER_STAGE_ALL, 0, sizeof(T), &t);
+		}
+	protected:
+		VkCommandBuffer m_cmd;
+		VkPipelineLayout m_layout;
+		VkPipelineBindPoint m_bindPoint;
+	};
+
+	class GraphicsPipelineBind : public PipelineBind {
+	public:
+		GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		void set_scissor(VkRect2D scissor);
+		void set_viewport(VkViewport viewport);
+		void bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* buffers, const VkDeviceSize* offsets);
+		void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
+		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
+		void draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex = 0, uint32_t vertexOffset = 0, uint32_t firstInstance = 0);
+		//void draw();
+		//
+		//void set_something_dynamic();
+	private:
+
+	};
+	class ComputePipelineBind : public PipelineBind {
+	public:
+		ComputePipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		void dispatch(uint32_t groupCountX = 1, uint32_t groupCountY = 1, uint32_t groupCountZ = 1);
+		//void dispatch
+	private:
+
+	};
+	class RaytracingPipelineBind : public PipelineBind {
+	public:
+		RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		//void traceRays
+	private:
+	};
+
 }
 
 #endif

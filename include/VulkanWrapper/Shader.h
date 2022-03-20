@@ -504,6 +504,7 @@ namespace vulkan {
 		}
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
+		VkShaderModule get_module();
 	private:
 		void inline array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const;
 		void create_module(const std::vector<uint32_t>& shaderCode);
@@ -515,6 +516,34 @@ namespace vulkan {
 		Utility::HashValue m_hashValue;
 		
 	}; 
+	class ShaderInstance {
+	public:
+		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage);
+		VkPipelineShaderStageCreateInfo get_stage_info() const;
+	private:
+		VkShaderModule m_module;
+		std::vector< VkSpecializationMapEntry> m_specialization;
+		std::string m_entryPoint;
+		VkSpecializationInfo m_specializationInfo;
+		VkShaderStageFlagBits m_stage;
+		std::vector<std::byte> m_dataStorage;
+	};
+	using ShaderId = uint32_t;
+	constexpr ShaderId invalidShaderId = ~ShaderId{ 0 };
+	class ShaderStorage {
+	public:
+		ShaderStorage(LogicalDevice& device);
+
+		ShaderId add_instance(ShaderId shaderId);
+		ShaderId add_shader(const std::vector<uint32_t>& shaderCode);
+		Shader* get_shader(ShaderId shaderId);
+		ShaderInstance* get_instance(ShaderId instanceId);
+		void clear();
+	private:
+		LogicalDevice& r_device;
+		Utility::LinkedBucketList<ShaderInstance> m_instanceStorage;
+		Utility::LinkedBucketList<Shader> m_shaderStorage;
+	};
 	class Program {
 	public:
 		Program(const std::vector<Shader*>& shaders);
