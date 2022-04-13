@@ -39,7 +39,7 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std:
 	
 	devices.resize(numDevices);
 	vkEnumeratePhysicalDevices(m_instance, &numDevices, devices.data());
-	size_t bestDevice = 0;
+	m_bestDevice = 0;
 	int bestDeviceOptCount = 0;
 	for (size_t i = 0; i < numDevices; i++) {
 		m_physicalDevices.emplace_back(devices[i]);
@@ -53,14 +53,14 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std:
 		for (const auto& extension : optionalExtensions)
 			optional += dev.use_extension(extension);
 		if (optional > bestDeviceOptCount) {
-			bestDevice = i;
+			m_bestDevice = i;
 			bestDeviceOptCount = optional;
 		}
 
 	}
-	m_physicalDevice = m_physicalDevices[bestDevice];
+	m_physicalDevice = m_physicalDevices[m_bestDevice].get_handle();
 
-	return m_physicalDevices[bestDevice].create_logical_device(*this);
+	return m_physicalDevices[m_bestDevice].create_logical_device(*this);
 }
 
 #ifdef WIN32
@@ -136,6 +136,11 @@ VkSurfaceKHR vulkan::Instance::get_surface() const
 vulkan::Instance::operator VkInstance() const noexcept
 {
 	return m_instance;
+}
+
+const vulkan::PhysicalDevice& vulkan::Instance::get_physical_device() const noexcept
+{
+	return m_physicalDevices[m_bestDevice];
 }
 
 void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t engineVersion)
@@ -464,6 +469,16 @@ const VkPhysicalDeviceMeshShaderPropertiesNV& vulkan::PhysicalDevice::get_mesh_s
 const vulkan::Extensions& vulkan::PhysicalDevice::get_extensions() const noexcept
 {
 	return m_extensions;
+}
+
+std::optional<VkImageFormatProperties> vulkan::PhysicalDevice::get_image_format_properties(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) const noexcept
+{
+	VkImageFormatProperties properties;
+	auto result = vkGetPhysicalDeviceImageFormatProperties(m_vkHandle, format, type, tiling, usage, flags, &properties);
+	if (result == VK_ERROR_FORMAT_NOT_SUPPORTED)
+		return std::nullopt;
+	else 
+		return properties;
 }
 
 void vulkan::PhysicalDevice::init_queues() noexcept

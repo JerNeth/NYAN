@@ -58,8 +58,6 @@ void nyan::Application::main_loop()
 	while (!m_window->should_close())
 	{
 		update();
-		//using namespace std::chrono_literals;
-		//std::this_thread::sleep_for(16ms);
 		if (!m_window->is_iconified()) {
 
 			next_frame();

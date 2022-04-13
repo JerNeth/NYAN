@@ -134,19 +134,43 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 {
 
 	auto surfaceFormats = r_instance.get_surface_formats();
-	auto surfaceFormat = surfaceFormats[0];
-	if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
-		[&](auto format) {return format.format == m_preferredSwapchainFormat && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
-		_surfaceFormat != surfaceFormats.cend())
+
+	std::vector<VkSurfaceFormatKHR> usableFormats;
+	usableFormats.reserve(surfaceFormats.size());
+
+	VkImageUsageFlags usage{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT };
+
+	for (const auto& format : surfaceFormats) {
+		if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+			r_instance.get_physical_device().get_image_format_properties(format.format,
+				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+			usableFormats.push_back(format);
+	}
+	usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	if (usableFormats.empty()) {
+		for (const auto& format : surfaceFormats) {
+			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+				r_instance.get_physical_device().get_image_format_properties(format.format,
+					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+				usableFormats.push_back(format);
+		}
+	}
+	VkSurfaceFormatKHR surfaceFormat{ usableFormats.front()};
+
+	
+	if (auto _surfaceFormat = std::find_if(usableFormats.cbegin(), usableFormats.cend(),
+		[&](auto format) {return format.format == VK_FORMAT_B8G8R8A8_UNORM; });
+		_surfaceFormat != usableFormats.cend())
 		surfaceFormat = *_surfaceFormat;
-	//if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
-	//	[](auto format) {return format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
-	//	_surfaceFormat != surfaceFormats.cend())
-	//	surfaceFormat = *_surfaceFormat;
-	//if (auto _surfaceFormat = std::find_if(surfaceFormats.cbegin(), surfaceFormats.cend(),
-	//	[](auto format) {return format.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR; });
-	//	_surfaceFormat != surfaceFormats.cend())
-	//	surfaceFormat = *_surfaceFormat;
+	if (auto _surfaceFormat = std::find_if(usableFormats.cbegin(), usableFormats.cend(),
+		[&](auto format) {return format.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32; });
+		_surfaceFormat != usableFormats.cend())
+		surfaceFormat = *_surfaceFormat;
+	if (auto _surfaceFormat = std::find_if(usableFormats.cbegin(), usableFormats.cend(),
+		[&](auto format) {return format.format == m_preferredSwapchainFormat; });
+		_surfaceFormat != usableFormats.cend())
+		surfaceFormat = *_surfaceFormat;
+
 
 	m_format = surfaceFormat.format;
 	
@@ -189,7 +213,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.imageColorSpace = surfaceFormat.colorSpace,
 		.imageExtent = m_swapchainExtent,
 		.imageArrayLayers = 1,
-		.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		.imageUsage = usage,
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.queueFamilyIndexCount = 0,
 		.pQueueFamilyIndices = nullptr,
@@ -197,7 +221,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.compositeAlpha = compositeAlpha,
 		.presentMode = presentMode,
 		.clipped = VK_TRUE,
-		.oldSwapchain = old
+		.oldSwapchain = old,
 	};
 	if (auto result = vkCreateSwapchainKHR(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
 		if (result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {

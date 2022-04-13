@@ -23,4 +23,5 @@ void main()
 {
     
     fColor = In.Color * texture(sampler2D(textures[pc.texId], samplers[pc.samplerId]), In.UV.st);
+    //fColor = In.Color * texture(sampler2D(textures[0], samplers[4]), In.UV.st);
 }

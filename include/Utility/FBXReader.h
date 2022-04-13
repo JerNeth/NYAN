@@ -8,20 +8,15 @@
 #pragma warning disable 26451
 #endif
 #include <fbxsdk.h>
-#include <Renderer/MeshLoader.h>
+#include "Renderer/MeshManager.h"
+#include "Renderer/MaterialManager.h"
 namespace Utility {
-	//TODO move this into an importer class
-	//So that modules don't depend on this class
-	//      this		other modules
-	//		  \			/
-	//		  _\|	  |/_
-	//		Importer class
 
 	class FBXReader {
 	public:
 		FBXReader();
 		~FBXReader();
-		std::vector<nyan::MeshData> parse_meshes(std::string fbxFile, bool tangentSpace);
+		void parse_meshes(std::string fbxFile, std::vector<nyan::MeshData>& retMeshes, std::vector<nyan::MaterialData>& retMats);
 	private:
 		FbxManager* sdkManager;
 		FbxIOSettings* ios;

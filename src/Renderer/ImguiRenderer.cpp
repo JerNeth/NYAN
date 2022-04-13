@@ -34,15 +34,17 @@ nyan::ImguiRenderer::~ImguiRenderer()
 
 void nyan::ImguiRenderer::update(std::chrono::nanoseconds dt)
 {
-	ptr_window->imgui_update_mouse_keyboard();	
-	values[values_offset] = dt.count();
-	ImGuiIO& io = ImGui::GetIO();
-	io.DeltaTime = dt.count();
+
 }
 
 void nyan::ImguiRenderer::next_frame()
 {
+	std::chrono::duration<double> fp_ms = std::chrono::steady_clock::now() - start;
+	start = std::chrono::steady_clock::now();
+	ptr_window->imgui_update_mouse_keyboard();
+	values[values_offset] = static_cast<float>(fp_ms.count());
 	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = static_cast<float>(fp_ms.count());
 	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	ImGui::NewFrame();
@@ -103,8 +105,8 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 		int samplerId;
 	} push {
 		.scale {
-			2.0f / draw_data->DisplaySize.x,
-			2.0f / draw_data->DisplaySize.y
+			2.0f / static_cast<float>(draw_data->DisplaySize.x),
+			2.0f / static_cast<float>(draw_data->DisplaySize.y)
 		},
 		.translate {
 			-1.0f - draw_data->DisplayPos.x * push.scale[0],
@@ -192,8 +194,16 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 
 void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 {
-	auto totalBufferSize = drawData->TotalVtxCount * sizeof(ImDrawVert) 
-						+ drawData->TotalIdxCount * sizeof(ImDrawIdx);
+	constexpr size_t alignment = 64;
+	m_bufferOffsets[0] = 0;
+	m_bufferOffsets[1] = (drawData->TotalVtxCount * sizeof(ImVec2) + alignment - 1) / alignment * alignment;
+	m_bufferOffsets[2] = m_bufferOffsets[1] + (drawData->TotalVtxCount * sizeof(ImVec2) + alignment - 1) / alignment * alignment;
+	m_bufferOffsets[3] = m_bufferOffsets[2] + (drawData->TotalVtxCount * sizeof(ImU32) + alignment - 1) / alignment * alignment;
+	//auto totalBufferSize = drawData->TotalVtxCount * sizeof(ImVec2)
+	//					+ (drawData->TotalVtxCount * sizeof(ImVec2) +63) / 64 * 64
+	//					+ drawData->TotalVtxCount * sizeof(ImU32)
+	//					+ drawData->TotalIdxCount * sizeof(ImDrawIdx);
+	auto totalBufferSize = m_bufferOffsets[3] + drawData->TotalIdxCount * sizeof(ImDrawIdx);
 	if (!m_dataBuffer || (*m_dataBuffer)->get_size() < totalBufferSize) {
 		BufferInfo info{
 			.size = totalBufferSize,
@@ -205,22 +215,18 @@ void nyan::ImguiRenderer::prep_buffer(ImDrawData* drawData)
 	}
 
 	auto bufferMap = (*m_dataBuffer)->map_data();
-	VkDeviceSize offset = 0;
-	m_bufferOffsets[0] = 0;
-	m_bufferOffsets[1] = sizeof(ImVec2) * drawData->TotalVtxCount;
-	m_bufferOffsets[2] = m_bufferOffsets[1] + sizeof(ImVec2) * drawData->TotalVtxCount;
-	m_bufferOffsets[3] = m_bufferOffsets[2] + sizeof(ImU32) * drawData->TotalVtxCount;
+	int vtxOffset = 0;
+	int idxOffset = 0;
 	for (int n = 0; n < drawData->CmdListsCount; n++)
 	{
 		const ImDrawList* cmd_list = drawData->CmdLists[n];
-		for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[0], &cmd_list->VtxBuffer[i].pos, sizeof(ImVec2));
-			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[1], &cmd_list->VtxBuffer[i].uv, sizeof(ImVec2));
-			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[2], &cmd_list->VtxBuffer[i].col, sizeof(ImU32));
+		for (int i = 0; i < cmd_list->VtxBuffer.Size; i++, vtxOffset++) {
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[0] + sizeof(ImVec2) * vtxOffset, &cmd_list->VtxBuffer[i].pos, sizeof(ImVec2));
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[1] + sizeof(ImVec2) * vtxOffset, &cmd_list->VtxBuffer[i].uv, sizeof(ImVec2));
+			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[2] + sizeof(ImU32) * vtxOffset, &cmd_list->VtxBuffer[i].col, sizeof(ImU32));
 		}
-		for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-			memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[3], &cmd_list->IdxBuffer[i], cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-		}
+		memcpy(reinterpret_cast<char*>(bufferMap) + m_bufferOffsets[3] + idxOffset * sizeof(ImDrawIdx), cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+		idxOffset += cmd_list->IdxBuffer.Size;
 	}
 }
 
@@ -258,8 +264,8 @@ void nyan::ImguiRenderer::set_up_font()
 	auto info = ImageInfo::immutable_2d_image(width, height, VK_FORMAT_R8G8B8A8_UNORM, false);
 	vulkan::InitialImageData data{
 			.data = reinterpret_cast<char*>(pixels),
-			.rowLength = 0,
-			.height = 0,
+			//.rowLength = 0,
+			//.height = 0,
 	};
 	m_font = r_device.create_image(info, &data);
 	m_fontBind = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ 

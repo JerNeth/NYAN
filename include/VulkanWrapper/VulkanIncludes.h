@@ -1,3 +1,4 @@
+#pragma once
 #ifndef VKVULKANINCLUDES_H
 #define VKVULKANINCLUDES_H
 #ifdef NDEBUG
@@ -69,7 +70,6 @@ constexpr bool debug = true;
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
-#define DEBUGSUBMISSIONS
 #include <optick.h>
 #include <array>
 #include <bitset>

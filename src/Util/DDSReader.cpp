@@ -233,21 +233,17 @@ static VkFormat convertToVk(Utility::DXGI_FORMAT format) {
 	}
 }
 constexpr uint32_t DDSMagicNumber = 0x20534444u;
-std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::string& filename)
+std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::filesystem::path& filename)
 {
-	std::ifstream file(filename + ".dds", std::ios::ate | std::ios::binary);
+	std::ifstream file(filename, std::ios::binary);
 	if (!(file.is_open())) {
-		file.open(filename, std::ios::ate | std::ios::binary);
-		if (!(file.is_open())) {
-			throw std::runtime_error("Could not open file: \"" + filename + ".dds" + "\"");
-		}
+		throw std::runtime_error("Could not open file: \"" + filename.string() + "\"");
 	}
-	auto fileSize = file.tellg();
+	auto fileSize = std::filesystem::file_size(filename);
 	if (fileSize < 128)
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
 	uint32_t magicNumber;
 	Utility::DDSHeader header;
-	file.seekg(0);
 	file.read(reinterpret_cast<char*>(&magicNumber), sizeof(uint32_t));
 	if (magicNumber != DDSMagicNumber)
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
@@ -267,22 +263,19 @@ std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::string
 	file.close();
 	return buffer;
 }
-Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::string& filename, bool strict)
+Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::filesystem::path& filename, bool strict)
 {
 	Utility::TextureInfo ret{};
-	std::ifstream file(filename + ".dds", std::ios::ate | std::ios::binary);
+
+	std::ifstream file(filename, std::ios::binary);
 	if (!(file.is_open())) {
-		file.open(filename, std::ios::ate | std::ios::binary);
-		if (!(file.is_open())) {
-			throw std::runtime_error("Could not open file: \"" + filename + ".dds" + "\"");
-		}
+		throw std::runtime_error("Could not open file: \"" + filename.string() + "\"");
 	}
 	Utility::DDSHeader header;
-	auto fileSize = file.tellg();
+	auto fileSize = std::filesystem::file_size(filename);
 	if (fileSize < 128)
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small)");
 	uint32_t magicNumber;
-	file.seekg(0);
 	file.read(reinterpret_cast<char*>(&magicNumber), sizeof(uint32_t));
 
 	if (magicNumber != DDSMagicNumber)

@@ -54,7 +54,7 @@ namespace vulkan {
 			VkBuildAccelerationStructureFlagsKHR flags = 0;
 		};
 		AccelerationStructureBuilder(LogicalDevice& device);
-		void queue_item(const BLASInfo& info, VkFormat positionFormat, size_t vertexSize, VkDeviceAddress positionOffset = 0);
+		void queue_item(const BLASInfo& info, VkFormat positionFormat, VkDeviceSize vertexSize, VkDeviceSize positionOffset = 0);
 		std::vector<AccelerationStructureHandle> build_pending();
 		AccelerationStructureHandle build_tlas(const std::vector< VkAccelerationStructureInstanceKHR>& instances,
 			VkBuildAccelerationStructureFlagsKHR flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);

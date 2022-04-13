@@ -8,30 +8,103 @@ nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device) :
 {
 }
 
-StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
+MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 {
-	
-	if (auto res = m_staticMeshes.find(name); res != m_staticMeshes.end())
-		return &res->second;
+	std::vector<vulkan::InputData> inputData;
+	std::vector<uint32_t> offsets;
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.indices.size() * sizeof(uint32_t) });
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.positions.size() * sizeof(Math::vec3) });
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.uvs.size() * sizeof(Math::vec2) });
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.normals.size() * sizeof(Math::vec3) });
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.tangents.size() * sizeof(Math::vec3) });
 
-	StaticMesh mesh;
-	vulkan::BufferInfo buffInfo;
-	buffInfo.size = sizeof(nyan::cubeVertices) + sizeof(nyan::cubeIndices);
-	buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-	std::vector<vulkan::InputData> data;
-	data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeVertices.data())) ,sizeof(nyan::cubeVertices) });
-	data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeIndices.data())) ,  sizeof(nyan::cubeIndices) });
-	auto vbo = r_device.create_buffer(buffInfo, data);
+	uint32_t offset = 0;
+	for (const auto& inputDate : inputData) {
+		offsets.push_back(offset);
+		offset += inputDate.size;
+	}
+	vulkan::BufferInfo info{
+		.size = offset,
+		.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		.offset = 0,
+		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY
 
-	m_usedBuffers.push_back(vbo);
+	};
+	MeshManager::Mesh mesh{
+		.buffer = r_device.create_buffer(info, inputData),
+		.offset = 0,
+		.mesh {
+			.indexCount {static_cast<uint32_t>(data.indices.size())},
+			.firstIndex {0},
+			.vertexOffset {0},
+			.firstInstance {0},
 
-	mesh.set_indices(vbo, sizeof(nyan::cubeVertices), static_cast<uint32_t>(nyan::cubeIndices.size()));
-	mesh.set_vertices(vbo, 0, static_cast<uint32_t>(nyan::cubeVertices.size()));
-	auto res = m_staticMeshes.emplace(name, mesh);
+			.indexBuffer {mesh.buffer->get_handle()},
+			.indexOffset {offsets[0]},
+			.indexType {VK_INDEX_TYPE_UINT32},
+			.positionBuffer {mesh.buffer->get_handle()},
+			.texCoordBuffer {mesh.buffer->get_handle()},
+			.colorBuffer {mesh.buffer->get_handle()},
+			.tangentBuffer {mesh.buffer->get_handle()},
 
-	return &res.first->second;
+
+			.positionOffset {offsets[1]},
+			.texCoordOffset {offsets[2]},
+			.colorOffset {offsets[3]},
+			.tangentOffset {offsets[4]},
+		}
+	};
+	auto id = m_meshCounter++;
+	m_staticTangentMeshes.emplace(id, mesh);
+	m_meshIndex.emplace(data.name, id);
+	return id;
 }
+
+MeshID nyan::MeshManager::get_mesh(const std::string& name)
+{
+	assert(m_meshIndex.find(name) != m_meshIndex.end());
+	return m_meshIndex[name];
+}
+const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx)
+{
+	assert(m_staticTangentMeshes.find(idx) != m_staticTangentMeshes.end());
+	return m_staticTangentMeshes[idx].mesh;
+}
+
+const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const std::string& name)
+{
+	assert(m_meshIndex.find(name) != m_meshIndex.end());
+	assert(m_staticTangentMeshes.find(m_meshIndex[name]) != m_staticTangentMeshes.end());
+	return m_staticTangentMeshes[m_meshIndex[name]].mesh;
+}
+
+
+//StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
+//{
+//	return nullptr;
+//	//if (auto res = m_staticMeshes.find(name); res != m_staticMeshes.end())
+//	//	return &res->second;
+//
+//	//StaticMesh mesh;
+//	//vulkan::BufferInfo buffInfo;
+//	//buffInfo.size = sizeof(nyan::cubeVertices) + sizeof(nyan::cubeIndices);
+//	//buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+//	//buffInfo.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+//	//std::vector<vulkan::InputData> data;
+//	//data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeVertices.data())) ,sizeof(nyan::cubeVertices) });
+//	//data.push_back({ const_cast<void*>(reinterpret_cast<const void*>(nyan::cubeIndices.data())) ,  sizeof(nyan::cubeIndices) });
+//	//auto vbo = r_device.create_buffer(buffInfo, data);
+//
+//	//m_usedBuffers.push_back(vbo);
+//
+//	//mesh.set_indices(vbo, sizeof(nyan::cubeVertices), static_cast<uint32_t>(nyan::cubeIndices.size()));
+//	//mesh.set_vertices(vbo, 0, static_cast<uint32_t>(nyan::cubeVertices.size()));
+//	//auto res = m_staticMeshes.emplace(name, mesh);
+//
+//	//return &res.first->second;
+//}
 //
 //StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name, const std::vector<StaticMesh::Vertex>& vertices, const std::vector<uint16_t>& indices)
 //{

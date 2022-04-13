@@ -25,6 +25,7 @@ namespace vulkan {
 		VkSurfaceCapabilitiesKHR get_surface_capabilites() const;
 		VkSurfaceKHR get_surface() const;
 		operator VkInstance() const noexcept;
+		const PhysicalDevice& get_physical_device() const noexcept;
 	private:
 		void create_instance(uint32_t applicationVersion = 0, uint32_t engineVersion = 0);
 
@@ -38,6 +39,7 @@ namespace vulkan {
 		VkInstance m_instance;
 		VkSurfaceKHR m_surface;
 		VkPhysicalDevice m_physicalDevice;
+		size_t m_bestDevice = 0;
 		std::vector<PhysicalDevice> m_physicalDevices;
 		VkAllocationCallbacks* m_allocator = NULL;
 		VkDebugReportCallbackEXT m_debugReport;
@@ -72,7 +74,7 @@ namespace vulkan {
 	};
 	class PhysicalDevice {
 	public:
-		PhysicalDevice(VkPhysicalDevice device);
+		explicit PhysicalDevice(VkPhysicalDevice device);
 		operator VkPhysicalDevice() const noexcept;
 		const VkPhysicalDevice& get_handle() const noexcept;
 
@@ -99,6 +101,7 @@ namespace vulkan {
 		const VkPhysicalDeviceMeshShaderPropertiesNV& get_mesh_shader_properties() const noexcept;
 
 		const Extensions& get_extensions() const noexcept;
+		std::optional<VkImageFormatProperties> get_image_format_properties(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) const noexcept;
 	private:
 		void init_queues() noexcept;
 		void init_extensions() noexcept;

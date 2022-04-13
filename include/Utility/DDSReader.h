@@ -1,7 +1,9 @@
 #pragma once
 #ifndef DDSREADER_H
 #define DDSREADER_H
+#include <filesystem>
 #include "VulkanWrapper/VulkanIncludes.h"
+#include "ImageReader.h"
 namespace Utility {
 	//Really don't want to write this but did not really find a good implementation
 	//Reference https://docs.microsoft.com/en-us/windows/win32/direct3ddds/dx-graphics-dds-reference
@@ -289,22 +291,10 @@ namespace Utility {
 		DDSHeader header;
 		DDSHeaderDXT10 extHeader;
 	};
-	struct TextureInfo {
-		VkFormat format;
-		VkImageType type;
-		uint32_t width;
-		uint32_t height;
-		uint32_t depth;
-		uint32_t arrayLayers;
-		uint32_t mipLevels;
-		bool cube;
-	};
-}namespace vulkan { struct ImageInfo; struct InitialImageData; }
-namespace Utility {
 	class DDSReader {
 	public:
-		static std::vector<std::byte> readDDSFileInMemory(const std::string& filename);
-		static TextureInfo readDDSFileHeader(const std::string& filename, bool strict = false);
+		static std::vector<std::byte> readDDSFileInMemory(const std::filesystem::path& filename);
+		static TextureInfo readDDSFileHeader(const std::filesystem::path& filename, bool strict = false);
 		static std::vector<vulkan::InitialImageData> parseImage(const Utility::TextureInfo& info, const std::vector<std::byte>& data, uint32_t startMipLevel = 0);
 	private:
 	};

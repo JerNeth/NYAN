@@ -80,10 +80,10 @@ namespace vulkan {
 	};
 	struct InitialImageData {
 		const void* data = nullptr;
-		std::array<uint32_t, 16> mipOffsets;
-		uint32_t mipCounts;
-		uint32_t rowLength = 0;
-		uint32_t height = 0;
+		std::array<uint32_t, 16> mipOffsets{};
+		uint32_t mipCounts = 0;
+		//uint32_t rowLength = 0;
+		//uint32_t height = 0;
 	};
 	class LogicalDevice {
 
@@ -201,7 +201,6 @@ namespace vulkan {
 		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
-		VkDescriptorSetLayout request_descriptor_set_layout(const DescriptorSetLayout& layout);
 		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
 		size_t register_shader(const std::vector<uint32_t>& shaderCode);
 		//Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
@@ -229,6 +228,7 @@ namespace vulkan {
 		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format);
 		const ImageView* get_swapchain_image_view() const noexcept;
 		ImageView* get_swapchain_image_view() noexcept;
+		ImageView* get_swapchain_image_view(size_t idx) noexcept;
 
 		void next_frame();
 		void end_frame();
@@ -350,8 +350,6 @@ namespace vulkan {
 		
 		std::unordered_multimap<VkFence, std::function<void(void)>> m_fenceCallbacks;
 
-
-		std::unordered_map< DescriptorSetLayout, VkDescriptorSetLayout, Utility::Hash<DescriptorSetLayout>> m_descriptorSetLayouts;
 
 		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
 		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;

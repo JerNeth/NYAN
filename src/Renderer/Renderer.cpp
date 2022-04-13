@@ -1,57 +1,57 @@
 #include "Renderer/Renderer.h"
 using namespace vulkan;
 using namespace nyan;
-
-void nyan::RenderQueue::clear()
-{
-	m_staticMeshes.clear();
-	m_skinnedMeshes.clear();
-}
-
-nyan::VulkanRenderer::VulkanRenderer(vulkan::LogicalDevice& device,vulkan::ShaderManager* shaderManager) :
-	r_device( device),
-	m_shaderManager(shaderManager),
-	m_cameraBuffer(r_device.create_buffer(
-		BufferInfo{
-			.size = sizeof(RendererCamera),
-			.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-		}, {}))
-{
-}
-
-void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
-{
-	if (mesh == nullptr)
-		return;
-	RenderId id = mesh->get_material()->get_id();
-	id <<= 32;
-	if (mesh->uses_tangent_space())
-		id |= tangentSpaceBit;
-	m_renderQueue.m_staticMeshes.emplace(id, mesh);
-}
-
-void nyan::VulkanRenderer::queue_mesh(SkinnedMesh* mesh)
-{
-	if (mesh == nullptr)
-		return;
-	RenderId id = mesh->get_material()->get_id();
-	id <<= 32;
-	if (mesh->uses_tangent_space())
-		id |= tangentSpaceBit;
-	if (mesh->has_blendshape())
-		id |= blendShapeBit;
-	m_renderQueue.m_skinnedMeshes.emplace(id, mesh);
-}
-
-void nyan::VulkanRenderer::update_camera(const RendererCamera& camera)
-{
-	auto* map = m_cameraBuffer->map_data();
-	memcpy(map, &camera, sizeof(RendererCamera));
-}
-
-void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
-{
+//
+//void nyan::RenderQueue::clear()
+//{
+//	m_staticMeshes.clear();
+//	m_skinnedMeshes.clear();
+//}
+//
+//nyan::VulkanRenderer::VulkanRenderer(vulkan::LogicalDevice& device,vulkan::ShaderManager* shaderManager) :
+//	r_device( device),
+//	m_shaderManager(shaderManager),
+//	m_cameraBuffer(r_device.create_buffer(
+//		BufferInfo{
+//			.size = sizeof(RendererCamera),
+//			.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+//			.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+//		}, {}))
+//{
+//}
+//
+//void nyan::VulkanRenderer::queue_mesh(StaticMesh* mesh)
+//{
+//	if (mesh == nullptr)
+//		return;
+//	RenderId id = mesh->get_material()->get_id();
+//	id <<= 32;
+//	if (mesh->uses_tangent_space())
+//		id |= tangentSpaceBit;
+//	m_renderQueue.m_staticMeshes.emplace(id, mesh);
+//}
+//
+//void nyan::VulkanRenderer::queue_mesh(SkinnedMesh* mesh)
+//{
+//	if (mesh == nullptr)
+//		return;
+//	RenderId id = mesh->get_material()->get_id();
+//	id <<= 32;
+//	if (mesh->uses_tangent_space())
+//		id |= tangentSpaceBit;
+//	if (mesh->has_blendshape())
+//		id |= blendShapeBit;
+//	m_renderQueue.m_skinnedMeshes.emplace(id, mesh);
+//}
+//
+//void nyan::VulkanRenderer::update_camera(const RendererCamera& camera)
+//{
+//	auto* map = m_cameraBuffer->map_data();
+//	memcpy(map, &camera, sizeof(RendererCamera));
+//}
+//
+//void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
+//{
 	//TODO good place to parallelize
 
 	//cmd->bind_uniform_buffer(0, 0, 0, *m_cameraBuffer, 0, sizeof(RendererCamera));
@@ -104,13 +104,13 @@ void nyan::VulkanRenderer::render(vulkan::CommandBufferHandle& cmd)
 	//	}
 	//	it.second->render(cmd);
 	//}
-}
-
-void nyan::VulkanRenderer::next_frame()
-{
-	m_renderQueue.clear();
-}
-
-void nyan::VulkanRenderer::end_frame()
-{
-}
+//}
+//
+//void nyan::VulkanRenderer::next_frame()
+//{
+//	m_renderQueue.clear();
+//}
+//
+//void nyan::VulkanRenderer::end_frame()
+//{
+//}

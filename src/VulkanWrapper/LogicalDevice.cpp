@@ -63,17 +63,14 @@ vulkan::LogicalDevice::~LogicalDevice()
 	OPTICK_SHUTDOWN();
 
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
-		if (aquire == VK_NULL_HANDLE) {
+		if (aquire != VK_NULL_HANDLE) {
 			vkDestroySemaphore(get_device(), aquire, get_allocator());
 		}
 	}
 	for (auto& present : m_wsiState.presentSemaphores) {
-		if (present == VK_NULL_HANDLE) {
+		if (present != VK_NULL_HANDLE) {
 			vkDestroySemaphore(get_device(), present, get_allocator());
 		}
-	}
-	for (const auto& [_, descriptorSetLayout] : m_descriptorSetLayouts) {
-		vkDestroyDescriptorSetLayout(get_device(), descriptorSetLayout, get_allocator());
 	}
 }
 
@@ -131,6 +128,10 @@ vulkan::ImageView* vulkan::LogicalDevice::get_swapchain_image_view() noexcept
 	return m_wsiState.swapchainImages[m_wsiState.index]->get_view();
 }
 
+vulkan::ImageView* vulkan::LogicalDevice::get_swapchain_image_view(size_t idx) noexcept
+{
+	return m_wsiState.swapchainImages[idx]->get_view();
+}
 void vulkan::LogicalDevice::next_frame()
 {
 	end_frame();
@@ -1493,57 +1494,6 @@ bool vulkan::LogicalDevice::upsize_sparse_image(Image& image, InitialImageData* 
 	return true;
 }
 
-
-
-VkDescriptorSetLayout vulkan::LogicalDevice::request_descriptor_set_layout(const DescriptorSetLayout& layout)
-{
-	if (auto it = m_descriptorSetLayouts.find(layout); it != m_descriptorSetLayouts.end()) {
-		return it->second;
-	}
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-	for (uint32_t i = 0; i < layout.descriptors.size(); i++) {
-		const auto& descriptorLayout = layout.descriptors[i];
-		if (descriptorLayout.stages.any()) {
-			//VkSampler immutableSampler = layout.immutableSampler.test(i) ? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
-			VkSampler immutableSampler = VK_NULL_HANDLE;
-			assert(descriptorLayout.arraySize != 0);
-			bindings.push_back(VkDescriptorSetLayoutBinding
-				{
-					.binding = i,
-					.descriptorType = static_cast<VkDescriptorType>(descriptorLayout.type),
-					.descriptorCount = descriptorLayout.arraySize,
-					.stageFlags = static_cast<VkShaderStageFlags>(descriptorLayout.stages.to_ulong()),
-					.pImmutableSamplers = nullptr
-				}
-			);
-		}
-	}
-
-	VkDescriptorSetLayoutCreateInfo createInfo{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.flags = 0,
-		.bindingCount = static_cast<uint32_t>(bindings.size()),
-		.pBindings = bindings.data()
-	};
-
-	if (auto result = vkCreateDescriptorSetLayout(m_device, &createInfo, m_allocator, &descriptorSetLayout); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
-		}
-	}
-
-	m_descriptorSetLayouts.emplace(layout, descriptorSetLayout);
-	return descriptorSetLayout;
-}
 
 vulkan::DescriptorSetAllocator* vulkan::LogicalDevice::request_descriptor_set_allocator(const DescriptorSetLayout& layout)
 {

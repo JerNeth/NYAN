@@ -82,7 +82,7 @@ vulkan::AccelerationStructureBuilder::AccelerationStructureBuilder(LogicalDevice
 	r_device(device)
 {
 }
-void vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info, VkFormat positionFormat, size_t vertexSize, VkDeviceAddress positionOffset)
+void vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info, VkFormat positionFormat, VkDeviceSize vertexSize, VkDeviceSize positionOffset)
 {
 	assert(info.vertexBuffer && info.indexBuffer && "Must give valid buffers to AS build");
 	if (!info.vertexBuffer || !info.indexBuffer)

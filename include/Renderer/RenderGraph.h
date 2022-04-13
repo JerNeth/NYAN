@@ -88,7 +88,7 @@ namespace nyan {
 		Renderpass& operator=(Renderpass&&) = default;
 		void add_read(const std::string& name);
 		void add_attachment(const std::string& name, ImageAttachment attachment);
-		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.2f, 0.4f, 0.1f, 1.f});
+		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.48f, 0.66f, 0.35f, 1.f});
 		void add_depth_attachment(const std::string& name, ImageAttachment attachment);
 		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment);
 		void add_stencil_attachment(const std::string& name, ImageAttachment attachment);

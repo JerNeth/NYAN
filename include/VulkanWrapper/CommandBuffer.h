@@ -120,28 +120,12 @@ namespace vulkan {
 		//void begin_rendering()
 		//void bind_pipeline(pipelineIdentifier); -> also binds (actually used) input attachments according to renderpass
 		//PipelineReference current_pipeline(bindPoint);
-		void begin_rendering(const VkRenderingInfo* info);
+		void begin_rendering(const VkRenderingInfo& info);
 		void end_rendering();
 		GraphicsPipelineBind bind_graphics_pipeline(PipelineId pipelineIdentifier);
 		ComputePipelineBind bind_compute_pipeline(PipelineId pipelineIdentifier);
 		RaytracingPipelineBind bind_raytracing_pipeline(PipelineId pipelineIdentifier);
 
-
-
-
-		void begin_context();
-		void begin_graphics();
-		void begin_compute();
-		bool flush_graphics();
-		bool flush_compute();
-		bool flush_ray();
-		bool flush_graphics_pipeline();
-		bool flush_compute_pipeline();
-		bool flush_ray_pipeline();
-		void flush_descriptor_sets(VkPipelineBindPoint bindPoint);
-		void flush_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint);
-		void flush_bindless_descriptor_sets(uint32_t firstSet, uint32_t setCount, VkPipelineBindPoint bindPoint);
-		void rebind_descriptor_set(uint32_t set, VkPipelineBindPoint bindPoint);
 		void copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size);
 		void copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount);
 		void copy_buffer(const Buffer& dst, const Buffer& src);
@@ -159,73 +143,18 @@ namespace vulkan {
 		void image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout,
 			VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags,
 			VkPipelineStageFlags dstStages,VkAccessFlags dstAccessFlags);
-		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-		void draw_indexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
-		void dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ);
-		void trace_rays(uint32_t width, uint32_t height, uint32_t depth);
-
-		void push_constants(const void* data, VkDeviceSize offset, VkDeviceSize range);
-		void bind_index_buffer(IndexState indexState);
-		void init_viewport_and_scissor(const RenderpassCreateInfo& info);
-		void begin_render_pass(const RenderpassCreateInfo& renderpassInfo, VkSubpassContents contents= VK_SUBPASS_CONTENTS_INLINE);
-		void end_render_pass();
-		void submit_secondary_command_buffer(const CommandBuffer& secondary);
-		void set_vertex_attribute(uint32_t location, uint32_t binding, VkFormat format);
-		void set_scissor(VkRect2D scissor);
-		void set_viewport(VkViewport viewport);
-		VkRect2D get_scissor() const;
-		void bind_program(Program* program);
-		void next_subpass(VkSubpassContents subpass);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
-		void bind_storage_image(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view);
-		void bind_input_attachment(uint32_t set, uint32_t startBinding);
-		void bind_acceleration_structure(uint32_t set, uint32_t binding, uint32_t arrayIndex, const AccelerationStructure& accelerationStructure);
-		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, const Sampler* sampler);
-		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view, DefaultSampler sampler);
-		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, const ImageView& view);
-		void bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Sampler* sampler);
-		void bind_sampler(uint32_t set, uint32_t binding, uint32_t arrayIndex, DefaultSampler sampler);
-		void bind_texture(uint32_t set, uint32_t binding, uint32_t arrayIndex, VkImageView floatView, VkImageView integerView, VkImageLayout layout, Utility::UID bindingID);
-		void bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
-		void bind_uniform_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer);
-		void bind_storage_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer, VkDeviceSize offset, VkDeviceSize size);
-		void bind_storage_buffer(uint32_t set, uint32_t binding, uint32_t arrayIndex, const Buffer& buffer);
-		void bind_vertex_buffer(uint32_t binding, const Buffer& buffer, VkDeviceSize offset, VkVertexInputRate inputRate);
-		void bind_bindless_sets(uint32_t firstSet, VkDescriptorSet* sets, uint32_t setCount);
 		VkCommandBuffer get_handle() const noexcept;
+		operator VkCommandBuffer() const noexcept;
 		void end();
 		void begin_region(const char* name, const float* color = nullptr);
 		void end_region();
 		Type get_type() const noexcept;
-		void set_depth_test(VkBool32 enabled) noexcept;
-		void set_depth_write(VkBool32 enabled) noexcept;
-		void set_depth_compare(VkCompareOp compare) noexcept;
-		void set_cull_mode(VkCullModeFlags cullMode) noexcept;
-		void set_front_face(VkFrontFace frontFace) noexcept;
-		void set_topology(VkPrimitiveTopology topology) noexcept;
-		void set_blend_enable(VkBool32 enabled) noexcept;
-		void set_src_color_blend(VkBlendFactor blendFactor) noexcept;
-		void set_dst_color_blend(VkBlendFactor blendFactor) noexcept;
-		void set_src_alpha_blend(VkBlendFactor blendFactor) noexcept;
-		void set_dst_alpha_blend(VkBlendFactor blendFactor) noexcept;
-		void reset_pipeline_state() noexcept;
-		void set_polygon_mode(VkPolygonMode polygon_mode) noexcept;
-		void disable_depth() noexcept;
-		void enable_alpha() noexcept;
-
-		void set_dynamic_vertex_input(bool state) noexcept;
-		void set_dynamic_vertex_input_binding_stride(bool state) noexcept;
-
 	private:
 		/// *******************************************************************
 		/// Private functions
 		/// *******************************************************************
-		void bind_vertex_buffers() noexcept;
-		void invalidate_dynamic_state() noexcept;
-		void update_dynamic_state() noexcept;
-		void update_push_constants() noexcept;
-		void update_dynamic_vertex_state() noexcept;
 		/// *******************************************************************
 		/// Member variables
 		/// *******************************************************************
@@ -233,32 +162,8 @@ namespace vulkan {
 		VkCommandBuffer m_vkHandle;
 		Type m_type;
 		uint32_t m_threadIdx = 0;
-		bool m_tiny = false;
 		bool m_swapchainTouched = false;
 		bool m_isSecondary = false;
-		bool m_isCompute = true;
-		struct Data {
-			VkSubpassContents currentContents = VK_SUBPASS_CONTENTS_INLINE;
-			IndexState indexState{};
-			VertexState vertexState{};
-			Framebuffer* currentFramebuffer = nullptr;
-			Renderpass* currentRenderpass = nullptr;
-			VkPipeline currentPipeline = VK_NULL_HANDLE;
-			PipelineCompile pipelineState;
-			PipelineLayout* currentPipelineLayout = nullptr;
-			VkRect2D scissor{};
-			VkViewport viewport{};
-			std::array<ImageView*, MAX_ATTACHMENTS + 1> framebufferAttachments;
-			Utility::bitset<static_cast<size_t>(InvalidFlags::Size), InvalidFlags> invalidFlags;
-			Utility::bitset<MAX_DESCRIPTOR_SETS> bindlessDescriptorSets;
-			Utility::bitset<MAX_DESCRIPTOR_SETS> dirtyDescriptorSets;
-			Utility::bitset<MAX_DESCRIPTOR_SETS> dirtyDescriptorSetsDynamicOffsets;
-			std::array<VkDescriptorSet, MAX_DESCRIPTOR_SETS> allocatedDescriptorSets;
-			DynamicState dynamicState;
-			ResourceBindings resourceBindings;
-			std::vector<ResourceBinding> bindingBuffer;
-		};
-		std::unique_ptr<Data> m_data;
 	};
 	using CommandBufferHandle = Utility::ObjectHandle<CommandBuffer ,Utility::Pool<CommandBuffer>>;
 }

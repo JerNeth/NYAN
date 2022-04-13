@@ -97,7 +97,7 @@ namespace vulkan {
 		.stencil_back_compare_op {},
 
 		.cull_mode {VK_CULL_MODE_BACK_BIT},
-		.front_face {VK_FRONT_FACE_CLOCKWISE},
+		.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
 		.primitive_restart_enable {VK_FALSE},
 		.rasterizer_discard_enable {VK_FALSE},
 		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
@@ -111,6 +111,7 @@ namespace vulkan {
 			BlendAttachment {
 				.blend_enable {VK_FALSE},
 				.src_color_blend {},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 			}
 		}
 	};
@@ -125,12 +126,23 @@ namespace vulkan {
 				.src_color_blend {VK_BLEND_FACTOR_SRC_ALPHA},
 				.dst_color_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
 				.color_blend_op {VK_BLEND_OP_ADD},
-				.src_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
-				.dst_alpha_blend {VK_BLEND_FACTOR_ZERO},
-				.alpha_blend_op {VK_BLEND_OP_ADD}
+				.src_alpha_blend {VK_BLEND_FACTOR_SRC_ALPHA},
+				.dst_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+				.alpha_blend_op {VK_BLEND_OP_ADD},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 			}
 		}
 	};
+	// Blend Logic Pseudo Code
+	//if (blendEnable) {
+	//	finalColor.rgb = (srcColorBlendFactor * newColor.rgb) <colorBlendOp> (dstColorBlendFactor * oldColor.rgb);
+	//	finalColor.a = (srcAlphaBlendFactor * newColor.a) <alphaBlendOp> (dstAlphaBlendFactor * oldColor.a);
+	//}
+	//else {
+	//	finalColor = newColor;
+	//}
+
+	//finalColor = finalColor & colorWriteMask;
 	struct RenderingCreateInfo {
 		uint32_t colorAttachmentCount;
 		uint32_t viewMask = 0;

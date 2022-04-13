@@ -6,11 +6,7 @@
 #include "Renderer.h"
 
 namespace nyan {
-	//struct Mesh {
-	//	uint32_t mesh_id;
-	//	uint32_t material_id;
-	//	uint32_t transform_id;
-	//};
+	
 	//class MeshRenderer : public Renderer {
 	//public:
 	//	void 

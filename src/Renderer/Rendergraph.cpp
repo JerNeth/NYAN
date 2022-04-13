@@ -403,6 +403,7 @@ void nyan::Rendergraph::execute()
 					}
 					pass.m_renderInfo.renderArea.extent.width = Math::max(pass.m_renderInfo.renderArea.extent.width, width);
 					pass.m_renderInfo.renderArea.extent.height = Math::max(pass.m_renderInfo.renderArea.extent.height, height);
+					pass.m_renderInfo.layerCount = Math::max(pass.m_renderInfo.layerCount, resource.handle->get_image()->get_info().arrayLayers);
 				}
 			}
 			if (pass.m_depth != InvalidResourceId) {
@@ -458,7 +459,7 @@ void nyan::Rendergraph::execute()
 		cmd->begin_region(pass.m_name.c_str());
 		pass.apply_pre_barriers(cmd);
 		if (pass.get_type() == Renderpass::Type::Graphics)
-			cmd->begin_rendering(&pass.m_renderInfo);
+			cmd->begin_rendering(pass.m_renderInfo);
 		pass.execute(cmd);
 		if (pass.get_type() == Renderpass::Type::Graphics)
 			cmd->end_rendering();

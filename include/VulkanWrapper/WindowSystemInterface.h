@@ -36,7 +36,8 @@ namespace vulkan {
 		std::vector<VkImage> m_swapchainImages;
 		VkExtent2D m_swapchainExtent{};
 		VkPresentModeKHR m_preferredPresentMode = VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR;
-		VkFormat m_preferredSwapchainFormat = VK_FORMAT_B8G8R8A8_SRGB;
+		VkFormat m_preferredSwapchainFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+		//VkFormat m_preferredSwapchainFormat = VK_FORMAT_B8G8R8A8_SRGB;//VK_FORMAT_A2B10G10R10_UNORM_PACK32;//VK_FORMAT_B8G8R8A8_UNORM
 		uint32_t m_swapchainImageIndex = 0;
 		bool m_swapchainImageAcquired = false;
 		bool m_vsyncEnabled = false;

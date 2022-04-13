@@ -1,5 +1,4 @@
 #include "DescriptorSet.h"
-#include "DescriptorSet.h"
 #include "LogicalDevice.h"
 #include <numeric>
 vulkan::DescriptorSetAllocator::DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout) :
@@ -16,7 +15,7 @@ r_device(parent)
 		if (descriptorLayout.stages.any()) {
 			uint32_t poolSize = descriptorLayout.arraySize * MAX_SETS_PER_POOL;
 			//VkSampler immutableSampler = layout.immutableSampler.test(i) ? r_device.get_default_sampler(layout.immutableSamplers.get(i))->get_handle() : VK_NULL_HANDLE;
-			VkSampler immutableSampler = VK_NULL_HANDLE;
+			//VkSampler immutableSampler = VK_NULL_HANDLE;
 			assert(descriptorLayout.arraySize != 0);
 			bindings.push_back(VkDescriptorSetLayoutBinding
 				{
@@ -289,7 +288,90 @@ uint32_t vulkan::DescriptorSet::set_acceleration_structure(const VkAccelerationS
 	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
 	return arrayElement;
 }
-std::vector<uint32_t> vulkan::DescriptorSet::set_storage_buffer(const std::vector<VkDescriptorBufferInfo>& bufferInfos) 
+void vulkan::DescriptorSet::set_storage_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo)
+{
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = m_vkHandle,
+		.dstBinding = storageBufferBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(storageBufferBinding),
+		.pBufferInfo = &bufferInfo,
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+void vulkan::DescriptorSet::set_uniform_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo)
+{
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = m_vkHandle,
+		.dstBinding = uniformBufferBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(uniformBufferBinding),
+		.pBufferInfo = &bufferInfo,
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+void vulkan::DescriptorSet::set_sampler(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
+{
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = m_vkHandle,
+		.dstBinding = samplerBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(samplerBinding),
+		.pImageInfo = &imageInfo,
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+void vulkan::DescriptorSet::set_sampled_image(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
+{
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = m_vkHandle,
+		.dstBinding = sampledImageBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(sampledImageBinding),
+		.pImageInfo = &imageInfo,
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+void vulkan::DescriptorSet::set_storage_image(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
+{
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.dstSet = m_vkHandle,
+		.dstBinding = storageImageBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(storageImageBinding),
+		.pImageInfo = &imageInfo,
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+void vulkan::DescriptorSet::set_acceleration_structure(uint32_t idx, const VkAccelerationStructureKHR& accelerationStructure)
+{
+	VkWriteDescriptorSetAccelerationStructureKHR accWrite{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+		.accelerationStructureCount = 1,
+		.pAccelerationStructures = &accelerationStructure
+	};
+	VkWriteDescriptorSet write{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.pNext = &accWrite,
+		.dstSet = m_vkHandle,
+		.dstBinding = accelerationStructureBinding,
+		.dstArrayElement = idx,
+		.descriptorCount = 1,
+		.descriptorType = bindless_binding_to_type(accelerationStructureBinding)
+	};
+	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+}
+std::vector<uint32_t> vulkan::DescriptorSet::set_storage_buffer(const std::vector<VkDescriptorBufferInfo>& bufferInfos)
 {
 	std::vector<uint32_t> arrayElements(bufferInfos.size());
 
@@ -503,7 +585,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		{
 			.binding = samplerBinding,
 			.descriptorType = DescriptorSet::bindless_binding_to_type(samplerBinding),
-			.descriptorCount = m_createInfo.sampled_image_count,
+			.descriptorCount = m_createInfo.sampler_count,
 			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
@@ -511,7 +593,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		{
 			.binding = sampledImageBinding,
 			.descriptorType = DescriptorSet::bindless_binding_to_type(sampledImageBinding),
-			.descriptorCount = m_createInfo.storage_image_count,
+			.descriptorCount = m_createInfo.sampled_image_count,
 			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
@@ -519,7 +601,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		{
 			.binding = storageImageBinding,
 			.descriptorType = DescriptorSet::bindless_binding_to_type(storageImageBinding),
-			.descriptorCount = m_createInfo.sampler_count,
+			.descriptorCount = m_createInfo.storage_image_count,
 			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
