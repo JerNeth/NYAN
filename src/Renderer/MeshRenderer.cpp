@@ -36,13 +36,13 @@ void nyan::MeshRenderer::create_pipeline()
 		VK_FORMAT_R32G32B32_SFLOAT,
 	},
 	.shaderInstances {
-		shaderManager.get_shader_instance_id("staticTangent_vert"),
-		shaderManager.get_shader_instance_id("staticTangent_frag")
+		r_shaderManager.get_shader_instance_id("staticTangent_vert"),
+		r_shaderManager.get_shader_instance_id("staticTangent_frag")
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
 	config.dynamicState.depth_write_enable = VK_FALSE;
 	config.dynamicState.depth_test_enable = VK_FALSE;
 	config.dynamicState.cull_mode = VK_CULL_MODE_NONE;
-	m_staticTangentPipeline = pass.add_pipeline(config);
+	m_staticTangentPipeline = r_pass.add_pipeline(config);
 }
