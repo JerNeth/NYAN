@@ -267,3 +267,56 @@ std::optional<vulkan::AccelerationStructureHandle> nyan::InstanceManager::get_tl
 //
 //	return &res.first->second;
 //}
+
+nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures) :
+	r_device(device),
+	m_instanceManager(device, buildAccelerationStructures),
+	m_buffer(r_device.create_buffer(vulkan::BufferInfo{ .size {sizeof(SceneData)},.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} ,.offset {0}, .memoryUsage {VMA_MEMORY_USAGE_CPU_TO_GPU} }, {})),
+	m_bind(r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{.buffer = m_buffer->get_handle(), .range = m_buffer->get_size()})),
+	m_dirtyScene(true)
+{
+
+}
+
+
+
+InstanceManager& nyan::SceneManager::get_instance_manager()
+{
+	return m_instanceManager;
+}
+
+const InstanceManager& nyan::SceneManager::get_instance_manager() const
+{
+	return m_instanceManager;
+}
+
+void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view)
+{
+	m_sceneData.view = view;
+	m_dirtyScene = true;
+}
+
+void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj)
+{
+	m_sceneData.proj = proj;
+	m_dirtyScene = true;
+}
+
+uint32_t nyan::SceneManager::get_bind() const
+{
+	return m_bind;
+}
+
+void nyan::SceneManager::update()
+{
+
+	if (m_dirtyScene) {
+		auto size = sizeof(SceneData);
+		auto* map = m_buffer->map_data();
+		std::memcpy(map, &m_sceneData, size);
+		m_buffer->flush(0, size);
+		m_dirtyScene = false;
+	}
+	m_instanceManager.upload();
+	m_instanceManager.build();
+}

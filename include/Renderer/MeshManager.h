@@ -90,6 +90,28 @@ namespace nyan {
 		bool m_buildAccs;
 		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
 	};
+
+	class SceneManager {
+		struct SceneData {
+			Math::Mat<float, 4, 4, true> view;
+			Math::Mat<float, 4, 4, true> proj;
+		};
+	public:
+		SceneManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
+		InstanceManager& get_instance_manager();
+		const InstanceManager& get_instance_manager() const;
+		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);
+		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);
+		uint32_t get_bind() const;
+		void update();
+	private:
+		vulkan::LogicalDevice& r_device;
+		InstanceManager m_instanceManager;
+		vulkan::BufferHandle m_buffer;
+		uint32_t m_bind;
+		SceneData m_sceneData;
+		bool m_dirtyScene;
+	};
 }
 
 #endif !RDMESHMANAGER_H

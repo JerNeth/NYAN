@@ -22,13 +22,14 @@ int main() {
 	nyan::TextureManager textureManager(device);
 	nyan::MaterialManager materialManager(device, textureManager);
 	nyan::MeshManager meshManager(device);
-	nyan::InstanceManager instanceManager(device);
+	nyan::SceneManager sceneManager(device);
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("cube.fbx", meshes, materials);
 
-	
+	sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, 5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 0, 1 }));
+	sceneManager.set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
 
 	for (const auto& a : materials) {
@@ -48,7 +49,7 @@ int main() {
 				.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
 			};
 
-		registry.emplace<InstanceId>(entity, instanceManager.add_instance(instance));
+		registry.emplace<InstanceId>(entity, sceneManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
 				.position{},
@@ -87,13 +88,12 @@ int main() {
 		{
 			auto view = registry.view<const InstanceId, const Transform>();
 			for (const auto& [entity, instanceId, transform] : view.each()) {
-				instanceManager.set_transform(instanceId,
+				sceneManager.get_instance_manager().set_transform(instanceId,
 					Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position));
 			}
 			meshManager.build();
 			materialManager.upload();
-			instanceManager.build();
-			instanceManager.upload();
+			sceneManager.update();
 			imgui.next_frame();
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)

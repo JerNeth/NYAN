@@ -38,6 +38,9 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 
 nyan::MaterialId nyan::MaterialManager::get_material(const std::string& name)
 {
+	if (m_materialIndex.find(name) == m_materialIndex.end()) {
+		Utility::log(std::format("Couldn't get material \"{}\"", name));
+	}
 	assert(m_materialIndex.find(name) != m_materialIndex.end());
 	return m_materialIndex[name];
 }

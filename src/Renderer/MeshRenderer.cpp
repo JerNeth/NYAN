@@ -40,8 +40,7 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.materialId {materialId},
 				.instanceBinding {1},
 				.instanceId {instanceId},
-				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{5, 5, 5}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
-				.proj {Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f) },
+				.sceneBinding {2},
 			};
 			render(pipelineBind, meshID, instance);
 		}

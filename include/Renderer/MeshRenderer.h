@@ -25,8 +25,7 @@ namespace nyan {
 		uint32_t materialId;
 		uint32_t instanceBinding;
 		uint32_t instanceId;
-		Math::Mat<float, 4, 4, true> view;
-		Math::Mat<float, 4, 4, true> proj;
+		uint32_t sceneBinding;
 	};
 	class MeshRenderer{
 	public:

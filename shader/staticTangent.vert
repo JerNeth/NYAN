@@ -7,8 +7,7 @@ layout(std430, push_constant) uniform PushConstants
     uint materialId;
     uint transformBinding;
     uint transformId;
-    layout(column_major) mat4x4 view;
-    layout(column_major) mat4x4 proj;
+    uint sceneBinding;
 } constants;
 
 struct Transform {
@@ -20,6 +19,10 @@ struct Transform {
 layout(set = 0, binding = 0) buffer Transforms  {
 	Transform transforms[];
 } transforms [4096];
+layout(set = 0, binding = 0) buffer Scenes  {
+    layout(column_major) mat4x4 view;
+    layout(column_major) mat4x4 proj;
+} scene [4096];
 //layout(set = 0, binding = 0) buffer ssbos [];
 //layout(set = 0, binding = 1) uniform ubos[];
 //layout(set = 0, binding = 2) uniform sampler samplers[];
@@ -77,7 +80,7 @@ void main() {
 //										vec3(-0.5f, 0.5f, -0.5f )
 //										);
 	mat4x3 model = fetchTransformMatrix(constants.transformBinding,constants.transformId);
-	gl_Position = constants.proj * constants.view * vec4( model *vec4( inPosition, 1.0), 1.0);
+	gl_Position = scene[constants.sceneBinding].proj * scene[constants.sceneBinding].view * vec4( model *vec4( inPosition, 1.0), 1.0);
     vec3 tangent = vec3(model * vec4(inTangent.xyz, 0));
     vec3 normal = vec3(model * vec4(inNormal.xyz, 0));
     vec3 bitangent = cross(normal, tangent);

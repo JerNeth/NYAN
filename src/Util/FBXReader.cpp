@@ -37,12 +37,12 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 			
 			nyan::MaterialData material
 			{
-				.name = mat->GetName(),
-				.ambientColor = Math::vec3{phong->Ambient.Get()[0], phong->Ambient.Get()[1], phong->Ambient.Get()[2]},
-				.diffuseColor = Math::vec3{phong->Diffuse.Get()[0], phong->Diffuse.Get()[1], phong->Diffuse.Get()[2]},
-				.ambientFactor {static_cast<float>(phong->AmbientFactor.Get())},
-				.diffuseFactor {static_cast<float>(phong->DiffuseFactor.Get())},
-				.shininessFacor {static_cast<float>(phong->Shininess.Get())},
+				.name { mat->GetName() },
+				.ambientColor { Math::vec3{phong->Ambient.Get()[0], phong->Ambient.Get()[1], phong->Ambient.Get()[2]} },
+				.diffuseColor { Math::vec3{phong->Diffuse.Get()[0], phong->Diffuse.Get()[1], phong->Diffuse.Get()[2]} },
+				.ambientFactor { static_cast<float>(phong->AmbientFactor.Get()) },
+				.diffuseFactor { static_cast<float>(phong->DiffuseFactor.Get()) },
+				.shininessFacor { static_cast<float>(phong->Shininess.Get()) },
 			};
 			for (int i = 0; i < phong->Diffuse.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Diffuse.GetSrcObject(i);
@@ -119,11 +119,11 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 			fbxsdk::FbxSurfaceMaterial* mat= materialArray.GetAt(i);
 			retMeshes.push_back(nyan::MeshData
 			{
-				.name = node->GetName() + std::string(mat->GetName()),
-				.material = mat->GetName(),
-				.translate = Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] },
-				.rotate = Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]},
-				.scale = Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]},
+				.name { node->GetName() + std::string(mat->GetName()) },
+				.material { mat->GetName() },
+				.translate { Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] } },
+				.rotate { Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]} },
+				.scale { Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]} },
 			});
 		}
 		
