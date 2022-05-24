@@ -48,38 +48,38 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 				auto* obj = phong->Diffuse.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
 				material.diffuseTex = tex->GetRelativeFileName();
-				std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->Ambient.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Ambient.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
-				std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->Bump.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Bump.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
-				std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->Emissive.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Emissive.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
-				std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->NormalMap.GetSrcObjectCount(); i++) {
 				auto* obj = phong->NormalMap.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
 				material.normalTex = tex->GetRelativeFileName();
-				std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->Reflection.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Reflection.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
-				std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
 			}
 			for (int i = 0; i < phong->Shininess.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Shininess.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
-				std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
+				//std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
 			}
 			retMats.push_back(material);
 		}

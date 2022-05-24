@@ -848,6 +848,8 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		.groupCount { static_cast<uint32_t>(groupCreateInfos.size()) },
 		.pGroups { groupCreateInfos.data() },
 		.maxPipelineRayRecursionDepth { config.recursionDepth },
+		.pLibraryInfo { nullptr },
+		.pLibraryInterface { nullptr },
 		.pDynamicState { nullptr },
 		.layout { m_layout },
 		.basePipelineHandle { VK_NULL_HANDLE },

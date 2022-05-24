@@ -21,8 +21,10 @@ uint32_t nyan::TextureManager::get_texture_idx(const std::string& name, const st
 {
 	if (const auto& res = m_textureIndex.find(name); res != m_textureIndex.end())
 		return res->second;
+	Utility::log(std::format("Couldn't load \"{}\" using \"{}\" instead", name, defaultTex));
 	if (const auto& res = m_textureIndex.find(defaultTex); res != m_textureIndex.end())
 		return res->second;
+	Utility::log(std::format("Couldn't load \"{}\"", defaultTex));
 	return 0;
 }
 void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMip)
@@ -84,7 +86,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 		auto image = r_device.create_sparse_image(info, &data);
 
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		Utility::ImageReader::free_image(data.data);
@@ -95,7 +97,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 
 		r_device.wait_idle();
 
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		Utility::ImageReader::free_image(data.data);
@@ -125,7 +127,7 @@ vulkan::ImageHandle nyan::TextureManager::create_dds_image(const std::filesystem
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, initalImageData.data());
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		return image;
@@ -133,7 +135,7 @@ vulkan::ImageHandle nyan::TextureManager::create_dds_image(const std::filesystem
 	else {
 		auto image = r_device.create_image(info, initalImageData.data());
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		return image;
