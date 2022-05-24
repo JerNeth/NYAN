@@ -21,10 +21,10 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall.fbx", meshes, materials);
 
 	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 0, 1 }));
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 500, 500}, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
@@ -36,6 +36,31 @@ int main() {
 			renderManager.get_texture_manager().request_texture(a.normalTex);
 		renderManager.get_material_manager().add_material(a);
 	}
+
+	auto parent = registry.create();
+	registry.emplace<Transform>(parent,
+		Transform{
+			.position{},
+			.scale{},
+			.orientation{},
+		});
+	auto camera = registry.create();
+	registry.emplace<Transform>(camera,
+		Transform{
+			.position{},
+			.scale{},
+			.orientation{},
+		});
+	registry.emplace<PerspectiveCamera>(camera, 
+		PerspectiveCamera {
+			.nearPlane {.1},
+			.farPlane {10000},
+			.fovX {90.},
+			.aspect {9. / 16.},
+			.forward {1.f, 0.f ,0.f},
+			.up {0.f, 1.f ,0.f},
+		});
+	renderManager.set_primary_camera(camera);
 	for (const auto& a : meshes) {
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
 		auto entity = registry.create();
@@ -49,13 +74,16 @@ int main() {
 		instance.instance.instanceCustomIndex = meshId;
 
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
-		registry.emplace<Transform>(entity,
-			Transform{
-				.position{},
-				.scale{},
-				.orientation{},
+		//registry.emplace<Transform>(entity,
+		//	Transform{
+		//		.position{},
+		//		.scale{},
+		//		.orientation{},
+		//	});
+		registry.emplace<Parent>(entity,
+			Parent{
+				.parent {parent},
 			});
-
 	} 
 
 

@@ -14,6 +14,14 @@ namespace MM {
 		ImGui::DragFloat("yaw", &t.orientation.y(), 0.1f);
 		ImGui::DragFloat("roll", &t.orientation.z(), 0.1f);
 	}
+	template <>
+	void ComponentEditorWidget<nyan::PerspectiveCamera>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& t = reg.get<nyan::PerspectiveCamera>(e);
+		ImGui::DragFloat("near", &t.nearPlane, 0.1f);
+		ImGui::DragFloat("far", &t.farPlane, 0.1f);
+		ImGui::DragFloat("fov", &t.fovX, 0.1f);
+	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),

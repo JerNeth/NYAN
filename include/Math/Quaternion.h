@@ -12,19 +12,19 @@ namespace Math {
 	class Quaternion {
 	public:
 		using value_type = Scalar; 
-		Quaternion() : m_real(), m_imaginary() {
+		constexpr Quaternion() : m_real(), m_imaginary() {
 
 		}
-		explicit Quaternion(Scalar real, Vec<Scalar, 3> imaginary) : m_real(real), m_imaginary(imaginary) {
+		constexpr explicit Quaternion(Scalar real, Vec<Scalar, 3> imaginary) : m_real(real), m_imaginary(imaginary) {
 
 		}
-		explicit Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
+		constexpr explicit Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
 
 		}
-		Scalar get_real() const {
+		constexpr Scalar get_real() const {
 			return m_real;
 		}
-		const Vec<Scalar, 3>& get_imaginary() const {
+		constexpr const Vec<Scalar, 3>& get_imaginary() const {
 			return m_imaginary;
 		}
 		// Expects Angles in Degrees
@@ -59,43 +59,43 @@ namespace Math {
 			m_imaginary[1] = Scalar(sy * cp * sr + cy * sp * cr);
 			m_imaginary[2] = Scalar(sy * cp * cr - cy * sp * sr);
 		}
-		friend inline bool operator==(const Quaternion& lhs, const Quaternion& rhs) noexcept {
+		constexpr friend inline bool operator==(const Quaternion& lhs, const Quaternion& rhs) noexcept {
 			return (lhs.m_real == rhs.m_real) && (lhs.m_imaginary == rhs.m_imaginary);
 		}
-		friend inline bool close(const Quaternion& lhs, const Quaternion& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
+		constexpr friend inline bool close(const Quaternion& lhs, const Quaternion& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
 			return close(lhs.m_real, rhs.m_real, eps) && close(lhs.m_imaginary, rhs.m_imaginary, eps);
 		}
-		friend inline Quaternion operator+(const Quaternion& lhs, const Quaternion& rhs)  noexcept {
+		constexpr friend inline Quaternion operator+(const Quaternion& lhs, const Quaternion& rhs)  noexcept {
 			Quaternion result;
 			result.m_real = lhs.m_real + rhs.m_real;
 			result.m_imaginary = lhs.m_imaginary + rhs.m_imaginary;
 			return result;
 		}
-		friend inline Quaternion operator-(const Quaternion& lhs, const Quaternion& rhs)  noexcept {
+		constexpr friend inline Quaternion operator-(const Quaternion& lhs, const Quaternion& rhs)  noexcept {
 			Quaternion result;
 			result.m_real = lhs.m_real - rhs.m_real;
 			result.m_imaginary = lhs.m_imaginary - rhs.m_imaginary;
 			return result;
 		}
-		friend inline Quaternion operator*(const Quaternion& lhs, const Quaternion& rhs) noexcept {
+		constexpr friend inline Quaternion operator*(const Quaternion& lhs, const Quaternion& rhs) noexcept {
 			Quaternion result;
 			result.m_real = lhs.m_real * rhs.m_real - lhs.m_imaginary.dot(rhs.m_imaginary);
 			result.m_imaginary = lhs.m_real * rhs.m_imaginary + rhs.m_real * lhs.m_imaginary + cross(lhs.m_imaginary, rhs.m_imaginary);
 			return result;
 		}
-		friend inline Quaternion operator*(const Quaternion& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Quaternion operator*(const Quaternion& lhs, const Scalar& rhs) noexcept {
 			Quaternion result;
 			result.m_real = lhs.m_real * rhs;
 			result.m_imaginary = lhs.m_imaginary * rhs;
 			return result;
 		}
-		inline std::string convert_to_string() {
+		constexpr inline std::string convert_to_string() {
 			std::string result("(");
 			result += std::to_string(m_real) + ", ";
 			result += m_imaginary.convert_to_string() + ")";
 			return result;
 		}
-		friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
+		constexpr friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
 			//Vec<Scalar, 3> result = Scalar(2) * dot(m_imaginary, rhs) * m_imaginary + (square(m_real) - dot(m_imaginary, m_imaginary)) * rhs + Scalar(2) * m_real * (cross(m_imaginary, rhs));
 			return Scalar(2) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(rhs);
 			/* As suggested by Horn, I don't know which one is right
@@ -116,52 +116,52 @@ namespace Math {
 			});
 			*/
 		}
-		friend inline Vec<Scalar, 4> operator*(const Quaternion& lhs, const Vec<Scalar, 4>& rhs) noexcept {
+		constexpr friend inline Vec<Scalar, 4> operator*(const Quaternion& lhs, const Vec<Scalar, 4>& rhs) noexcept {
 			//Quaternion result = lhs * Quaternion(0, Vec<Scalar, 3>({ rhs[0], rhs[1], rhs[2] })) * lhs.inverse();
 			//return Vec<Scalar, 4>({result.m_imaginary[0], result.m_imaginary[1], result.m_imaginary[2], Scalar(1)});
 			auto tmp = Vec<Scalar, 3>(rhs);
 			tmp = Scalar(2) * lhs.m_imaginary.dot(tmp) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * tmp + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(tmp);
 			return Vec<Scalar, 4>({ tmp.x(), tmp.y(), tmp.z(), rhs[3]});
 		}
-		friend inline Quaternion operator/(const Quaternion& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Quaternion operator/(const Quaternion& lhs, const Scalar& rhs) noexcept {
 			Quaternion result;
 			result.m_real = lhs.m_real / rhs;
 			result.m_imaginary = lhs.m_imaginary / rhs;
 			return result;
 		}
-		inline Quaternion& operator+=(const Quaternion& rhs) noexcept {
+		constexpr inline Quaternion& operator+=(const Quaternion& rhs) noexcept {
 			m_real += rhs.m_real;
 			m_imaginary += rhs.m_imaginary;
 			return *this;
 		}
-		inline Quaternion& operator-=(const Quaternion& rhs) noexcept {
+		constexpr inline Quaternion& operator-=(const Quaternion& rhs) noexcept {
 			m_real -= rhs.m_real;
 			m_imaginary -= rhs.m_imaginary;
 			return *this;
 		}
-		inline Quaternion& operator*=(const Quaternion& rhs) noexcept {
+		constexpr inline Quaternion& operator*=(const Quaternion& rhs) noexcept {
 			m_real = m_real * rhs.m_real - dot(m_imaginary, rhs.m_imaginary);
 			m_imaginary = m_real * rhs.m_imaginary + rhs.m_real * m_imaginary + cross(m_imaginary, rhs.m_imaginary);
 			return *this;
 		}
-		inline Quaternion& operator*=(const Scalar& rhs) noexcept {
+		constexpr inline Quaternion& operator*=(const Scalar& rhs) noexcept {
 			m_real *= rhs;
 			m_imaginary *= rhs;
 			return *this;
 		}
-		inline Quaternion& operator/=(const Scalar& rhs) noexcept {
+		constexpr inline Quaternion& operator/=(const Scalar& rhs) noexcept {
 			m_real /= rhs;
 			m_imaginary /= rhs;
 			return *this;
 		}
-		inline Scalar dot(const Quaternion& rhs) noexcept {
+		constexpr inline Scalar dot(const Quaternion& rhs) noexcept {
 			return m_imaginary.dot(rhs.m_imaginary) + m_real * rhs.m_real;
 		}
-		friend inline Scalar dot(Quaternion& lhs, Quaternion& rhs) {
+		constexpr friend inline Scalar dot(Quaternion& lhs, Quaternion& rhs) {
 			//return lhs.m_imaginary.dot(rhs.m_imaginary) + lhs.m_real * rhs.m_real;
 			return lhs.m_imaginary.dot(rhs.m_imaginary) + lhs.m_real * rhs.m_real;
 		}
-		inline Scalar squared_norm() const noexcept {
+		constexpr inline Scalar squared_norm() const noexcept {
 			return m_real * m_real + m_imaginary.L2_square();
 		}
 		inline Scalar norm() const noexcept {
@@ -174,7 +174,7 @@ namespace Math {
 			return *this;
 		}
 		inline Quaternion inverse() const {
-			Quaternion result;
+			Quaternion result{};
 			Scalar inverse_magnitude = Scalar(1) / norm();
 			result.m_real = m_real * inverse_magnitude;
 			result.m_imaginary = -m_imaginary * inverse_magnitude;

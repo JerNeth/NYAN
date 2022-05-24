@@ -8,9 +8,14 @@
 #include "RenderGraph.h"
 #include "MaterialManager.h"
 #include "TextureManager.h"
+#include "Camera.h"
 #include "entt/entt.hpp"
 
 namespace nyan {
+
+	struct Parent {
+		entt::entity parent{ entt::null };
+	};
 	class RenderManager {
 	public:
 		RenderManager(vulkan::LogicalDevice& device, bool useRaytracing = false);
@@ -28,6 +33,7 @@ namespace nyan {
 		const nyan::SceneManager& get_scene_manager() const;
 		entt::registry& get_registry();
 		const entt::registry& get_registry() const;
+		void set_primary_camera(entt::entity entity);
 		void update();
 	private:
 		vulkan::LogicalDevice& r_device;
@@ -41,6 +47,7 @@ namespace nyan {
 		nyan::SceneManager m_sceneManager;
 
 		bool m_useRayTracing;
+		entt::entity m_primaryCamera;
 	};
 }
 #endif !RDRENDERMANAGER_H

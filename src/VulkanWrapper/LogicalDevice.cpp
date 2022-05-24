@@ -1712,6 +1712,7 @@ void vulkan::LogicalDevice::create_default_sampler()
 			createInfo.minFilter = VK_FILTER_NEAREST;
 			break;
 		}
+
 		switch (type) {
 		case DefaultSampler::LinearShadow:
 		case DefaultSampler::NearestShadow:

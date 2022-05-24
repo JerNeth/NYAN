@@ -8,7 +8,8 @@ std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::
 		throw std::runtime_error("File does not exist " +filename.string());
 	if (filename.extension().compare(".png") &&
 		filename.extension().compare(".jpg") &&
-		filename.extension().compare(".hdr"))
+		filename.extension().compare(".hdr") &&
+		filename.extension().compare(".tga"))
 		throw std::runtime_error("Not supported file extension " + filename.extension().string());
 	int width, height, channels;
 	vulkan::InitialImageData data 

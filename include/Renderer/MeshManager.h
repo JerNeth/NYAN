@@ -37,15 +37,6 @@ namespace nyan {
 		Math::vec3 scale;
 		Math::vec3 orientation;
 	};
-	//struct MeshData {
-	//	uint32_t materialBinding;
-	//	uint32_t materialId;
-	//	VkDeviceAddress indicesAddress;
-	//	VkDeviceAddress positionsAddress;
-	//	VkDeviceAddress uvAddress;
-	//	VkDeviceAddress normalsAddress;
-	//	VkDeviceAddress tangentsAddress;
-	//};
 
 	struct StaticTangentVulkanMesh {
 		uint32_t indexCount;
@@ -149,6 +140,7 @@ namespace nyan {
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);
 		uint32_t get_binding() const;
 		void update();
+		void upload();
 	private:
 		vulkan::LogicalDevice& r_device;
 		vulkan::BufferHandle m_buffer;

@@ -11,6 +11,7 @@ namespace Math {
 	template<ScalarT Scalar, size_t Size> class Vec;
 	template<ScalarT Scalar> class Quaternion;
 
+	//Type, rows, columns, column_major
 	template<
 		ScalarT Scalar,
 		size_t Size_y, //height, row_count, n rows
@@ -20,15 +21,13 @@ namespace Math {
 	{
 	public:
 		using value_type = Scalar;
-		Mat() : m_data() {
-			for (size_t i = 0; i < Size_x * Size_y; i++)
-				m_data[i] = Scalar();
+		constexpr Mat() : m_data() {
 		}
-		explicit Mat(const Scalar& scalar) : m_data() {
+		constexpr explicit Mat(const Scalar& scalar) : m_data() {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = scalar;
 		}
-		explicit Mat(const Quaternion<Scalar>& quaternion) {
+		constexpr explicit Mat(const Quaternion<Scalar>& quaternion) : m_data() {
 			static_assert((Size_x == 3 || Size_x == 4) && (Size_y == 3 || Size_y == 4), "Rotation matrices from Quaternions are inherently 3D or 3D homogeneous");
 			Scalar s2 = Scalar(2) / quaternion.squared_norm();
 			
@@ -87,7 +86,7 @@ namespace Math {
 				at(3, 3) = Scalar(1);
 			}
 		}
-		explicit Mat(const Vec<Scalar, Size_x>& vec) : m_data() {
+		constexpr explicit Mat(const Vec<Scalar, Size_x>& vec) : m_data() {
 			static_assert(Size_y == 1 || Size_x == 1);
 			if constexpr (Size_y == 1) {
 				for (size_t i = 0; i < Size_x; i++)
@@ -99,7 +98,7 @@ namespace Math {
 			}
 		}
 		template<typename T>
-		explicit Mat(const T(&list)[Size_x*Size_y]) : m_data() {
+		constexpr explicit Mat(const T(&list)[Size_x*Size_y]) : m_data() {
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = 0; x < Size_x; x++) {
 					//Memory layout differs from user expectation
@@ -118,62 +117,62 @@ namespace Math {
 				}
 			}
 			else {
-				std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
+				std::array<Scalar, sizeof...(Args)> list = {static_cast<Scalar>(args)... };
 				for (size_t y = 0; y < Size_y; y++) {
 					for (size_t x = 0; x < Size_x; x++) {
-						at(x, y) = Scalar(list[Math::at<Size_x, false>(x, y)]);
+						at(x, y) = Scalar{ list[Math::at<Size_x, false>(x, y)] };
 					}
 				}
 			}
 		}
 		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other, bool column_major_other>
-		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other, column_major_other>& other) : m_data() {
+		constexpr explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other, column_major_other>& other) : m_data() {
 			for (size_t y = 0; y < min(Size_y, Size_y_other); y++) {
 				for (size_t x = 0; x < min(Size_x, Size_x_other); x++) {
 					at(x, y) = other.at(x, y);
 				}
 			}
 		}
-		friend inline Mat operator+(const Mat& lhs, const Mat& rhs) noexcept {
+		constexpr friend inline Mat operator+(const Mat& lhs, const Mat& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] + rhs.m_data[i];
 			return result;
 		}
-		friend inline Mat operator-(const Mat& lhs, const Mat& rhs) noexcept {
+		constexpr friend inline Mat operator-(const Mat& lhs, const Mat& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] - rhs.m_data[i];
 			return result;
 		}
-		friend inline Mat operator+(const Mat& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Mat operator+(const Mat& lhs, const Scalar& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] + rhs;
 			return result;
 		}
-		friend inline Mat operator-(const Mat& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Mat operator-(const Mat& lhs, const Scalar& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] - rhs;
 			return result;
 		}
-		friend inline Mat operator*(const Mat& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Mat operator*(const Mat& lhs, const Scalar& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] * rhs;
 			return result;
 		}
-		friend inline Mat operator*(const Scalar& lhs, const Mat& rhs) noexcept {
+		constexpr friend inline Mat operator*(const Scalar& lhs, const Mat& rhs) noexcept {
 			return rhs * lhs;
 		}
-		friend inline Mat operator/(const Mat& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline Mat operator/(const Mat& lhs, const Scalar& rhs) noexcept {
 			Mat result;
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				result.m_data[i] = lhs.m_data[i] / rhs;
 			return result;
 		}
-		inline std::string convert_to_string() {
+		constexpr inline std::string convert_to_string() {
 			std::string result("(");
 			for (size_t y = 0; y < (Size_y - 1); y++) {
 				for (size_t x = 0; x < Size_x; x++)
@@ -185,7 +184,7 @@ namespace Math {
 			result += std::to_string(m_data[Size_x*Size_y - 1]) + ")";
 			return result;
 		}
-		friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_x>& rhs) noexcept {
+		constexpr friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_x>& rhs) noexcept {
 			Vec<Scalar, Size_y> result;
 			for (size_t y = 0; y < Size_y; y++) {
 				Scalar tmp = Scalar(0);
@@ -195,49 +194,49 @@ namespace Math {
 			}
 			return result;
 		}
-		friend inline bool operator==(const Mat& lhs, const Mat& rhs) noexcept {
+		constexpr friend inline bool operator==(const Mat& lhs, const Mat& rhs) noexcept {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				if (lhs.m_data[i] != rhs.m_data[i])
 					return false;
 			return true;
 		}
-		friend inline bool operator==(const Mat& lhs, const Scalar& rhs) noexcept {
+		constexpr friend inline bool operator==(const Mat& lhs, const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				if (lhs.m_data[i] != rhs)
 					return false;
 			return true;
 		}
-		friend inline bool close(const Mat& lhs, const Scalar& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
+		constexpr friend inline bool close(const Mat& lhs, const Scalar& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				if (!close(lhs.m_data[i], rhs, eps))
 					return false;
 			return true;
 		}
-		inline Mat& operator=(const Scalar& rhs)
+		constexpr inline Mat& operator=(const Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] += rhs;
 			return *this;
 		}
-		inline Mat& operator=(Scalar& rhs)
+		constexpr inline Mat& operator=(Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = rhs;
 			return *this;
 		}
-		inline Mat& operator+=(const Mat& rhs)
+		constexpr inline Mat& operator+=(const Mat& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] += rhs.m_data[i];
 			return *this;
 		}
-		inline Mat& operator-=(const Mat& rhs)
+		constexpr inline Mat& operator-=(const Mat& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] -= rhs.m_data[i];
 			return *this;
 		}
-		inline Mat& operator*=(const Mat& rhs)
+		constexpr inline Mat& operator*=(const Mat& rhs)
 		{
 			for (size_t y = 0; y < Size_y; y++) {
 				Vec<Scalar, Size_x> old_row = row(y);
@@ -247,31 +246,31 @@ namespace Math {
 			}
 			return *this;
 		}
-		inline Mat& operator+=(const Scalar& rhs)
+		constexpr inline Mat& operator+=(const Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] += rhs;
 			return *this;
 		}
-		inline Mat& operator-=(const Scalar& rhs)
+		constexpr inline Mat& operator-=(const Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] -= rhs;
 			return *this;
 		}
-		inline Mat& operator*=(const Scalar& rhs)
+		constexpr inline Mat& operator*=(const Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] *= rhs;
 			return *this;
 		}
-		inline Mat& operator/=(const Scalar& rhs)
+		constexpr inline Mat& operator/=(const Scalar& rhs)
 		{
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] /= rhs;
 			return *this;
 		}
-		inline Vec<Scalar, Size_x> row(const size_t index) const {
+		constexpr inline Vec<Scalar, Size_x> row(const size_t index) const {
 			assert(Size_y > index);
 			//if (Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
@@ -285,7 +284,7 @@ namespace Math {
 				return ret;
 			}
 		}
-		inline Vec<Scalar, Size_y> col(const size_t index) const {
+		constexpr inline Vec<Scalar, Size_y> col(const size_t index) const {
 			assert(Size_x > index);
 			//if (Size_x <= index)
 			//	throw std::out_of_range("Index out of range");
@@ -299,7 +298,7 @@ namespace Math {
 				return ret;
 			}
 		}
-		inline const Scalar& operator[] (const size_t index) const {
+		constexpr inline const Scalar& operator[] (const size_t index) const {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
@@ -311,7 +310,7 @@ namespace Math {
 			//	throw std::out_of_range("Index out of range");
 			return m_data[index];
 		}
-		inline const Scalar& operator()(const size_t col, const size_t  row) const {
+		constexpr inline const Scalar& operator()(const size_t col, const size_t  row) const {
 			//Just pass through, User responsible for bounds
 			//if (Size_x * Size_y <= index)
 			//	throw std::out_of_range("Index out of range");
@@ -323,21 +322,7 @@ namespace Math {
 			//	throw std::out_of_range("Index out of range");
 			return at(col, row);
 		}
-		//TODO, this is ugly
-		Mat<Scalar, Size_x - 1, Size_y - 1> cofactor(const size_t i, const size_t j) const {
-			Mat<Scalar, Size_x - 1, Size_y - 1> ret;
-			size_t x_offset = 0;
-			for (size_t x = 0; x < Size_x - 1; x++) {
-				if (x == i) x_offset = 1;
-				size_t y_offset = 0;
-				for (size_t y = x; y < Size_y - 1; y++) {
-					if (y == j) y_offset = 1;
-					ret(x, y) = this->operator()(x + x_offset, y + y_offset);
-				}
-			}
-			return ret;
-		}
-		Mat& transposed() {
+		constexpr inline Mat& transposed() {
 			static_assert(Size_x == Size_y);
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = y+1; x < Size_x; x++) {
@@ -346,7 +331,7 @@ namespace Math {
 			}
 			return *this;
 		}
-		Mat<Scalar, Size_y, Size_x> transpose() const {
+		constexpr inline Mat<Scalar, Size_y, Size_x> transpose() const {
 			Mat<Scalar, Size_y, Size_x> ret;
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = y; x < Size_x; x++) {
@@ -356,7 +341,7 @@ namespace Math {
 			}
 			return ret;
 		}
-		Scalar determinante() const {
+		constexpr inline Scalar determinante() const {
 			static_assert(Size_x == Size_y);
 			if constexpr (Size_x == 2) {
 				return (m_data[0] * m_data[3] - m_data[1] * m_data[2]);
@@ -409,7 +394,7 @@ namespace Math {
 
 		//Mat& inversed();
 
-		bool inverse(Mat& res) const {
+		constexpr inline bool inverse(Mat& res) const {
 			Scalar determinante;
 			static_assert(Size_x == Size_y);
 			if constexpr (Size_x == 2) {
@@ -508,13 +493,13 @@ namespace Math {
 			}
 		}
 
-		static Mat eye(const Scalar& val) {
+		static constexpr Mat eye(const Scalar& val) {
 			Mat ret;
 			for (int i = 0; i < min(Size_x, Size_y); i++)
 				ret.at(i, i) = val;
 			return ret;
 		}
-		static Mat identity() {
+		static constexpr Mat identity() {
 			return Mat::eye(1);
 		}
 		static Mat<Scalar, 2, 2> rotation_matrix(Scalar angle) {
@@ -523,20 +508,20 @@ namespace Math {
 			return Mat<Scalar, 2, 2>({ cos_t, -sin_t, sin_t, cos_t});
 		}
 		template<size_t Size>
-		void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
+		constexpr void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
 			assert(colNum < Size_x);
 			assert(offset + Size <= Size_y);
 			for (size_t i = offset; i < Size + offset; i++)
 				at(colNum, i) = column[i];
 		}
 		template<size_t Size>
-		void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
+		constexpr void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
 			assert(rowNum < Size_y);
 			assert(offset + Size <= Size_x);
 			for (size_t i = offset; i < Size + offset; i++)
 				at(i, rowNum) = row[i];
 		}
-		void set_to_identity() {
+		constexpr void set_to_identity() {
 			for (int i = 0; i < Size_y* Size_x; i++)
 				m_data[i] = 0;
 			for (int i = 0; i < min(Size_x, Size_y); i++)
@@ -726,7 +711,7 @@ namespace Math {
 	};
 	
 	template<typename Scalar, size_t Size_x, size_t Size_y>
-	inline bool close(const Mat<Scalar, Size_x, Size_y>& lhs, const Mat<Scalar, Size_x, Size_y>& rhs, const Scalar& eps = Scalar(1e-5)) {
+	constexpr inline bool close(const Mat<Scalar, Size_x, Size_y>& lhs, const Mat<Scalar, Size_x, Size_y>& rhs, const Scalar& eps = Scalar(1e-5)) {
 		for (size_t i = 0; i < Size_x * Size_y; i++)
 			if (!close(lhs[i], rhs[i], eps))
 				return false;
@@ -734,18 +719,29 @@ namespace Math {
 	}
 	
 	template<typename Scalar, size_t rows, size_t equal, size_t cols, bool column_major>
-	inline Mat<Scalar, rows, cols, column_major> operator*(const Mat<Scalar, rows, equal, column_major>& lhs, const Mat<Scalar, equal, cols, column_major>& rhs) {
-		Mat<Scalar, rows, cols> result;
+	constexpr inline Mat<Scalar, rows, cols, column_major> operator*(const Mat<Scalar, rows, equal, column_major>& lhs, const Mat<Scalar, equal, cols, column_major>& rhs) {
+		Mat<Scalar, rows, cols, column_major > result{};
 		for (size_t col = 0; col < cols; col++) {
-			//Vec<Scalar, equal> old_row = lhs.row(col);
 			for (size_t row = 0; row < rows; row++) {
-				//result(col, row) = old_row.dot(rhs.col(row));
 				Scalar tmp{ 0 };
 				for (size_t i = 0; i < equal; i++) {
 					tmp += lhs(i, row) * rhs(col, i);
 				}
 				result(col, row) = tmp;
-				//result[at<column_major ? cols : rows, column_major>(x, y)] = tmp;
+			}
+		}
+		return result;
+	}
+	template<typename Scalar, size_t rows, size_t equal, size_t cols>
+	constexpr inline Mat<Scalar, rows, cols, false> operator*(const Mat<Scalar, rows, equal, false>& lhs, const Mat<Scalar, equal, cols, false>& rhs) {
+		Mat<Scalar, rows, cols, false> result{};
+		for (size_t row = 0; row < rows; row++) {
+			for (size_t col = 0; col < cols; col++) {
+				float tmp{ 0.f };
+				for (size_t i = 0; i < equal; i++) {
+					tmp += lhs(i, row) * rhs(col, i);
+				}
+				result(col, row) = tmp;
 			}
 		}
 		return result;

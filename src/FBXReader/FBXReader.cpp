@@ -83,6 +83,32 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 			//}
 			retMats.push_back(material);
 		}
+		else if (s == "Lambert") {
+
+			auto lambert = reinterpret_cast<fbxsdk::FbxSurfaceLambert*>(mat);
+
+			nyan::MaterialData material
+			{
+				.name { mat->GetName() },
+				.ambientColor { Math::vec3{lambert->Ambient.Get()[0], lambert->Ambient.Get()[1], lambert->Ambient.Get()[2]} },
+				.diffuseColor { Math::vec3{lambert->Diffuse.Get()[0], lambert->Diffuse.Get()[1], lambert->Diffuse.Get()[2]} },
+				.ambientFactor { static_cast<float>(lambert->AmbientFactor.Get()) },
+				.diffuseFactor { static_cast<float>(lambert->DiffuseFactor.Get()) },
+			};
+			for (int i = 0; i < lambert->Diffuse.GetSrcObjectCount(); i++) {
+				auto* obj = lambert->Diffuse.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.diffuseTex = tex->GetRelativeFileName();
+				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
+			}
+			for (int i = 0; i < lambert->NormalMap.GetSrcObjectCount(); i++) {
+				auto* obj = lambert->NormalMap.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.normalTex = tex->GetRelativeFileName();
+				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
+			}
+			retMats.push_back(material);
+		}
 	}
 	//std::cout << rootNode->GetChildCount() << '\n';
 	for (int child = 0, endChildren = rootNode->GetChildCount(true); child < endChildren; child++) {

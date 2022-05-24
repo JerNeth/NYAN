@@ -30,7 +30,7 @@ void main() {
 	DirectionalLight light2 = scene.dirLight2;
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
     vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
-    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg, 0) * 2.0 - 1.0;
+    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg, 0);
     normal.z = sqrt(1-normal.x*normal.x + normal.y*normal.y);
 	mat3 tangentFrame = mat3(fragTangent, fragBitangent, fragNormal);
 

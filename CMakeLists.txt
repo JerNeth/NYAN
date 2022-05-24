@@ -123,7 +123,7 @@ target_link_libraries(FBXTest Engine FBXReader)
 target_link_libraries(GLTFTest Engine tinygltf)
 target_link_libraries(RTTest Engine FBXReader)
 
-target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
+#target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
 target_compile_options(Engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>

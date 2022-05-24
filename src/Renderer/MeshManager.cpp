@@ -320,6 +320,10 @@ uint32_t nyan::SceneManager::get_binding() const
 
 void nyan::SceneManager::update()
 {
+}
+
+void nyan::SceneManager::upload()
+{
 
 	if (m_dirtyScene) {
 		auto size = sizeof(m_sceneData);

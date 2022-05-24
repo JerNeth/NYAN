@@ -27,8 +27,8 @@ void main() {
 //    vec3 diffuse = diff * constants.lightColor.xyz;
 //
     outSpecular = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
-    vec3 normal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord).xyz;
-    outSpecular = vec4(normal, 1);
+    //vec3 normal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord).xyz;
+    //outSpecular = vec4(normal, 1);
     outDiffuse = vec4(0, 0, 0, 1);
     
     //outColor = vec4(subpassLoad(inputColor).xyz * (diffuse + ambient), 1.0);
