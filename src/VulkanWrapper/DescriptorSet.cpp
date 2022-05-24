@@ -147,14 +147,7 @@ vulkan::DescriptorSet::DescriptorSet(DescriptorPool& pool, VkDescriptorSet vkHan
 
 uint32_t vulkan::DescriptorSet::set_storage_buffer(const VkDescriptorBufferInfo& bufferInfo)
 {
-	uint32_t arrayElement;
-	if (!m_storageBufferFsi.empty()) {
-		arrayElement = m_storageBufferFsi.back();
-		m_storageBufferFsi.pop_back();
-	}
-	else {
-		arrayElement = m_storageBufferCount++;
-	}
+	uint32_t arrayElement = reserve_storage_buffer();
 	VkWriteDescriptorSet write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = m_vkHandle,
@@ -170,14 +163,7 @@ uint32_t vulkan::DescriptorSet::set_storage_buffer(const VkDescriptorBufferInfo&
 
 uint32_t vulkan::DescriptorSet::set_uniform_buffer(const VkDescriptorBufferInfo& bufferInfo)
 {
-	uint32_t arrayElement;
-	if (!m_uniformBufferFsi.empty()) {
-		arrayElement = m_uniformBufferFsi.back();
-		m_uniformBufferFsi.pop_back();
-	}
-	else {
-		arrayElement = m_uniformBufferCount++;
-	}
+	uint32_t arrayElement = reserve_uniform_buffer();
 	VkWriteDescriptorSet write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = m_vkHandle,
@@ -193,14 +179,7 @@ uint32_t vulkan::DescriptorSet::set_uniform_buffer(const VkDescriptorBufferInfo&
 
 uint32_t vulkan::DescriptorSet::set_sampler(const VkDescriptorImageInfo& imageInfo)
 {
-	uint32_t arrayElement;
-	if (!m_samplerFsi.empty()) {
-		arrayElement = m_samplerFsi.back();
-		m_samplerFsi.pop_back();
-	}
-	else {
-		arrayElement = m_samplerCount++;
-	}
+	uint32_t arrayElement = reserve_sampler();
 	VkWriteDescriptorSet write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = m_vkHandle,
@@ -216,14 +195,7 @@ uint32_t vulkan::DescriptorSet::set_sampler(const VkDescriptorImageInfo& imageIn
 
 uint32_t vulkan::DescriptorSet::set_sampled_image(const VkDescriptorImageInfo& imageInfo)
 {
-	uint32_t arrayElement;
-	if (!m_sampledImageFsi.empty()) {
-		arrayElement = m_sampledImageFsi.back();
-		m_sampledImageFsi.pop_back();
-	}
-	else {
-		arrayElement = m_sampledImageCount++;
-	}
+	uint32_t arrayElement = reserve_sampled_image();
 	VkWriteDescriptorSet write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = m_vkHandle,
@@ -239,14 +211,7 @@ uint32_t vulkan::DescriptorSet::set_sampled_image(const VkDescriptorImageInfo& i
 
 uint32_t vulkan::DescriptorSet::set_storage_image(const VkDescriptorImageInfo& imageInfo)
 {
-	uint32_t arrayElement;
-	if (!m_storageImageFsi.empty()) {
-		arrayElement = m_storageImageFsi.back();
-		m_storageImageFsi.pop_back();
-	}
-	else {
-		arrayElement = m_storageImageCount++;
-	}
+	uint32_t arrayElement = reserve_storage_image();
 	VkWriteDescriptorSet write{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 		.dstSet = m_vkHandle,
@@ -262,14 +227,7 @@ uint32_t vulkan::DescriptorSet::set_storage_image(const VkDescriptorImageInfo& i
 
 uint32_t vulkan::DescriptorSet::set_acceleration_structure(const VkAccelerationStructureKHR& accelerationStructure)
 {
-	uint32_t arrayElement;
-	if (!m_accelerationStructureFsi.empty()) {
-		arrayElement = m_accelerationStructureFsi.back();
-		m_accelerationStructureFsi.pop_back();
-	}
-	else {
-		arrayElement = m_accelerationStructureCount++;
-	}
+	uint32_t arrayElement = reserve_acceleration_structure();
 	VkWriteDescriptorSetAccelerationStructureKHR accWrite{
 		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
 		.accelerationStructureCount = 1,
@@ -285,6 +243,78 @@ uint32_t vulkan::DescriptorSet::set_acceleration_structure(const VkAccelerationS
 		.descriptorType = bindless_binding_to_type(accelerationStructureBinding)
 	};
 	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_storage_buffer()
+{
+	uint32_t arrayElement;
+	if (!m_storageBufferFsi.empty()) {
+		arrayElement = m_storageBufferFsi.back();
+		m_storageBufferFsi.pop_back();
+	}
+	else {
+		arrayElement = m_storageBufferCount++;
+	}
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_uniform_buffer()
+{
+	uint32_t arrayElement;
+	if (!m_uniformBufferFsi.empty()) {
+		arrayElement = m_uniformBufferFsi.back();
+		m_uniformBufferFsi.pop_back();
+	}
+	else {
+		arrayElement = m_uniformBufferCount++;
+	}
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_sampler()
+{
+	uint32_t arrayElement;
+	if (!m_samplerFsi.empty()) {
+		arrayElement = m_samplerFsi.back();
+		m_samplerFsi.pop_back();
+	}
+	else {
+		arrayElement = m_samplerCount++;
+	}
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_sampled_image()
+{
+	uint32_t arrayElement;
+	if (!m_sampledImageFsi.empty()) {
+		arrayElement = m_sampledImageFsi.back();
+		m_sampledImageFsi.pop_back();
+	}
+	else {
+		arrayElement = m_sampledImageCount++;
+	}
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_storage_image()
+{
+	uint32_t arrayElement;
+	if (!m_storageImageFsi.empty()) {
+		arrayElement = m_storageImageFsi.back();
+		m_storageImageFsi.pop_back();
+	}
+	else {
+		arrayElement = m_storageImageCount++;
+	}
+	return arrayElement;
+}
+uint32_t vulkan::DescriptorSet::reserve_acceleration_structure()
+{
+	uint32_t arrayElement;
+	if (!m_accelerationStructureFsi.empty()) {
+		arrayElement = m_accelerationStructureFsi.back();
+		m_accelerationStructureFsi.pop_back();
+	}
+	else {
+		arrayElement = m_accelerationStructureCount++;
+	}
 	return arrayElement;
 }
 void vulkan::DescriptorSet::set_storage_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo)

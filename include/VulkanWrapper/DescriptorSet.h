@@ -55,6 +55,13 @@ namespace vulkan {
 		uint32_t set_storage_image(const VkDescriptorImageInfo& imageInfo);
 		uint32_t set_acceleration_structure(const VkAccelerationStructureKHR& accelerationStructure);
 
+		uint32_t reserve_storage_buffer();
+		uint32_t reserve_uniform_buffer();
+		uint32_t reserve_sampler();
+		uint32_t reserve_sampled_image();
+		uint32_t reserve_storage_image();
+		uint32_t reserve_acceleration_structure();
+
 		void set_storage_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo);
 		void set_uniform_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo);
 		void set_sampler(uint32_t idx, const VkDescriptorImageInfo& imageInfo);

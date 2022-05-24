@@ -27,8 +27,6 @@ int main() {
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("cathedral.fbx", meshes, materials);
-	std::vector<nyan::MeshID> meshIds;
-	std::vector<nyan::MaterialBinding> materialIds;
 
 
 	for (const auto& a : materials) {
@@ -36,17 +34,16 @@ int main() {
 			textureManager.request_texture(a.diffuseTex);
 		if (!a.normalTex.empty())
 			textureManager.request_texture(a.normalTex);
-		materialIds.push_back(materialManager.add_material(a));
+		materialManager.add_material(a);
 	}
 	materialManager.upload();
 	for (const auto& a : meshes) {
 		auto meshId = meshManager.add_mesh(a);
-		meshIds.push_back(meshId);
 		nyan::MeshInstance instance{
 			.mesh_id {meshId},
-			.material {materialManager.get_material(a.material)},
 			.pad {0},
-			.transform {Math::Mat<float, 3, 4, true>::identity()}
+			.material {materialManager.get_material(a.material)},
+			.transform {Math::Mat<float, 3, 4, false>::identity()}
 			//Math::Mat<float, 4, 4, false>::look_at(Math::vec3{0, -1000, 0}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1}),
 			//Math::Mat<float, 4, 4, false>::perspectiveX(0.1, 5000, 80, 16/9.f)},
 		};
@@ -57,19 +54,20 @@ int main() {
 			Transform{
 				.position{},
 				.orientation{},
-				.view{Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, -10, 0}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
-				.proj{Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 100, 40, 9 / 16.f)}
+				.view{Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, 1000, 500}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
+				.proj{Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f)}
 			});
+
 	}
 
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
-	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
-	//		.clearColor{1.f, 0.f, 0.f, 0.f},
-	//	});
+	deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_D24_UNORM_S8_UINT},
+			.clearColor{1.f, 0.f, 0.f, 0.f},
+		});
 	//deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
 	//	{
 	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},

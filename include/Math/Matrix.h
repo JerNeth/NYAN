@@ -459,25 +459,23 @@ namespace Math {
 		}
 		template<size_t Size>
 		void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
-			//assert(offset + Size < Size_y);
-			for (size_t i = offset; i < Size + offset; i++) {
+			assert(colNum < Size_x);
+			assert(offset + Size <= Size_y);
+			for (size_t i = offset; i < Size + offset; i++)
 				at(colNum, i) = column[i];
-			}
 		}
 		template<size_t Size>
 		void set_row(Vec<Scalar, Size> row, size_t rowNum = 0, size_t offset = 0) {
-			//assert(offset + Size < Size_x);
-			for (size_t i = offset; i < Size + offset; i++) {
+			assert(rowNum < Size_y);
+			assert(offset + Size <= Size_x);
+			for (size_t i = offset; i < Size + offset; i++)
 				at(i, rowNum) = row[i];
-			}
 		}
-		Mat& set_to_identity() {
-			for (int i = 0; i < Size_y* Size_x; i++) {
+		void set_to_identity() {
+			for (int i = 0; i < Size_y* Size_x; i++)
 				m_data[i] = 0;
-			}
 			for (int i = 0; i < min(Size_x, Size_y); i++)
 				at(i, i) = 1;
-			return *this;
 		}
 		/*	Rotates first around Z, then around Y and then around Z
 		*	yaw (Z) , pitch (Y), roll (X) in degrees
@@ -493,17 +491,24 @@ namespace Math {
 			auto sp = sin(pitch * deg_to_rad);
 			auto cr = cos(roll * deg_to_rad);
 			auto sr = sin(roll * deg_to_rad);
-
+			Mat<Scalar, 3, 3, column_major> mat;
+			mat(0, 0) = cy * cp;
+			mat(1, 0) = cy * sp * sr - sy * cr;
+			mat(2, 0) = cy * sp * cr + sy * sr;
+			mat(0, 1) = sy * cp;
+			mat(1, 1) = sy * sp * sr + cr * cy;
+			mat(2, 1) = sy * sp * cr - cy * sr;
+			mat(0, 2) = -sp;
+			mat(1, 2) = cp * sr;
+			mat(2, 2) = cp * cr;
 			
-			return Mat<Scalar, 3, 3, column_major>({ cy * cp,		cy * sp * sr - sy * cr,		cy * sp * cr + sy * sr,
-										sy * cp,	sy * sp * sr + cr * cy,		sy * sp * cr - cy * sr,
-										-sp,			cp * sr,							cp * cr });
+			return mat;
 		}
 
 		static inline Mat<Scalar, Size_y, Size_x, column_major> affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
 			static_assert(Size_x == 4);
 			static_assert(Size_y == 4 || Size_y == 3);
-			Mat<Scalar, Size_y, Size_x, column_major> mat(Mat<Scalar, 3, 3, column_major>::rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]));
+			Mat<Scalar, Size_y, Size_x, column_major> mat(Mat<Scalar, 3, 3, column_major>::rotation_matrix(roll_pitch_yaw));
 			mat.set_col(translation_vector, 3);
 			if constexpr(Size_y == 4)
 				mat(3, 3) = 1;
@@ -554,9 +559,9 @@ namespace Math {
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
 			matrix.at(0, 0) = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovy);
 			matrix.at(1, 1) = static_cast<Scalar>(1) / (tanHalfFovy);
-			matrix.at(2, 2) =  farPlane / (nearPlane  - farPlane);
+			matrix.at(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			matrix.at(2, 3) = -Scalar(1);
-			matrix.at(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix.at(3, 2) = -Scalar(2)*(nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
 		static inline Mat<Scalar, 4, 4, column_major> perspectiveX(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar aspectRatio) {
@@ -568,11 +573,11 @@ namespace Math {
 			//matrix(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
 			//matrix(2, 3) = -Scalar(1);
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
-			matrix(0, 0) = static_cast<Scalar>(1) / ( tanHalfFovx);
-			matrix(1, 1) = static_cast<Scalar>(1) / (aspectRatio * tanHalfFovx);
-			matrix(2, 2) = farPlane / (nearPlane - farPlane);
-			matrix(2, 3) = -Scalar(1);
-			matrix(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix(0, 0) = static_cast<Scalar>(1)  / ( tanHalfFovx);
+			matrix(1, 1) = static_cast<Scalar>(1)  / (aspectRatio * tanHalfFovx);
+			matrix.at(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
+			matrix.at(2, 3) = -Scalar(1);
+			matrix.at(3, 2) = -Scalar(2) * (nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
 		static inline Mat<Scalar, 4, 4, column_major> perspectiveXY(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar fovY) {
@@ -587,9 +592,9 @@ namespace Math {
 			//matrix(3, 2) = -(Scalar(2) * farPlane * nearPlane) / (farPlane - nearPlane);
 			matrix(0, 0) = static_cast<Scalar>(1) / (tanHalfFovx);
 			matrix(1, 1) = static_cast<Scalar>(1) / (tanHalfFovy);
-			matrix(2, 2) = farPlane / (nearPlane - farPlane);
-			matrix(2, 3) = -Scalar(1);
-			matrix(3, 2) = -(nearPlane * farPlane) / (farPlane - nearPlane);
+			matrix.at(2, 2) = -(farPlane + nearPlane) / (farPlane - nearPlane);
+			matrix.at(2, 3) = -Scalar(1);
+			matrix.at(3, 2) = -Scalar(2) * (nearPlane * farPlane) / (farPlane - nearPlane);
 			return matrix;
 		}
 

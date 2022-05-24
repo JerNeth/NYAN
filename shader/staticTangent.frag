@@ -41,5 +41,6 @@ void main() {
 	Material material = materials[constants.materialBinding].materials[constants.materialId];
     vec4 diffuse = texture(sampler2D(textures[material.diffuseTexId], samplers[2]), fragTexCoord);
     outColor = diffuse;
+    //outColor = vec4(0.2,0.6,0.5,1.0);
 }
 
