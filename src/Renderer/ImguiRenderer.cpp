@@ -15,7 +15,7 @@ namespace MM {
 		ImGui::DragFloat("roll", &t.orientation.z(), 0.1f);
 	}
 }
-nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window) :
+nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
 	r_registry(registry),
 	ptr_window(window)
@@ -27,7 +27,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	io.BackendRendererName = "imgui_custom_vulkan";
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-	set_up_pipeline(shaderManager, pass);
+	set_up_pipeline(renderManager.get_shader_manager(), pass);
 	set_up_font();
 	pass.add_renderfunction([this](vulkan::CommandBufferHandle & cmd, nyan::Renderpass & pass)
 	{
@@ -38,7 +38,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 			prep_buffer(drawData);
 			create_cmds(drawData, cmd);
 		}
-	});
+	}, true);
 	ptr_window->configure_imgui();
 	m_editor.registerComponent<Transform>("Transform");
 	//if (r_registry.data()) {

@@ -8,7 +8,7 @@
 #include "LinAlg.h"
 namespace nyan {
 
-	struct MeshData {
+	struct Mesh {
 		std::string name;
 		std::string material;
 		Math::vec3 translate;
@@ -32,7 +32,15 @@ namespace nyan {
 		Math::vec3 scale;
 		Math::vec3 orientation;
 	};
-	class MeshManager {
+	struct MeshData {
+		uint32_t materialBinding;
+		uint32_t materialId;
+		VkDeviceAddress indicesAddress;
+		VkDeviceAddress uvAddress;
+		VkDeviceAddress normalsAddress;
+		VkDeviceAddress tangentsAddress;
+	};
+	class MeshManager : public DataManager<MeshData>{
 	private:
 		struct Mesh {
 			vulkan::BufferHandle buffer;
@@ -41,8 +49,8 @@ namespace nyan {
 			StaticTangentVulkanMesh mesh;
 		};
 	public:
-		MeshManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
-		MeshID add_mesh(const MeshData& data);
+		MeshManager(vulkan::LogicalDevice& device, nyan::MaterialManager& materialManager, bool buildAccelerationStructures = false);
+		MeshID add_mesh(const nyan::Mesh& data);
 		MeshID get_mesh(const std::string& name);
 		void build();
 		const StaticTangentVulkanMesh& get_static_tangent_mesh(MeshID idx);
@@ -50,13 +58,12 @@ namespace nyan {
 		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(MeshID idx);
 		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(const std::string& name);
 	private:
-		vulkan::LogicalDevice& r_device;
+		nyan::MaterialManager& r_materialManager;
 		vulkan::AccelerationStructureBuilder m_builder;
 		bool m_buildAccs;
 		std::unordered_map<MeshID, MeshManager::Mesh> m_staticTangentMeshes;
 		std::unordered_map<std::string, MeshID> m_meshIndex;
 		std::vector<std::pair<size_t, MeshID>> m_pendingAccBuildIndex;
-		MeshID m_meshCounter {0};
 	};
 	union InstanceData {
 		VkAccelerationStructureInstanceKHR instance;
@@ -82,31 +89,31 @@ namespace nyan {
 		void set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex);
 		void set_instance(InstanceId id, const InstanceData& instance);
 		InstanceId add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
-		std::pair<uint32_t, VkDeviceAddress> get_instance_data() const;
 		void build();
 		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
+		std::optional<uint32_t> get_tlas_bind();
 	private:
 		vulkan::AccelerationStructureBuilder m_builder;
 		bool m_buildAccs;
 		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
+		std::optional<uint32_t> m_tlasBind;
 	};
 
 	class SceneManager {
 		struct SceneData {
 			Math::Mat<float, 4, 4, true> view;
 			Math::Mat<float, 4, 4, true> proj;
+			Math::Mat<float, 4, 4, true> invView;
+			Math::Mat<float, 4, 4, true> invProj;
 		};
 	public:
-		SceneManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
-		InstanceManager& get_instance_manager();
-		const InstanceManager& get_instance_manager() const;
+		SceneManager(vulkan::LogicalDevice& device);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);
-		uint32_t get_bind() const;
+		uint32_t get_binding() const;
 		void update();
 	private:
 		vulkan::LogicalDevice& r_device;
-		InstanceManager m_instanceManager;
 		vulkan::BufferHandle m_buffer;
 		uint32_t m_bind;
 		SceneData m_sceneData;

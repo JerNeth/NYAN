@@ -1416,7 +1416,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 		for (const auto& data : initialData) {
 			assert(data.size + offset <= info.size);
 			memcpy(reinterpret_cast<char*>(map) + offset, data.ptr, data.size);
-			offset += data.size;
+			offset += data.stride ? data.stride : data.size;
 		}
 		handle->flush();
 	}

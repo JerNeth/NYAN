@@ -1,10 +1,10 @@
 #version 450
-
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : require
 
 layout(std430, push_constant) uniform PushConstants
 {
-    uint materialBinding;
-    uint materialId;
+    uint meshBinding;
     uint transformBinding;
     uint transformId;
     uint sceneBinding;
@@ -14,14 +14,42 @@ struct Transform {
 	vec4 modelRow1;
 	vec4 modelRow2;
 	vec4 modelRow3;
-    vec4 pad;
+    ivec4 pad;
 };
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Indices {
+    ivec3 i[];
+};
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Uvs {
+    vec2 u[];
+};
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Normals {
+    vec3 n[];
+};
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Tangents {
+    vec3 t[];
+};
+
+struct Mesh {
+	uint materialBinding;
+	uint materialId;
+	Indices indices;
+	Uvs uvs;
+	Normals normals;
+	Tangents tangents;
+};
+
+layout(set = 0, binding = 0, scalar) buffer MeshData  {
+	Mesh meshes[];
+} meshData [4096];
+
 layout(set = 0, binding = 0) buffer Transforms  {
 	Transform transforms[];
 } transforms [4096];
 layout(set = 0, binding = 0) buffer Scenes  {
     layout(column_major) mat4x4 view;
     layout(column_major) mat4x4 proj;
+    layout(column_major) mat4x4 invView;
+    layout(column_major) mat4x4 invProj;
 } scene [4096];
 //layout(set = 0, binding = 0) buffer ssbos [];
 //layout(set = 0, binding = 1) uniform ubos[];

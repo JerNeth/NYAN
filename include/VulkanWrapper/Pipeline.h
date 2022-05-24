@@ -167,16 +167,20 @@ namespace vulkan {
 		VkPipelineLayout pipelineLayout;
 	};
 	struct Group {
-		uint32_t generalShader { VK_SHADER_UNUSED_KHR };
-		uint32_t closestHitShader{ VK_SHADER_UNUSED_KHR };
-		uint32_t anyHitShader { VK_SHADER_UNUSED_KHR };
-		uint32_t intersectionShader { VK_SHADER_UNUSED_KHR };
+		ShaderId generalShader { invalidShaderId };
+		ShaderId closestHitShader{ invalidShaderId };
+		ShaderId anyHitShader { invalidShaderId };
+		ShaderId intersectionShader { invalidShaderId };
 	};
 	struct RaytracingPipelineConfig {
-		std::vector<ShaderId> shaders;
-		std::vector<Group> groups;
-		uint32_t recursionDepth;
-		VkPipelineLayout pipelineLayout;
+		//std::vector<ShaderId> shaders;
+		//std::vector<Group> groups;
+		std::vector<Group> rgenGroups{};
+		std::vector<Group> hitGroups{};
+		std::vector<Group> missGroups{};
+		std::vector<Group> callableGroups {};
+		uint32_t recursionDepth{0};
+		VkPipelineLayout pipelineLayout{VK_NULL_HANDLE};
 	};
 	struct PipelineState {
 		unsigned depth_write : 1;
@@ -452,6 +456,7 @@ namespace vulkan {
 		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
 		Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config);
 		VkPipeline get_pipeline() const noexcept;
+		operator VkPipeline() const noexcept;
 		VkPipelineLayout get_layout() const noexcept;
 		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
 	private:
@@ -518,7 +523,9 @@ namespace vulkan {
 	class RaytracingPipelineBind : public PipelineBind {
 	public:
 		RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
-		//void traceRays
+		void trace_rays(const VkStridedDeviceAddressRegionKHR* raygenSBT, const VkStridedDeviceAddressRegionKHR* missSBT,
+			const VkStridedDeviceAddressRegionKHR* hitSBT, const VkStridedDeviceAddressRegionKHR* callableSBT,
+			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
 	private:
 	};
 

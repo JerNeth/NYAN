@@ -62,6 +62,7 @@ namespace vulkan {
 	struct InputData {
 		const void* ptr;
 		size_t size;
+		size_t stride {0};
 	};
 
 	//Alignment due to Graphicscard alignment requirements

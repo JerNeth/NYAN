@@ -10,12 +10,13 @@
 #include <chrono>
 #include "MeshManager.h"
 #include "entt/fwd.hpp"
+#include "RenderManager.h"
 #include "imgui_entt_entity_editor.hpp"
 
 namespace nyan {
 	class ImguiRenderer{
 	public:
-		ImguiRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window);
+		ImguiRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window);
 		~ImguiRenderer();
 		void update(std::chrono::nanoseconds dt);
 		void next_frame();

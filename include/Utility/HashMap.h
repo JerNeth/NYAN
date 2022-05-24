@@ -472,7 +472,12 @@ namespace Utility {
 		}
 		Value& get(const Key& key) {
 			auto id = m_hashMap.find(key);
-			assert(id!= m_hashMap.end());
+			assert(id != m_hashMap.end());
+			return m_storage.get(id->second);
+		}
+		const Value& get(const Key& key) const {
+			auto id = m_hashMap.find(key);
+			assert(id != m_hashMap.end());
 			return m_storage.get(id->second);
 		}
 		Value& operator[](const Key& key) {
@@ -481,11 +486,14 @@ namespace Utility {
 		Value& get_direct(size_t id) {
 			return m_storage.get(id);
 		}
+		const Value& get_direct(size_t id) const {
+			return m_storage.get(id);
+		}
 		template<typename Functor>
 		void for_each(Functor functor) {
 			m_storage.for_each(functor);
 		}
-		bool contains(const Key& key) {
+		bool contains(const Key& key) const {
 			return m_hashMap.contains(key);
 		}
 	private:

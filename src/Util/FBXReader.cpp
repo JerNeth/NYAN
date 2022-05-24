@@ -14,7 +14,7 @@ Utility::FBXReader::~FBXReader()
 	ios->Destroy();
 	sdkManager->Destroy();
 }
-void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::MeshData>& retMeshes, std::vector<nyan::MaterialData>& retMats)
+void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats)
 {
 	fbxsdk::FbxImporter* importer = FbxImporter::Create(sdkManager, "");
 
@@ -117,7 +117,7 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 		auto& materialArray = materials->FbxGeometryElementMaterial::ParentClass::GetDirectArray();
 		for (int i = 0; i < materialArray.GetCount(); i++) {
 			fbxsdk::FbxSurfaceMaterial* mat= materialArray.GetAt(i);
-			retMeshes.push_back(nyan::MeshData
+			retMeshes.push_back(nyan::Mesh
 			{
 				.name { node->GetName() + std::string(mat->GetName()) },
 				.material { mat->GetName() },

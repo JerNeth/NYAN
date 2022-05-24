@@ -19,7 +19,7 @@ namespace nyan {
 	};
 	struct MaterialId {
 		uint32_t id;
-		MaterialId() {}
+		MaterialId() : id(0) {}
 		MaterialId(uint32_t id) : id(id){}
 		operator uint32_t() const {
 			return id;

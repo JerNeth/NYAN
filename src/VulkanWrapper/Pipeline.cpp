@@ -1,4 +1,6 @@
 #include "Pipeline.h"
+#include "Pipeline.h"
+#include "Pipeline.h"
 #include "LogicalDevice.h"
 
 /*
@@ -781,60 +783,151 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 	std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfos;
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> groupCreateInfos;
 
-	for (const auto& shader : config.shaders) {
-		auto* instance = parent.get_shader_storage().get_instance(shader);
-		assert(instance);
-		const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
-		assert(info.stage &
-			(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR
-			| VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR));
-		if (info.stage &
-			~(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR
-			| VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR)) {
-			Utility::log(std::format("Invalid shadertype for ray tracing pipeline"));
-			return;
+	std::unordered_map<ShaderId, uint32_t> stageMap;
+	stageMap[invalidShaderId] = VK_SHADER_UNUSED_KHR;
+	for (const auto& group : config.rgenGroups) {
+		assert(group.generalShader != invalidShaderId);
+		assert(group.closestHitShader == invalidShaderId);
+		assert(group.anyHitShader == invalidShaderId);
+		assert(group.intersectionShader == invalidShaderId);
+
+		if (!stageMap.contains(group.generalShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.generalShader);
+			assert(instance);
+			stageMap.emplace(group.generalShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (info.stage & ~VK_SHADER_STAGE_RAYGEN_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline ray generation shader"));
+				assert(false);
+				return;
+			}
 		}
+		groupCreateInfos.push_back(
+			VkRayTracingShaderGroupCreateInfoKHR
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+				.generalShader { stageMap[group.generalShader] },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			});
 	}
-	for (const auto& group : config.groups) {
-		VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
-		{
-			.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
-			.pNext { nullptr },
-			.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
-			.generalShader { group.generalShader },
-			.closestHitShader { group.closestHitShader },
-			.anyHitShader { group.anyHitShader },
-			.intersectionShader { group.intersectionShader },
-			.pShaderGroupCaptureReplayHandle { nullptr },
-		};
-		if (group.generalShader != VK_SHADER_UNUSED_KHR) {
-			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-			assert(group.generalShader < stageCreateInfos.size());
-			assert(group.closestHitShader == VK_SHADER_UNUSED_KHR);
-			assert(group.anyHitShader == VK_SHADER_UNUSED_KHR);
-			assert(group.intersectionShader == VK_SHADER_UNUSED_KHR);
-			assert(stageCreateInfos[group.generalShader].stage & 
-				(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR));
-		} else if (group.closestHitShader != VK_SHADER_UNUSED_KHR || group.anyHitShader != VK_SHADER_UNUSED_KHR) {
-			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-			assert(group.generalShader == VK_SHADER_UNUSED_KHR);
-			assert(group.intersectionShader == VK_SHADER_UNUSED_KHR);
-			assert((group.closestHitShader < stageCreateInfos.size() && (stageCreateInfos[group.closestHitShader].stage &
-				VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)) ||
-				(group.anyHitShader < stageCreateInfos.size() && (stageCreateInfos[group.anyHitShader].stage &
-				VK_SHADER_STAGE_ANY_HIT_BIT_KHR)));
-		} else if (group.intersectionShader != VK_SHADER_UNUSED_KHR) {
-			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
-			assert(group.generalShader == VK_SHADER_UNUSED_KHR);
-			assert(group.closestHitShader == VK_SHADER_UNUSED_KHR);
-			assert(group.anyHitShader == VK_SHADER_UNUSED_KHR);
-			assert(group.intersectionShader < stageCreateInfos.size() && (stageCreateInfos[group.intersectionShader].stage&
-				VK_SHADER_STAGE_INTERSECTION_BIT_KHR));
-		} else {
-			//empty shader group currently no apparent use
-			assert(false);
+	for (const auto& group : config.hitGroups) {
+		assert(group.generalShader == invalidShaderId);
+		assert((group.closestHitShader != invalidShaderId)
+		|| (group.anyHitShader != invalidShaderId)
+		|| (group.intersectionShader != invalidShaderId));
+
+		if (!stageMap.contains(group.closestHitShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.closestHitShader);
+			assert(instance);
+			stageMap.emplace(group.closestHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (instance->get_stage() & ~VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline closest hit shader"));
+				assert(false);
+				return;
+			}
 		}
-		groupCreateInfos.push_back(groupCreateInfo);
+		if (!stageMap.contains(group.anyHitShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.anyHitShader);
+			assert(instance);
+			stageMap.emplace(group.anyHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (instance->get_stage() & ~VK_SHADER_STAGE_ANY_HIT_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline any hit shader"));
+				assert(false);
+				return;
+			}
+		}
+		if (!stageMap.contains(group.intersectionShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.intersectionShader);
+			assert(instance);
+			stageMap.emplace(group.intersectionShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (instance->get_stage() & ~VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline intersection shader"));
+				assert(false);
+				return;
+			}
+		}
+		groupCreateInfos.push_back(
+			VkRayTracingShaderGroupCreateInfoKHR
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { group.intersectionShader == invalidShaderId ? 
+					VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR :
+					VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR },
+				.generalShader { VK_SHADER_UNUSED_KHR },
+				.closestHitShader { stageMap[group.closestHitShader] },
+				.anyHitShader { stageMap[group.anyHitShader] },
+				.intersectionShader { stageMap[group.intersectionShader] },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			});
+	}
+	for (const auto& group : config.missGroups) {
+		assert(group.generalShader != invalidShaderId);
+		assert(group.closestHitShader == invalidShaderId);
+		assert(group.anyHitShader == invalidShaderId);
+		assert(group.intersectionShader == invalidShaderId);
+
+		if (!stageMap.contains(group.generalShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.generalShader);
+			assert(instance);
+			stageMap.emplace(group.generalShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (info.stage & ~VK_SHADER_STAGE_MISS_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline miss shader"));
+				assert(false);
+				return;
+			}
+		}
+		groupCreateInfos.push_back(
+			VkRayTracingShaderGroupCreateInfoKHR
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+				.generalShader { stageMap[group.generalShader] },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			});
+	}
+	for (const auto& group : config.callableGroups) {
+		assert(group.generalShader != invalidShaderId);
+		assert(group.closestHitShader == invalidShaderId);
+		assert(group.anyHitShader == invalidShaderId);
+		assert(group.intersectionShader == invalidShaderId);
+
+		if (!stageMap.contains(group.generalShader)) {
+			auto* instance = parent.get_shader_storage().get_instance(group.generalShader);
+			assert(instance);
+			stageMap.emplace(group.generalShader, static_cast<uint32_t>(stageCreateInfos.size()));
+			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+			if (info.stage & ~VK_SHADER_STAGE_CALLABLE_BIT_KHR) {
+				Utility::log(std::format("Invalid shadertype for ray tracing pipeline callable shader"));
+				assert(false);
+				return;
+			}
+		}
+		groupCreateInfos.push_back(
+			VkRayTracingShaderGroupCreateInfoKHR
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+				.generalShader { stageMap[group.generalShader] },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			});
 	}
 
 	assert(stageCreateInfos.size() < std::numeric_limits<uint32_t>::max());
@@ -848,8 +941,8 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		.groupCount { static_cast<uint32_t>(groupCreateInfos.size()) },
 		.pGroups { groupCreateInfos.data() },
 		.maxPipelineRayRecursionDepth { config.recursionDepth },
-	.pLibraryInfo { nullptr },
-	.pLibraryInterface { nullptr },
+		.pLibraryInfo { nullptr },
+		.pLibraryInterface { nullptr },
 		.pDynamicState { nullptr },
 		.layout { m_layout },
 		.basePipelineHandle { VK_NULL_HANDLE },
@@ -863,6 +956,11 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 }
 
 VkPipeline vulkan::Pipeline2::get_pipeline() const noexcept
+{
+	return m_pipeline;
+}
+
+vulkan::Pipeline2::operator VkPipeline() const noexcept
 {
 	return m_pipeline;
 }
@@ -964,17 +1062,28 @@ void vulkan::GraphicsPipelineBind::draw_indexed(uint32_t indexCount, uint32_t in
 	
 }
 
-void vulkan::ComputePipelineBind::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
-{
-	vkCmdDispatch(m_cmd, groupCountX, groupCountY, groupCountZ);
-}
-
 vulkan::ComputePipelineBind::ComputePipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
 	PipelineBind(cmd, layout, bindPoint)
 {
 }
 
+void vulkan::ComputePipelineBind::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+	vkCmdDispatch(m_cmd, groupCountX, groupCountY, groupCountZ);
+}
+
 vulkan::RaytracingPipelineBind::RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
 	PipelineBind(cmd, layout, bindPoint)
 {
+}
+
+void vulkan::RaytracingPipelineBind::trace_rays(const VkStridedDeviceAddressRegionKHR* raygenSBT, const VkStridedDeviceAddressRegionKHR* missSBT,
+	const VkStridedDeviceAddressRegionKHR* hitSBT, const VkStridedDeviceAddressRegionKHR* callableSBT,
+	uint32_t width, uint32_t height, uint32_t depth)
+{
+	assert(raygenSBT);
+	assert(missSBT);
+	assert(hitSBT);
+	assert(callableSBT);
+	vkCmdTraceRaysKHR(m_cmd, raygenSBT, missSBT, hitSBT, callableSBT, width, height, depth);
 }

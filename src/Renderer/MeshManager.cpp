@@ -3,14 +3,15 @@
 using namespace vulkan;
 using namespace nyan;
 
-nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures) :
-	r_device(device),
+nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device, nyan::MaterialManager& materialManager, bool buildAccelerationStructures) :
+	DataManager(device),
+	r_materialManager(materialManager),
 	m_builder(r_device),
 	m_buildAccs(buildAccelerationStructures)
 {
 }
 
-MeshID nyan::MeshManager::add_mesh(const MeshData& data)
+nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 {
 	std::vector<vulkan::InputData> inputData;
 	std::vector<uint32_t> offsets;
@@ -27,15 +28,14 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 	vulkan::BufferInfo info{
 		.size = offset,
 		.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-				//| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | 
+				VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		.offset = 0,
 		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY
 
 	};
 	if (m_buildAccs) {
 		info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
-			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
 	MeshManager::Mesh mesh{
@@ -62,7 +62,17 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 			.tangentOffset {offsets[4]},
 		}
 	};
-	auto id = m_meshCounter++;
+	auto addr = mesh.buffer->get_address();
+
+	auto id = add(MeshData {
+		.materialBinding { r_materialManager.get_binding() },
+		.materialId { r_materialManager.get_material(data.material) },
+		.indicesAddress { addr + mesh.mesh.indexOffset },
+		.uvAddress { addr + mesh.mesh.texCoordOffset },
+		.normalsAddress { addr + mesh.mesh.normalOffset },
+		.tangentsAddress { addr + mesh.mesh.tangentOffset },
+		});
+
 	if (m_buildAccs) {
 		vulkan::AccelerationStructureBuilder::BLASInfo blasInfo{
 			.vertexBuffer { mesh.mesh.positionBuffer },
@@ -71,6 +81,7 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 			.vertexFormat { get_format<Math::vec3>() },
 			.vertexStride { format_bytesize(get_format<Math::vec3>()) },
 			.indexBuffer { mesh.mesh.indexBuffer },
+			.indexCount {mesh.mesh.indexCount},
 			.indexOffset { mesh.mesh.indexOffset },
 			.transformBuffer { VK_NULL_HANDLE },
 			.transformOffset { 0 },
@@ -85,7 +96,7 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 	return id;
 }
 
-MeshID nyan::MeshManager::get_mesh(const std::string& name)
+nyan::MeshID nyan::MeshManager::get_mesh(const std::string& name)
 {
 	assert(m_meshIndex.find(name) != m_meshIndex.end());
 	return m_meshIndex.find(name)->second;
@@ -174,27 +185,26 @@ InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 	return add(instanceData);
 }
 
-std::pair<uint32_t, VkDeviceAddress> nyan::InstanceManager::get_instance_data() const
-{
-	VkBufferDeviceAddressInfo addressInfo{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-			.pNext = nullptr,
-			.buffer = m_slot->buffer->get_handle()
-	};
-	return { m_slot->data.size(), vkGetBufferDeviceAddress(r_device, &addressInfo)};
-}
+
 
 void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
-		auto [count, address] = get_instance_data();
-		m_tlas = m_builder.build_tlas(count, address);
+		m_tlas = m_builder.build_tlas(m_slot->data.size(), m_slot->buffer->get_address());
+		if (m_tlasBind)
+			r_device.get_bindless_set().set_acceleration_structure(*m_tlasBind, *(*m_tlas));
+		else
+			m_tlasBind = r_device.get_bindless_set().set_acceleration_structure(*(*m_tlas));
 	}
 }
 
 std::optional<vulkan::AccelerationStructureHandle> nyan::InstanceManager::get_tlas()
 {
 	return m_tlas;
+}
+std::optional<uint32_t> nyan::InstanceManager::get_tlas_bind()
+{
+	return m_tlasBind;
 }
 //StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 //{
@@ -268,9 +278,8 @@ std::optional<vulkan::AccelerationStructureHandle> nyan::InstanceManager::get_tl
 //	return &res.first->second;
 //}
 
-nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures) :
+nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 	r_device(device),
-	m_instanceManager(device, buildAccelerationStructures),
 	m_buffer(r_device.create_buffer(vulkan::BufferInfo{ .size {sizeof(SceneData)},.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} ,.offset {0}, .memoryUsage {VMA_MEMORY_USAGE_CPU_TO_GPU} }, {})),
 	m_bind(r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{.buffer = m_buffer->get_handle(), .range = m_buffer->get_size()})),
 	m_dirtyScene(true)
@@ -278,31 +287,21 @@ nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device, bool buildAccele
 
 }
 
-
-
-InstanceManager& nyan::SceneManager::get_instance_manager()
-{
-	return m_instanceManager;
-}
-
-const InstanceManager& nyan::SceneManager::get_instance_manager() const
-{
-	return m_instanceManager;
-}
-
 void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view)
 {
 	m_sceneData.view = view;
+	m_sceneData.view.inverse(m_sceneData.invView);
 	m_dirtyScene = true;
 }
 
 void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj)
 {
-	m_sceneData.proj = proj;
+	m_sceneData.proj = proj;	
+	m_sceneData.proj.inverse(m_sceneData.invProj);
 	m_dirtyScene = true;
 }
 
-uint32_t nyan::SceneManager::get_bind() const
+uint32_t nyan::SceneManager::get_binding() const
 {
 	return m_bind;
 }
@@ -317,6 +316,4 @@ void nyan::SceneManager::update()
 		m_buffer->flush(0, size);
 		m_dirtyScene = false;
 	}
-	m_instanceManager.upload();
-	m_instanceManager.build();
 }

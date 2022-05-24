@@ -3,7 +3,7 @@
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
     add_custom_command(
             OUTPUT ${OUTPUT_FILE} 
-            COMMAND "glslc" "${INPUT_FILE}" "-o${OUTPUT_FILE}" #glslc is on the system path on my computer, so I am not currently worried about `find_package`ing it.
+            COMMAND "glslc" "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}" #glslc is on the system path on my computer, so I am not currently worried about `find_package`ing it.
             MAIN_DEPENDENCY ${INPUT_FILE}
     ) 
 endfunction()
@@ -13,6 +13,17 @@ file(GLOB_RECURSE SHADER_SRC CONFIGURE_DEPENDS
 	${PROJECT_SOURCE_DIR}/shader/*.vert
     ${PROJECT_SOURCE_DIR}/shader/*.frag
     ${PROJECT_SOURCE_DIR}/shader/*.comp
+    ${PROJECT_SOURCE_DIR}/shader/*.rchit
+    ${PROJECT_SOURCE_DIR}/shader/*.rgen
+    ${PROJECT_SOURCE_DIR}/shader/*.rmiss
+    ${PROJECT_SOURCE_DIR}/shader/*.rahit
+    ${PROJECT_SOURCE_DIR}/shader/*.rint
+    ${PROJECT_SOURCE_DIR}/shader/*.rcall
+    ${PROJECT_SOURCE_DIR}/shader/*.mesh
+    ${PROJECT_SOURCE_DIR}/shader/*.task
+    ${PROJECT_SOURCE_DIR}/shader/*.geom
+    ${PROJECT_SOURCE_DIR}/shader/*.tese
+    ${PROJECT_SOURCE_DIR}/shader/*.tesc
 )
 set(SHADERS "")
 foreach(shader ${SHADER_SRC})

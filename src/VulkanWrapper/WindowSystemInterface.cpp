@@ -146,8 +146,8 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
 			usableFormats.push_back(format);
 	}
-	usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	if (usableFormats.empty()) {
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		for (const auto& format : surfaceFormats) {
 			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
 				r_instance.get_physical_device().get_image_format_properties(format.format,

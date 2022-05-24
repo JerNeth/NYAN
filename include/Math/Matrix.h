@@ -373,15 +373,33 @@ namespace Math {
 				* [31 32 33 34] [ 8  9 10 11]
 				* [41 42 43 44] [12 13 14 15]
 				*/
-				//                      a11 *     (a22 *     (a33        a44        - a34        a43       ) + a42*       (a23        a34        - a24       a33        ) + a32 *     (a24      a43         - a23       a44))
-				Scalar determinante = m_data[0] * (m_data[5] * (m_data[10] * m_data[15] - m_data[11] * m_data[14]) + m_data[13] * (m_data[6] * m_data[11] - m_data[7] * m_data[10]) + m_data[9] * (m_data[7] * m_data[14] - m_data[6] * m_data[15]));
-				//		        a21 *       ( a33* (a12a44 - a14a42) +										  a13 (a34a42 - a32a44)										    + a43*(a14a32  - a12a34))
-				determinante -= m_data[4] * (m_data[10] * (m_data[1] * m_data[15] - m_data[3] * m_data[13]) + m_data[2] * (m_data[11] * m_data[13] - m_data[9] * m_data[15]) + m_data[14] * (m_data[3] * m_data[9] - m_data[1] * m_data[11]));
-				//				a31*		(a23		(a12a44- a14a42) +										 a13 (a24a42  - a22a44)										 + a43(a14a22 - a12a24))
-				determinante += m_data[8] * (m_data[6] * (m_data[1] * m_data[15] - m_data[3] * m_data[13]) + m_data[2] * (m_data[7] * m_data[13] - m_data[5] * m_data[15]) + m_data[14] * (m_data[3] * m_data[5] - m_data[1] * m_data[7]));
-				//				-a41		(a23		(a12a34 - a14a32) +										 a13 (a24a32 -  a22a34)										 + a33(a14a22 - a12a24))
-				determinante -= m_data[8] * (m_data[6] * (m_data[1] * m_data[11] - m_data[3] * m_data[9]) + m_data[2] * (m_data[7] * m_data[9] - m_data[5] * m_data[11]) + m_data[10] * (m_data[3] * m_data[5] - m_data[1] * m_data[7]));
-				return determinante;
+				auto a11 = at(0, 0);
+				auto a12 = at(0, 1);
+				auto a13 = at(0, 2);
+				auto a14 = at(0, 3);
+				auto a21 = at(1, 0);
+				auto a22 = at(1, 1);
+				auto a23 = at(1, 2);
+				auto a24 = at(1, 3);
+				auto a31 = at(2, 0);
+				auto a32 = at(2, 1);
+				auto a33 = at(2, 2);
+				auto a34 = at(2, 3);
+				auto a41 = at(3, 0);
+				auto a42 = at(3, 1);
+				auto a43 = at(3, 2);
+				auto a44 = at(3, 3);
+				auto a33a44a43a34 = a33 * a44 - a43 * a34;
+				auto a32a44a42a34 = a32 * a44 - a42 * a34;
+				auto a32a43a42a33 = a32 * a43 - a42 * a33;
+				auto a31a44a41a34 = a31 * a44 - a41 * a34;
+				auto a31a43a41a33 = a31 * a43 - a41 * a33;
+				auto a31a42a41a32 = a31 * a42 - a41 * a32;
+				auto f1 = (a22 * a33a44a43a34 - a23 * a32a44a42a34 + a24 * a32a43a42a33);
+				auto f2 = -(a21 * a33a44a43a34 - a23 * a31a44a41a34 + a24 * a31a43a41a33);
+				auto f3 = (a21 * a32a44a42a34 - a22 * a31a44a41a34 + a24 * a31a42a41a32);
+				auto f4 = -(a21 * a32a43a42a33 - a22 * a31a43a41a33 + a23 * a31a42a41a32);
+				return a11 * f1 + a12 * f2 + a13 * f3 + a14 * f4;
 			}
 			else {
 				return Scalar(0);
@@ -390,24 +408,24 @@ namespace Math {
 
 		//Mat& inversed();
 
-		std::optional<Mat> inverse() const {
+		bool inverse(Mat& res) const {
+			Scalar determinante;
 			static_assert(Size_x == Size_y);
-			Mat res;
 			if constexpr (Size_x == 2) {
-				Scalar determinante = this->determinante();
+				determinante = this->determinante();
 				if (close(determinante, Scalar(0)))
-					return std::nullopt;
+					return false;
 				determinante = Scalar(1) / determinante;
 				res.m_data[0] = determinante * m_data[3];
 				res.m_data[1] = -determinante * m_data[1];
 				res.m_data[2] = -determinante * m_data[2];
 				res.m_data[3] = determinante * m_data[0];
-				return res;
+				return true;
 			}
 			else if constexpr (Size_x == 3) {
-				Scalar determinante = this->determinante();
-				if (close(determinante, Scalar(0)))
-					return std::nullopt;
+				determinante = this->determinante();
+				if (close(determinante, Scalar(0)))					
+					return false;
 				determinante = Scalar(1) / determinante;
 				/*
 				* [ 0 1 2 ]
@@ -423,23 +441,69 @@ namespace Math {
 				res.m_data[2] = determinante * (m_data[1] * m_data[5] - m_data[2] * m_data[4]);
 				res.m_data[5] = -determinante * (m_data[0] * m_data[5] - m_data[2] * m_data[3]);
 				res.m_data[8] = determinante * (m_data[0] * m_data[4] - m_data[1] * m_data[3]);
-				return res;
+				return true;
 			}
 			else if constexpr (Size_x == 4) {
-				Scalar determinante = this->determinante();
+				determinante = this->determinante();
 				if (close(determinante, Scalar(0)))
-					return std::nullopt;
+					return false;
 				determinante = Scalar(1) / determinante;
 				//Currently not working
-				for (size_t i = 0; i < Size_x; i++) {
-					for (size_t j = 0; j < Size_y; j++) {
-						res(i, j) = (((i + j) & 0x1) ? Scalar(-1) : Scalar(1)) * this->cofactor(i, j).determinante() * determinante;
-					}
-				}
-				return res;
+				auto a11 = at(0, 0);
+				auto a12 = at(1, 0);
+				auto a13 = at(2, 0);
+				auto a14 = at(3, 0);
+				auto a21 = at(0, 1);
+				auto a22 = at(1, 1);
+				auto a23 = at(2, 1);
+				auto a24 = at(3, 1);
+				auto a31 = at(0, 2);
+				auto a32 = at(1, 2);
+				auto a33 = at(2, 2);
+				auto a34 = at(3, 2);
+				auto a41 = at(0, 3);
+				auto a42 = at(1, 3);
+				auto a43 = at(2, 3);
+				auto a44 = at(3, 3);
+				res.at(0, 0) = determinante * (a22 * a33 * a44 + a23 * a34 * a42 + a24 * a32 * a43
+					- a24 * a33 * a42 - a23 * a32 * a44 - a22 * a34 * a43);
+				res.at(1, 0) = determinante * (-a12 * a33 * a44 - a13 * a34 * a42 - a14 * a32 * a43
+					+ a14 * a33 * a42 + a13 * a32 * a44 + a12 * a34 * a43);
+				res.at(2, 0) = determinante * (a12 * a23 * a44 + a13 * a24 * a42 + a14 * a22 * a43
+					- a14 * a23 * a42 - a13 * a22 * a44 - a12 * a24 * a43);
+				res.at(3, 0) = determinante * (-a12 * a23 * a34 - a13 * a24 * a32 - a14 * a22 * a33
+					+ a14 * a23 * a32 + a13 * a22 * a34 + a12 * a24 * a33);
+
+				res.at(0, 1) = determinante * (-a21 * a33 * a44 - a23 * a34 * a41 - a24 * a31 * a43
+					+ a24 * a33 * a41 + a23 * a31 * a44 + a21 * a34 * a43);
+				res.at(1, 1) = determinante * (a11 * a33 * a44 + a13 * a34 * a41 + a14 * a31 * a43
+					- a14 * a33 * a41 - a13 * a31 * a44 - a11 * a34 * a43);
+				res.at(2, 1) = determinante * (-a11 * a23 * a44 - a13 * a24 * a41 - a14 * a21 * a43
+					+ a14 * a23 * a41 + a13 * a21 * a44 + a11 * a24 * a43);
+				res.at(3, 1) = determinante * (a11 * a23 * a34 + a13 * a24 * a31 + a14 * a21 * a33
+					- a14 * a23 * a31 - a13 * a21 * a34 - a11 * a24 * a33);
+
+				res.at(0, 2) = determinante * (a21 * a32 * a44 + a22 * a34 * a41 + a24 * a31 * a42
+					- a24 * a32 * a41 - a22 * a31 * a44 - a21 * a34 * a42);
+				res.at(1, 2) = determinante * (-a11 * a32 * a44 - a12 * a34 * a41 - a14 * a31 * a42
+					+ a14 * a32 * a41 + a12 * a31 * a44 + a11 * a34 * a42);
+				res.at(2, 2) = determinante * (a11 * a22 * a44 + a12 * a24 * a41 + a14 * a21 * a42
+					- a14 * a22 * a41 - a12 * a21 * a44 - a11 * a24 * a42);
+				res.at(3, 2) = determinante * (-a11 * a22 * a34 - a12 * a24 * a31 - a14 * a21 * a32
+					+ a14 * a22 * a31 + a12 * a21 * a34 + a11 * a24 * a32);
+
+				res.at(0, 3) = determinante * (-a21 * a32 * a43 - a22 * a33 * a41 - a23 * a31 * a42
+					+ a23 * a32 * a41 + a22 * a31 * a43 + a21 * a33 * a42);
+				res.at(1, 3) = determinante * (a11 * a32 * a43 + a12 * a33 * a41 + a13 * a31 * a42
+					- a13 * a32 * a41 - a12 * a31 * a43 - a11 * a33 * a42);
+				res.at(2, 3) = determinante * (-a11 * a22 * a43 - a12 * a23 * a41 - a13 * a21 * a42
+					+ a13 * a22 * a41 + a12 * a21 * a43 + a11 * a23 * a42);
+				res.at(3, 3) = determinante * (a11 * a22 * a33 + a12 * a23 * a31 + a13 * a21 * a32
+					- a13 * a22 * a31 - a12 * a21 * a33 - a11 * a23 * a32);
+				return true;
 			}
 			else {
-				return std::nullopt;
+				return false;
 			}
 		}
 
@@ -510,7 +574,21 @@ namespace Math {
 			static_assert(Size_y == 4 || Size_y == 3);
 			Mat<Scalar, Size_y, Size_x, column_major> mat(Mat<Scalar, 3, 3, column_major>::rotation_matrix(roll_pitch_yaw));
 			mat.set_col(translation_vector, 3);
-			if constexpr(Size_y == 4)
+			if constexpr (Size_y == 4)
+				mat(3, 3) = 1;
+			return mat;
+		}
+		inline Mat<Scalar, Size_y, Size_x, column_major> inverse_affine_transformation_matrix() { // roll (x), pitch (y), yaw (z)
+			static_assert(Size_x == 4);
+			static_assert(Size_y == 4 || Size_y == 3);
+			Mat<Scalar, Size_y, Size_x, column_major> mat;
+			for (size_t row = 0; row < 3; row++) {
+				for (size_t col = 0; col < 3; col++) {
+					mat.at(col, row) = at(row, col);
+				}
+			}
+			mat.set_col(mat* -col(3), 3);
+			if constexpr (Size_y == 4)
 				mat(3, 3) = 1;
 			return mat;
 		}

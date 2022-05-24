@@ -6,46 +6,45 @@
 #include <iostream>
 #include "entt/entt.hpp"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/RenderManager.h"
 using namespace nyan;
 
 int main() {
 	auto name = "Demo";
 	nyan::Application application(name);
-	entt::registry registry;
 	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
 
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();
 
-	vulkan::ShaderManager shaderManager(device);
-	//TODO possibly chunk textures and queue upload
-	nyan::TextureManager textureManager(device);
-	nyan::MaterialManager materialManager(device, textureManager);
-	nyan::MeshManager meshManager(device, true);
-	nyan::InstanceManager instanceManager(device, true);
+	nyan::RenderManager renderManager(device, true);
+	auto& registry = renderManager.get_registry();
+
 	Utility::FBXReader reader;
-	std::vector<nyan::MeshData> meshes;
+	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
-
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 0, 1000, 1000 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 0, 1 }));
+	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
-			textureManager.request_texture(a.diffuseTex);
+			renderManager.get_texture_manager().request_texture(a.diffuseTex);
 		if (!a.normalTex.empty())
-			textureManager.request_texture(a.normalTex);
-		materialManager.add_material(a);
+			renderManager.get_texture_manager().request_texture(a.normalTex);
+		renderManager.get_material_manager().add_material(a);
 	}
+
 	for (const auto& a : meshes) {
-		auto meshId = meshManager.add_mesh(a);
-		auto accHandle = meshManager.get_acceleration_structure(meshId);
+		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
+		auto accHandle = renderManager.get_mesh_manager().get_acceleration_structure(meshId);
 		auto entity = registry.create();
 		registry.emplace<MeshID>(entity, meshId);
-		registry.emplace<MaterialId>(entity, materialManager.get_material(a.material));
-		registry.emplace<InstanceId>(entity, instanceManager.add_instance(accHandle ?
+		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
+		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(accHandle ?
 			InstanceData{
 				(*accHandle)->create_instance()
 			} :
@@ -62,38 +61,41 @@ int main() {
 	}
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
+	//auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
+	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
+	//		.clearColor{1.f, 0.f, 0.f, 0.f},
+	//	});
+	////deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
+	////	{
+	////		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+	////		.clearColor{0.f, 0.f, 0.f, 1.f},
+	////	});
+	//deferredPass.add_swapchain_attachment();
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
-	deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_D24_UNORM_S8_UINT},
-			.clearColor{1.f, 0.f, 0.f, 0.f},
-		});
+	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
+	//		.clearColor{1.f, 0.f, 0.f, 0.f},
+	//	});
 	//deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
 	//	{
 	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 	//		.clearColor{0.f, 0.f, 0.f, 1.f},
 	//	});
-	deferredPass.add_swapchain_attachment();
-
+	deferredPass.add_swapchain_write();
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
 	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 
-	nyan::ImguiRenderer imgui(device, registry, shaderManager, imguiPass, &window);
-	nyan::MeshRenderer meshRenderer(device, registry, shaderManager, meshManager, deferredPass);
+	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, deferredPass);
 	application.each_frame_begin([&]()
 		{
-			auto view = registry.view<const InstanceId, const Transform>();
-			for (const auto& [entity, instanceId, transform] : view.each()) {
-				instanceManager.set_transform(instanceId,
-					Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position));
-			}
-			meshManager.build();
-			materialManager.upload();
-			instanceManager.build();
-			instanceManager.upload();
+			renderManager.update();
 			imgui.next_frame();
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)

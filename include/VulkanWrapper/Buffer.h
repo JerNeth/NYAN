@@ -78,24 +78,26 @@ namespace vulkan {
 			return m_vkHandle;
 		}
 		void swap_contents(Buffer& other) noexcept {
-			auto tmp = m_vkHandle;
-			auto tmpAll = m_allocation;
-			auto tmpInf = m_info;
-			m_vkHandle = other.m_vkHandle;
-			m_allocation = other.m_allocation;
-			m_info = other.m_info;
-			other.m_vkHandle = tmp;
-			other.m_allocation = tmpAll;
-			other.m_info = tmpInf;
-			/*std::swap(m_vkHandle, other.m_vkHandle);
+			//auto tmp = m_vkHandle;
+			//auto tmpAll = m_allocation;
+			//auto tmpInf = m_info;
+			//m_vkHandle = other.m_vkHandle;
+			//m_allocation = other.m_allocation;
+			//m_info = other.m_info;
+			//other.m_vkHandle = tmp;
+			//other.m_allocation = tmpAll;
+			//other.m_info = tmpInf;
+			std::swap(m_vkHandle, other.m_vkHandle);
 			std::swap(m_allocation, other.m_allocation); 
-			std::swap(m_info, other.m_info);*/
+			std::swap(m_info, other.m_info);
+			constexpr auto a = sizeof(Buffer);
 		}
 		//MappedMemoryHandle<uint8_t> map_data() const noexcept;
 		void* map_data() noexcept;
 		void unmap_data() noexcept;
 		void flush(uint32_t offset = 0, uint32_t size = ~0u);
 		void invalidate(uint32_t offset = 0, uint32_t size = ~0u);
+		VkDeviceAddress get_address() const;
 		~Buffer();
 	private:
 		LogicalDevice& r_device;

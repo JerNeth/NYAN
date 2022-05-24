@@ -220,7 +220,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 					.size = build.sizeInfo.accelerationStructureSize,
 					.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
 				};
-				offset += (((build.sizeInfo.accelerationStructureSize) + 255) / 256) * 256;
+				offset += Utility::align_up(build.sizeInfo.accelerationStructureSize, static_cast<VkDeviceSize>(256));
 				vkCreateAccelerationStructureKHR(r_device, &info, r_device.get_allocator(), &handle);
 				build.buildInfo.dstAccelerationStructure = handle;
 				build.buildInfo.scratchData.deviceAddress = scratchAddress;

@@ -56,6 +56,12 @@ namespace Utility {
 			}
 		}
 	}
+	template<typename T>
+	constexpr inline T align_up(T size, T alignment) {
+		assert(std::popcount(alignment) == 1);
+		alignment -= 1;
+		return (size + alignment) & ~alignment;
+	}
 
 }
 #endif

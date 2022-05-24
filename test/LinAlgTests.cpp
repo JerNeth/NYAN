@@ -255,6 +255,86 @@ namespace Math {
         }
         //EXPECT_EQ(a.dot(b), 0);
     }
+    TEST(Matrices, inverse) {
+
+        static std::default_random_engine rng;
+
+        std::uniform_real_distribution<float> dist_vec(-100000.0, 100000.0);
+        auto counter = 0;
+        for (int i = 0; i < 10000; i++) {
+            mat44 t({ dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
+                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
+                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
+                dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng), });
+            float determinante;
+            mat44 t_t;
+            if (!t.inverse(t_t)) {
+                counter++;
+                continue;
+            }
+            ASSERT_TRUE(close(mat44::identity(), t * t_t, 1e-2f)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
+            ASSERT_TRUE(close(mat44::identity(),  t_t *t, 1e-2f));
+        }
+        std::cout << "Non invertible matrices: " << counter << "\n";
+        //EXPECT_EQ(a.dot(b), 0);
+    }
+    TEST(Matrices, inverse2) {
+
+
+        mat44 t(1.f, 1.f, 1.f, -1.f,
+            1.f, 1.f, -1.f, 1.f,
+            1.f, -1.f, 1.f, 1.f,
+            -1.f, 1.f, 1.f, 1.f);
+        mat44 t_t;
+        if (!t.inverse(t_t)) {
+        }
+        ASSERT_TRUE(close(mat44::identity(), t * t_t)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
+        ASSERT_TRUE(close(mat44::identity(), t_t * t));
+
+        //EXPECT_EQ(a.dot(b), 0);
+    }
+    TEST(Matrices, inverseRotation) {
+
+        static std::default_random_engine rng;
+        std::uniform_real_distribution<float> dist_rot(0.0, 360.0);
+        std::uniform_real_distribution<float> dist_rot_half(0.0, 180.0);
+        std::uniform_real_distribution<float> dist_pos(-100.0, 100.0);
+        int counter1_2 = 0;
+        int counter1_1 = 0;
+        for (int i = 0; i < 100000; i++) {
+            vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
+            vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
+            auto mat = mat44::affine_transformation_matrix(angles, pos);
+            mat44 matInverse;
+            if (!mat.inverse(matInverse)) {
+                counter1_1++;
+                continue;
+            }
+            auto rotMat = mat33::rotation_matrix(angles).transpose();
+            mat44 mat2 = mat44(rotMat);
+            mat2(3, 3) = 1;
+            mat2.set_col(rotMat * -pos, 3ull);
+            auto inv2 = mat.inverse_affine_transformation_matrix();
+            ASSERT_TRUE(close(mat2, matInverse, 1e-3f)) << matInverse.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+            ASSERT_TRUE(close(mat2, inv2, 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+
+        }
+        for (int i = 0; i < 100000; i++) {
+            vec3 angles({ dist_rot(rng), dist_rot_half(rng), dist_rot(rng) });
+            vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
+            auto mat = mat34::affine_transformation_matrix(angles, pos);
+            auto rotMat = mat33::rotation_matrix(angles).transpose();
+            mat34 mat2 = mat34(rotMat);
+            mat2.set_col(rotMat * -pos, 3ull);
+            auto inv2 = mat.inverse_affine_transformation_matrix();
+            ASSERT_TRUE(close(mat2, inv2, 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+
+        }
+        EXPECT_EQ(counter1_1, 0) << counter1_1 << " trivially inversible matrices should have been inverted\n";
+        EXPECT_EQ(counter1_2, 0);
+
+        //EXPECT_EQ(a.dot(b), 0);
+    }
     TEST(Matrices, rowMajor) {
 
         Math::Mat<float, 3, 3, false> a(1, 1, 1,
