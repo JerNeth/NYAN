@@ -87,6 +87,7 @@ namespace nyan {
 		void set_instance_custom_index(TransformBinding id, uint32_t instanceCustomIndex);
 		void set_instance(TransformBinding id, const InstanceData& instance);
 		TransformBinding add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
+		std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> get_instance_data() const;
 	private:
 	};
 }

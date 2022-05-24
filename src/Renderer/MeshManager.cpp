@@ -122,6 +122,24 @@ TransformBinding nyan::InstanceManager::add_instance(const InstanceData& instanc
 	return add(instanceData);
 }
 
+std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> nyan::InstanceManager::get_instance_data() const
+{
+	std::vector<uint32_t> counts;
+	std::vector<VkDeviceAddress> addresses;
+	counts.reserve(m_slots.size());
+	addresses.reserve(m_slots.size());
+	for (const auto& slot : m_slots) {
+		counts.push_back(slot.data.size());
+		VkBufferDeviceAddressInfo addressInfo{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+			.pNext = nullptr,
+			.buffer = slot.buffer->get_handle()
+		};
+		addresses.push_back(vkGetBufferDeviceAddress(r_device, &addressInfo));
+	}
+	return {counts, addresses};
+}
+
 
 //StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 //{

@@ -27,6 +27,7 @@ namespace nyan {
 	class DataManager {
 	protected:
 		struct Slot {
+			uint32_t binding;
 			std::vector<T> data;
 			vulkan::BufferHandle buffer;
 			bool dirty;
@@ -40,7 +41,7 @@ namespace nyan {
 		}
 
 		void upload() {
-			for (auto& [bind, slot] : m_slots) {
+			for (auto& slot : m_slots) {
 				if (!slot.dirty)
 					continue;
 				auto size = sizeof(T) * slot.data.size();
@@ -56,41 +57,41 @@ namespace nyan {
 			if (m_emptySlots.empty()) {
 				auto buffer = create_buffer(SlotSize);
 				auto bind = bind_buffer(buffer);
-				m_emptySlots.push_back(bind);
-				m_slots.emplace(bind, Slot{ {}, buffer });
-				m_slots.find(bind)->second.data.reserve(SlotSize);
+				m_emptySlots.push_back(m_slots.size());
+				m_slots.push_back(Slot{ bind,{}, buffer });
+				m_slots.back().data.reserve(SlotSize);
 			}
 			auto empty = m_emptySlots.back();
-			auto& slot = m_slots.find(empty)->second;
+			auto& slot = m_slots[empty];
 			auto idx = slot.data.size();
 			slot.data.push_back(t);
 			if (slot.data.size() > SlotSize)
 				m_emptySlots.pop_back();
 			slot.dirty = true;
 			return Binding{
-				.binding{empty},
+				.binding{slot.binding},
 				.id {static_cast<uint32_t>(idx)},
 			};
 		}
 		void set(const Binding& binding, const T& t) {
-			assert(m_slots.find(binding.binding) != m_slots.end());
-			auto& slot = m_slots.find(binding.binding)->second;
-			assert(slot.data.size() > binding.id);
-			slot.data[binding.id] = t;
-			slot.dirty = true;
+			auto slot = std::find_if(m_slots.begin(), m_slots.end(), [binding](const auto& slot) {return slot.binding == binding.binding; });
+			assert(slot != m_slots.end());
+			assert(slot->data.size() > binding.id);
+			slot->data[binding.id] = t;
+			slot->dirty = true;
 		}
 		T& get(const Binding& binding) {
-			assert(m_slots.find(binding.binding) != m_slots.end());
-			auto& slot = m_slots.find(binding.binding)->second;
-			assert(slot.data.size() > binding.id);
-			slot.dirty = true;
-			return slot.data[binding.id];
+			auto slot = std::find_if(m_slots.begin(), m_slots.end(), [binding](const auto& slot) {return slot.binding == binding.binding; });
+			assert(slot != m_slots.end());
+			assert(slot->data.size() > binding.id);
+			slot->dirty = true;
+			return slot->data[binding.id];
 		}
 		const T& get(const Binding& binding) const {
-			assert(m_slots.find(binding.binding) != m_slots.end());
-			auto& slot = m_slots.find(binding.binding)->second;
-			assert(slot.data.size() > binding.id);
-			return slot.data[binding.id];
+			auto slot = std::find_if(m_slots.begin(), m_slots.end(), [binding](const auto& slot) {return slot.binding == binding.binding; });
+			assert(slot != m_slots.end());
+			assert(slot->data.size() > binding.id);
+			return slot->data[binding.id];
 		}
 		uint32_t bind_buffer(vulkan::BufferHandle& buffer) {
 			return r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
@@ -107,7 +108,7 @@ namespace nyan {
 
 		vulkan::LogicalDevice& r_device;
 		VkBufferUsageFlags m_usage;
-		std::unordered_map<uint32_t, Slot> m_slots;
+		std::vector<Slot> m_slots;
 		std::unordered_map<std::string, Binding> m_index;
 		std::vector<uint32_t> m_emptySlots;
 	};
