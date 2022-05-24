@@ -511,7 +511,7 @@ void nyan::Rendergraph::execute()
 			r_device.add_wait_semaphores(commandBufferType, pass.m_waitSemaphores, pass.m_waitStages);
 		}
 		std::vector<VkSemaphore> signals(pass.m_signalPassIds.size(), VK_NULL_HANDLE);
-		r_device.submit(cmd, signals.size(), signals.data());
+		r_device.submit(cmd, static_cast<uint32_t>(signals.size()), signals.data());
 		for (size_t i{ 0 }; i < pass.m_signalPassIds.size(); i++) {
 			auto& waitPass = m_renderpasses.get_direct(pass.m_signalPassIds[i]);
 			waitPass.add_wait(signals[i], pass.m_signalStages[i]);

@@ -90,7 +90,6 @@ namespace vulkan {
 			std::swap(m_vkHandle, other.m_vkHandle);
 			std::swap(m_allocation, other.m_allocation); 
 			std::swap(m_info, other.m_info);
-			constexpr auto a = sizeof(Buffer);
 		}
 		//MappedMemoryHandle<uint8_t> map_data() const noexcept;
 		void* map_data() noexcept;

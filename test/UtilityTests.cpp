@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <list>
+#include <random>
 namespace Utility {
     TEST(Utility, bitwidth) {
         EXPECT_EQ(bit_width(0x0), 0);
@@ -13,6 +14,36 @@ namespace Utility {
         EXPECT_EQ(bit_width(0x5), 3);
         for (uint64_t i = 0; i < 63; i++) {
             EXPECT_EQ(bit_width(1ull << i), i+1);
+        }
+    }
+    TEST(Utility, bitwidth_perf) {
+        auto t1 = std::chrono::steady_clock::now();
+        size_t res1{ 0 };
+        {
+            std::default_random_engine rng;
+            std::uniform_int_distribution<uint64_t> dist(0, ~0);
+            for (size_t i{ 0 }; i < 1000000; i++) {
+                res1 += std::bit_width(i);
+            }
+        }
+        auto t2 = std::chrono::steady_clock::now();
+        size_t res2{ 0 };
+        {
+            std::default_random_engine rng;
+            std::uniform_int_distribution<uint64_t> dist(0, ~0);
+            for (size_t i{ 0 }; i < 1000000; i++) {
+                res2 += bit_width(i);
+            }
+        }
+        auto t3 = std::chrono::steady_clock::now();
+        std::cout << "Delta t, std: " << (t2 - t1).count() << " util: " << (t3 - t2).count() << "\n";
+        EXPECT_EQ(res1, res2);
+    }
+    TEST(Utility, bitstuff) {
+        for (size_t i{ 1 }; i < 1000000; i++) {
+            auto res1 = std::bit_width(i) - 1;
+            auto res2 = fast_log2(i);
+            EXPECT_EQ(res1, res2);
         }
     }
     TEST(Utility, hash) {
@@ -31,26 +62,35 @@ namespace Utility {
         for (int i = 0; i < 1000000; i++) {
             EXPECT_EQ(fast_log2(i),static_cast<uint32_t>(std::log2(i)));
         }
-        int iters = 100000;
-        uint32_t result = 0;
+        int iters = 1000000;
+        uint64_t result = 0;
         {
             auto start = std::chrono::steady_clock::now();
-            for (int i = 0; i < iters; i++) {
-                result = fast_log2(i);
+            for (size_t i = 0; i < iters; i++) {
+                result += fast_log2(i);
             }
             auto end = std::chrono::steady_clock::now();
             std::cout << "Fast log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
-        uint32_t result2 = 0;
+        uint64_t result2 = 0;
         {
             auto start = std::chrono::steady_clock::now();
-            for (int i = 0; i < iters; i++) {
-                result2 = static_cast<uint32_t>(std::log2(i));
+            for (size_t i = 0; i < iters; i++) {
+                result2 += static_cast<uint32_t>(std::log2(i));
             }
             auto end = std::chrono::steady_clock::now();
             std::cout << "log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
-        EXPECT_EQ(result, result2);
+        uint64_t result3 = 0;
+        {
+            auto start = std::chrono::steady_clock::now();
+            for (size_t i = 1; i < iters; i++) {
+                result3 += static_cast<uint32_t>(std::bit_width(i) - 1);
+            }
+            auto end = std::chrono::steady_clock::now();
+            std::cout << "bitwidth took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+        }
+        EXPECT_EQ(result, result3);
     }
     TEST(Utility, bitset) {
         enum class Test {

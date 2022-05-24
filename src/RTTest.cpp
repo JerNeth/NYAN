@@ -26,7 +26,7 @@ int main() {
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 0, 1000, 1000 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 0, 1 }));
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
 
@@ -49,7 +49,9 @@ int main() {
 				(*accHandle)->create_instance()
 			} :
 			InstanceData{
-				.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+				.transform{
+					.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+				}
 			}));
 		registry.emplace<Transform>(entity,
 			Transform{
