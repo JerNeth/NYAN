@@ -2,7 +2,7 @@
 using namespace nyan;
 using namespace vulkan;
 
-void nyan::Skeleton::bind(vulkan::CommandBufferHandle& cmd)
+void nyan::Skeleton::bind([[maybe_unused]] vulkan::CommandBufferHandle& cmd)
 {
 	assert(buffer);
 	assert((offset % 256) == 0);

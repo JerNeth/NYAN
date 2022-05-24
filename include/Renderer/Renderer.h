@@ -4,7 +4,6 @@
 #include "VkWrapper.h"
 #include "ShaderManager.h"
 #include "Material.h"
-#include "Mesh.h"
 #include "Shader.h"
 #include <map>
 

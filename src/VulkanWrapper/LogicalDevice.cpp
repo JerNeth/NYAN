@@ -362,6 +362,16 @@ void vulkan::LogicalDevice::add_wait_semaphore(CommandBuffer::Type type, VkSemap
 	queue.needsFence = true;
 }
 
+void vulkan::LogicalDevice::add_wait_semaphores(CommandBuffer::Type type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush)
+{
+	if (flush)
+		submit_queue(type, nullptr);
+	auto& queue = get_queue(type);
+	queue.waitSemaphores.insert(queue.waitSemaphores.end(), semaphores.begin(), semaphores.end());
+	queue.waitStages.insert(queue.waitStages.end(), stages.begin(), stages.end());
+	queue.needsFence = true;
+}
+
 void vulkan::LogicalDevice::submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
 {
 	auto& queue = get_queue(type);
@@ -922,7 +932,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 }
 void vulkan::LogicalDevice::transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic, true);
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
 
 	graphicsCmd->image_barrier(*handle, oldLayout, newLayout,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0);
@@ -936,10 +946,10 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 	bool needMipBarrier = true;
 	bool needInitialBarrier = true;
 
-	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic, true);
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
 	decltype(graphicsCmd) transferCmd = graphicsCmd;
 	if (m_transfer.queue != m_graphics.queue)
-		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer, true);
+		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
 
 	transferCmd->image_barrier(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -995,10 +1005,10 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 }
 void vulkan::LogicalDevice::update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence, [[maybe_unused]] uint32_t mipLevel)
 {
-	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic, true);
+	auto graphicsCmd = request_command_buffer(CommandBuffer::Type::Generic);
 	auto transferCmd = graphicsCmd;
 	if (m_transfer.queue != m_graphics.queue)
-		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer, true);
+		transferCmd = request_command_buffer(CommandBuffer::Type::Transfer);
 	bool needInitialBarrier = true;
 
 	transferCmd->image_barrier(image, image.is_optimal()?VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1364,7 +1374,7 @@ void vulkan::LogicalDevice::create_vma_allocator()
 	m_vmaAllocator = std::make_unique<Allocator>(allocator);
 }
 
-vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, bool flush)
+vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, [[maybe_unused]] bool flush)
 {
 	assert(info.memoryUsage != VMA_MEMORY_USAGE_UNKNOWN);
 	VkBuffer buffer;
@@ -1405,7 +1415,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 		//Need to stage
 		tmp.memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY;
 		auto stagingBuffer = create_buffer(tmp, initialData);
-		auto cmd = request_command_buffer(CommandBuffer::Type::Transfer, true);
+		auto cmd = request_command_buffer(CommandBuffer::Type::Transfer);
 		cmd->copy_buffer(*handle, *stagingBuffer);
 		submit_staging(cmd, info.usage, true);
 	}
@@ -1605,7 +1615,7 @@ VkSemaphore vulkan::LogicalDevice::request_semaphore()
 	return m_semaphoreManager.request_semaphore();
 }
 
-vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(CommandBuffer::Type type, bool tiny)
+vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(CommandBuffer::Type type)
 {
 	auto cmd = get_pool(type).request_command_buffer();
 	VkCommandBufferBeginInfo beginInfo{
@@ -1616,7 +1626,7 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 		type == CommandBuffer::Type::Generic ? Optick::GPUQueueType::GPU_QUEUE_GRAPHICS :
 		(type == CommandBuffer::Type::Compute ? Optick::GPU_QUEUE_COMPUTE : Optick::GPU_QUEUE_TRANSFER));
 	vkBeginCommandBuffer(cmd, &beginInfo);
-	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index(), tiny);
+	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
 vulkan::ImageView* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount)
@@ -1630,7 +1640,7 @@ void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, 
 	info.size = newSize;
 	auto stagingBuffer = create_buffer(info, {});
 	if (copyData) {
-		auto cmd = request_command_buffer(CommandBuffer::Type::Transfer, true);
+		auto cmd = request_command_buffer(CommandBuffer::Type::Transfer);
 		cmd->copy_buffer(*stagingBuffer , buffer);
 		submit_staging(cmd, info.usage, true);
 	}

@@ -40,23 +40,23 @@ struct Mesh {
 
 layout(set = 0, binding = 0, scalar) buffer MeshData  {
 	Mesh meshes[];
-} meshData [4096];
+} meshData [8 * 1024];
 
 layout(set = 0, binding = 0) buffer Transforms  {
 	Transform transforms[];
-} transforms [4096];
+} transforms [8 * 1024];
 layout(set = 0, binding = 0) buffer Scenes  {
     layout(column_major) mat4x4 view;
     layout(column_major) mat4x4 proj;
     layout(column_major) mat4x4 invView;
     layout(column_major) mat4x4 invProj;
-} scene [4096];
-//layout(set = 0, binding = 0) buffer ssbos [];
-//layout(set = 0, binding = 1) uniform ubos[];
-//layout(set = 0, binding = 2) uniform sampler samplers[];
-//layout(set = 0, binding = 3) uniform texture2D textures[];
-//layout(set = 0, binding = 4) uniform image2D images[];
-//layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[];
+} scenes [8 * 1024];
+//layout(set = 0, binding = 0) buffer ssbos [ 8 * 1024];
+//layout(set = 0, binding = 1) uniform ubos[15];
+//layout(set = 0, binding = 2) uniform sampler samplers[256];
+//layout(set = 0, binding = 3) uniform texture2D textures[512 * 1024];
+//layout(set = 0, binding = 4) uniform image2D images[8 * 1024];
+//layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[256];
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -107,12 +107,24 @@ void main() {
 //										vec3(0.5f, 0.5f, -0.5f  ),
 //										vec3(-0.5f, 0.5f, -0.5f )
 //										);
+	Mesh mesh = meshData[constants.meshBinding].meshes[transforms[constants.transformBinding].transforms[constants.transformId].pad.x];
 	mat4x3 model = fetchTransformMatrix(constants.transformBinding,constants.transformId);
-	gl_Position = scene[constants.sceneBinding].proj * scene[constants.sceneBinding].view * vec4( model *vec4( inPosition, 1.0), 1.0);
-    vec3 tangent = vec3(model * vec4(inTangent.xyz, 0));
-    vec3 normal = vec3(model * vec4(inNormal.xyz, 0));
+	gl_Position = scenes[constants.sceneBinding].proj * scenes[constants.sceneBinding].view * vec4( model *vec4( inPosition, 1.0), 1.0);
+    //vec3 tangent = vec3(model * vec4(inTangent.xyz, 0));
+    //vec3 normal = vec3(model * vec4(inNormal.xyz, 0));
+    Uvs uvs = Uvs(mesh.uvs);
+    Normals normals = Normals(mesh.normals);
+    Tangents tangents = Tangents(mesh.tangents);
+    vec3 tangent = vec3(model * vec4(tangents.t[gl_VertexIndex].xyz, 0));
+    vec3 normal = vec3(model * vec4(normals.n[gl_VertexIndex].xyz, 0));
     vec3 bitangent = cross(normal, tangent);
-    fragTexCoord = inTexCoord;
+    //46 Entities 57 fps    17.5ms (fetch)
+    //46 Entities 57 fps    17.5 ms (attribs)
+    //46 Entities 57 fps    17.5 ms (bind)
+    //1.1 / 900
+    fragTexCoord = uvs.u[gl_VertexIndex];
+
+   // fragTexCoord = inTexCoord;
     fragTangent = tangent;
     fragNormal = normal;
     fragBitangent = bitangent;

@@ -14,15 +14,6 @@ namespace nyan {
 		float diffuseFactor;
 		float shininessFacor;
 	};
-	struct Material {
-		union {
-			struct {
-				MaterialID id;
-				uint32_t binding;
-			};
-			uint64_t data;
-		};
-	};
 	//using MaterialId = uint32_t;
 	//constexpr MaterialId invalidMaterialId = ~0u;
 	//class Material {

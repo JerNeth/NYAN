@@ -118,6 +118,8 @@ namespace nyan {
 		void end_rendering(vulkan::CommandBufferHandle& cmd);
 		uint32_t get_write_bind(uint32_t idx);
 		uint32_t get_read_bind(uint32_t idx);
+		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
+		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
 	private:
 		bool is_write(RenderResourceId id) const;
 		bool is_attachment(RenderResourceId id) const;
@@ -154,6 +156,10 @@ namespace nyan {
 
 		std::vector<VkImageView> m_imageReads;
 		std::vector<VkImageView> m_imageWrites;
+		std::vector<VkSemaphore> m_waitSemaphores;
+		std::vector<VkPipelineStageFlags> m_waitStages;
+		std::vector<VkPipelineStageFlags> m_signalStages;
+		std::vector<uint32_t> m_signalPassIds;
 
 	};
 	class Rendergraph {

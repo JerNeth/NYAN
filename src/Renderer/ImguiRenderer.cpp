@@ -29,7 +29,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 	set_up_pipeline(renderManager.get_shader_manager(), pass);
 	set_up_font();
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle & cmd, nyan::Renderpass & pass)
+	pass.add_renderfunction([this](vulkan::CommandBufferHandle & cmd, nyan::Renderpass &)
 	{
 		ImGui::Render();
 		ImDrawData* drawData = ImGui::GetDrawData();
@@ -51,7 +51,7 @@ nyan::ImguiRenderer::~ImguiRenderer()
 	ImGui::DestroyContext();
 }
 
-void nyan::ImguiRenderer::update(std::chrono::nanoseconds dt)
+void nyan::ImguiRenderer::update([[maybe_unused]] std::chrono::nanoseconds dt)
 {
 
 }

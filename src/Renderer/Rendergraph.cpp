@@ -185,6 +185,18 @@ uint32_t nyan::Renderpass::get_read_bind(uint32_t idx)
 	return r_graph.get_resource(m_reads[idx]).readBinding;
 }
 
+void nyan::Renderpass::add_wait(VkSemaphore wait, VkPipelineStageFlags stage)
+{
+	m_waitSemaphores.push_back(wait);
+	m_waitStages.push_back(stage);
+}
+
+void nyan::Renderpass::add_signal(uint32_t passId, VkPipelineStageFlags stage)
+{
+	m_signalPassIds.push_back(passId);
+	m_signalStages.push_back(stage);
+}
+
 bool nyan::Renderpass::is_write(RenderResourceId id) const
 {
 	return std::find(m_writes.cbegin(), m_writes.cend(), id) != m_writes.cend();
@@ -293,8 +305,8 @@ void nyan::Rendergraph::build()
 					pass.m_imageWrites.push_back(VK_NULL_HANDLE);
 				}
 			}
-			for (auto attachment : pass.m_attachments) {
-				auto& resource = m_renderresources.get_direct(attachment);
+			for (auto attachmentId : pass.m_attachments) {
+				auto& resource = m_renderresources.get_direct(attachmentId);
 				if (resource.m_type == RenderResource::Type::Image) {
 					auto& attachment = std::get<ImageAttachment>(resource.attachment);
 					auto& info = pass.m_renderingCreateInfo;
@@ -415,8 +427,8 @@ void nyan::Rendergraph::execute()
 				}
 			}
 			uint32_t attachmentId = 0;
-			for (auto attachment : pass.m_attachments) {
-				auto& resource = m_renderresources.get_direct(attachment);
+			for (auto attachmentRessourceId : pass.m_attachments) {
+				auto& resource = m_renderresources.get_direct(attachmentRessourceId);
 				auto& attachment = std::get<ImageAttachment>(resource.attachment);
 				if (resource.m_type == RenderResource::Type::Image) {
 					if (*resource.m_writeToIn.begin() == pass.m_id) {
@@ -495,7 +507,15 @@ void nyan::Rendergraph::execute()
 		pass.execute(cmd);
 		pass.apply_post_barriers(cmd);
 		cmd->end_region();
-		r_device.submit(cmd);
+		for (size_t i{ 0 }; i < pass.m_waitSemaphores.size(); i++) {
+			r_device.add_wait_semaphores(commandBufferType, pass.m_waitSemaphores, pass.m_waitStages);
+		}
+		std::vector<VkSemaphore> signals(pass.m_signalPassIds.size(), VK_NULL_HANDLE);
+		r_device.submit(cmd, signals.size(), signals.data());
+		for (size_t i{ 0 }; i < pass.m_signalPassIds.size(); i++) {
+			auto& waitPass = m_renderpasses.get_direct(pass.m_signalPassIds[i]);
+			waitPass.add_wait(signals[i], pass.m_signalStages[i]);
+		}
 	});
 }
 
@@ -889,6 +909,7 @@ void nyan::Rendergraph::set_up_barrier(const ImageBarrier& imageBarrier_, const 
 			//std::cout << "\n\t" << vulkan::ImageLayoutNames[queueImageBarrier.oldLayout] << " -> " << vulkan::ImageLayoutNames[queueImageBarrier.newLayout];
 			//std::cout << "\n";
 		}
+		src.add_signal(imageBarrier_.dst, imageBarrier_.dstStage);
 	}
 	else {
 		//std::cout << "Resource: " << resource.m_id << " Barrier (" << barrier.imageBarrierOffset  << "): "<< imageBarrier_.src << " -> " << imageBarrier_.dst;

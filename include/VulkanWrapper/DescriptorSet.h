@@ -36,12 +36,12 @@ namespace vulkan {
 	constexpr uint32_t storageImageBinding = 4;
 	constexpr uint32_t accelerationStructureBinding = 5;
 	struct DescriptorCreateInfo {
-		uint32_t storage_buffer_count = 512 * 1024;
-		uint32_t uniform_buffer_count = 1 * 1024;
-		uint32_t sampler_count = 4 * 1024;
+		uint32_t storage_buffer_count = 8 * 1024;
+		uint32_t uniform_buffer_count = 15;
+		uint32_t sampler_count = 256;
 		uint32_t sampled_image_count = 512 * 1024;
-		uint32_t storage_image_count = 64 * 1024;
-		uint32_t acceleration_structure_count = 32 * 1024;
+		uint32_t storage_image_count = 8 * 1024;
+		uint32_t acceleration_structure_count = 256;
 	};
 	class DescriptorPool;
 	class DescriptorSet {

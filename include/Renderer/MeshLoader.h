@@ -1,7 +1,6 @@
 #pragma once
 #ifndef MESHLOADER_H
 #define MESHLOADER_H
-#include "Renderer/Mesh.h"
 #include <variant>
 
 namespace nyan {

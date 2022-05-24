@@ -22,13 +22,13 @@ int main() {
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 0, 1000, 1000 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
-			renderManager.get_texture_manager().request_texture(a.diffuseTex);
+			renderManager.get_texture_manager().request_texture("white.png");
 		if (!a.normalTex.empty())
 			renderManager.get_texture_manager().request_texture(a.normalTex);
 		renderManager.get_material_manager().add_material(a);
@@ -39,7 +39,9 @@ int main() {
 		registry.emplace<MeshID>(entity, meshId);
 		auto instance = 
 			InstanceData{
-				.transformMatrix {Math::Mat<float, 3, 4, false>::identity()},
+				.transform {
+					.transformMatrix {Math::Mat<float, 3, 4, false>::identity()}
+				},
 			};
 		instance.instance.instanceCustomIndex = meshId;
 

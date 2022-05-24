@@ -114,7 +114,7 @@ namespace vulkan {
 	public:
 		
 	
-		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type = Type::Generic, uint32_t threadIdx = 0, bool tiny = false);
+		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type = Type::Generic, uint32_t threadIdx = 0);
 
 
 		//void begin_rendering()

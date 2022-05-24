@@ -23,7 +23,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 	uint32_t offset = 0;
 	for (const auto& inputDate : inputData) {
 		offsets.push_back(offset);
-		offset += inputDate.size;
+		offset += static_cast<uint32_t>(inputDate.size);
 	}
 	vulkan::BufferInfo info{
 		.size = offset,
@@ -50,16 +50,18 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.indexBuffer {mesh.buffer->get_handle()},
 			.indexOffset {offsets[0]},
 			.indexType {VK_INDEX_TYPE_UINT32},
-			.positionBuffer {mesh.buffer->get_handle()},
-			.texCoordBuffer {mesh.buffer->get_handle()},
-			.normalBuffer {mesh.buffer->get_handle()},
-			.tangentBuffer {mesh.buffer->get_handle()},
-
-
-			.positionOffset {offsets[1]},
-			.texCoordOffset {offsets[2]},
-			.normalOffset {offsets[3]},
-			.tangentOffset {offsets[4]},
+			.vertexBuffers {
+				.positionBuffer {mesh.buffer->get_handle()},
+				.texCoordBuffer {mesh.buffer->get_handle()},
+				.normalBuffer {mesh.buffer->get_handle()},
+				.tangentBuffer {mesh.buffer->get_handle()},
+			},
+			.vertexOffsets {
+				.positionOffset {offsets[1]},
+				.texCoordOffset {offsets[2]},
+				.normalOffset {offsets[3]},
+				.tangentOffset {offsets[4]},
+			},
 		}
 	};
 	auto addr = mesh.buffer->get_address();
@@ -68,16 +70,16 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 		.materialBinding { r_materialManager.get_binding() },
 		.materialId { r_materialManager.get_material(data.material) },
 		.indicesAddress { addr + mesh.mesh.indexOffset },
-		.uvAddress { addr + mesh.mesh.texCoordOffset },
-		.normalsAddress { addr + mesh.mesh.normalOffset },
-		.tangentsAddress { addr + mesh.mesh.tangentOffset },
+		.uvAddress { addr + mesh.mesh.vertexOffsets.texCoordOffset },
+		.normalsAddress { addr + mesh.mesh.vertexOffsets.normalOffset },
+		.tangentsAddress { addr + mesh.mesh.vertexOffsets.tangentOffset },
 		});
 
 	if (m_buildAccs) {
 		vulkan::AccelerationStructureBuilder::BLASInfo blasInfo{
-			.vertexBuffer { mesh.mesh.positionBuffer },
+			.vertexBuffer { mesh.mesh.vertexBuffers.positionBuffer },
 			.vertexCount { static_cast<uint32_t>(data.positions.size()) },
-			.vertexOffset { mesh.mesh.positionOffset },
+			.vertexOffset { mesh.mesh.vertexOffsets.positionOffset },
 			.vertexFormat { get_format<Math::vec3>() },
 			.vertexStride { format_bytesize(get_format<Math::vec3>()) },
 			.indexBuffer { mesh.mesh.indexBuffer },
@@ -153,7 +155,7 @@ void nyan::InstanceManager::set_transform(InstanceId id, const Math::Mat<float, 
 {
 	auto& instance = get(id);
 
-	instance.transformMatrix = transformMatrix;
+	instance.transform.transformMatrix = transformMatrix;
 
 }
 void nyan::InstanceManager::set_acceleration_structure(InstanceId id, uint64_t accelerationStructureReference)
@@ -190,7 +192,7 @@ InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
-		m_tlas = m_builder.build_tlas(m_slot->data.size(), m_slot->buffer->get_address());
+		m_tlas = m_builder.build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->buffer->get_address());
 		if (m_tlasBind)
 			r_device.get_bindless_set().set_acceleration_structure(*m_tlasBind, *(*m_tlas));
 		else
@@ -313,7 +315,7 @@ void nyan::SceneManager::update()
 		auto size = sizeof(SceneData);
 		auto* map = m_buffer->map_data();
 		std::memcpy(map, &m_sceneData, size);
-		m_buffer->flush(0, size);
+		m_buffer->flush(0, static_cast<uint32_t>(size));
 		m_dirtyScene = false;
 	}
 }

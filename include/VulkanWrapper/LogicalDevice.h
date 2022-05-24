@@ -217,7 +217,7 @@ namespace vulkan {
 		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
-		CommandBufferHandle request_command_buffer(CommandBuffer::Type type, bool tiny = false);
+		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
 		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 
@@ -244,6 +244,7 @@ namespace vulkan {
 		void queue_buffer_deletion(VkBuffer buffer) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
+		void add_wait_semaphores(CommandBuffer::Type type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
 		void submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);

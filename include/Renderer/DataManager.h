@@ -31,12 +31,12 @@ namespace nyan {
 			if (m_slot->slotCapacity < m_slot->data.size()) {
 				m_slot->buffer = create_buffer(m_slot->data.capacity());
 				rebind_buffer(m_slot->buffer);
-				m_slot->slotCapacity = m_slot->data.capacity();
+				m_slot->slotCapacity = static_cast<uint32_t>(m_slot->data.capacity());
 			}
 			auto size = sizeof(T) * m_slot->data.size();
 			auto* map = m_slot->buffer->map_data();
 			std::memcpy(map, m_slot->data.data(), size);
-			m_slot->buffer->flush(0, size);
+			m_slot->buffer->flush(0, static_cast<uint32_t>(size));
 			m_slot->dirty = false;
 
 		}

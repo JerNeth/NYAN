@@ -826,7 +826,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			assert(instance);
 			stageMap.emplace(group.closestHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
-			if (instance->get_stage() & ~VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR) {
+			if (info.stage & ~VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR) {
 				Utility::log(std::format("Invalid shadertype for ray tracing pipeline closest hit shader"));
 				assert(false);
 				return;
@@ -837,7 +837,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			assert(instance);
 			stageMap.emplace(group.anyHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
-			if (instance->get_stage() & ~VK_SHADER_STAGE_ANY_HIT_BIT_KHR) {
+			if (info.stage & ~VK_SHADER_STAGE_ANY_HIT_BIT_KHR) {
 				Utility::log(std::format("Invalid shadertype for ray tracing pipeline any hit shader"));
 				assert(false);
 				return;
@@ -848,7 +848,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			assert(instance);
 			stageMap.emplace(group.intersectionShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
-			if (instance->get_stage() & ~VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
+			if (info.stage & ~VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
 				Utility::log(std::format("Invalid shadertype for ray tracing pipeline intersection shader"));
 				assert(false);
 				return;
@@ -999,17 +999,17 @@ const vulkan::Pipeline2* vulkan::PipelineStorage2::get_pipeline(PipelineId pipel
 
 vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const ComputePipelineConfig& config)
 {
-	return m_pipelines.emplace_intrusive(r_device, config);
+	return static_cast<vulkan::PipelineId>( m_pipelines.emplace_intrusive(r_device, config));
 }
 
 vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const GraphicsPipelineConfig& config)
 {
-	return m_pipelines.emplace_intrusive(r_device, config);
+	return static_cast<vulkan::PipelineId>(m_pipelines.emplace_intrusive(r_device, config));
 }
 
 vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const RaytracingPipelineConfig& config)
 {
-	return m_pipelines.emplace_intrusive(r_device, config);
+	return static_cast<vulkan::PipelineId>(m_pipelines.emplace_intrusive(r_device, config));
 }
 
 vulkan::PipelineBind::PipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :

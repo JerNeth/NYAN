@@ -1,6 +1,6 @@
 #include "CommandBuffer.h"
 #include "LogicalDevice.h"
-vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type, uint32_t threadIdx, bool tiny) :
+vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type, uint32_t threadIdx) :
 	r_device(parent),
 	m_vkHandle(handle),
 	m_threadIdx(threadIdx),

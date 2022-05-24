@@ -1,5 +1,4 @@
 #include "Utility/FBXReader.h"
-#include "Renderer/Mesh.h"
 
 Utility::FBXReader::FBXReader()
 {
@@ -27,7 +26,6 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 
 	importer->Destroy();
 	fbxsdk::FbxNode* rootNode = scene->GetRootNode();
-	auto texCount = scene->GetTextureCount();
 	for (int matIdx = 0; matIdx < scene->GetMaterialCount(); matIdx++) {
 		fbxsdk::FbxSurfaceMaterial* mat = scene->GetMaterial(matIdx);
 		//std::cout<< mat->GetName() << ' ';
@@ -50,37 +48,37 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 				material.diffuseTex = tex->GetRelativeFileName();
 				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
 			}
-			for (int i = 0; i < phong->Ambient.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Ambient.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				//std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
-			}
-			for (int i = 0; i < phong->Bump.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Bump.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				//std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
-			}
-			for (int i = 0; i < phong->Emissive.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Emissive.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				//std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
-			}
+			//for (int i = 0; i < phong->Ambient.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Ambient.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Bump.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Bump.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Emissive.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Emissive.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
+			//}
 			for (int i = 0; i < phong->NormalMap.GetSrcObjectCount(); i++) {
 				auto* obj = phong->NormalMap.GetSrcObject(i);
 				auto* tex = static_cast<FbxFileTexture*>(obj);
 				material.normalTex = tex->GetRelativeFileName();
 				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
 			}
-			for (int i = 0; i < phong->Reflection.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Reflection.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				//std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
-			}
-			for (int i = 0; i < phong->Shininess.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Shininess.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				//std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
-			}
+			//for (int i = 0; i < phong->Reflection.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Reflection.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Shininess.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Shininess.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
+			//}
 			retMats.push_back(material);
 		}
 	}
@@ -138,9 +136,10 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 			}
 
 			auto& retVal = retMeshes[beginRetVec + idx];
-			size_t firstVertex = retVal.positions.size();
-			auto polySize = mesh->GetPolygonSize(poly);
-			for (int posInPoly = 0; posInPoly < polySize; posInPoly++, vertexCounter++) {
+			auto firstVertex = static_cast<uint32_t>(retVal.positions.size());
+			assert(poly >= 0);
+			auto polySize = static_cast<uint32_t>(mesh->GetPolygonSize(poly));
+			for (uint32_t posInPoly = 0; posInPoly < polySize; posInPoly++, vertexCounter++) {
 				int ctrlPointIndex = mesh->GetPolygonVertex(poly, posInPoly);
 				auto ctrlPoint = lControlPoints[ctrlPointIndex];
 				idx = 0;
@@ -197,10 +196,10 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 					});
 				retVal.uvs.push_back(Math::vec2{
 						static_cast<float>(uv.mData[0]),
-						static_cast<float>(uv.mData[1]),
+						static_cast<float>(1.f - uv.mData[1]),
 					});
 			}
-			for (size_t l = 2; l < polySize; l++) {
+			for (uint32_t l = 2; l < polySize; l++) {
 				retVal.indices.push_back(firstVertex);
 				retVal.indices.push_back(firstVertex + l - 1ull);
 				retVal.indices.push_back(firstVertex + l);

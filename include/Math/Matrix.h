@@ -556,15 +556,15 @@ namespace Math {
 			auto cr = cos(roll * deg_to_rad);
 			auto sr = sin(roll * deg_to_rad);
 			Mat<Scalar, 3, 3, column_major> mat;
-			mat(0, 0) = cy * cp;
-			mat(1, 0) = cy * sp * sr - sy * cr;
-			mat(2, 0) = cy * sp * cr + sy * sr;
-			mat(0, 1) = sy * cp;
-			mat(1, 1) = sy * sp * sr + cr * cy;
-			mat(2, 1) = sy * sp * cr - cy * sr;
-			mat(0, 2) = -sp;
-			mat(1, 2) = cp * sr;
-			mat(2, 2) = cp * cr;
+			mat(0, 0) = static_cast<Scalar>(cy * cp);
+			mat(1, 0) = static_cast<Scalar>(cy * sp * sr - sy * cr);
+			mat(2, 0) = static_cast<Scalar>(cy * sp * cr + sy * sr);
+			mat(0, 1) = static_cast<Scalar>(sy * cp);
+			mat(1, 1) = static_cast<Scalar>(sy * sp * sr + cr * cy);
+			mat(2, 1) = static_cast<Scalar>(sy * sp * cr - cy * sr);
+			mat(0, 2) = static_cast<Scalar>(-sp);
+			mat(1, 2) = static_cast<Scalar>(cp * sr);
+			mat(2, 2) = static_cast<Scalar>(cp * cr);
 			
 			return mat;
 		}

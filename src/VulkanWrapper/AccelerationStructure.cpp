@@ -197,7 +197,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 		batchSize += (((m_pendingBuilds[idx].sizeInfo.accelerationStructureSize) + 255) / 256) * 256;
 		VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 		if (batchSize >= batchLimit || idx == m_pendingBuilds.size() - 1) {
-			auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+			auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
 			if (queryPool) 
 				vkResetQueryPool(r_device, queryPool, 0, static_cast<uint32_t>(buildIndices.size()));
 
@@ -243,13 +243,12 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 
 			if (queryPool) {
 
-				auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+				auto cmdCompact = r_device.request_command_buffer(CommandBuffer::Type::Compute);
 
 				std::vector<VkDeviceSize> compactSizes(queryCount);
 				vkGetQueryPoolResults(r_device, queryPool, 0, queryCount, queryCount * sizeof(VkDeviceSize),
 					compactSizes.data(), sizeof(VkDeviceSize), VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_64_BIT);
-				VkDeviceSize offset = 0;
-				uint32_t queryCount = 0;
+				offset = 0;
 				VkDeviceSize totalCompactSize{ 0 };
 				for (auto compactSize : compactSizes)
 					totalCompactSize += ((compactSize + 255) / 256) * 256;
@@ -267,7 +266,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 						.size = compactSizes[i],
 						.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR
 					};
-					offset += (((compactSizes[i]) + 255) / 256) * 256;
+					offset += Utility::align_up(compactSizes[i], 256ull);
 					vkCreateAccelerationStructureKHR(r_device, &info, r_device.get_allocator(), &handle);
 					VkCopyAccelerationStructureInfoKHR copyInfo{
 						.sType = VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR,
@@ -275,12 +274,12 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 						.dst = handle,
 						.mode = VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR
 					};
-					vkCmdCopyAccelerationStructureKHR(cmd->get_handle(), &copyInfo);
+					vkCmdCopyAccelerationStructureKHR(cmdCompact->get_handle(), &copyInfo);
 					retVal.emplace_back(m_acclerationStructurePool.emplace(r_device, handle, batchBuffer, info));
 				}
-				r_device.submit_flush(cmd, 0, nullptr, &fenceHandle);
-				auto fence = fenceHandle.get_handle();
-				vkWaitForFences(r_device, 1, &fence, VK_TRUE, UINT64_MAX);
+				r_device.submit_flush(cmdCompact, 0, nullptr, &fenceHandle);
+				auto fenceCompact = fenceHandle.get_handle();
+				vkWaitForFences(r_device, 1, &fenceCompact, VK_TRUE, UINT64_MAX);
 			}
 			batchSize = 0;
 			buildIndices.clear();
@@ -308,7 +307,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 		.buffer = *instanceDataBuffer
 	};
 	auto instanceDataBufferAddr = vkGetBufferDeviceAddress(r_device, &addressInfo);
-	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
 	cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
 
@@ -390,7 +389,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 
 vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(uint32_t size, VkDeviceAddress address, VkBuildAccelerationStructureFlagsKHR flags)
 {
-	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
 
 
 	VkAccelerationStructureGeometryKHR geometry{

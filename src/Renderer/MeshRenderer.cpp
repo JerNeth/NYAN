@@ -8,7 +8,7 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	r_pass(pass)
 {
 	create_pipeline();
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass& pass) 
+	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&) 
 	{
 		auto pipelineBind = cmd->bind_graphics_pipeline(m_staticTangentPipeline);
 		VkViewport viewport{
@@ -49,7 +49,7 @@ void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, cons
 {
 	auto& mesh = r_renderManager.get_mesh_manager().get_static_tangent_mesh(meshId);
 	pipelineBind.bind_index_buffer(mesh.indexBuffer, mesh.indexOffset,  VK_INDEX_TYPE_UINT32);
-	pipelineBind.bind_vertex_buffers(0, mesh.vertexBuffers.size(), mesh.vertexBuffers.data(), mesh.vertexOffsets.data());
+	pipelineBind.bind_vertex_buffers(0u, mesh.vertexBuffers.size(), mesh.vertexBuffers.data(), mesh.vertexOffsets.data());
 
 	pipelineBind.push_constants(instance);
 	pipelineBind.draw_indexed(mesh.indexCount, 1, mesh.firstIndex, mesh.vertexOffset, mesh.firstInstance);
@@ -88,7 +88,7 @@ nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::regist
 	m_rtPipeline(create_pipeline(generate_config())),
 	m_sbt(create_sbt(generate_config()))
 {
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass& pass)
+	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd->bind_raytracing_pipeline(m_rtPipeline);
 			
@@ -155,6 +155,8 @@ vulkan::BufferHandle nyan::RTMeshRenderer::create_sbt(const vulkan::RaytracingPi
 	std::vector<std::byte> handleData(handleSize * groupCount);
 	auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data());
 	assert(result == VK_SUCCESS);
+	if (result != VK_SUCCESS)
+		throw std::runtime_error("Couldn't create SBT");
 	auto handleStride = Utility::align_up(handleSize, rtProperties.shaderGroupHandleAlignment);
 	uint32_t rgenCount{ static_cast<uint32_t>(rayConfig.rgenGroups.size()) };
 	uint32_t hitCount{ static_cast<uint32_t>(rayConfig.hitGroups.size()) };

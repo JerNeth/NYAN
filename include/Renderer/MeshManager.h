@@ -2,7 +2,6 @@
 #ifndef RDMESHMANAGER_H
 #define RDMESHMANAGER_H
 #include "VkWrapper.h"
-#include "Mesh.h"
 #include "DataManager.h"
 #include "MaterialManager.h"
 #include "LinAlg.h"
@@ -40,6 +39,43 @@ namespace nyan {
 		VkDeviceAddress normalsAddress;
 		VkDeviceAddress tangentsAddress;
 	};
+
+	struct StaticTangentVulkanMesh {
+		uint32_t indexCount;
+		uint32_t firstIndex;
+		int32_t vertexOffset;
+		uint32_t firstInstance;
+
+		VkBuffer indexBuffer;
+		VkDeviceSize indexOffset;
+		VkIndexType indexType;
+		struct VertexBuffers {
+			VkBuffer positionBuffer;
+			VkBuffer texCoordBuffer;
+			VkBuffer normalBuffer;
+			VkBuffer tangentBuffer;
+			constexpr uint32_t size() const {
+				return sizeof(VertexBuffers) / sizeof(VkDeviceSize);
+			}
+			constexpr const VkBuffer* data() const {
+				return &positionBuffer;
+			}
+		} vertexBuffers;
+
+		struct VertexOffsets {
+			VkDeviceSize positionOffset;
+			VkDeviceSize texCoordOffset;
+			VkDeviceSize normalOffset;
+			VkDeviceSize tangentOffset;
+			constexpr uint32_t size() const {
+				return sizeof(VertexOffsets) / sizeof(VkDeviceSize);
+			}
+			constexpr const VkDeviceSize* data() const {
+				return &positionOffset;
+			}
+		} vertexOffsets;
+		
+	};
 	class MeshManager : public DataManager<MeshData>{
 	private:
 		struct Mesh {
@@ -67,9 +103,9 @@ namespace nyan {
 	};
 	union InstanceData {
 		VkAccelerationStructureInstanceKHR instance;
-		struct {
+		struct Transform {
 			Math::Mat<float, 3, 4, false> transformMatrix;
-		};
+		} transform;
 	};
 	struct InstanceId {
 		uint32_t id;
@@ -88,7 +124,7 @@ namespace nyan {
 		void set_mask(InstanceId id, uint32_t mask);
 		void set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex);
 		void set_instance(InstanceId id, const InstanceData& instance);
-		InstanceId add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
+		InstanceId add_instance(const InstanceData& instanceData = { .transform {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()} });
 		void build();
 		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
 		std::optional<uint32_t> get_tlas_bind();
@@ -98,6 +134,19 @@ namespace nyan {
 		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
 		std::optional<uint32_t> m_tlasBind;
 	};
+	constexpr size_t maxLights = 8;
+	struct DirectionalLight {
+		Math::vec3 dir{ 0.f, -0.7071067811f, -0.7071067811f };
+		float intensity{ 1 };
+		Math::vec3 color{ 0.31382f, 0.33100f, 0.35518f };
+		bool enabled{ true };
+	};
+	struct PointLight {
+		Math::vec3 pos{ 0.f, 0.f, 0.f };
+		float intensity{ 1 };
+		Math::vec3 color{ 0.31382f, 0.33100f, 0.35518f };
+		float attenuationDistance{ 100 };
+	};
 
 	class SceneManager {
 		struct SceneData {
@@ -105,6 +154,13 @@ namespace nyan {
 			Math::Mat<float, 4, 4, true> proj;
 			Math::Mat<float, 4, 4, true> invView;
 			Math::Mat<float, 4, 4, true> invProj;
+			DirectionalLight dirLight1{};
+			DirectionalLight dirLight2{ .enabled {false} };
+			uint32_t numLights{ 0 };
+			uint32_t pad1;
+			uint32_t pad2;
+			uint32_t pad3;
+			std::array<PointLight, maxLights> lights;
 		};
 	public:
 		SceneManager(vulkan::LogicalDevice& device);
