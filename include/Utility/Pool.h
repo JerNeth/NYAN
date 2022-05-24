@@ -245,11 +245,12 @@ namespace Utility {
 				(*ptr_count)--;
 				if (*ptr_count == 0) {
 					delete ptr_count;
+					assert(ptr_container);
 					ptr_container->remove(m_id);
 				}
 			}
 			else {
-				if (ptr_container)
+				if(ptr_container)
 					ptr_container->remove(m_id);
 			}
 		}

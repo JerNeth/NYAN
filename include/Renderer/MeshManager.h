@@ -21,26 +21,7 @@ namespace nyan {
 		std::vector<Math::vec3> tangents;
 	};
 	using MeshID = uint32_t;
-	using InstanceID = uint32_t;
-	using TransformID = uint32_t;
 
-	struct TransformBinding {
-		union {
-			struct {
-				uint32_t binding;
-				uint32_t id;
-			};
-			uint64_t data;
-		};
-		template<std::size_t Index>
-		auto get() const
-		{
-			static_assert(Index < 2,
-				"Index out of bounds for Custom::Binding");
-			if constexpr (Index == 0) return id;
-			if constexpr (Index == 1) return binding;
-		}
-	};
 	struct TransformData {
 		Math::Mat<float, 3, 4, false> transform;
 		Math::Mat<float, 4, 4, true> view;
@@ -83,18 +64,25 @@ namespace nyan {
 			Math::Mat<float, 3, 4, false> transformMatrix;
 		};
 	};
-	class InstanceManager : public DataManager<InstanceData, TransformBinding, 1024 * 8> {
+	struct InstanceId {
+		uint32_t id;
+		InstanceId(uint32_t id) : id(id) {}
+		operator uint32_t() const {
+			return id;
+		}
+	};
+	class InstanceManager : public DataManager<InstanceData> {
 	public:
 		InstanceManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
-		void set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix);
-		void set_acceleration_structure(TransformBinding id, uint64_t accelerationStructureReference);
-		void set_flags(TransformBinding id, VkGeometryInstanceFlagsKHR flags);
-		void set_instance_shader_binding_table_record_offset(TransformBinding id, uint32_t instanceShaderBindingTableRecordOffset);
-		void set_mask(TransformBinding id, uint32_t mask);
-		void set_instance_custom_index(TransformBinding id, uint32_t instanceCustomIndex);
-		void set_instance(TransformBinding id, const InstanceData& instance);
-		TransformBinding add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
-		std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> get_instance_data() const;
+		void set_transform(InstanceId id, const Math::Mat<float, 3, 4, false>& transformMatrix);
+		void set_acceleration_structure(InstanceId id, uint64_t accelerationStructureReference);
+		void set_flags(InstanceId id, VkGeometryInstanceFlagsKHR flags);
+		void set_instance_shader_binding_table_record_offset(InstanceId id, uint32_t instanceShaderBindingTableRecordOffset);
+		void set_mask(InstanceId id, uint32_t mask);
+		void set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex);
+		void set_instance(InstanceId id, const InstanceData& instance);
+		InstanceId add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
+		std::pair<uint32_t, VkDeviceAddress> get_instance_data() const;
 		void build();
 		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
 	private:

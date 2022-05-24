@@ -42,13 +42,13 @@ int main() {
 		auto meshId = meshManager.add_mesh(a);
 		auto entity = registry.create();
 		registry.emplace<MeshID>(entity, meshId);
-		registry.emplace<MaterialBinding>(entity, materialManager.get_material(a.material));
+		registry.emplace<MaterialId>(entity, materialManager.get_material(a.material));
 		auto instance = 
 			InstanceData{
 				.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
 			};
 
-		registry.emplace<TransformBinding>(entity, instanceManager.add_instance(instance));
+		registry.emplace<InstanceId>(entity, instanceManager.add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
 				.position{},
@@ -85,9 +85,9 @@ int main() {
 	nyan::MeshRenderer meshRenderer(device, registry, shaderManager, meshManager, deferredPass);
 	application.each_frame_begin([&]()
 		{
-			auto view = registry.view<const TransformBinding, const Transform>();
-			for (const auto& [entity, transformBinding, transform] : view.each()) {
-				instanceManager.set_transform(transformBinding,
+			auto view = registry.view<const InstanceId, const Transform>();
+			for (const auto& [entity, instanceId, transform] : view.each()) {
+				instanceManager.set_transform(instanceId,
 					Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position));
 			}
 			meshManager.build();

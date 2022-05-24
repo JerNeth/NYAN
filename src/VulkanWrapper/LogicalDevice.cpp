@@ -110,10 +110,9 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 
 	for (const auto image : swapchainImages) {
 		std::vector<AllocationHandle> allocs;
-		auto handle = m_imagePool.emplace(*this, image, info, allocs);
+		auto& handle = m_wsiState.swapchainImages.emplace_back(std::move(m_imagePool.emplace(*this, image, info, allocs)));
 		handle->disown();
 		handle->set_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-		m_wsiState.swapchainImages.emplace_back(handle);
 	}
 
 }

@@ -33,17 +33,19 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		pipelineBind.set_scissor(scissor);
 		pipelineBind.set_viewport(viewport);
 
-		auto view = r_registry.view<const MeshID, const MaterialBinding, const TransformBinding>();
+		auto view = r_registry.view<const MeshID, const MaterialId, const InstanceId>();
 		//Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position)
-		for (const auto& [entity, meshID, material, transform] : view.each()) {
+		for (const auto& [entity, meshID, materialId, instanceId] : view.each()) {
 			nyan::MeshInstance instance{
-				.material {material},
-				.transform {transform},
+				.materialBinding {0},
+				.materialId {materialId},
+				.instanceBinding {1},
+				.instanceId {instanceId},
 				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{5, 5, 5}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
 				.proj {Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f) },
 			};
-			constexpr auto a = offsetof(MeshInstance, material);
-			constexpr auto b = offsetof(MeshInstance, transform);
+			constexpr auto a = offsetof(MeshInstance, materialId);
+			constexpr auto b = offsetof(MeshInstance, instanceId);
 			constexpr auto c = offsetof(MeshInstance, view);
 			constexpr auto d = offsetof(MeshInstance, proj);
 			render(pipelineBind, meshID, instance);

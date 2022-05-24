@@ -388,9 +388,10 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	return tlas;
 }
 
-vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(const std::vector<uint32_t>& sizes, const std::vector<VkDeviceAddress>& addresses, VkBuildAccelerationStructureFlagsKHR flags)
+vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(uint32_t size, VkDeviceAddress address, VkBuildAccelerationStructureFlagsKHR flags)
 {
 	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+
 
 	VkAccelerationStructureGeometryKHR geometry{
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -400,8 +401,8 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 			.instances {
 				.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
 				.pNext = nullptr,
-				.arrayOfPointers = VK_TRUE,
-				.data {.hostAddress = static_cast<const void*>(addresses.data())},
+				.arrayOfPointers = VK_FALSE,
+				.data {.deviceAddress = address},
 			}
 		},
 	};
@@ -420,7 +421,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 		.pNext = nullptr,
 	};
 	vkGetAccelerationStructureBuildSizesKHR(r_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo,
-		sizes.data(), &sizeInfo);
+		&size, &sizeInfo);
 
 	auto accelBuffer = r_device.create_buffer(BufferInfo{
 			.size = sizeInfo.accelerationStructureSize,
@@ -455,18 +456,13 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	buildInfo.dstAccelerationStructure = accelHandle;
 	buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddress(r_device, &addressInfo);
 
-	std::vector< VkAccelerationStructureBuildRangeInfoKHR> buildRanges;
-	buildRanges.reserve(sizes.size());
-	for (const auto& size : sizes) {
-		buildRanges.push_back(
-			 VkAccelerationStructureBuildRangeInfoKHR {
-				.primitiveCount = size,
-				.primitiveOffset = 0,
-				.firstVertex = 0,
-				.transformOffset = 0,
-			});
-	}
-	const VkAccelerationStructureBuildRangeInfoKHR* pBuildOffsetInfo = buildRanges.data();
+	VkAccelerationStructureBuildRangeInfoKHR buildRange {
+		.primitiveCount = size,
+		.primitiveOffset = 0,
+		.firstVertex = 0,
+		.transformOffset = 0,
+	};
+	const VkAccelerationStructureBuildRangeInfoKHR* pBuildOffsetInfo = &buildRange;
 
 	vkCmdBuildAccelerationStructuresKHR(cmd->get_handle(), 1, &buildInfo, &pBuildOffsetInfo);
 

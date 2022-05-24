@@ -138,65 +138,57 @@ nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device, bool build
 {
 }
 
-void nyan::InstanceManager::set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix)
+void nyan::InstanceManager::set_transform(InstanceId id, const Math::Mat<float, 3, 4, false>& transformMatrix)
 {
 	auto& instance = get(id);
 
 	instance.transformMatrix = transformMatrix;
 
 }
-void nyan::InstanceManager::set_acceleration_structure(TransformBinding id, uint64_t accelerationStructureReference)
+void nyan::InstanceManager::set_acceleration_structure(InstanceId id, uint64_t accelerationStructureReference)
 {
 	get(id).instance.accelerationStructureReference = accelerationStructureReference;
 }
-void nyan::InstanceManager::set_flags(TransformBinding id, VkGeometryInstanceFlagsKHR flags)
+void nyan::InstanceManager::set_flags(InstanceId id, VkGeometryInstanceFlagsKHR flags)
 {
 	get(id).instance.flags = flags;
 }
-void nyan::InstanceManager::set_instance_shader_binding_table_record_offset(TransformBinding id, uint32_t instanceShaderBindingTableRecordOffset)
+void nyan::InstanceManager::set_instance_shader_binding_table_record_offset(InstanceId id, uint32_t instanceShaderBindingTableRecordOffset)
 {
 	get(id).instance.instanceShaderBindingTableRecordOffset = instanceShaderBindingTableRecordOffset;
 }
-void nyan::InstanceManager::set_mask(TransformBinding id, uint32_t mask)
+void nyan::InstanceManager::set_mask(InstanceId id, uint32_t mask)
 {
 	get(id).instance.mask = mask;
 }
-void nyan::InstanceManager::set_instance_custom_index(TransformBinding id, uint32_t instanceCustomIndex)
+void nyan::InstanceManager::set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex)
 {
 	get(id).instance.instanceCustomIndex = instanceCustomIndex;
 }
-void nyan::InstanceManager::set_instance(TransformBinding id, const InstanceData& instance)
+void nyan::InstanceManager::set_instance(InstanceId id, const InstanceData& instance)
 {
 	set(id, instance);
 }
-TransformBinding nyan::InstanceManager::add_instance(const InstanceData& instanceData)
+InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 {
 	return add(instanceData);
 }
 
-std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> nyan::InstanceManager::get_instance_data() const
+std::pair<uint32_t, VkDeviceAddress> nyan::InstanceManager::get_instance_data() const
 {
-	std::vector<uint32_t> counts;
-	std::vector<VkDeviceAddress> addresses;
-	counts.reserve(m_slots.size());
-	addresses.reserve(m_slots.size());
-	for (const auto& slot : m_slots) {
-		counts.push_back(slot.data.size());
-		VkBufferDeviceAddressInfo addressInfo{
+	VkBufferDeviceAddressInfo addressInfo{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
 			.pNext = nullptr,
-			.buffer = slot.buffer->get_handle()
-		};
-		addresses.push_back(vkGetBufferDeviceAddress(r_device, &addressInfo));
-	}
-	return {counts, addresses};
+			.buffer = m_slot->buffer->get_handle()
+	};
+	return { m_slot->data.size(), vkGetBufferDeviceAddress(r_device, &addressInfo)};
 }
 
 void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
-		auto [counts, addresses] = get_instance_data();
-		m_tlas = m_builder.build_tlas(counts, addresses);
+		auto [count, address] = get_instance_data();
+		m_tlas = m_builder.build_tlas(count, address);
 	}
 }
 

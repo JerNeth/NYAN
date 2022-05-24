@@ -17,33 +17,24 @@ namespace nyan {
 		Math::vec3 diffuseColor;
 		float diffuseFactor;
 	};
-	struct MaterialBinding {
-		union {
-			struct {
-				uint32_t binding;
-				uint32_t id;
-			};
-			uint64_t data;
-		};
-		template<std::size_t Index>
-		auto get() const
-		{
-			static_assert(Index < 2,
-				"Index out of bounds for Custom::MaterialBinding");
-			if constexpr (Index == 0) return id;
-			if constexpr (Index == 1) return binding;
+	struct MaterialId {
+		uint32_t id;
+		MaterialId() {}
+		MaterialId(uint32_t id) : id(id){}
+		operator uint32_t() const {
+			return id;
 		}
 	};
-	class MaterialManager : public DataManager<InternalMaterialData, MaterialBinding, 1024> {
+	class MaterialManager : public DataManager<InternalMaterialData> {
 	public:
 		MaterialManager(vulkan::LogicalDevice& device, nyan::TextureManager& textureManager);
-		void set_material(const nyan::MaterialBinding& idx, const MaterialData& data);
-		MaterialBinding add_material(const MaterialData& data);
-		MaterialBinding get_material(const std::string& name);
+		void set_material(MaterialId idx, const MaterialData& data);
+		MaterialId add_material(const MaterialData& data);
+		MaterialId get_material(const std::string& name);
 	private:
 
 		nyan::TextureManager& r_textureManager;
-		std::unordered_map<std::string, MaterialBinding> m_materialIndex;
+		std::unordered_map<std::string, MaterialId> m_materialIndex;
 	};
 }
 #endif !RDMATERIALMANAGER_H

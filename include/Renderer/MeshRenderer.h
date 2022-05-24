@@ -21,8 +21,10 @@ namespace nyan {
 
 	//};
 	struct MeshInstance {
-		MaterialBinding material;
-		TransformBinding transform;
+		uint32_t materialBinding;
+		uint32_t materialId;
+		uint32_t instanceBinding;
+		uint32_t instanceId;
 		Math::Mat<float, 4, 4, true> view;
 		Math::Mat<float, 4, 4, true> proj;
 	};

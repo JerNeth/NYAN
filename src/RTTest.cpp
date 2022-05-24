@@ -22,8 +22,8 @@ int main() {
 	//TODO possibly chunk textures and queue upload
 	nyan::TextureManager textureManager(device);
 	nyan::MaterialManager materialManager(device, textureManager);
-	nyan::MeshManager meshManager(device, false);
-	nyan::InstanceManager instanceManager(device, false);
+	nyan::MeshManager meshManager(device, true);
+	nyan::InstanceManager instanceManager(device, true);
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;

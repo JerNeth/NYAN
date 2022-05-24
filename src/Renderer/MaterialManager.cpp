@@ -8,7 +8,7 @@ nyan::MaterialManager::MaterialManager(vulkan::LogicalDevice& device, nyan::Text
 
 }
 
-void nyan::MaterialManager::set_material(const nyan::MaterialBinding& idx, const MaterialData& data)
+void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& data)
 {
 	set(idx, InternalMaterialData{
 	.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
@@ -21,8 +21,7 @@ void nyan::MaterialManager::set_material(const nyan::MaterialBinding& idx, const
 	});
 }
 
-
-nyan::MaterialBinding nyan::MaterialManager::add_material(const nyan::MaterialData& data)
+nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& data)
 {
 	auto binding = add(InternalMaterialData{
 		.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
@@ -37,7 +36,7 @@ nyan::MaterialBinding nyan::MaterialManager::add_material(const nyan::MaterialDa
 	return binding;
 }
 
-nyan::MaterialBinding nyan::MaterialManager::get_material(const std::string& name)
+nyan::MaterialId nyan::MaterialManager::get_material(const std::string& name)
 {
 	assert(m_materialIndex.find(name) != m_materialIndex.end());
 	return m_materialIndex[name];
