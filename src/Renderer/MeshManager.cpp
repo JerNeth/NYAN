@@ -26,8 +26,8 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 	vulkan::BufferInfo info{
 		.size = offset,
 		.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+				//| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 		.offset = 0,
 		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY
 
@@ -46,13 +46,13 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 			.indexType {VK_INDEX_TYPE_UINT32},
 			.positionBuffer {mesh.buffer->get_handle()},
 			.texCoordBuffer {mesh.buffer->get_handle()},
-			.colorBuffer {mesh.buffer->get_handle()},
+			.normalBuffer {mesh.buffer->get_handle()},
 			.tangentBuffer {mesh.buffer->get_handle()},
 
 
 			.positionOffset {offsets[1]},
 			.texCoordOffset {offsets[2]},
-			.colorOffset {offsets[3]},
+			.normalOffset {offsets[3]},
 			.tangentOffset {offsets[4]},
 		}
 	};

@@ -1,8 +1,23 @@
 #include "Renderer/ImguiRenderer.h"
+#include "entt/entt.hpp"
 using namespace vulkan;
 
-nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window) :
+namespace MM {
+	template <>
+	void ComponentEditorWidget<nyan::Transform>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& t = reg.get<nyan::Transform>(e);
+		ImGui::DragFloat("x", &t.position.x(), 0.1f);
+		ImGui::DragFloat("y", &t.position.y(), 0.1f);
+		ImGui::DragFloat("z", &t.position.z(), 0.1f);
+		ImGui::DragFloat("pitch", &t.orientation.x(), 0.1f);
+		ImGui::DragFloat("yaw", &t.orientation.y(), 0.1f);
+		ImGui::DragFloat("roll", &t.orientation.z(), 0.1f);
+	}
+}
+nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
+	r_registry(registry),
 	ptr_window(window)
 {
 	start = std::chrono::high_resolution_clock::now();
@@ -25,6 +40,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, vulkan::ShaderManager&
 		}
 	});
 	ptr_window->configure_imgui();
+	m_editor.registerComponent<Transform>("Transform");
 }
 
 nyan::ImguiRenderer::~ImguiRenderer()
@@ -77,6 +93,8 @@ void nyan::ImguiRenderer::next_frame()
 	//ImGui::PopButtonRepeat();
 	//ImGui::SameLine();
 	ImGui::End();
+	auto ent = *r_registry.data();
+	m_editor.renderSimpleCombo(r_registry, ent);
 
 	//ImGui::ShowDemoWindow();
 }

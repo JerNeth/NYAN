@@ -4,7 +4,9 @@
 #include "Application.h"
 #include "Utility/FBXReader.h"
 #include "entt/entt.hpp"
+#include "Renderer/MeshRenderer.h"
 using namespace nyan;
+
 int main() {
 	auto name = "Demo";
 	nyan::Application application(name);
@@ -24,29 +26,44 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cathedral.fbx", meshes, materials);
+	reader.parse_meshes("cube.fbx", meshes, materials);
 	std::vector<nyan::MeshID> meshIds;
 	std::vector<nyan::MaterialBinding> materialIds;
-	std::vector<nyan::MeshInstance> instances;
 
 
 	for (const auto& a : materials) {
+		if (!a.diffuseTex.empty())
+			textureManager.request_texture(a.diffuseTex);
+		if (!a.normalTex.empty())
+			textureManager.request_texture(a.normalTex);
 		materialIds.push_back(materialManager.add_material(a));
 	}
 	materialManager.upload();
 	for (const auto& a : meshes) {
 		auto meshId = meshManager.add_mesh(a);
 		meshIds.push_back(meshId);
-		instances.push_back(nyan::MeshInstance{
+		nyan::MeshInstance instance{
 			.mesh_id {meshId},
 			.material {materialManager.get_material(a.material)},
 			.pad {0},
-			.transform {Math::Mat<float, 3, 4, false>::identity()},
-		});
+			.transform {Math::Mat<float, 3, 4, true>::identity()}
+			//Math::Mat<float, 4, 4, false>::look_at(Math::vec3{0, -1000, 0}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1}),
+			//Math::Mat<float, 4, 4, false>::perspectiveX(0.1, 5000, 80, 16/9.f)},
+		};
+		auto entity = registry.create();
+		registry.emplace<MeshID>(entity, instance.mesh_id);
+		registry.emplace<MaterialBinding>(entity, instance.material);
+		registry.emplace<Transform>(entity,
+			Transform{
+				.position{},
+				.orientation{},
+				.view{Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, -10, 0}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
+				.proj{Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 100, 40, 9 / 16.f)}
+			});
 	}
 
 	nyan::Rendergraph rendergraph{ device };
-	OutputDebugStringW(L"My output string.\n");
+	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
 	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
 	//	{
@@ -66,7 +83,8 @@ int main() {
 	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 
-	nyan::ImguiRenderer imgui(device, shaderManager, imguiPass, &window);
+	nyan::ImguiRenderer imgui(device, registry, shaderManager, imguiPass, &window);
+	nyan::MeshRenderer meshRenderer(device, registry, shaderManager, meshManager, deferredPass);
 	application.each_frame_begin([&]()
 		{
 			imgui.next_frame();

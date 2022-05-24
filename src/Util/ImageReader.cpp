@@ -6,33 +6,33 @@ std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::
 {
 	if (!std::filesystem::exists(filename))
 		throw std::runtime_error("File does not exist " +filename.string());
-	if (filename.extension().compare(".png") ||
-		filename.extension().compare(".jpg") ||
+	if (filename.extension().compare(".png") &&
+		filename.extension().compare(".jpg") &&
 		filename.extension().compare(".hdr"))
 		throw std::runtime_error("Not supported file extension " + filename.extension().string());
 	int width, height, channels;
 	vulkan::InitialImageData data 
 	{
-		.data = stbi_load(filename.string().c_str(), &width, &height, &channels, 0),
+		.data = stbi_load(filename.string().c_str(), &width, &height, &channels, 4),
 		
 	};
 	if(!data.data)
 		throw std::runtime_error("Failed to load image " + filename.string());
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-	switch (channels) {
-	case 1:
-		format = VK_FORMAT_R8_SRGB;
-		break;
-	case 2:
-		format = VK_FORMAT_R8G8_SRGB;
-		break;
-	case 3:
-		format = VK_FORMAT_R8G8B8_SRGB;
-		break;
-	case 4:
-		format = VK_FORMAT_R8G8B8A8_SRGB;
-		break;
-	}
+	//switch (channels) {
+	//case 1:
+	//	format = VK_FORMAT_R8_SRGB;
+	//	break;
+	//case 2:
+	//	format = VK_FORMAT_R8G8_SRGB;
+	//	break;
+	//case 3:
+	//	format = VK_FORMAT_R8G8B8_SRGB;
+	//	break;
+	//case 4:
+	//	format = VK_FORMAT_R8G8B8A8_SRGB;
+	//	break;
+	//}
 
 	TextureInfo info
 	{

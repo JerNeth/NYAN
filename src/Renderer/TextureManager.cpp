@@ -80,6 +80,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 	if (m_useSparse) {
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, &data);
+
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo {.imageView = image->get_view()->get_image_view()});
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);

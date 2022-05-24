@@ -6,6 +6,7 @@
 #include "ShaderManager.h"
 #include "MeshManager.h"
 #include "RenderGraph.h"
+#include "entt/fwd.hpp"
 
 namespace nyan {
 	
@@ -21,13 +22,14 @@ namespace nyan {
 	//};
 	class MeshRenderer{
 	public:
-		MeshRenderer(vulkan::LogicalDevice& device, vulkan::ShaderManager& shaderManager, nyan::MeshManager& meshManager, nyan::Renderpass& pass);
+		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::MeshManager& meshManager, nyan::Renderpass& pass);
 		void render(vulkan::GraphicsPipelineBind& bind, const MeshInstance& instance);
 	private:
 		void create_pipeline();
 
 		vulkan::LogicalDevice& r_device;
-		vulkan::ShaderManager r_shaderManager;
+		entt::registry& r_registry;
+		vulkan::ShaderManager& r_shaderManager;
 		nyan::MeshManager& r_meshManager;
 		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_staticTangentPipeline;

@@ -22,7 +22,7 @@ namespace nyan {
 			struct {
 				VkBuffer positionBuffer;
 				VkBuffer texCoordBuffer;
-				VkBuffer colorBuffer;
+				VkBuffer normalBuffer;
 				VkBuffer tangentBuffer;
 			};
 		};
@@ -32,7 +32,7 @@ namespace nyan {
 			struct {
 				VkDeviceSize positionOffset;
 				VkDeviceSize texCoordOffset;
-				VkDeviceSize colorOffset;
+				VkDeviceSize normalOffset;
 				VkDeviceSize tangentOffset;
 			};
 		};

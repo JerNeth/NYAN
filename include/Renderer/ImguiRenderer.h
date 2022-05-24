@@ -1,6 +1,6 @@
+#pragma once
 #ifndef RDIMGUI_H
 #define RDIMGUI_H
-#pragma once
 #include "VkWrapper.h"
 #include "ShaderManager.h"
 #include "imgui.h"
@@ -8,10 +8,14 @@
 #include "RenderGraph.h"
 #include "glfwWrapper.h"
 #include <chrono>
+#include "MeshManager.h"
+#include "entt/fwd.hpp"
+#include "imgui_entt_entity_editor.hpp"
+
 namespace nyan {
 	class ImguiRenderer{
 	public:
-		ImguiRenderer(vulkan::LogicalDevice& device, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window);
+		ImguiRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window);
 		~ImguiRenderer();
 		void update(std::chrono::nanoseconds dt);
 		void next_frame();
@@ -22,6 +26,8 @@ namespace nyan {
 		void set_up_pipeline(vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass);
 		void set_up_font();
 		vulkan::LogicalDevice& r_device;
+		entt::registry& r_registry;
+		MM::EntityEditor<entt::entity> m_editor;
 		vulkan::PipelineId m_pipeline;
 		glfww::Window* ptr_window;
 		std::chrono::high_resolution_clock::time_point start;

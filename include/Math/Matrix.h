@@ -125,8 +125,8 @@ namespace Math {
 				}
 			}
 		}
-		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other>
-		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other>& other) : m_data() {
+		template<typename ScalarOther, size_t Size_x_other, size_t Size_y_other, bool column_major_other>
+		explicit Mat(const Mat<ScalarOther, Size_x_other, Size_y_other, column_major_other>& other) : m_data() {
 			for (size_t y = 0; y < min(Size_y, Size_y_other); y++) {
 				for (size_t x = 0; x < min(Size_x, Size_x_other); x++) {
 					at(x, y) = other.at(x, y);
@@ -503,7 +503,7 @@ namespace Math {
 		static inline Mat<Scalar, Size_y, Size_x, column_major> affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
 			static_assert(Size_x == 4);
 			static_assert(Size_y == 4 || Size_y == 3);
-			Mat<Scalar, Size_y, Size_x, column_major> mat{ Mat<Scalar, 3,3, column_major>::rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]) };
+			Mat<Scalar, Size_y, Size_x, column_major> mat(Mat<Scalar, 3, 3, column_major>::rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]));
 			mat.set_col(translation_vector, 3);
 			if constexpr(Size_y == 4)
 				mat(3, 3) = 1;
@@ -513,30 +513,30 @@ namespace Math {
 			return rotation_matrix(roll_pitch_yaw[0], roll_pitch_yaw[1], roll_pitch_yaw[2]);
 		}
 		static inline Mat<Scalar, 4, 4, column_major> translation_matrix(Vec<Scalar, 3>  translation_vector) { // roll (x), pitch (y), yaw (z)
-			Mat<Scalar, 4, 4, column_major> matrix = Mat<Scalar, 4, 4>::identity();
+			Mat<Scalar, 4, 4, column_major> matrix = Mat<Scalar, 4, 4, column_major>::identity();
 			matrix.set_col(translation_vector, 3);
 			return matrix;
 		}
 		static inline Mat<Scalar, Size_y , Size_x, column_major> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
 			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
-			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y>::identity();
+			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y, column_major>::identity();
 			Vec<Scalar, 3> zAxis = at - eye;
 			zAxis.normalize();
 			Vec<Scalar, 3> xAxis = zAxis.cross(up);
 			xAxis.normalize();
 			Vec<Scalar, 3> yAxis = zAxis.cross(xAxis);
-			matrix.set_row(xAxis, 0);
-			matrix.set_row(yAxis, 1);
-			matrix.set_row(-zAxis, 2);
-			//matrix.at(0, 0) = xAxis.x();
-			//matrix.at(1, 0) = xAxis.y();
-			//matrix.at(2, 0) = xAxis.z();
-			//matrix.at(0, 1) = yAxis.x();
-			//matrix.at(1, 1) = yAxis.y();
-			//matrix.at(2, 1) = yAxis.z();
-			//matrix.at(0, 2) = -(zAxis.x());
-			//matrix.at(1, 2) = -(zAxis.y());
-			//matrix.at(2, 2) = -(zAxis.z());
+			//matrix.set_row(xAxis, 0);
+			//matrix.set_row(yAxis, 1);
+			//matrix.set_row(-zAxis, 2);
+			matrix.at(0, 0) = xAxis.x();
+			matrix.at(1, 0) = xAxis.y();
+			matrix.at(2, 0) = xAxis.z();
+			matrix.at(0, 1) = yAxis.x();
+			matrix.at(1, 1) = yAxis.y();
+			matrix.at(2, 1) = yAxis.z();
+			matrix.at(0, 2) = -(zAxis.x());
+			matrix.at(1, 2) = -(zAxis.y());
+			matrix.at(2, 2) = -(zAxis.z());
 			matrix.at(3, 0) = -(xAxis.dot(eye));
 			matrix.at(3, 1) = -(yAxis.dot(eye));
 			matrix.at(3, 2) =  (zAxis.dot(eye));

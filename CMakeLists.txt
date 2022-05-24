@@ -62,6 +62,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/STB.cmake")
 # ENTT
 include("${CMAKE_SOURCE_DIR}/vendor/EnTT.cmake")
 
+# ENTT Editor
+include("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor.cmake")
+
 # Optick
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")
 
@@ -105,7 +108,7 @@ add_executable(FBXTest ${FBXTest_SRC})
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
-target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore stb EnTT)
+target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore stb EnTT imgui_entt_entity_editor )
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine)
@@ -128,7 +131,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 target_compile_features(Engine PUBLIC 
-    cxx_std_23
+    cxx_std_20
 )
 
 if(WIN32)

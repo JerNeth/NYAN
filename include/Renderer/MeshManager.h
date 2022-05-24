@@ -24,17 +24,18 @@ namespace nyan {
 	using MeshInstanceID = uint32_t;
 	using TransformID = uint32_t;
 
-	struct Transform {
-		union {
-			struct {
-				TransformID id;
-				uint32_t binding;
-			};
-			uint64_t data;
-		};
-	};
+	using TransformBinding = Binding;
 	struct TransformData {
-		Math::Mat<float, 3, 4, false> transform;
+		Math::Mat<float, 3, 4, true> transform;
+		Math::Mat<float, 4, 4, true> view;
+		Math::Mat<float, 4, 4, true> proj;
+	};
+	struct Transform {
+		Math::vec3 position;
+		Math::vec3 scale;
+		Math::vec3 orientation;
+		Math::Mat<float, 4, 4, true> view;
+		Math::Mat<float, 4, 4, true> proj;
 	};
 	class MeshManager {
 	private:
@@ -59,6 +60,7 @@ namespace nyan {
 		MeshID mesh_id;
 		MaterialBinding material;
 		uint32_t pad;
+		//TODO change to transformId
 		TransformData transform;
 	};
 	class MeshInstanceManager : public DataManager<MeshInstance, 1024 * 8> {
