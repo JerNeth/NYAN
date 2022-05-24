@@ -17,11 +17,10 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 	inputData.push_back(InputData{ .ptr = data.uvs.data(), .size = data.uvs.size() * sizeof(Math::vec2) });
 	inputData.push_back(InputData{ .ptr = data.normals.data(), .size = data.normals.size() * sizeof(Math::vec3) });
 	inputData.push_back(InputData{ .ptr = data.tangents.data(), .size = data.tangents.size() * sizeof(Math::vec3) });
-	uint32_t alignment = 256;
 	uint32_t offset = 0;
 	for (const auto& inputDate : inputData) {
 		offsets.push_back(offset);
-		offset += (inputDate.size + (alignment - 1)) / alignment * alignment;
+		offset += inputDate.size;
 	}
 	vulkan::BufferInfo info{
 		.size = offset,

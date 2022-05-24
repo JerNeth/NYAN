@@ -5,6 +5,8 @@ nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streami
 	r_device(device),
 	m_streaming(streaming)
 {
+	create_image("white.png");
+	create_image("black.png");
 }
 
 ::vulkan::Image* nyan::TextureManager::request_texture(const std::string& name)
