@@ -59,13 +59,16 @@ namespace nyan {
 			StaticTangentVulkanMesh mesh;
 		};
 	public:
-		MeshManager(vulkan::LogicalDevice& device);
+		MeshManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
 		MeshID add_mesh(const MeshData& data);
 		MeshID get_mesh(const std::string& name);
+		void build();
 		const StaticTangentVulkanMesh& get_static_tangent_mesh(MeshID idx);
 		const StaticTangentVulkanMesh& get_static_tangent_mesh(const std::string& name);
 	private:
 		vulkan::LogicalDevice& r_device;
+		vulkan::AccelerationStructureBuilder m_builder;
+		bool m_buildAccs;
 		std::unordered_map<MeshID, MeshManager::Mesh> m_staticTangentMeshes;
 		std::unordered_map<std::string, MeshID> m_meshIndex;
 		MeshID m_meshCounter {0};

@@ -3,8 +3,10 @@
 using namespace vulkan;
 using namespace nyan;
 
-nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device) :
-	r_device(device)
+nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures) :
+	r_device(device),
+	m_builder(r_device),
+	m_buildAccs(buildAccelerationStructures)
 {
 }
 
@@ -65,6 +67,11 @@ MeshID nyan::MeshManager::get_mesh(const std::string& name)
 {
 	assert(m_meshIndex.find(name) != m_meshIndex.end());
 	return m_meshIndex.find(name)->second;
+}
+void nyan::MeshManager::build()
+{
+	//if (m_buildAccs)
+		//m_builder.build_pending();
 }
 const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx)
 {

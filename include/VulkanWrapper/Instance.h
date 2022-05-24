@@ -81,6 +81,8 @@ namespace vulkan {
 		bool use_extension(const char* extension) noexcept;
 		std::unique_ptr<LogicalDevice> create_logical_device(const Instance& instance, uint32_t genericQueueCount = 1, uint32_t transferQueueCount = 1, uint32_t computeQueueCount = 1);
 
+		bool supports_ray_pipelines() const noexcept;
+
 		uint32_t get_generic_queue_family() const noexcept;
 		uint32_t get_transfer_queue_family() const noexcept;
 		uint32_t get_compute_queue_family() const noexcept;

@@ -1,4 +1,5 @@
 #include "Instance.h"
+#include "..\..\include\VulkanWrapper\Instance.h"
 
 
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
@@ -384,6 +385,11 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_de
 		}
 	}
 	return std::make_unique<LogicalDevice>(instance,*this, logicalDevice, m_genericQueueFamily, m_computeQueueFamily, m_transferQueueFamily);
+}
+
+bool vulkan::PhysicalDevice::supports_ray_pipelines() const noexcept
+{
+	return m_rayTracingPipelineFeatures.rayTracingPipeline;
 }
 
 uint32_t vulkan::PhysicalDevice::get_generic_queue_family() const noexcept

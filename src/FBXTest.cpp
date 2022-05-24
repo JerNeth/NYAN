@@ -28,6 +28,8 @@ int main() {
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
+	
+
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
