@@ -67,7 +67,7 @@ void nyan::ImguiRenderer::next_frame()
 	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
 	ImGui::NewFrame();
-	ImGui::Begin("Metrics");                          // Create a window called "Hello, world!" and append into it.
+	ImGui::Begin("Metrics");
 
 	values_offset = (values_offset + 1) % IM_ARRAYSIZE(values);
 
@@ -90,12 +90,12 @@ void nyan::ImguiRenderer::next_frame()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
-	ImGui::Begin("Interaction");
+	//ImGui::Begin("Interaction");
 	//ImGui::AlignTextToFramePadding();
-	ImGui::Text("Mip Level:");
+	//ImGui::Text("Mip Level:");
 	//ImGui::PopButtonRepeat();
 	//ImGui::SameLine();
-	ImGui::End();
+	//ImGui::End();
 
 	m_editor.renderSimpleCombo(r_registry, m_entity);
 

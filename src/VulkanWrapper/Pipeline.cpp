@@ -770,7 +770,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 
 }
 
-vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RayTracingConfig& config) :
+vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config) :
 	m_layout(config.pipelineLayout),
 	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR),
 	m_initialDynamicState()
@@ -781,48 +781,60 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RayTracingConfig& conf
 	std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfos;
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> groupCreateInfos;
 
-	for (auto shader : config.shaders) {
+	for (const auto& shader : config.shaders) {
 		auto* instance = parent.get_shader_storage().get_instance(shader);
-		auto stageFlags = stageCreateInfos.emplace_back(instance->get_stage_info()).stage;
-		if (stageFlags & VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
-			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
-			{
-				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
-				.pNext { nullptr },
-				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR},
-				.generalShader { VK_SHADER_UNUSED_KHR },
-				.closestHitShader { VK_SHADER_UNUSED_KHR },
-				.anyHitShader { VK_SHADER_UNUSED_KHR },
-				.intersectionShader { VK_SHADER_UNUSED_KHR },
-				.pShaderGroupCaptureReplayHandle { nullptr },
-			};
+		assert(instance);
+		const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
+		assert(info.stage &
+			(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR
+			| VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR));
+		if (info.stage &
+			~(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR
+			| VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR)) {
+			Utility::log(std::format("Invalid shadertype for ray tracing pipeline"));
+			return;
 		}
-		else if (stageFlags & (VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)) {
-			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
-			{
-				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
-				.pNext { nullptr },
-				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR },
-				.generalShader { VK_SHADER_UNUSED_KHR },
-				.closestHitShader { VK_SHADER_UNUSED_KHR },
-				.anyHitShader { VK_SHADER_UNUSED_KHR },
-				.intersectionShader { VK_SHADER_UNUSED_KHR },
-				.pShaderGroupCaptureReplayHandle { nullptr },
-			};
+	}
+	for (const auto& group : config.groups) {
+		VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
+		{
+			.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+			.pNext { nullptr },
+			.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+			.generalShader { group.generalShader },
+			.closestHitShader { group.closestHitShader },
+			.anyHitShader { group.anyHitShader },
+			.intersectionShader { group.intersectionShader },
+			.pShaderGroupCaptureReplayHandle { nullptr },
+		};
+		if (group.generalShader != VK_SHADER_UNUSED_KHR) {
+			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+			assert(group.generalShader < stageCreateInfos.size());
+			assert(group.closestHitShader == VK_SHADER_UNUSED_KHR);
+			assert(group.anyHitShader == VK_SHADER_UNUSED_KHR);
+			assert(group.intersectionShader == VK_SHADER_UNUSED_KHR);
+			assert(stageCreateInfos[group.generalShader].stage & 
+				(VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR));
+		} else if (group.closestHitShader != VK_SHADER_UNUSED_KHR || group.anyHitShader != VK_SHADER_UNUSED_KHR) {
+			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+			assert(group.generalShader == VK_SHADER_UNUSED_KHR);
+			assert(group.intersectionShader == VK_SHADER_UNUSED_KHR);
+			assert((group.closestHitShader < stageCreateInfos.size() && (stageCreateInfos[group.closestHitShader].stage &
+				VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)) ||
+				(group.anyHitShader < stageCreateInfos.size() && (stageCreateInfos[group.anyHitShader].stage &
+				VK_SHADER_STAGE_ANY_HIT_BIT_KHR)));
+		} else if (group.intersectionShader != VK_SHADER_UNUSED_KHR) {
+			groupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+			assert(group.generalShader == VK_SHADER_UNUSED_KHR);
+			assert(group.closestHitShader == VK_SHADER_UNUSED_KHR);
+			assert(group.anyHitShader == VK_SHADER_UNUSED_KHR);
+			assert(group.intersectionShader < stageCreateInfos.size() && (stageCreateInfos[group.intersectionShader].stage&
+				VK_SHADER_STAGE_INTERSECTION_BIT_KHR));
+		} else {
+			//empty shader group currently no apparent use
+			assert(false);
 		}
-		else if(stageFlags & (VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR)) {
-			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
-			{
-				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
-				.pNext { nullptr },
-				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
-				.generalShader { VK_SHADER_UNUSED_KHR },
-				.closestHitShader { VK_SHADER_UNUSED_KHR },
-				.anyHitShader { VK_SHADER_UNUSED_KHR },
-				.intersectionShader { VK_SHADER_UNUSED_KHR },
-				.pShaderGroupCaptureReplayHandle { nullptr },
-			};
-		}
+		groupCreateInfos.push_back(groupCreateInfo);
 	}
 
 	assert(stageCreateInfos.size() < std::numeric_limits<uint32_t>::max());
@@ -891,6 +903,11 @@ vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const ComputePipelineC
 }
 
 vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const GraphicsPipelineConfig& config)
+{
+	return m_pipelines.emplace_intrusive(r_device, config);
+}
+
+vulkan::PipelineId vulkan::PipelineStorage2::add_pipeline(const RaytracingPipelineConfig& config)
 {
 	return m_pipelines.emplace_intrusive(r_device, config);
 }

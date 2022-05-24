@@ -166,9 +166,15 @@ namespace vulkan {
 		ShaderId shaderInstance;
 		VkPipelineLayout pipelineLayout;
 	};
-	struct RayTracingConfig {
+	struct Group {
+		uint32_t generalShader { VK_SHADER_UNUSED_KHR };
+		uint32_t closestHitShader{ VK_SHADER_UNUSED_KHR };
+		uint32_t anyHitShader { VK_SHADER_UNUSED_KHR };
+		uint32_t intersectionShader { VK_SHADER_UNUSED_KHR };
+	};
+	struct RaytracingPipelineConfig {
 		std::vector<ShaderId> shaders;
-		std::vector<uint32_t> groups;
+		std::vector<Group> groups;
 		uint32_t recursionDepth;
 		VkPipelineLayout pipelineLayout;
 	};
@@ -444,7 +450,7 @@ namespace vulkan {
 	public:
 		Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config);
 		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
-		Pipeline2(LogicalDevice& parent, const RayTracingConfig& config);
+		Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config);
 		VkPipeline get_pipeline() const noexcept;
 		VkPipelineLayout get_layout() const noexcept;
 		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
@@ -464,6 +470,7 @@ namespace vulkan {
 		const Pipeline2* get_pipeline(PipelineId pipelineId) const;
 		PipelineId add_pipeline(const ComputePipelineConfig& config);
 		PipelineId add_pipeline(const GraphicsPipelineConfig& config);
+		PipelineId add_pipeline(const RaytracingPipelineConfig& config);
 	private:
 		LogicalDevice& r_device;
 		Utility::LinkedBucketList<Pipeline2> m_pipelines;

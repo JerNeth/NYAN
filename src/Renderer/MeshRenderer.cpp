@@ -34,7 +34,6 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		pipelineBind.set_viewport(viewport);
 
 		auto view = r_registry.view<const MeshID, const MaterialId, const InstanceId>();
-		//Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position)
 		for (const auto& [entity, meshID, materialId, instanceId] : view.each()) {
 			nyan::MeshInstance instance{
 				.materialBinding {0},
@@ -44,10 +43,6 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{5, 5, 5}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
 				.proj {Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f) },
 			};
-			constexpr auto a = offsetof(MeshInstance, materialId);
-			constexpr auto b = offsetof(MeshInstance, instanceId);
-			constexpr auto c = offsetof(MeshInstance, view);
-			constexpr auto d = offsetof(MeshInstance, proj);
 			render(pipelineBind, meshID, instance);
 		}
 	});
@@ -86,4 +81,39 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
 	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
 	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
+}
+
+nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::MeshManager& meshManager, nyan::Renderpass& pass) :
+	r_device(device),
+	r_registry(registry),
+	r_shaderManager(shaderManager),
+	r_pass(pass)
+{
+	create_pipeline();
+	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass& pass)
+		{
+			auto pipelineBind = cmd->bind_raytracing_pipeline(m_rtPipeline);
+			render(pipelineBind);
+			
+		});
+}
+
+void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
+{
+}
+
+void nyan::RTMeshRenderer::create_pipeline()
+{
+	vulkan::RaytracingPipelineConfig rayConfig {
+		.shaders {
+			r_shaderManager.get_shader_instance_id("staticTangent_vert"),
+			r_shaderManager.get_shader_instance_id("staticTangent_frag")
+		},
+		.groups {
+		},
+		.recursionDepth {1},
+		.pipelineLayout = r_device.get_bindless_pipeline_layout()
+	};
+
+	m_rtPipeline = r_device.get_pipeline_storage().add_pipeline(rayConfig);
 }

@@ -51,6 +51,7 @@ vulkan::ShaderId vulkan::ShaderManager::get_shader_instance_id(const std::string
 {
 	if (auto it = m_shaderInstanceMapping.find(name); it != m_shaderInstanceMapping.end())
 		return it->second;
+	Utility::log(std::format("Requested shader not found {}\n", name));
 	return invalidShaderId;
 }
 

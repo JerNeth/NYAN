@@ -42,6 +42,18 @@ namespace nyan {
 		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_staticTangentPipeline;
 	};
+	class RTMeshRenderer {
+	public:
+		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::MeshManager& meshManager, nyan::Renderpass& pass);
+		void render(vulkan::RaytracingPipelineBind& bind);
+	private:
+		void create_pipeline();
+		vulkan::LogicalDevice& r_device;
+		entt::registry& r_registry;
+		vulkan::ShaderManager& r_shaderManager;
+		nyan::Renderpass& r_pass;
+		vulkan::PipelineId m_rtPipeline;
+	};
 }
 
 #endif !RDMESHRENDERER_H
