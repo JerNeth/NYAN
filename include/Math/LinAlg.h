@@ -82,15 +82,15 @@ namespace Math
 	typedef Mat<int8_t, 3, 3> bmat33;
 	typedef Mat<int8_t, 4, 4> bmat44;
 
-	typedef Mat<uint32_t, 2, 2> mat22_ui;
-	typedef Mat<uint32_t, 3, 3> mat33_ui;
-	typedef Mat<uint32_t, 4, 4> mat44_ui;
-	typedef Mat<uint64_t, 2, 2> mat22_ul;
-	typedef Mat<uint64_t, 3, 3> mat33_ul;
-	typedef Mat<uint64_t, 4, 4> mat44_ul;
-	typedef Mat<uint8_t, 2, 2> mat22_ub;
-	typedef Mat<uint8_t, 3, 3> mat33_ub;
-	typedef Mat<uint8_t, 4, 4> mat44_ub;
+	typedef Mat<uint32_t, 2, 2> uimat22;
+	typedef Mat<uint32_t, 3, 3> uimat33;
+	typedef Mat<uint32_t, 4, 4> uimat44;
+	typedef Mat<uint64_t, 2, 2> ulmat22;
+	typedef Mat<uint64_t, 3, 3> ulmat33;
+	typedef Mat<uint64_t, 4, 4> ulmat44;
+	typedef Mat<uint8_t, 2, 2> ubmat22;
+	typedef Mat<uint8_t, 3, 3> ubmat33;
+	typedef Mat<uint8_t, 4, 4> ubmat44;
 	
 
 	typedef Quaternion<float>  quat;

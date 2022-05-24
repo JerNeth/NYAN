@@ -28,7 +28,7 @@ int main() {
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
-			renderManager.get_texture_manager().request_texture("white.png");
+			renderManager.get_texture_manager().request_texture(a.diffuseTex);
 		if (!a.normalTex.empty())
 			renderManager.get_texture_manager().request_texture(a.normalTex);
 		renderManager.get_material_manager().add_material(a);

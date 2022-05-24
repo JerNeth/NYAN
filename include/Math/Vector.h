@@ -74,6 +74,18 @@ namespace Math {
 				result.m_data[i] = lhs.m_data[i] - rhs.m_data[i];
 			return result;
 		}
+		friend inline Vec operator|(const Vec& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs.m_data[i] | rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator&(const Vec& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs.m_data[i] & rhs.m_data[i];
+			return result;
+		}
 		/*
 		*	elementwise multiplication
 		*/
@@ -161,6 +173,30 @@ namespace Math {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs / rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator&(const Vec& lhs, const Scalar& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs.m_data[i] & rhs;
+			return result;
+		}
+		friend inline Vec operator&(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs & rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator|(const Scalar& lhs, const Vec& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs | rhs.m_data[i];
+			return result;
+		}
+		friend inline Vec operator|(const Vec& lhs, const Scalar& rhs) noexcept {
+			Vec result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = lhs.m_data[i] | rhs;
 			return result;
 		}
 		inline Scalar L2_square() const noexcept {
@@ -379,13 +415,23 @@ namespace Math {
 		}
 		return ret;
 	}
-	template<Unsigned T, size_t bits>
+	template<Unsigned T>
 	constexpr T unorm(float val) {
 		T ret;
 		float max = static_cast<float>(T(~0u));
 		auto temp = clamp(val, 0.f, 1.f);
 		//ret[i] = static_cast<T>(temp * max);
 		return ret;
+	}
+	template<typename T>
+	uint16_t to_half(T t) {
+		constexpr uint32_t signBit = 1 << 31;
+		constexpr 
+		float f = static_cast<float>(t);
+		auto bits = std::bit_cast<uint32_t>(f);
+		auto sign = bits & signBit;
+		bits ^= sign;
+		auto nan = 23 - 10;
 	}
 	template<typename... Args>
 	constexpr Vec<std::common_type_t<Args...>, sizeof...(Args)> make_vector(Args... args) {
