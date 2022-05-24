@@ -39,7 +39,7 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 			nyan::MeshInstance instance{
 				.material {material},
 				.transform {transform},
-				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, 100, 50}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
+				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{5, 5, 5}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
 				.proj {Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f) },
 			};
 			constexpr auto a = offsetof(MeshInstance, material);
@@ -63,7 +63,7 @@ void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, cons
 
 void nyan::MeshRenderer::create_pipeline()
 {
-	vulkan::GraphicsPipelineConfig config{
+	vulkan::GraphicsPipelineConfig staticTangentConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::alphaBlendedGraphicsPipelineState,
 	.vertexInputCount = 4,
@@ -80,8 +80,8 @@ void nyan::MeshRenderer::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	config.dynamicState.depth_write_enable = VK_TRUE;
-	config.dynamicState.depth_test_enable = VK_TRUE;
-	config.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
-	m_staticTangentPipeline = r_pass.add_pipeline(config);
+	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
+	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
+	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
+	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
 }

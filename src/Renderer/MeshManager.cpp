@@ -33,9 +33,14 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY
 
 	};
+	if (m_buildAccs) {
+		info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+			| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+	}
 	MeshManager::Mesh mesh{
 		.buffer = r_device.create_buffer(info, inputData),
-		.offset = 0,
+		.offset {0},
 		.mesh {
 			.indexCount {static_cast<uint32_t>(data.indices.size())},
 			.firstIndex {0},
@@ -58,6 +63,23 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 		}
 	};
 	auto id = m_meshCounter++;
+	if (m_buildAccs) {
+		vulkan::AccelerationStructureBuilder::BLASInfo blasInfo{
+			.vertexBuffer { mesh.mesh.positionBuffer },
+			.vertexCount { static_cast<uint32_t>(data.positions.size()) },
+			.vertexOffset { mesh.mesh.positionOffset },
+			.vertexFormat { get_format<Math::vec3>() },
+			.vertexStride { format_bytesize(get_format<Math::vec3>()) },
+			.indexBuffer { mesh.mesh.indexBuffer },
+			.indexOffset { mesh.mesh.indexOffset },
+			.transformBuffer { VK_NULL_HANDLE },
+			.transformOffset { 0 },
+			.indexType { mesh.mesh.indexType },
+		};
+		auto ret = m_builder.queue_item(blasInfo);
+		if(ret)
+			m_pendingAccBuildIndex.emplace_back( *ret, id);
+	}
 	m_staticTangentMeshes.emplace(id, mesh);
 	m_meshIndex.emplace(data.name, id);
 	return id;
@@ -70,8 +92,16 @@ MeshID nyan::MeshManager::get_mesh(const std::string& name)
 }
 void nyan::MeshManager::build()
 {
-	//if (m_buildAccs)
-		//m_builder.build_pending();
+	if (m_buildAccs) {
+		auto handles = m_builder.build_pending();
+		for (auto [handleId, meshId] : m_pendingAccBuildIndex) {
+			assert(handleId < handles.size());
+			auto it = m_staticTangentMeshes.find(meshId);
+			assert(it != m_staticTangentMeshes.end());
+			it->second.accStructure = handles[handleId];
+		}
+		m_pendingAccBuildIndex.clear();
+	}
 }
 const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx)
 {
@@ -86,10 +116,25 @@ const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const 
 	return m_staticTangentMeshes.find(m_meshIndex.find(name)->second)->second.mesh;
 }
 
-nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device) :
+std::optional<vulkan::AccelerationStructureHandle> nyan::MeshManager::get_acceleration_structure(MeshID idx)
+{
+	assert(m_staticTangentMeshes.find(idx) != m_staticTangentMeshes.end());
+	return m_staticTangentMeshes.find(idx)->second.accStructure;
+}
+
+std::optional<vulkan::AccelerationStructureHandle> nyan::MeshManager::get_acceleration_structure(const std::string& name)
+{
+	assert(m_meshIndex.find(name) != m_meshIndex.end());
+	assert(m_staticTangentMeshes.find(m_meshIndex.find(name)->second) != m_staticTangentMeshes.end());
+	return m_staticTangentMeshes.find(m_meshIndex.find(name)->second)->second.accStructure;
+}
+
+nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures) :
 	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
 		| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-		| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)
+		| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR),
+	m_builder(device),
+	m_buildAccs(buildAccelerationStructures)
 {
 }
 
@@ -147,7 +192,18 @@ std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> nyan::InstanceMan
 	return {counts, addresses};
 }
 
+void nyan::InstanceManager::build()
+{
+	if (m_buildAccs) {
+		auto [counts, addresses] = get_instance_data();
+		m_tlas = m_builder.build_tlas(counts, addresses);
+	}
+}
 
+std::optional<vulkan::AccelerationStructureHandle> nyan::InstanceManager::get_tlas()
+{
+	return m_tlas;
+}
 //StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 //{
 //	return nullptr;

@@ -101,7 +101,7 @@ add_dependencies(Engine shaders)
 #add_executable(Demo ${DEMO_SRC})
 #add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
-#add_executable(RTTest ${RTTest_SRC})
+add_executable(RTTest ${RTTest_SRC})
 
 #set_target_properties(FBXTest PROPERTIES 
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
@@ -112,7 +112,7 @@ target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vu
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine)
-#target_link_libraries(RTTest Engine)
+target_link_libraries(RTTest Engine)
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
@@ -131,7 +131,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 target_compile_features(Engine PUBLIC 
-    cxx_std_20
+    cxx_std_23
 )
 
 if(WIN32)

@@ -166,6 +166,11 @@ namespace vulkan {
 		ShaderId shaderInstance;
 		VkPipelineLayout pipelineLayout;
 	};
+	struct RayTracingConfig {
+		std::vector<ShaderId> shaders;
+		uint32_t recursionDepth;
+		VkPipelineLayout pipelineLayout;
+	};
 	struct PipelineState {
 		unsigned depth_write : 1;
 		unsigned depth_test : 1;
@@ -438,6 +443,7 @@ namespace vulkan {
 	public:
 		Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config);
 		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
+		Pipeline2(LogicalDevice& parent, const RayTracingConfig& config);
 		VkPipeline get_pipeline() const noexcept;
 		VkPipelineLayout get_layout() const noexcept;
 		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;

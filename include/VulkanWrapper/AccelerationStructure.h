@@ -23,9 +23,10 @@ namespace vulkan {
 		operator VkAccelerationStructureKHR() const noexcept;
 		bool is_compactable() const noexcept;
 		VkAccelerationStructureInstanceKHR create_instance() const noexcept;
+		uint64_t get_reference() const noexcept;
 	private:
 		LogicalDevice& r_device;
-		VkAccelerationStructureKHR m_handle;
+		VkAccelerationStructureKHR m_handle = VK_NULL_HANDLE;
 		BufferHandle m_buffer;
 		VkAccelerationStructureCreateInfoKHR m_info;
 		bool m_isCompactable = false;
@@ -42,19 +43,21 @@ namespace vulkan {
 		};
 	public:
 		struct BLASInfo {
-			const Buffer* vertexBuffer = nullptr;
+			VkBuffer vertexBuffer = VK_NULL_HANDLE;
 			uint32_t vertexCount = 0;
 			VkDeviceSize vertexOffset = 0;
-			const Buffer* indexBuffer = nullptr;
+			VkFormat vertexFormat = VK_FORMAT_UNDEFINED;
+			VkDeviceSize vertexStride = 0;
+			VkBuffer indexBuffer = VK_NULL_HANDLE;
 			uint32_t indexCount = 0;
 			VkDeviceSize indexOffset = 0;
-			const Buffer* transformBuffer = nullptr;
+			VkBuffer transformBuffer = VK_NULL_HANDLE;
 			uint32_t transformOffset = 0;
 			VkIndexType indexType = VK_INDEX_TYPE_UINT32;
 			VkBuildAccelerationStructureFlagsKHR flags = 0;
 		};
 		AccelerationStructureBuilder(LogicalDevice& device);
-		void queue_item(const BLASInfo& info, VkFormat positionFormat, VkDeviceSize vertexSize, VkDeviceSize positionOffset = 0);
+		std::optional<size_t> queue_item(const BLASInfo& info);
 		std::vector<AccelerationStructureHandle> build_pending();
 		AccelerationStructureHandle build_tlas(const std::vector< VkAccelerationStructureInstanceKHR>& instances,
 			VkBuildAccelerationStructureFlagsKHR flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);

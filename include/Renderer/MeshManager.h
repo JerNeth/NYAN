@@ -56,6 +56,7 @@ namespace nyan {
 		struct Mesh {
 			vulkan::BufferHandle buffer;
 			VkDeviceSize offset;
+			std::optional<vulkan::AccelerationStructureHandle> accStructure;
 			StaticTangentVulkanMesh mesh;
 		};
 	public:
@@ -65,12 +66,15 @@ namespace nyan {
 		void build();
 		const StaticTangentVulkanMesh& get_static_tangent_mesh(MeshID idx);
 		const StaticTangentVulkanMesh& get_static_tangent_mesh(const std::string& name);
+		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(MeshID idx);
+		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(const std::string& name);
 	private:
 		vulkan::LogicalDevice& r_device;
 		vulkan::AccelerationStructureBuilder m_builder;
 		bool m_buildAccs;
 		std::unordered_map<MeshID, MeshManager::Mesh> m_staticTangentMeshes;
 		std::unordered_map<std::string, MeshID> m_meshIndex;
+		std::vector<std::pair<size_t, MeshID>> m_pendingAccBuildIndex;
 		MeshID m_meshCounter {0};
 	};
 	union InstanceData {
@@ -81,7 +85,7 @@ namespace nyan {
 	};
 	class InstanceManager : public DataManager<InstanceData, TransformBinding, 1024 * 8> {
 	public:
-		InstanceManager(vulkan::LogicalDevice& device);
+		InstanceManager(vulkan::LogicalDevice& device, bool buildAccelerationStructures = false);
 		void set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix);
 		void set_acceleration_structure(TransformBinding id, uint64_t accelerationStructureReference);
 		void set_flags(TransformBinding id, VkGeometryInstanceFlagsKHR flags);
@@ -91,7 +95,12 @@ namespace nyan {
 		void set_instance(TransformBinding id, const InstanceData& instance);
 		TransformBinding add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
 		std::pair<std::vector<uint32_t>, std::vector<VkDeviceAddress>> get_instance_data() const;
+		void build();
+		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
 	private:
+		vulkan::AccelerationStructureBuilder m_builder;
+		bool m_buildAccs;
+		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
 	};
 }
 

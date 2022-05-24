@@ -26,7 +26,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cathedral.fbx", meshes, materials);
+	reader.parse_meshes("cube.fbx", meshes, materials);
 
 	
 
@@ -43,7 +43,12 @@ int main() {
 		auto entity = registry.create();
 		registry.emplace<MeshID>(entity, meshId);
 		registry.emplace<MaterialBinding>(entity, materialManager.get_material(a.material));
-		registry.emplace<TransformBinding>(entity, instanceManager.add_instance());
+		auto instance = 
+			InstanceData{
+				.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+			};
+
+		registry.emplace<TransformBinding>(entity, instanceManager.add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
 				.position{},
@@ -52,6 +57,9 @@ int main() {
 			});
 
 	} 
+
+
+
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
@@ -82,7 +90,9 @@ int main() {
 				instanceManager.set_transform(transformBinding,
 					Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position));
 			}
+			meshManager.build();
 			materialManager.upload();
+			instanceManager.build();
 			instanceManager.upload();
 			imgui.next_frame();
 		});

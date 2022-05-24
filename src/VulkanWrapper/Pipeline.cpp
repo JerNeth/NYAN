@@ -770,6 +770,63 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 
 }
 
+vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RayTracingConfig& config) :
+	m_layout(config.pipelineLayout),
+	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR)
+{
+	const auto& rtProperties = parent.get_physical_device().get_ray_tracing_pipeline_properties();
+
+	VkPipelineShaderStageCreateInfo stageCreateInfo
+	{
+		.sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+		.pNext { nullptr },
+		.flags { },
+		.stage { },
+		.module { },
+		.pName { },
+		.pSpecializationInfo { },
+	};
+	VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
+	{
+		.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+		.pNext { nullptr },
+		.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+		.generalShader { VK_SHADER_UNUSED_KHR },
+		.closestHitShader { VK_SHADER_UNUSED_KHR },
+		.anyHitShader { VK_SHADER_UNUSED_KHR },
+		.intersectionShader { VK_SHADER_UNUSED_KHR },
+		.pShaderGroupCaptureReplayHandle { nullptr },
+	};
+	std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfos;
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> groupCreateInfos;
+
+	for (auto shader : config.shaders) {
+		stageCreateInfos.push_back(parent.get_shader_storage().get_instance(shader)->get_stage_info());
+	}
+
+	assert(stageCreateInfos.size() < std::numeric_limits<uint32_t>::max());
+	assert(groupCreateInfos.size() < std::numeric_limits<uint32_t>::max());
+	VkRayTracingPipelineCreateInfoKHR createInfo
+	{
+		.sType { VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR },
+		.pNext { nullptr },
+		.stageCount { static_cast<uint32_t>(stageCreateInfos.size()) },
+		.pStages { stageCreateInfos.data() },
+		.groupCount { static_cast<uint32_t>(groupCreateInfos.size()) },
+		.pGroups { groupCreateInfos.data() },
+		.maxPipelineRayRecursionDepth { config.recursionDepth },
+		.pDynamicState { nullptr },
+		.layout { m_layout },
+		.basePipelineHandle { VK_NULL_HANDLE },
+		.basePipelineIndex { 0 },
+	};
+	if (createInfo.maxPipelineRayRecursionDepth > rtProperties.maxRayRecursionDepth) {
+		Utility::log(std::format("Requested Recursion Depth for Pipeline too high\n requested: {} \t supported {}", createInfo.maxPipelineRayRecursionDepth, rtProperties.maxRayRecursionDepth));
+		createInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
+	}
+	vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
+}
+
 VkPipeline vulkan::Pipeline2::get_pipeline() const noexcept
 {
 	return m_pipeline;

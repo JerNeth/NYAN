@@ -56,11 +56,6 @@ bool vulkan::AccelerationStructure::is_compactable() const noexcept
 
 VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instance() const noexcept
 {
-	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{
-		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-		.pNext = nullptr,
-		.accelerationStructure = m_handle
-	};
 	VkAccelerationStructureInstanceKHR instance {
 		.transform {
 			.matrix{
@@ -73,33 +68,44 @@ VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instanc
 		.mask = 0xFFu,
 		.instanceShaderBindingTableRecordOffset = 0,
 		.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
-		.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo)
+		.accelerationStructureReference = get_reference()
 	};
 	return instance;
+}
+
+uint64_t vulkan::AccelerationStructure::get_reference() const noexcept
+{
+	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+		.pNext = nullptr,
+		.accelerationStructure = m_handle
+	};
+	return vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo);
 }
 
 vulkan::AccelerationStructureBuilder::AccelerationStructureBuilder(LogicalDevice& device) :
 	r_device(device)
 {
 }
-void vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info, VkFormat positionFormat, VkDeviceSize vertexSize, VkDeviceSize positionOffset)
+std::optional<size_t> vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info)
 {
 	assert(info.vertexBuffer && info.indexBuffer && "Must give valid buffers to AS build");
-	if (!info.vertexBuffer || !info.indexBuffer)
-		return;
+	if ((info.vertexBuffer == VK_NULL_HANDLE) || (info.indexBuffer == VK_NULL_HANDLE))
+		return std::nullopt;
 	VkBufferDeviceAddressInfo bufferInfo{
 		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
 		.pNext = nullptr,
-		.buffer = info.vertexBuffer->get_handle()
+		.buffer = info.vertexBuffer
 	};
 	VkDeviceAddress vertexAddress = vkGetBufferDeviceAddress(r_device.get_device(), &bufferInfo) + info.vertexOffset;
-	bufferInfo.buffer = info.indexBuffer->get_handle();
+	bufferInfo.buffer = info.indexBuffer;
 	VkDeviceAddress indexAddress = vkGetBufferDeviceAddress(r_device.get_device(), &bufferInfo) + info.indexOffset;
 	VkDeviceAddress transformAddress = 0;
-	if (info.transformBuffer) {
-		bufferInfo.buffer = info.transformBuffer->get_handle();
+	if (info.transformBuffer != VK_NULL_HANDLE) {
+		bufferInfo.buffer = info.transformBuffer;
 		transformAddress = vkGetBufferDeviceAddress(r_device.get_device(), &bufferInfo);
 	}
+	auto idx = m_pendingBuilds.size();
 	m_pendingBuilds.push_back(BLASBuildEntry{
 		VkAccelerationStructureGeometryKHR{
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -109,11 +115,11 @@ void vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info, VkFo
 				.triangles{
 					.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 					.pNext = nullptr,
-					.vertexFormat = positionFormat,
+					.vertexFormat = info.vertexFormat,
 					.vertexData {
-						.deviceAddress = vertexAddress + positionOffset
+						.deviceAddress = vertexAddress
 					},
-					.vertexStride = vertexSize,
+					.vertexStride = info.vertexStride,
 					.maxVertex = info.vertexCount,
 					.indexType = info.indexType,
 					.indexData {
@@ -132,6 +138,7 @@ void vulkan::AccelerationStructureBuilder::queue_item(const BLASInfo& info, VkFo
 		},
 		info.flags
 		});
+	return idx;
 }
 std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBuilder::build_pending()
 {

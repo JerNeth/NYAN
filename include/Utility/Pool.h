@@ -133,10 +133,14 @@ namespace Utility {
 	class ObjectHandle {
 	public:
 		ObjectHandle() = delete;
-		ObjectHandle(size_t id, Container* container) : m_id(id), ptr_container(container) {
+		ObjectHandle(size_t id, Container* container) : 
+			m_id(id), 
+			ptr_container(container) 
+		{
 			assert(ptr_container);
 		}
-		~ObjectHandle() {
+		~ObjectHandle() 
+		{
 			destructor();
 		}
 		ObjectHandle(const ObjectHandle& other) :
