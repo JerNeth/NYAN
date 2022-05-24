@@ -55,7 +55,22 @@ void nyan::DeferredLighting::create_pipeline()
 {
 	vulkan::GraphicsPipelineConfig pipelineConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
-	.state = vulkan::defaultGraphicsPipelineState,
+	.state = vulkan::GraphicsPipelineState{
+		.polygon_mode {VK_POLYGON_MODE_FILL},
+		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
+		.logic_op_enable {VK_FALSE},
+		.patch_control_points {0},
+		.blendAttachments {
+			vulkan::BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+			},
+			vulkan::BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+			},
+		},
+	},
 	.vertexInputCount = 0,
 	.shaderCount = 2,
 	.vertexInputFormats {},

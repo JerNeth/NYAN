@@ -40,8 +40,8 @@ void main() {
 	Mesh mesh = meshData[constants.meshBinding].meshes[transform.pad.x];
 	mat4x3 model = fetchTransformMatrix(transform);
 	gl_Position = scenes[constants.sceneBinding].scene.proj * scenes[constants.sceneBinding].scene.view * vec4( model *vec4( inPosition, 1.0), 1.0);
-    vec3 tangent = vec3(model * vec4(inTangent.xyz, 0));
-    vec3 normal = vec3(model * vec4(inNormal.xyz, 0));
+    vec3 tangent = normalize(vec3(model * vec4(inTangent.xyz, 0)));
+    vec3 normal = normalize(vec3(model * vec4(inNormal.xyz, 0)));
 //    Uvs uvs = Uvs(mesh.uvs);
 //    Normals normals = Normals(mesh.normals);
 //    Tangents tangents = Tangents(mesh.tangents);

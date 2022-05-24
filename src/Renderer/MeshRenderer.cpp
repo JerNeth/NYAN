@@ -59,7 +59,26 @@ void nyan::MeshRenderer::create_pipeline()
 {
 	vulkan::GraphicsPipelineConfig staticTangentConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
-	.state = vulkan::alphaBlendedGraphicsPipelineState,
+	.state = vulkan::GraphicsPipelineState{
+		.polygon_mode {VK_POLYGON_MODE_FILL},
+		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
+		.logic_op_enable {VK_FALSE},
+		.patch_control_points {0},
+		.blendAttachments {
+			vulkan::BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+			},
+			vulkan::BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+			},
+			vulkan::BlendAttachment {
+				.blend_enable {VK_FALSE},
+				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+			},
+		}
+		},
 	.vertexInputCount = get_num_formats<nyan::Mesh>(),
 	.shaderCount = 2,
 	.vertexInputFormats {
