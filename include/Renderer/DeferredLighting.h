@@ -11,8 +11,12 @@ namespace nyan {
 
 	class DeferredLighting {
 		struct PushConstants {
-			uint32_t imgBinding;
-			uint32_t imgSampler;
+			uint32_t albedoBinding;
+			uint32_t albedoSampler;
+			uint32_t normalBinding;
+			uint32_t normalSampler;
+			uint32_t pbrBinding;
+			uint32_t pbrSampler;
 		};
 	public:
 		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
@@ -25,6 +29,26 @@ namespace nyan {
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_deferredPipeline;
+	};
+
+	class LightComposite {
+		struct PushConstants {
+			uint32_t specularBinding;
+			uint32_t specularSampler;
+			uint32_t diffuseBinding;
+			uint32_t diffuseSampler;
+		};
+	public:
+		LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		void render(vulkan::GraphicsPipelineBind& bind);
+	private:
+		void create_pipeline();
+
+		vulkan::LogicalDevice& r_device;
+		entt::registry& r_registry;
+		nyan::RenderManager& r_renderManager;
+		nyan::Renderpass& r_pass;
+		vulkan::PipelineId m_compositePipeline;
 	};
 }
 #endif !RDDEFERREDLIGHTING_H

@@ -9,14 +9,12 @@ struct Mesh {
 };
 
 struct Material {
-	uint diffuseTexId;
+	uint albedoTexId;
+	uint albedoSampler;
 	uint normalTexId;
-	uint pad;
-	float shininessFactor;
-	vec3 ambientColor;
-	float ambientFactor;
-	vec3 diffuseColor;
-	float diffuseFactor;
+	uint normalSampler;
+	uint pbrTexId;
+	uint pbrSampler;
 };
 
 struct DirectionalLight {

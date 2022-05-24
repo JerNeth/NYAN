@@ -3,20 +3,11 @@
 #define RDMATERIALMANAGER_H
 #include "LogicalDevice.h"
 #include "DataManager.h"
+#include "ShaderInterface.h"
 #include "Material.h"
 namespace nyan {
 	class TextureManager;
 
-	struct InternalMaterialData {
-		uint32_t diffuseTexId;
-		uint32_t normalTexId;
-		uint32_t pad;
-		float shininessFactor;
-		Math::vec3 ambientColor;
-		float ambientFactor;
-		Math::vec3 diffuseColor;
-		float diffuseFactor;
-	};
 	struct MaterialId {
 		uint32_t id;
 		MaterialId() : id(0) {}
@@ -25,7 +16,7 @@ namespace nyan {
 			return id;
 		}
 	};
-	class MaterialManager : public DataManager<InternalMaterialData> {
+	class MaterialManager : public DataManager<nyan::shaders::Material> {
 	public:
 		MaterialManager(vulkan::LogicalDevice& device, nyan::TextureManager& textureManager);
 		void set_material(MaterialId idx, const MaterialData& data);

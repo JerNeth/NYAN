@@ -19,20 +19,25 @@ layout(location = 1) in flat vec3 fragTangent;
 layout(location = 2) in flat vec3 fragNormal;
 layout(location = 3) in flat vec3 fragBitangent;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 outAlbedo;
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outPBR;
 
 void main() {
 	Mesh mesh = meshData[constants.meshBinding].meshes[transforms[constants.transformBinding].transforms[constants.transformId].pad.x];
-	DirectionalLight light1 = scenes[constants.sceneBinding].scene.dirLight1;
-	DirectionalLight light2 = scenes[constants.sceneBinding].scene.dirLight2;
+    Scene scene = scenes[constants.sceneBinding].scene;
+	DirectionalLight light1 = scene.dirLight1;
+	DirectionalLight light2 = scene.dirLight2;
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
-    vec4 diffuse = texture(sampler2D(textures2D[material.diffuseTexId], samplers[2]), fragTexCoord);
-    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[2]), fragTexCoord).rg, 0);
-    normal.z = 1-normal.x*normal.x - normal.y*normal.y;
+    vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
+    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg, 0);
+    normal.z = 1-sqrt(normal.x*normal.x + normal.y*normal.y);
 	mat3 tangentFrame = mat3(fragTangent, fragBitangent, fragNormal);
+
     normal = tangentFrame * normal;
-	diffuse.xyz *= dot(normal, light1.dir);
-    outColor = diffuse;
+    outAlbedo = albedo;
+    outNormal = vec4(fragNormal, 0);
+    outPBR = vec4(0, 0, 0, 0);
     //outColor = vec4(0.2,0.6,0.5,1.0);
 }
 

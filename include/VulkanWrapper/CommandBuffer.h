@@ -12,7 +12,6 @@ namespace vulkan {
 	class Buffer;
 	class Sampler;
 	class AccelerationStructure;
-	enum class DefaultSampler;
 	struct RenderpassCreateInfo;
 	struct IndexState {
 		VkBuffer buffer;

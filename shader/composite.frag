@@ -8,17 +8,14 @@
 
 layout(std430, push_constant) uniform PushConstants
 {
-    uint albedoBinding;
-    uint albedoSampler;
-    uint normalBinding;
-    uint normalSampler;
-    uint pbrBinding;
-    uint pbrSampler;
+    uint specularBinding;
+    uint specularSampler;
+    uint diffuseBinding;
+    uint diffuseSampler;
 } constants;
 
 layout(location = 0) in vec2 inTexCoord;
-layout(location = 0) out vec4 outSpecular;
-layout(location = 1) out vec4 outDiffuse;
+layout(location = 0) out vec4 outColor;
 
 void main() {
 //    vec3 normal = subpassLoad(inputNormal).xyz *2.0 - 1.0;
@@ -26,9 +23,9 @@ void main() {
 //    float diff = max(dot(normal, constants.lightDir.xyz), 0.0);
 //    vec3 diffuse = diff * constants.lightColor.xyz;
 //
-    outSpecular = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
-    //outSpecular = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord);
-    outDiffuse = vec4(0, 0, 0, 1);
+    outColor = texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
+               texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord) ;
+    
     
     //outColor = vec4(subpassLoad(inputColor).xyz * (diffuse + ambient), 1.0);
     //outColor = subpassLoad(inputNormal);

@@ -8,7 +8,6 @@
 namespace vulkan {
 	class LogicalDevice;
 	class PipelineLayout;
-	enum class DefaultSampler;
 	struct ResourceBinding {
 		union {
 			VkDescriptorBufferInfo buffer;

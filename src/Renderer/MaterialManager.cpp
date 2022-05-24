@@ -1,5 +1,6 @@
 #include "Renderer/MaterialManager.h"
 #include "Renderer/TextureManager.h"
+#include "VulkanWrapper/Sampler.h"
 
 nyan::MaterialManager::MaterialManager(vulkan::LogicalDevice& device, nyan::TextureManager& textureManager) :
 	DataManager(device),
@@ -10,27 +11,25 @@ nyan::MaterialManager::MaterialManager(vulkan::LogicalDevice& device, nyan::Text
 
 void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& data)
 {
-	set(idx, InternalMaterialData{
-	.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-	.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "black.png")},
-	.shininessFactor {data.shininessFacor},
-	.ambientColor {data.ambientColor},
-	.ambientFactor {data.ambientFactor},
-	.diffuseColor {data.diffuseColor},
-	.diffuseFactor {data.diffuseFactor},
+	set(idx, nyan::shaders::Material{
+		.albedoTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
+		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
+		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "black.png")},
+		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
+		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
+		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 	});
 }
 
 nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& data)
 {
-	auto binding = add(InternalMaterialData{
-		.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
+	auto binding = add(nyan::shaders::Material{
+		.albedoTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
+		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "black.png")},
-		.shininessFactor {data.shininessFacor},
-		.ambientColor {data.ambientColor},
-		.ambientFactor {data.ambientFactor},
-		.diffuseColor {data.diffuseColor},
-		.diffuseFactor {data.diffuseFactor},
+		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
+		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
+		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 	});
 	m_materialIndex.emplace(data.name, binding);
 	return binding;

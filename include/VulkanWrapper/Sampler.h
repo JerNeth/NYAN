@@ -7,7 +7,7 @@
 namespace vulkan {
 
 	class LogicalDevice;
-	enum class DefaultSampler {
+	enum class DefaultSampler : uint32_t {
 		NearestClamp,
 		LinearClamp,
 		TrilinearClamp,

@@ -21,10 +21,10 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
@@ -68,23 +68,44 @@ int main() {
 			.format{VK_FORMAT_D24_UNORM_S8_UINT},
 			.clearColor{1.f, 0.f, 0.f, 0.f},
 		});
-	//deferredPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-	//		.clearColor{0.f, 0.f, 0.f, 1.f},
-	//	});
-	deferredPass.add_attachment("SpecularLighting", nyan::ImageAttachment
+	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
 		{
-			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			//.format{VK_FORMAT_R8G8B8A8_SRGB},
+			//.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+			.format{VK_FORMAT_R8G8B8A8_SRGB},
 			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 			.clearColor{0.25f, 0.5f, 0.7f, 1.f},
+		});
+	deferredPass.add_attachment("g_Normal", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R8G8B8A8_UNORM},
+			.clearColor{0.f, 0.f, 0.f, 1.f},
+		});
+	deferredPass.add_attachment("g_PBR", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R8G8B8A8_UNORM},
+			.clearColor{0.f, 0.f, 0.f, 1.f},
 		});
 	//deferredPass.add_swapchain_attachment();
 
 	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Graphics);
-	deferredLightingPass.add_read("SpecularLighting");
-	deferredLightingPass.add_swapchain_attachment();
+	deferredLightingPass.add_read("g_Albedo");
+	deferredLightingPass.add_read("g_Normal");
+	deferredLightingPass.add_read("g_PBR");
+	deferredLightingPass.add_attachment("SpecularLighting", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
+		});
+	deferredLightingPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			.clearColor{0.f, 0.f, 0.f, 1.f},
+		});
+
+	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Graphics);
+	compositePass.add_read("SpecularLighting");
+	compositePass.add_read("DiffuseLighting");
+	compositePass.add_swapchain_attachment();
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
@@ -93,6 +114,7 @@ int main() {
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	application.each_frame_begin([&]()
 		{

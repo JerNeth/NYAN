@@ -46,11 +46,11 @@ void main()
 
 	DirectionalLight light1 = scenes[constants.sceneBinding].scene.dirLight1;
     
-    vec4 diffuse = texture(sampler2D(textures2D[nonuniformEXT(material.diffuseTexId)], samplers[2]), uv);
-    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[2]), uv).rg, 0);
+    vec4 albedo = texture(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), uv);
+    vec3 normal = vec3(texture(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), uv).rg, 0);
     normal.z = 1-normal.x*normal.x - normal.y*normal.y;
     normal = tangentFrame * normal;
-	diffuse.xyz *= dot(normal, light1.dir);
+	albedo.xyz *= dot(normal, light1.dir);
 	
-	hitValue.hitValue = diffuse.xyz;
+	hitValue.hitValue = albedo.xyz;
 }

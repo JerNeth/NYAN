@@ -292,7 +292,7 @@ std::optional<uint32_t> nyan::InstanceManager::get_tlas_bind()
 
 nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 	r_device(device),
-	m_buffer(r_device.create_buffer(vulkan::BufferInfo{ .size {sizeof(SceneData)},.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} ,.offset {0}, .memoryUsage {VMA_MEMORY_USAGE_CPU_TO_GPU} }, {})),
+	m_buffer(r_device.create_buffer(vulkan::BufferInfo{ .size {sizeof(m_sceneData)},.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} ,.offset {0}, .memoryUsage {VMA_MEMORY_USAGE_CPU_TO_GPU} }, {})),
 	m_bind(r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{.buffer = m_buffer->get_handle(), .range = m_buffer->get_size()})),
 	m_dirtyScene(true)
 {
@@ -322,7 +322,7 @@ void nyan::SceneManager::update()
 {
 
 	if (m_dirtyScene) {
-		auto size = sizeof(SceneData);
+		auto size = sizeof(m_sceneData);
 		auto* map = m_buffer->map_data();
 		std::memcpy(map, &m_sceneData, size);
 		m_buffer->flush(0, static_cast<uint32_t>(size));
