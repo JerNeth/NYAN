@@ -65,19 +65,19 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 MeshID nyan::MeshManager::get_mesh(const std::string& name)
 {
 	assert(m_meshIndex.find(name) != m_meshIndex.end());
-	return m_meshIndex[name];
+	return m_meshIndex.find(name)->second;
 }
 const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx)
 {
 	assert(m_staticTangentMeshes.find(idx) != m_staticTangentMeshes.end());
-	return m_staticTangentMeshes[idx].mesh;
+	return m_staticTangentMeshes.find(idx)->second.mesh;
 }
 
 const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const std::string& name)
 {
 	assert(m_meshIndex.find(name) != m_meshIndex.end());
-	assert(m_staticTangentMeshes.find(m_meshIndex[name]) != m_staticTangentMeshes.end());
-	return m_staticTangentMeshes[m_meshIndex[name]].mesh;
+	assert(m_staticTangentMeshes.find(m_meshIndex.find(name)->second) != m_staticTangentMeshes.end());
+	return m_staticTangentMeshes.find(m_meshIndex.find(name)->second)->second.mesh;
 }
 
 

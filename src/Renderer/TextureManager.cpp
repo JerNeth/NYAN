@@ -11,7 +11,7 @@ nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streami
 {
 	if (const auto& res = m_textureIndex.find(name); res != m_textureIndex.end()) {
 		assert(m_usedTextures.find(res->second) != m_usedTextures.end());
-		return m_usedTextures[res->second].first;
+		return m_usedTextures.find(res->second)->second.handle;
 	}
 	return create_image(name, m_minimumMipLevel);
 }
@@ -31,8 +31,8 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 	if (targetMip < m_minimumMipLevel)
 		targetMip = m_minimumMipLevel;
 	assert(m_usedTextures.find(res->second) != m_usedTextures.end());
-	auto& pair = m_usedTextures[res->second];
-	vulkan::Image& image = *pair.first;
+	auto& pair = m_usedTextures.find(res->second)->second;
+	vulkan::Image& image = *pair.handle;
 	if (image.is_being_resized())
 		return;
 	if (image.is_sparse()) {
@@ -40,7 +40,7 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 			return;
 		else if (targetMip < image.get_available_mip()) {
 			auto imgData = Utility::DDSReader::readDDSFileInMemory(name);
-			std::vector<vulkan::InitialImageData> initalImageData = Utility::DDSReader::parseImage(pair.second,imgData);
+			std::vector<vulkan::InitialImageData> initalImageData = Utility::DDSReader::parseImage(pair.info,imgData);
 			r_device.upsize_sparse_image(image, initalImageData.data(), targetMip);
 		}
 		else if (targetMip <= image.get_info().mipLevels) {
@@ -48,7 +48,7 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 		}
 	}
 	else {
-		if ((pair.second.mipLevels - targetMip) == image.get_info().mipLevels)
+		if ((pair.info.mipLevels - targetMip) == image.get_info().mipLevels)
 			return;
 		auto newImage = create_image(name, targetMip);
 		image = std::move(*newImage);
@@ -81,7 +81,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, &data);
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo {.imageView = image->get_view()->get_image_view()});
-		m_usedTextures.emplace(idx, std::make_pair(image, texInfo));
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		Utility::ImageReader::free_image(data.data);
 		return image;
@@ -89,7 +89,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 	else {
 		auto image = r_device.create_image(info, &data);
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
-		m_usedTextures.emplace(idx, std::make_pair(image, texInfo));
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		Utility::ImageReader::free_image(data.data);
 		return image;
@@ -117,14 +117,14 @@ vulkan::ImageHandle nyan::TextureManager::create_dds_image(const std::filesystem
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, initalImageData.data());
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
-		m_usedTextures.emplace(idx, std::make_pair(image, texInfo));
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		return image;
 	}
 	else {
 		auto image = r_device.create_image(info, initalImageData.data());
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
-		m_usedTextures.emplace(idx, std::make_pair(image, texInfo));
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
 		m_textureIndex.emplace(file.string(), idx);
 		return image;
 	}

@@ -53,14 +53,14 @@ namespace nyan {
 	protected:
 		Binding add(const T& t) {
 			if (m_emptySlots.empty()) {
-				auto buffer = create_buffer(m_slotSize);
+				auto buffer = create_buffer(SlotSize);
 				auto bind = bind_buffer(buffer);
 				m_emptySlots.push_back(bind);
 				m_slots.emplace(bind, Slot{ {}, buffer });
-				m_slots[bind].data.reserve(SlotSize);
+				m_slots.find(bind)->second.data.reserve(SlotSize);
 			}
 			auto empty = m_emptySlots.back();
-			auto& slot = m_slots[empty];
+			auto& slot = m_slots.find(empty)->second;
 			auto idx = slot.data.size();
 			slot.data.push_back(t);
 			if (slot.data.size() > SlotSize)
@@ -68,12 +68,12 @@ namespace nyan {
 			slot.dirty = true;
 			return Binding{
 				.binding{empty},
-				.id {idx},
+				.id {static_cast<uint32_t>(idx)},
 			};
 		}
 		void set(const Binding& binding, const T& t) {
 			assert(m_slots.find(binding.binding) != m_slots.end());
-			auto& slot = m_slots[binding.binding];
+			auto& slot = m_slots.find(binding.binding)->second;
 			assert(slot.data.size() > binding.id);
 			slot.data[binding.id] = t;
 			slot.dirty = true;
@@ -91,9 +91,8 @@ namespace nyan {
 			return r_device.create_buffer(info, {});
 		}
 
-
 		vulkan::LogicalDevice& r_device;
-		std::unordered_map<uint32_t, MaterialSlot> m_slots;
+		std::unordered_map<uint32_t, Slot> m_slots;
 		std::unordered_map<std::string, Binding> m_index;
 		std::vector<uint32_t> m_emptySlots;
 	};

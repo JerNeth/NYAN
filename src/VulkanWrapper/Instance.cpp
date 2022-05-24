@@ -411,6 +411,21 @@ const VkPhysicalDeviceFeatures& vulkan::PhysicalDevice::get_used_features() cons
 	return m_features.features;
 }
 
+const VkPhysicalDeviceVulkan11Features& vulkan::PhysicalDevice::get_vulkan11_features() const noexcept
+{
+	return m_11Features;
+}
+
+const VkPhysicalDeviceVulkan12Features& vulkan::PhysicalDevice::get_vulkan12_features() const noexcept
+{
+	return m_12Features;
+}
+
+const VkPhysicalDeviceVulkan13Features& vulkan::PhysicalDevice::get_vulkan13_features() const noexcept
+{
+	return m_13Features;
+}
+
 const VkPhysicalDeviceAccelerationStructureFeaturesKHR& vulkan::PhysicalDevice::get_acceleration_structure_features() const noexcept
 {
 	return m_accelerationStructureFeatures;
@@ -513,7 +528,10 @@ void vulkan::PhysicalDevice::init_extensions() noexcept
 void vulkan::PhysicalDevice::init_features() noexcept
 {
 	m_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	m_features.pNext = &m_12Features;
+	m_features.pNext = &m_11Features;
+
+	m_11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+	m_11Features.pNext = &m_12Features;
 
 	m_12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	m_12Features.pNext = &m_13Features;
@@ -541,7 +559,10 @@ void vulkan::PhysicalDevice::init_features() noexcept
 void vulkan::PhysicalDevice::init_properties() noexcept
 {
 	m_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	m_properties.pNext = &m_12Properties;
+	m_properties.pNext = &m_11Properties;
+
+	m_11Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+	m_11Properties.pNext = &m_12Properties;
 
 	m_12Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
 	m_12Properties.pNext = &m_13Properties;

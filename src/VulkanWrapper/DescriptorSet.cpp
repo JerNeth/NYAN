@@ -538,33 +538,33 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 	const auto& vulkan12Properties = r_device.get_physical_device().get_vulkan12_properties();
 	const auto& rtProperties = r_device.get_physical_device().get_acceleration_structure_properties();
 
-	if (m_createInfo.storage_buffer_count > vulkan12Properties.maxDescriptorSetUpdateAfterBindStorageBuffers) {
-		m_createInfo.storage_buffer_count = vulkan12Properties.maxDescriptorSetUpdateAfterBindStorageBuffers;
-		Utility::log("Not enough bindless storage buffers");
+	if (m_createInfo.storage_buffer_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers) {
+		Utility::log(std::format("Not enough bindless storage buffers {} | {}", m_createInfo.storage_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers));
+		m_createInfo.storage_buffer_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
 	}	
-	if (m_createInfo.uniform_buffer_count > vulkan12Properties.maxDescriptorSetUpdateAfterBindUniformBuffers) {
-		m_createInfo.uniform_buffer_count = vulkan12Properties.maxDescriptorSetUpdateAfterBindUniformBuffers;
-		Utility::log("Not enough bindless uniform buffers");
+	if (m_createInfo.uniform_buffer_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers) {
+		Utility::log(std::format("Not enough bindless uniform buffers {} | {}", m_createInfo.uniform_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers));
+		m_createInfo.uniform_buffer_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
 	}
-	if (m_createInfo.sampled_image_count > vulkan12Properties.maxDescriptorSetUpdateAfterBindSampledImages) {
-		m_createInfo.sampled_image_count = vulkan12Properties.maxDescriptorSetUpdateAfterBindSampledImages;
-		Utility::log("Not enough bindless sampled images");
+	if (m_createInfo.sampled_image_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages) {
+		Utility::log(std::format("Not enough bindless sampled images {} | {}", m_createInfo.sampled_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages));
+		m_createInfo.sampled_image_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages;
 	}
-	if (m_createInfo.storage_image_count > vulkan12Properties.maxDescriptorSetUpdateAfterBindStorageImages) {
-		m_createInfo.storage_image_count = vulkan12Properties.maxDescriptorSetUpdateAfterBindStorageImages;
-		Utility::log("Not enough bindless storage images");
+	if (m_createInfo.storage_image_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages) {
+		Utility::log(std::format("Not enough bindless storage images {} | {}", m_createInfo.storage_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages));
+		m_createInfo.storage_image_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages;
 	}
-	if (m_createInfo.sampler_count > vulkan12Properties.maxDescriptorSetUpdateAfterBindSamplers) {
-		m_createInfo.sampler_count = vulkan12Properties.maxDescriptorSetUpdateAfterBindSamplers;
-		Utility::log("Not enough bindless samplers");
+	if (m_createInfo.sampler_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers) {
+		Utility::log(std::format("Not enough bindless samplers {} | {}", m_createInfo.sampler_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers));
+		m_createInfo.sampler_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers;
 	}
 	if (m_createInfo.acceleration_structure_count > rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures) {
+		Utility::log(std::format("Not enough bindless acceleration structures {} | {}", m_createInfo.acceleration_structure_count, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures));
 		m_createInfo.acceleration_structure_count = rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures;
-		Utility::log("Not enough bindless acceleration structures");
 	}
 
 
-	std::array bindings{
+	std::vector bindings{
 		VkDescriptorSetLayoutBinding
 		{
 			.binding = storageBufferBinding,
@@ -605,16 +605,10 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 			.stageFlags = VK_SHADER_STAGE_ALL,
 			.pImmutableSamplers = nullptr
 		},
-		VkDescriptorSetLayoutBinding
-		{
-			.binding = accelerationStructureBinding,
-			.descriptorType = DescriptorSet::bindless_binding_to_type(accelerationStructureBinding),
-			.descriptorCount = m_createInfo.acceleration_structure_count,
-			.stageFlags = VK_SHADER_STAGE_ALL,
-			.pImmutableSamplers = nullptr
-		},
 	};
-	std::array poolSizes{
+
+	
+	std::vector poolSizes{
 		VkDescriptorPoolSize {
 			.type = bindings[0].descriptorType,
 			.descriptorCount = bindings[0].descriptorCount
@@ -634,18 +628,51 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		VkDescriptorPoolSize {
 			.type = bindings[4].descriptorType,
 			.descriptorCount = bindings[4].descriptorCount
-		},
-		VkDescriptorPoolSize {
+		}
+	};
+	std::vector<VkDescriptorBindingFlags> flags;
+
+	VkDescriptorBindingFlags flag{0};
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingPartiallyBound) {
+		//	//VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+		flag |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+	}
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingUpdateUnusedWhilePending) {
+		//	//VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+		flag |= VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+	}
+	flags.resize(bindings.size(),flag);
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingStorageBufferUpdateAfterBind) {
+		flags[storageBufferBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingUniformBufferUpdateAfterBind) {
+		flags[uniformBufferBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingSampledImageUpdateAfterBind) {
+		flags[samplerBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		flags[sampledImageBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+	if (r_device.get_physical_device().get_vulkan12_features().descriptorBindingStorageImageUpdateAfterBind) {
+		flags[storageImageBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+
+	if (m_createInfo.acceleration_structure_count) {
+		bindings.push_back(VkDescriptorSetLayoutBinding
+			{
+				.binding = accelerationStructureBinding,
+				.descriptorType = DescriptorSet::bindless_binding_to_type(accelerationStructureBinding),
+				.descriptorCount = m_createInfo.acceleration_structure_count,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr
+			});
+		poolSizes.push_back(VkDescriptorPoolSize{
 			.type = bindings[5].descriptorType,
 			.descriptorCount = bindings[5].descriptorCount
-		},
-	};
-	std::array<VkDescriptorBindingFlags, bindings.size()> flags{};
-
-	flags.fill(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-		//VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
-		VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
-		VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT);
+			});
+		if (r_device.get_physical_device().get_acceleration_structure_features().descriptorBindingAccelerationStructureUpdateAfterBind) {
+			flags[accelerationStructureBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		}
+	}
 
 	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,

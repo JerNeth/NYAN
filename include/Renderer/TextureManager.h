@@ -9,6 +9,11 @@
 #include <Util>
 namespace nyan {
 	class TextureManager {
+	private:
+		struct Texture {
+			vulkan::ImageHandle handle;
+			Utility::TextureInfo info;
+		};
 	public:
 		TextureManager(vulkan::LogicalDevice& device, bool streaming);
 		vulkan::Image* request_texture(const std::string& name);
@@ -22,7 +27,7 @@ namespace nyan {
 		vulkan::ImageHandle create_dds_image(const std::filesystem::path& file, uint32_t mipLevel = 0);
 
 		vulkan::LogicalDevice& r_device;
-		std::unordered_map<uint32_t, std::pair<vulkan::ImageHandle, Utility::TextureInfo>> m_usedTextures;
+		std::unordered_map<uint32_t, Texture> m_usedTextures;
 		std::unordered_map<std::string, uint32_t> m_textureIndex;
 		bool m_streaming;
 		bool m_useSparse = false;

@@ -87,6 +87,9 @@ namespace vulkan {
 
 		const std::vector<const char*>& get_used_extensions() const noexcept;
 		const VkPhysicalDeviceFeatures& get_used_features() const noexcept;
+		const VkPhysicalDeviceVulkan11Features& get_vulkan11_features() const noexcept;
+		const VkPhysicalDeviceVulkan12Features& get_vulkan12_features() const noexcept;
+		const VkPhysicalDeviceVulkan13Features& get_vulkan13_features() const noexcept;
 		const VkPhysicalDeviceAccelerationStructureFeaturesKHR& get_acceleration_structure_features() const noexcept;
 		const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& get_ray_tracing_pipeline_features() const noexcept;
 		const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT& get_vertex_input_dynamic_state_features() const noexcept;
@@ -113,26 +116,26 @@ namespace vulkan {
 		uint32_t m_genericQueueFamily = ~0u;
 		uint32_t m_transferQueueFamily = ~0u;
 		uint32_t m_computeQueueFamily = ~0u;
-		Extensions m_extensions;
+		Extensions m_extensions{};
 		std::vector<VkQueueFamilyProperties> m_queueFamilyProperties;
 		std::vector<VkExtensionProperties> m_availableExtensions;
 		std::vector<const char*> m_usedExtensions;
-		VkPhysicalDeviceFeatures2 m_features;
-		VkPhysicalDeviceVulkan11Features  m_11Features;
-		VkPhysicalDeviceVulkan12Features  m_12Features;
-		VkPhysicalDeviceVulkan13Features  m_13Features;
-		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures;
-		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_rayTracingPipelineFeatures;
-		VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT m_vertexInputDynamicStateFeatures;
-		VkPhysicalDeviceMeshShaderFeaturesNV m_meshShaderFeatures;
+		VkPhysicalDeviceFeatures2 m_features{};
+		VkPhysicalDeviceVulkan11Features  m_11Features{};
+		VkPhysicalDeviceVulkan12Features  m_12Features{};
+		VkPhysicalDeviceVulkan13Features  m_13Features{};
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures{};
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_rayTracingPipelineFeatures{};
+		VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT m_vertexInputDynamicStateFeatures{};
+		VkPhysicalDeviceMeshShaderFeaturesNV m_meshShaderFeatures{};
 
-		VkPhysicalDeviceProperties2 m_properties;
-		VkPhysicalDeviceVulkan11Properties  m_11Properties;
-		VkPhysicalDeviceVulkan12Properties  m_12Properties;
-		VkPhysicalDeviceVulkan13Properties  m_13Properties;
-		VkPhysicalDeviceAccelerationStructurePropertiesKHR m_accelerationStructureProperties;
-		VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rayTracingPipelineProperties;
-		VkPhysicalDeviceMeshShaderPropertiesNV m_meshShaderProperties;
+		VkPhysicalDeviceProperties2 m_properties{};
+		VkPhysicalDeviceVulkan11Properties  m_11Properties{};
+		VkPhysicalDeviceVulkan12Properties  m_12Properties{};
+		VkPhysicalDeviceVulkan13Properties  m_13Properties{};
+		VkPhysicalDeviceAccelerationStructurePropertiesKHR m_accelerationStructureProperties{};
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rayTracingPipelineProperties{};
+		VkPhysicalDeviceMeshShaderPropertiesNV m_meshShaderProperties{};
 
 	};
 }
