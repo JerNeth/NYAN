@@ -168,6 +168,7 @@ namespace vulkan {
 	};
 	struct RayTracingConfig {
 		std::vector<ShaderId> shaders;
+		std::vector<uint32_t> groups;
 		uint32_t recursionDepth;
 		VkPipelineLayout pipelineLayout;
 	};
@@ -448,10 +449,10 @@ namespace vulkan {
 		VkPipelineLayout get_layout() const noexcept;
 		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
 	private:
-		VkPipeline m_pipeline = VK_NULL_HANDLE;
-		VkPipelineLayout m_layout = VK_NULL_HANDLE;
-		VkPipelineBindPoint m_type;
-		DynamicGraphicsPipelineState m_initialDynamicState;
+		VkPipeline m_pipeline { VK_NULL_HANDLE };
+		VkPipelineLayout m_layout { VK_NULL_HANDLE };
+		VkPipelineBindPoint m_type { VK_PIPELINE_BIND_POINT_GRAPHICS };
+		DynamicGraphicsPipelineState m_initialDynamicState {};
 	};
 
 	using PipelineId = uint32_t;

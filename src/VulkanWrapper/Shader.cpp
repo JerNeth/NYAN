@@ -239,6 +239,11 @@ VkPipelineShaderStageCreateInfo vulkan::ShaderInstance::get_stage_info() const
 	return createInfo;
 }
 
+VkShaderStageFlagBits vulkan::ShaderInstance::get_stage() const
+{
+	return m_stage;
+}
+
 vulkan::ShaderStorage::ShaderStorage(LogicalDevice& device) : 
 	r_device(device)
 {

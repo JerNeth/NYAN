@@ -772,36 +772,57 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RayTracingConfig& config) :
 	m_layout(config.pipelineLayout),
-	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR)
+	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR),
+	m_initialDynamicState()
 {
 	const auto& rtProperties = parent.get_physical_device().get_ray_tracing_pipeline_properties();
 
-	VkPipelineShaderStageCreateInfo stageCreateInfo
-	{
-		.sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
-		.pNext { nullptr },
-		.flags { },
-		.stage { },
-		.module { },
-		.pName { },
-		.pSpecializationInfo { },
-	};
-	VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
-	{
-		.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
-		.pNext { nullptr },
-		.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
-		.generalShader { VK_SHADER_UNUSED_KHR },
-		.closestHitShader { VK_SHADER_UNUSED_KHR },
-		.anyHitShader { VK_SHADER_UNUSED_KHR },
-		.intersectionShader { VK_SHADER_UNUSED_KHR },
-		.pShaderGroupCaptureReplayHandle { nullptr },
-	};
+
 	std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfos;
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> groupCreateInfos;
 
 	for (auto shader : config.shaders) {
-		stageCreateInfos.push_back(parent.get_shader_storage().get_instance(shader)->get_stage_info());
+		auto* instance = parent.get_shader_storage().get_instance(shader);
+		auto stageFlags = stageCreateInfos.emplace_back(instance->get_stage_info()).stage;
+		if (stageFlags & VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
+			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR},
+				.generalShader { VK_SHADER_UNUSED_KHR },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			};
+		}
+		else if (stageFlags & (VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR)) {
+			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR },
+				.generalShader { VK_SHADER_UNUSED_KHR },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			};
+		}
+		else if(stageFlags & (VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR)) {
+			VkRayTracingShaderGroupCreateInfoKHR groupCreateInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR },
+				.pNext { nullptr },
+				.type { VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR },
+				.generalShader { VK_SHADER_UNUSED_KHR },
+				.closestHitShader { VK_SHADER_UNUSED_KHR },
+				.anyHitShader { VK_SHADER_UNUSED_KHR },
+				.intersectionShader { VK_SHADER_UNUSED_KHR },
+				.pShaderGroupCaptureReplayHandle { nullptr },
+			};
+		}
 	}
 
 	assert(stageCreateInfos.size() < std::numeric_limits<uint32_t>::max());

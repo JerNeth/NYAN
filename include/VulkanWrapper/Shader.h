@@ -520,6 +520,7 @@ namespace vulkan {
 	public:
 		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage);
 		VkPipelineShaderStageCreateInfo get_stage_info() const;
+		VkShaderStageFlagBits get_stage() const;
 	private:
 		VkShaderModule m_module;
 		std::vector< VkSpecializationMapEntry> m_specialization;
