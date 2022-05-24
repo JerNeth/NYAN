@@ -79,20 +79,29 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 	info.createFlags.set(vulkan::ImageInfo::Flags::GenerateMips);
 	if (m_useSparse) {
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
-		auto image = r_device.create_sparse_image(info, &data);
+		auto fence = r_device.request_empty_fence();
+		auto image = r_device.create_sparse_image(info, &data, &fence);
 
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo {.imageView = image->get_view()->get_image_view()});
-		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
-		Utility::ImageReader::free_image(data.data);
+		r_device.add_fence_callback(fence.release_handle(), [this, file, image, data, texInfo]()
+			{
+				auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+				m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
+				m_textureIndex.emplace(file.string(), idx);
+				Utility::ImageReader::free_image(data.data);
+			});
 		return image;
 	}
 	else {
-		auto image = r_device.create_image(info, &data);
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
-		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
-		Utility::ImageReader::free_image(data.data);
+		auto fence = r_device.request_empty_fence();
+		auto image = r_device.create_image(info, &data, &fence);
+
+		r_device.add_fence_callback(fence.release_handle(), [this, file, image, data, texInfo]()
+			{
+				auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view() });
+				m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
+				m_textureIndex.emplace(file.string(), idx);
+				Utility::ImageReader::free_image(data.data);
+			});
 		return image;
 	}
 }

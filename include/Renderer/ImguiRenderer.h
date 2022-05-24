@@ -28,6 +28,7 @@ namespace nyan {
 		vulkan::LogicalDevice& r_device;
 		entt::registry& r_registry;
 		MM::EntityEditor<entt::entity> m_editor;
+		entt::entity m_entity;
 		vulkan::PipelineId m_pipeline;
 		glfww::Window* ptr_window;
 		std::chrono::high_resolution_clock::time_point start;

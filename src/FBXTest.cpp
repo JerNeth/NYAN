@@ -26,7 +26,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
 	std::vector<nyan::MeshID> meshIds;
 	std::vector<nyan::MaterialBinding> materialIds;
 

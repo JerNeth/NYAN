@@ -41,6 +41,9 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	});
 	ptr_window->configure_imgui();
 	m_editor.registerComponent<Transform>("Transform");
+	//if (r_registry.data()) {
+	//	m_entity = *r_registry.data();
+	//}
 }
 
 nyan::ImguiRenderer::~ImguiRenderer()
@@ -93,8 +96,8 @@ void nyan::ImguiRenderer::next_frame()
 	//ImGui::PopButtonRepeat();
 	//ImGui::SameLine();
 	ImGui::End();
-	auto ent = *r_registry.data();
-	m_editor.renderSimpleCombo(r_registry, ent);
+
+	m_editor.renderSimpleCombo(r_registry, m_entity);
 
 	//ImGui::ShowDemoWindow();
 }

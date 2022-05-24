@@ -196,8 +196,8 @@ namespace vulkan {
 
 		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, bool flush = true);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
-		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
-		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr);
+		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr, vulkan::FenceHandle* fence = nullptr);
+		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr, vulkan::FenceHandle* fence = nullptr);
 		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 

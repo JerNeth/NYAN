@@ -137,20 +137,23 @@ void vulkan::LogicalDevice::next_frame()
 	end_frame();
 
 	if (!m_fenceCallbacks.empty()) {
-		auto range = m_fenceCallbacks.equal_range(m_fenceCallbacks.begin()->first);
-		std::vector<VkFence> clear;
-		for (auto it = m_fenceCallbacks.begin(); it != m_fenceCallbacks.end(); it = range.second) {
-			range = m_fenceCallbacks.equal_range(it->first);
-			if (vkGetFenceStatus(m_device, range.first->first) == VK_SUCCESS) {
-				for (auto& cb = range.first; cb != range.second; cb++) {
-					cb->second();
-				}
-				clear.push_back(range.first->first);
+		//auto range = m_fenceCallbacks.equal_range(m_fenceCallbacks.begin()->first);
+		std::unordered_set<VkFence> clear;
+		for (auto it = m_fenceCallbacks.begin(); it != m_fenceCallbacks.end();) {
+			//range = m_fenceCallbacks.equal_range(it->first);
+			if (vkGetFenceStatus(m_device, it->first) == VK_SUCCESS) {
+				//for (auto& cb = range.first; cb != range.second; cb++) {
+				//	
+				//}
+				it->second();
+				clear.insert(it->first);
+				it = m_fenceCallbacks.erase(it);
+			}
+			else {
+				++it;
 			}
 		}
 		for (auto fence : clear) {
-			range = m_fenceCallbacks.equal_range(fence);
-			m_fenceCallbacks.erase(range.first, range.second);
 			m_fenceManager.reset_fence(fence);
 		}
 	}
@@ -1432,12 +1435,12 @@ vulkan::ImageViewHandle vulkan::LogicalDevice::create_image_view(const ImageView
 	return m_imageViewPool.emplace(*this,info);
 }
 
-vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, InitialImageData* initialData)
+vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, InitialImageData* initialData, vulkan::FenceHandle* fence)
 {
 	if (initialData) {
 		auto handle = create_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		auto buf = create_staging_buffer(info, initialData);
-		update_image_with_buffer(info, *handle, buf);
+		update_image_with_buffer(info, *handle, buf, fence);
 		return handle;
 	}
 	else {
@@ -1448,12 +1451,12 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, I
 	}
 }
 
-vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& info, InitialImageData* initialData)
+vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& info, InitialImageData* initialData, vulkan::FenceHandle* fence)
 {
 	if (initialData) {
 		auto handle = create_sparse_image(info, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 		auto buf = create_staging_buffer(info, initialData, handle->get_available_mip());
-		update_sparse_image_with_buffer(info, *handle, buf, nullptr, handle->get_available_mip());
+		update_sparse_image_with_buffer(info, *handle, buf, fence, handle->get_available_mip());
 		return handle;
 	}
 	else {
