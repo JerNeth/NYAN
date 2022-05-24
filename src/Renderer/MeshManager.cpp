@@ -79,6 +79,27 @@ const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const 
 	return m_staticTangentMeshes.find(m_meshIndex.find(name)->second)->second.mesh;
 }
 
+nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device) :
+	DataManager(device)
+{
+}
+
+void nyan::InstanceManager::set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix)
+{
+	auto& instance = get(id);
+
+	instance.transformMatrix = transformMatrix;
+
+}
+void nyan::InstanceManager::set_instance(TransformBinding id, const InstanceData& instance)
+{
+	set(id, instance);
+}
+TransformBinding nyan::InstanceManager::add_instance(const InstanceData& instanceData)
+{
+	return add(instanceData);
+}
+
 
 //StaticMesh* nyan::MeshManager::request_static_mesh(const std::string& name)
 //{

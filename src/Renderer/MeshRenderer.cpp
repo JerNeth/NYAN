@@ -33,27 +33,27 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		pipelineBind.set_scissor(scissor);
 		pipelineBind.set_viewport(viewport);
 
-		auto view = r_registry.view<const MeshID, const MaterialBinding, const Transform>();
-
+		auto view = r_registry.view<const MeshID, const MaterialBinding, const TransformBinding>();
+		//Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position)
 		for (const auto& [entity, meshID, material, transform] : view.each()) {
 			nyan::MeshInstance instance{
-				.mesh_id {meshID},
-				.pad {0},
 				.material {material},
-				.transform {Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position), transform.view, transform.proj},
+				.transform {transform},
+				.view {Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, 100, 50}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
+				.proj {Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f) },
 			};
-			constexpr auto a = offsetof(nyan::MeshInstance, transform);
-			constexpr auto b = offsetof(nyan::TransformData, transform) + a;
-			constexpr auto c = offsetof(nyan::TransformData, view) + a;
-			constexpr auto d = offsetof(nyan::TransformData, proj) + a;
-			render(pipelineBind, instance);
+			constexpr auto a = offsetof(MeshInstance, material);
+			constexpr auto b = offsetof(MeshInstance, transform);
+			constexpr auto c = offsetof(MeshInstance, view);
+			constexpr auto d = offsetof(MeshInstance, proj);
+			render(pipelineBind, meshID, instance);
 		}
 	});
 }
 
-void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, const MeshInstance& instance)
+void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, const MeshID& meshId, const MeshInstance& instance)
 {
-	auto& mesh = r_meshManager.get_static_tangent_mesh(instance.mesh_id);
+	auto& mesh = r_meshManager.get_static_tangent_mesh(meshId);
 	pipelineBind.bind_index_buffer(mesh.indexBuffer, mesh.indexOffset,  VK_INDEX_TYPE_UINT32);
 	pipelineBind.bind_vertex_buffers(0, mesh.vertexBuffers.size(), mesh.vertexBuffers.data(), mesh.vertexOffsets.data());
 

@@ -22,7 +22,7 @@ int main() {
 	nyan::TextureManager textureManager(device);
 	nyan::MaterialManager materialManager(device, textureManager);
 	nyan::MeshManager meshManager(device);
-	//nyan::MeshInstanceManager meshInstanceManager(device);
+	nyan::InstanceManager instanceManager(device);
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
@@ -36,30 +36,20 @@ int main() {
 			textureManager.request_texture(a.normalTex);
 		materialManager.add_material(a);
 	}
-	materialManager.upload();
 	for (const auto& a : meshes) {
 		auto meshId = meshManager.add_mesh(a);
-		nyan::MeshInstance instance{
-			.mesh_id {meshId},
-			.pad {0},
-			.material {materialManager.get_material(a.material)},
-			.transform {Math::Mat<float, 3, 4, false>::identity()}
-			//Math::Mat<float, 4, 4, false>::look_at(Math::vec3{0, -1000, 0}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1}),
-			//Math::Mat<float, 4, 4, false>::perspectiveX(0.1, 5000, 80, 16/9.f)},
-		};
 		auto entity = registry.create();
-		registry.emplace<MeshID>(entity, instance.mesh_id);
-		registry.emplace<MaterialBinding>(entity, instance.material);
+		registry.emplace<MeshID>(entity, meshId);
+		registry.emplace<MaterialBinding>(entity, materialManager.get_material(a.material));
+		registry.emplace<TransformBinding>(entity, instanceManager.add_instance());
 		registry.emplace<Transform>(entity,
 			Transform{
 				.position{},
+				.scale{},
 				.orientation{},
-				.view{Math::Mat<float, 4, 4, true>::look_at(Math::vec3{0, 1000, 500}, Math::vec3{0,0,0}, Math::vec3{0, 0, 1})},
-				.proj{Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f)}
 			});
 
-	}
-
+	} 
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
@@ -85,6 +75,13 @@ int main() {
 	nyan::MeshRenderer meshRenderer(device, registry, shaderManager, meshManager, deferredPass);
 	application.each_frame_begin([&]()
 		{
+			auto view = registry.view<const TransformBinding, const Transform>();
+			for (const auto& [entity, transformBinding, transform] : view.each()) {
+				instanceManager.set_transform(transformBinding,
+					Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position));
+			}
+			materialManager.upload();
+			instanceManager.upload();
 			imgui.next_frame();
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)

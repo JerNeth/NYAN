@@ -20,10 +20,16 @@ namespace nyan {
 	//private:
 
 	//};
+	struct MeshInstance {
+		MaterialBinding material;
+		TransformBinding transform;
+		Math::Mat<float, 4, 4, true> view;
+		Math::Mat<float, 4, 4, true> proj;
+	};
 	class MeshRenderer{
 	public:
 		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, vulkan::ShaderManager& shaderManager, nyan::MeshManager& meshManager, nyan::Renderpass& pass);
-		void render(vulkan::GraphicsPipelineBind& bind, const MeshInstance& instance);
+		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
 	private:
 		void create_pipeline();
 

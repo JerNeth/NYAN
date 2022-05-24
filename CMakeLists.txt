@@ -131,7 +131,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 target_compile_features(Engine PUBLIC 
-    cxx_std_20
+    cxx_std_23
 )
 
 if(WIN32)

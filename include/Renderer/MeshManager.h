@@ -21,10 +21,26 @@ namespace nyan {
 		std::vector<Math::vec3> tangents;
 	};
 	using MeshID = uint32_t;
-	using MeshInstanceID = uint32_t;
+	using InstanceID = uint32_t;
 	using TransformID = uint32_t;
 
-	using TransformBinding = Binding;
+	struct TransformBinding {
+		union {
+			struct {
+				uint32_t binding;
+				uint32_t id;
+			};
+			uint64_t data;
+		};
+		template<std::size_t Index>
+		auto get() const
+		{
+			static_assert(Index < 2,
+				"Index out of bounds for Custom::Binding");
+			if constexpr (Index == 0) return id;
+			if constexpr (Index == 1) return binding;
+		}
+	};
 	struct TransformData {
 		Math::Mat<float, 3, 4, false> transform;
 		Math::Mat<float, 4, 4, true> view;
@@ -34,8 +50,6 @@ namespace nyan {
 		Math::vec3 position;
 		Math::vec3 scale;
 		Math::vec3 orientation;
-		Math::Mat<float, 4, 4, true> view;
-		Math::Mat<float, 4, 4, true> proj;
 	};
 	class MeshManager {
 	private:
@@ -56,22 +70,19 @@ namespace nyan {
 		std::unordered_map<std::string, MeshID> m_meshIndex;
 		MeshID m_meshCounter {0};
 	};
-	struct MeshInstance {
-		MeshID mesh_id;
-		uint32_t pad;
-		MaterialBinding material;
-		//TODO change to transformId
-		TransformData transform;
+	union InstanceData {
+		VkAccelerationStructureInstanceKHR instance;
+		struct {
+			Math::Mat<float, 3, 4, false> transformMatrix;
+		};
 	};
-	class MeshInstanceManager : public DataManager<MeshInstance, 1024 * 8> {
+	class InstanceManager : public DataManager<InstanceData, TransformBinding, 1024 * 8> {
 	public:
-		MeshInstanceManager(vulkan::LogicalDevice& device);
-		void set_transform(MeshInstanceID id, const TransformData& transform);
-		MeshInstanceID add_instance(MeshID meshId, MaterialBinding material);
-		MeshInstanceID add_instance(MeshID meshId, MaterialBinding material, const TransformData& transform);
+		InstanceManager(vulkan::LogicalDevice& device);
+		void set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix);
+		void set_instance(TransformBinding id, const InstanceData& instance);
+		TransformBinding add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
 	private:
-		std::unordered_map<std::string, MeshID> m_meshIndex;
-		MeshID m_instanceCounter{ 0 };
 	};
 }
 

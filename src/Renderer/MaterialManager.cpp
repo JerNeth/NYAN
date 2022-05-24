@@ -13,11 +13,11 @@ void nyan::MaterialManager::set_material(const nyan::MaterialBinding& idx, const
 	set(idx, InternalMaterialData{
 	.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
 	.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "black.png")},
+	.shininessFactor {data.shininessFacor},
 	.ambientColor {data.ambientColor},
 	.ambientFactor {data.ambientFactor},
 	.diffuseColor {data.diffuseColor},
 	.diffuseFactor {data.diffuseFactor},
-	.shininessFactor {data.shininessFacor},
 	});
 }
 
@@ -27,11 +27,11 @@ nyan::MaterialBinding nyan::MaterialManager::add_material(const nyan::MaterialDa
 	auto binding = add(InternalMaterialData{
 		.diffuseTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
 		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "black.png")},
+		.shininessFactor {data.shininessFacor},
 		.ambientColor {data.ambientColor},
 		.ambientFactor {data.ambientFactor},
 		.diffuseColor {data.diffuseColor},
 		.diffuseFactor {data.diffuseFactor},
-		.shininessFactor {data.shininessFacor},
 	});
 	m_materialIndex.emplace(data.name, binding);
 	return binding;

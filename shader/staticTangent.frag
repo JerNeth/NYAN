@@ -2,11 +2,12 @@
 #extension GL_KHR_vulkan_glsl : enable
 layout(std430, push_constant) uniform PushConstants
 {
-    uint meshId;
     uint materialBinding;
     uint materialId;
-    uint padding;
-    layout(row_major) mat4x3 model;
+    uint transformBinding;
+    uint transformId;
+    layout(column_major) mat4x4 view;
+    layout(column_major) mat4x4 proj;
 } constants;
 
 //layout(set = 0, binding = 0) buffer SSBO  {
@@ -15,11 +16,12 @@ layout(std430, push_constant) uniform PushConstants
 struct Material {
 	uint diffuseTexId;
 	uint normalTexId;
+	uint pad;
+	float shininessFactor;
 	vec3 ambientColor;
 	float ambientFactor;
 	vec3 diffuseColor;
 	float diffuseFactor;
-	float shininessFactor;
 };
 layout(set = 0, binding = 0) buffer Materials  {
 	Material materials[];

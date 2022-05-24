@@ -23,7 +23,7 @@ namespace nyan {
 			if constexpr (Index == 1) return binding;
 		}
 	};
-	template<typename T, size_t SlotSize>
+	template<typename T, typename Binding, size_t SlotSize>
 	class DataManager {
 	protected:
 		struct Slot {
@@ -77,6 +77,19 @@ namespace nyan {
 			assert(slot.data.size() > binding.id);
 			slot.data[binding.id] = t;
 			slot.dirty = true;
+		}
+		T& get(const Binding& binding) {
+			assert(m_slots.find(binding.binding) != m_slots.end());
+			auto& slot = m_slots.find(binding.binding)->second;
+			assert(slot.data.size() > binding.id);
+			slot.dirty = true;
+			return slot.data[binding.id];
+		}
+		const T& get(const Binding& binding) const {
+			assert(m_slots.find(binding.binding) != m_slots.end());
+			auto& slot = m_slots.find(binding.binding)->second;
+			assert(slot.data.size() > binding.id);
+			return slot.data[binding.id];
 		}
 		uint32_t bind_buffer(vulkan::BufferHandle& buffer) {
 			return r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
