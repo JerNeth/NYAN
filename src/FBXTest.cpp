@@ -11,7 +11,7 @@ int main() {
 	auto name = "Demo";
 	nyan::Application application(name);
 	entt::registry registry;
-
+	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
 
 
 	auto& device = application.get_device();
