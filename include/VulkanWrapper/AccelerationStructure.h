@@ -58,6 +58,8 @@ namespace vulkan {
 		std::vector<AccelerationStructureHandle> build_pending();
 		AccelerationStructureHandle build_tlas(const std::vector< VkAccelerationStructureInstanceKHR>& instances,
 			VkBuildAccelerationStructureFlagsKHR flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
+		AccelerationStructureHandle build_tlas(const std::vector<uint32_t>& sizes, const std::vector<VkDeviceAddress>& addresses,
+			VkBuildAccelerationStructureFlagsKHR flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 	private:
 		LogicalDevice& r_device;
 		std::vector<BLASBuildEntry> m_pendingBuilds;

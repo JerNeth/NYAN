@@ -380,3 +380,93 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	vkWaitForFences(r_device, 1, &fence, VK_TRUE, UINT64_MAX);
 	return tlas;
 }
+
+vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(const std::vector<uint32_t>& sizes, const std::vector<VkDeviceAddress>& addresses, VkBuildAccelerationStructureFlagsKHR flags)
+{
+	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute, true);
+
+	VkAccelerationStructureGeometryKHR geometry{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+		.pNext = nullptr,
+		.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+		.geometry {
+			.instances {
+				.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+				.pNext = nullptr,
+				.arrayOfPointers = VK_TRUE,
+				.data {.hostAddress = static_cast<const void*>(addresses.data())},
+			}
+		},
+	};
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+		.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+		.flags = flags,
+		.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+		.srcAccelerationStructure = VK_NULL_HANDLE,
+		.dstAccelerationStructure = VK_NULL_HANDLE,
+		.geometryCount = 1,
+		.pGeometries = &geometry,
+	};
+	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+		.pNext = nullptr,
+	};
+	vkGetAccelerationStructureBuildSizesKHR(r_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo,
+		sizes.data(), &sizeInfo);
+
+	auto accelBuffer = r_device.create_buffer(BufferInfo{
+			.size = sizeInfo.accelerationStructureSize,
+			.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR ,
+			.offset = 0,
+			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
+
+	VkAccelerationStructureCreateInfoKHR createInfo{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+		.pNext = nullptr,
+		.buffer = *accelBuffer,
+		.size = sizeInfo.accelerationStructureSize,
+		.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+	};
+	VkAccelerationStructureKHR accelHandle{ VK_NULL_HANDLE };
+	vkCreateAccelerationStructureKHR(r_device, &createInfo, r_device.get_allocator(), &accelHandle);
+	auto tlas = m_acclerationStructurePool.emplace(r_device, accelHandle, accelBuffer, createInfo);
+
+	BufferInfo scratchInfo{
+		.size = sizeInfo.buildScratchSize,
+		.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+		.offset = 0,
+		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+	};
+	auto scratchBuffer = r_device.create_buffer(scratchInfo, {});
+
+	VkBufferDeviceAddressInfo addressInfo{
+		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+		.pNext = nullptr,
+		.buffer = *scratchBuffer
+	};
+	buildInfo.dstAccelerationStructure = accelHandle;
+	buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddress(r_device, &addressInfo);
+
+	std::vector< VkAccelerationStructureBuildRangeInfoKHR> buildRanges;
+	buildRanges.reserve(sizes.size());
+	for (const auto& size : sizes) {
+		buildRanges.push_back(
+			 VkAccelerationStructureBuildRangeInfoKHR {
+				.primitiveCount = size,
+				.primitiveOffset = 0,
+				.firstVertex = 0,
+				.transformOffset = 0,
+			});
+	}
+	const VkAccelerationStructureBuildRangeInfoKHR* pBuildOffsetInfo = buildRanges.data();
+
+	vkCmdBuildAccelerationStructuresKHR(cmd->get_handle(), 1, &buildInfo, &pBuildOffsetInfo);
+
+
+	auto fenceHandle = r_device.request_empty_fence();
+	r_device.submit_flush(cmd, 0, nullptr, &fenceHandle);
+	auto fence = fenceHandle.get_handle();
+	vkWaitForFences(r_device, 1, &fence, VK_TRUE, UINT64_MAX);
+	return tlas;
+}
