@@ -15,7 +15,7 @@ namespace nyan {
 			Utility::TextureInfo info;
 		};
 	public:
-		TextureManager(vulkan::LogicalDevice& device, bool streaming);
+		TextureManager(vulkan::LogicalDevice& device, bool streaming = false);
 		vulkan::Image* request_texture(const std::string& name);
 		uint32_t get_texture_idx(const std::string& name, const std::string& defaultTex = "white.png");
 		void change_mip(const std::string& name, uint32_t targetMip);

@@ -42,7 +42,7 @@ namespace nyan {
 			for (auto& [bind, slot] : m_slots) {
 				if (!slot.dirty)
 					continue;
-				auto size = sizeof(T) * slot.materialData.size();
+				auto size = sizeof(T) * slot.data.size();
 				auto* map = slot.buffer->map_data();
 				std::memcpy(map, slot.data.data(), size);
 				slot.buffer->flush(0, size);

@@ -32,7 +32,7 @@ namespace Math {
 		//		m_data[i] = scalar;
 		//}
 		template<typename... Args>
-		constexpr explicit Vec(Args... args) {
+		constexpr Vec(Args... args) {
 			static_assert(sizeof...(Args) <= Size);
 			if constexpr (sizeof...(Args) == 1) {
 				for (size_t i = 0; i < Size; i++)

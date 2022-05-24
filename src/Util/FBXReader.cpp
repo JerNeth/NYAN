@@ -93,6 +93,10 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 		auto scale = node->LclScaling.Get();
 
 		auto mesh = node->GetMesh();
+		if (!mesh) {
+			std::cout << "Not a mesh: " <<node->GetName() <<"\n";
+			continue;
+		}
 		fbxsdk::FbxVector4* lControlPoints = mesh->GetControlPoints();
 		mesh->GenerateTangentsDataForAllUVSets();
 		mesh->GenerateNormals();

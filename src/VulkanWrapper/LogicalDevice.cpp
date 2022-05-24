@@ -1417,6 +1417,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 		auto map = handle->map_data();
 		size_t offset = 0;
 		for (const auto& data : initialData) {
+			assert(data.size + offset <= info.size);
 			memcpy(reinterpret_cast<char*>(map) + offset, data.ptr, data.size);
 			offset += data.size;
 		}

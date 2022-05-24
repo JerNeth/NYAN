@@ -13,15 +13,15 @@ MeshID nyan::MeshManager::add_mesh(const MeshData& data)
 	std::vector<vulkan::InputData> inputData;
 	std::vector<uint32_t> offsets;
 	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.indices.size() * sizeof(uint32_t) });
-	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.positions.size() * sizeof(Math::vec3) });
-	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.uvs.size() * sizeof(Math::vec2) });
-	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.normals.size() * sizeof(Math::vec3) });
-	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.tangents.size() * sizeof(Math::vec3) });
-
+	inputData.push_back(InputData{ .ptr = data.positions.data(), .size = data.positions.size() * sizeof(Math::vec3) });
+	inputData.push_back(InputData{ .ptr = data.uvs.data(), .size = data.uvs.size() * sizeof(Math::vec2) });
+	inputData.push_back(InputData{ .ptr = data.normals.data(), .size = data.normals.size() * sizeof(Math::vec3) });
+	inputData.push_back(InputData{ .ptr = data.tangents.data(), .size = data.tangents.size() * sizeof(Math::vec3) });
+	uint32_t alignment = 256;
 	uint32_t offset = 0;
 	for (const auto& inputDate : inputData) {
 		offsets.push_back(offset);
-		offset += inputDate.size;
+		offset += (inputDate.size + (alignment - 1)) / alignment * alignment;
 	}
 	vulkan::BufferInfo info{
 		.size = offset,

@@ -57,17 +57,17 @@ namespace nyan {
 	};
 	struct MeshInstance {
 		MeshID mesh_id;
-		Transform transform_id;
-		Material material;
+		MaterialBinding material;
+		uint32_t pad;
+		TransformData transform;
 	};
-	class MeshInstanceManager : public DataManager<MeshInstance, 1024 * 8>{
+	class MeshInstanceManager : public DataManager<MeshInstance, 1024 * 8> {
 	public:
 		MeshInstanceManager(vulkan::LogicalDevice& device);
-		void set_transform(MeshInstanceID id, const TransformData& data);
-		MeshInstanceID add_instance();
-		void upload();
+		void set_transform(MeshInstanceID id, const TransformData& transform);
+		MeshInstanceID add_instance(MeshID meshId, MaterialBinding material);
+		MeshInstanceID add_instance(MeshID meshId, MaterialBinding material, const TransformData& transform);
 	private:
-		vulkan::LogicalDevice& r_device;
 		std::unordered_map<std::string, MeshID> m_meshIndex;
 		MeshID m_instanceCounter{ 0 };
 	};

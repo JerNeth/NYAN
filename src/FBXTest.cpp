@@ -12,18 +12,54 @@ int main() {
 	auto& window = application.get_window();
 
 	vulkan::ShaderManager shaderManager(device);
+	//TODO possibly chunk textures and queue upload
+	nyan::TextureManager textureManager(device);
+	nyan::MaterialManager materialManager(device, textureManager);
+	nyan::MeshManager meshManager(device);
+	//nyan::MeshInstanceManager meshInstanceManager(device);
 	Utility::FBXReader reader;
 	std::vector<nyan::MeshData> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("san_miguel.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
+	std::vector<nyan::MeshID> meshIds;
+	std::vector<nyan::MaterialBinding> materialIds;
+	std::vector<nyan::MeshInstance> instances;
+
+
+	for (const auto& a : materials) {
+		materialIds.push_back(materialManager.add_material(a));
+	}
+	materialManager.upload();
+	for (const auto& a : meshes) {
+		auto meshId = meshManager.add_mesh(a);
+		meshIds.push_back(meshId);
+		instances.push_back(nyan::MeshInstance{
+			.mesh_id {meshId},
+			.material {materialManager.get_material(a.material)},
+			.pad {0},
+			.transform {Math::Mat<float, 3, 4, false>::identity()},
+		});
+	}
 
 	nyan::Rendergraph rendergraph{ device };
 	OutputDebugStringW(L"My output string.\n");
-	auto& pass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
-	pass.add_swapchain_attachment();
+	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
+	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
+	//		.clearColor{1.f, 0.f, 0.f, 0.f},
+	//	});
+	//deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+	//		.clearColor{0.f, 0.f, 0.f, 1.f},
+	//	});
+	deferredPass.add_swapchain_attachment();
+	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
+	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 
-	nyan::ImguiRenderer imgui(device, shaderManager, pass, &window);
+	nyan::ImguiRenderer imgui(device, shaderManager, imguiPass, &window);
 	application.each_frame_begin([&]()
 		{
 			imgui.next_frame();
