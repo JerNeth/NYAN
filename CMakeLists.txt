@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.19)
+﻿cmake_minimum_required (VERSION 3.20)
 #set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -56,11 +56,14 @@ include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
 # FBX SDK
 include("${CMAKE_SOURCE_DIR}/vendor/FBXSDK.cmake")
 
-# FBX SDK
+# STB
 include("${CMAKE_SOURCE_DIR}/vendor/STB.cmake")
 
+# ENTT
+include("${CMAKE_SOURCE_DIR}/vendor/EnTT.cmake")
+
 # Optick
-add_subdirectory("vendor/optick")
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -102,7 +105,7 @@ add_executable(FBXTest ${FBXTest_SRC})
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
-target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore stb)
+target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore stb EnTT)
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine)
@@ -125,7 +128,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 target_compile_features(Engine PUBLIC 
-    cxx_std_20
+    cxx_std_23
 )
 
 if(WIN32)

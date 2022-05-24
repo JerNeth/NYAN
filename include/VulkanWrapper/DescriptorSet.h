@@ -4,6 +4,8 @@
 #include "VulkanIncludes.h"
 #include "Shader.h"
 #include <Util>
+#include <numeric>
+#include <format>
 namespace vulkan {
 	class LogicalDevice;
 	class DescriptorSetAllocator {

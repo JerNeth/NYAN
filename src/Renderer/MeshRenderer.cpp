@@ -9,6 +9,7 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, vulkan::ShaderMa
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass& pass) 
 		{
+			auto bind = cmd->bind_graphics_pipeline(m_staticTangentPipeline);
 
 		});
 }

@@ -3,10 +3,14 @@
 #include <Util>
 #include "Application.h"
 #include "Utility/FBXReader.h"
+#include "entt/entt.hpp"
 using namespace nyan;
 int main() {
 	auto name = "Demo";
 	nyan::Application application(name);
+	entt::registry registry;
+
+
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();

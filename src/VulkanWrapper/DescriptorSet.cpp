@@ -1,6 +1,5 @@
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
-#include <numeric>
 vulkan::DescriptorSetAllocator::DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout) :
 r_device(parent)
 {
@@ -630,6 +629,20 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 			.descriptorCount = bindings[4].descriptorCount
 		}
 	};
+	if (m_createInfo.acceleration_structure_count) {
+		bindings.push_back(VkDescriptorSetLayoutBinding
+			{
+				.binding = accelerationStructureBinding,
+				.descriptorType = DescriptorSet::bindless_binding_to_type(accelerationStructureBinding),
+				.descriptorCount = m_createInfo.acceleration_structure_count,
+				.stageFlags = VK_SHADER_STAGE_ALL,
+				.pImmutableSamplers = nullptr
+			});
+		poolSizes.push_back(VkDescriptorPoolSize{
+			.type = bindings[5].descriptorType,
+			.descriptorCount = bindings[5].descriptorCount
+			});
+	}
 	std::vector<VkDescriptorBindingFlags> flags;
 
 	VkDescriptorBindingFlags flag{0};
@@ -657,18 +670,6 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 	}
 
 	if (m_createInfo.acceleration_structure_count) {
-		bindings.push_back(VkDescriptorSetLayoutBinding
-			{
-				.binding = accelerationStructureBinding,
-				.descriptorType = DescriptorSet::bindless_binding_to_type(accelerationStructureBinding),
-				.descriptorCount = m_createInfo.acceleration_structure_count,
-				.stageFlags = VK_SHADER_STAGE_ALL,
-				.pImmutableSamplers = nullptr
-			});
-		poolSizes.push_back(VkDescriptorPoolSize{
-			.type = bindings[5].descriptorType,
-			.descriptorCount = bindings[5].descriptorCount
-			});
 		if (r_device.get_physical_device().get_acceleration_structure_features().descriptorBindingAccelerationStructureUpdateAfterBind) {
 			flags[accelerationStructureBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
 		}
