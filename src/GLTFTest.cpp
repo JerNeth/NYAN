@@ -1,10 +1,8 @@
 #include <iostream>
-#include <fbxsdk.h>
 #include <Util>
 #include "Application.h"
-#include "FBXReader/FBXReader.h"
+#include "tiny_gltf.h"
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/DeferredLighting.h"
 using namespace nyan;
 
 int main() {
@@ -18,13 +16,28 @@ int main() {
 
 	nyan::RenderManager renderManager(device, false);
 	auto& registry = renderManager.get_registry();
-	Utility::FBXReader reader;
+	//Utility::FBXReader reader;
+	tinygltf::Model model;
+	tinygltf::TinyGLTF loader;
+	std::string err;
+	std::string warn;
+	std::filesystem::path file = "sponza-gltf-pbr/sponza.glb";
+	bool ret = false;
+
+	if(file.extension() == ".glb")
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, file.string());
+	else if(file.extension() == ".gltf")
+		ret = loader.LoadASCIIFromFile(&model, &err, &warn, file.string());
+
+	//for (const auto& mesh : model.meshes) {
+	//	mesh.
+	//}
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	//reader.parse_meshes("cathedral.fbx", meshes, materials);
 
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
@@ -68,32 +81,21 @@ int main() {
 			.format{VK_FORMAT_D24_UNORM_S8_UINT},
 			.clearColor{1.f, 0.f, 0.f, 0.f},
 		});
-	//deferredPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
+	//deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
 	//	{
 	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 	//		.clearColor{0.f, 0.f, 0.f, 1.f},
 	//	});
-	deferredPass.add_attachment("SpecularLighting", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			//.format{VK_FORMAT_R8G8B8A8_SRGB},
-			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.25f, 0.5f, 0.7f, 1.f},
-		});
-	//deferredPass.add_swapchain_attachment();
+	deferredPass.add_swapchain_attachment();
 
-	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Graphics);
-	deferredLightingPass.add_read("SpecularLighting");
-	deferredLightingPass.add_swapchain_attachment();
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
 	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 
-	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
-	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+	nyan::MeshRenderer rtMeshRenderer(device, registry, renderManager, deferredPass);
 	application.each_frame_begin([&]()
 		{
 			renderManager.update();

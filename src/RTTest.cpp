@@ -2,7 +2,7 @@
 #include <fbxsdk.h>
 #include <Util>
 #include "Application.h"
-#include "Utility/FBXReader.h"
+#include "FBXReader/FBXReader.h"
 #include <iostream>
 #include "entt/entt.hpp"
 #include "Renderer/MeshRenderer.h"
@@ -13,6 +13,14 @@ int main() {
 	auto name = "Demo";
 	nyan::Application application(name);
 	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
+	//See also: "Real-Time Samurai Cinema: Lighting, Atmosphere, and Tonemapping in Ghost of Tsushima"
+
+	//TODO: PBR, use GGX + Smith
+	//See also: Hammon earl, PBR Diffuse Lighting for GGX + Smith Microsurfaces
+	//Also consider [Belcour et al.] (Bringing an Accurate Fresnel to Real-Time Rendering: a Preintegrable Decomposition) for Fresnel term 
+	//Also read: Real Shading in Unreal Engine 4
+	//Possibly: Real-Time Polygonal Light Shading with Linearly Transformed Cosines with REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS
+
 
 
 	auto& device = application.get_device();
@@ -27,6 +35,8 @@ int main() {
 	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
 	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
+	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
 
 
@@ -86,7 +96,7 @@ int main() {
 	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 	//		.clearColor{0.f, 0.f, 0.f, 1.f},
 	//	});
-	deferredPass.add_swapchain_write();
+	deferredPass.add_swapchain_write(true);
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);

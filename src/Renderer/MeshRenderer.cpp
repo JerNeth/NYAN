@@ -60,13 +60,18 @@ void nyan::MeshRenderer::create_pipeline()
 	vulkan::GraphicsPipelineConfig staticTangentConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::alphaBlendedGraphicsPipelineState,
-	.vertexInputCount = 4,
+	.vertexInputCount = get_num_formats<nyan::Mesh>(),
 	.shaderCount = 2,
 	.vertexInputFormats {
-		VK_FORMAT_R32G32B32_SFLOAT,
-		VK_FORMAT_R32G32_SFLOAT,
-		VK_FORMAT_R32G32B32_SFLOAT,
-		VK_FORMAT_R32G32B32_SFLOAT,
+		get_formats<nyan::Mesh>()
+		//VK_FORMAT_R32G32B32_SFLOAT,
+		//VK_FORMAT_R32G32_SFLOAT,
+		//VK_FORMAT_R32G32B32_SFLOAT,
+		//VK_FORMAT_R32G32B32_SFLOAT,
+		//VK_FORMAT_R32G32B32_SFLOAT,
+		//VK_FORMAT_R16G16_SFLOAT,
+		//VK_FORMAT_R16G16B16_SFLOAT,
+		//VK_FORMAT_R16G16B16_SFLOAT,
 	},
 	.shaderInstances {
 		r_renderManager.get_shader_manager().get_shader_instance_id("staticTangent_vert"),
@@ -102,9 +107,10 @@ void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
 	auto writeBind = r_pass.get_write_bind(0);
 	assert(writeBind != InvalidResourceId);
 	PushConstants constants{
-		.imageBinding {writeBind},
-		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()},
-		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}
+		.imageBinding {writeBind}, //0
+		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
+		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
+		.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
 	};
 	bind.push_constants(constants);
 	bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
@@ -189,19 +195,35 @@ vulkan::BufferHandle nyan::RTMeshRenderer::create_sbt(const vulkan::RaytracingPi
 	assert(m_hitRegion.stride <= rtProperties.maxShaderGroupStride);
 	assert(m_missRegion.stride <= rtProperties.maxShaderGroupStride);
 	assert(m_callableRegion.stride <= rtProperties.maxShaderGroupStride);
-
-	std::vector<vulkan::InputData> inputData;
-	for (size_t i{ 0 }; i < groupCount; ++i) {
-		inputData.push_back(
-			vulkan::InputData{
-				.ptr {handleData.data() + i * handleSize},
-				.size {handleSize},
-				.stride {handleStride},
-			}
-		);
-	}
-
 	auto bufferSize = m_rgenRegion.size + m_hitRegion.size + m_missRegion.size + m_callableRegion.size;
+
+	std::vector<std::byte> stridedHandles(bufferSize);
+	std::vector<vulkan::InputData> inputData{
+		vulkan::InputData{
+			.ptr {stridedHandles.data()},
+			.size {bufferSize},
+		}
+	};
+	size_t offset{ 0 };
+	size_t handleCount{ 0 };
+	for (size_t i{ 0 }; i < rgenCount; ++i, ++handleCount) {
+		std::memcpy(stridedHandles.data() + offset + i * m_rgenRegion.stride, handleData.data() + handleCount * handleSize, handleSize);
+	}
+	offset += m_rgenRegion.size;
+	for (size_t i{ 0 }; i < hitCount; ++i, ++handleCount) {
+		std::memcpy(stridedHandles.data() + offset + i * m_hitRegion.stride, handleData.data() + handleCount * handleSize, handleSize);
+	}
+	offset += m_hitRegion.size;
+	for (size_t i{ 0 }; i < missCount; ++i, ++handleCount) {
+		std::memcpy(stridedHandles.data() + offset + i * m_missRegion.stride, handleData.data() + handleCount * handleSize, handleSize);
+	}
+	offset += m_missRegion.size;
+	for (size_t i{ 0 }; i < callableCount; ++i, ++handleCount) {
+		std::memcpy(stridedHandles.data() + offset + i * m_callableRegion.stride, handleData.data() + handleCount * handleSize, handleSize);
+	}
+	offset += m_callableRegion.size;
+
+
 	auto sbt = r_device.create_buffer(vulkan::BufferInfo{
 		.size = bufferSize,
 		.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR,

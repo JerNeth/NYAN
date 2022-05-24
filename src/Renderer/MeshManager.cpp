@@ -15,15 +15,16 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 {
 	std::vector<vulkan::InputData> inputData;
 	std::vector<uint32_t> offsets;
-	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.indices.size() * sizeof(uint32_t) });
-	inputData.push_back(InputData{ .ptr = data.positions.data(), .size = data.positions.size() * sizeof(Math::vec3) });
-	inputData.push_back(InputData{ .ptr = data.uvs.data(), .size = data.uvs.size() * sizeof(Math::vec2) });
-	inputData.push_back(InputData{ .ptr = data.normals.data(), .size = data.normals.size() * sizeof(Math::vec3) });
-	inputData.push_back(InputData{ .ptr = data.tangents.data(), .size = data.tangents.size() * sizeof(Math::vec3) });
+	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.indices.size() * sizeof(decltype(data.indices)::value_type) });
+	inputData.push_back(InputData{ .ptr = data.positions.data(), .size = data.positions.size() * sizeof(decltype(data.positions)::value_type) });
+	inputData.push_back(InputData{ .ptr = data.uvs.data(), .size = data.uvs.size() * sizeof(decltype(data.uvs)::value_type) });
+	inputData.push_back(InputData{ .ptr = data.normals.data(), .size = data.normals.size() * sizeof(decltype(data.normals)::value_type) });
+	inputData.push_back(InputData{ .ptr = data.tangents.data(), .size = data.tangents.size() * sizeof(decltype(data.tangents)::value_type) });
 	uint32_t offset = 0;
-	for (const auto& inputDate : inputData) {
+	for (auto& inputDate : inputData) {
+		inputDate.stride = Utility::align_up(inputDate.size, 16ull);
 		offsets.push_back(offset);
-		offset += static_cast<uint32_t>(inputDate.size);
+		offset += static_cast<uint32_t>(inputDate.stride);
 	}
 	vulkan::BufferInfo info{
 		.size = offset,
@@ -38,6 +39,14 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 		info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
 			| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 	}
+	VkIndexType indexType { VK_INDEX_TYPE_UINT32 };
+	if constexpr (std::is_same_v<decltype(data.indices)::value_type, uint32_t>) {
+		indexType = VK_INDEX_TYPE_UINT32;
+	}
+	if constexpr (std::is_same_v<decltype(data.indices)::value_type, uint16_t>) {
+		indexType = VK_INDEX_TYPE_UINT16;
+	}
+
 	MeshManager::Mesh mesh{
 		.buffer = r_device.create_buffer(info, inputData),
 		.offset {0},
@@ -49,7 +58,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 
 			.indexBuffer {mesh.buffer->get_handle()},
 			.indexOffset {offsets[0]},
-			.indexType {VK_INDEX_TYPE_UINT32},
+			.indexType {indexType},
 			.vertexBuffers {
 				.positionBuffer {mesh.buffer->get_handle()},
 				.texCoordBuffer {mesh.buffer->get_handle()},
@@ -66,11 +75,12 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 	};
 	auto addr = mesh.buffer->get_address();
 
-	auto id = add(MeshData {
+	auto id = add(nyan::shaders::Mesh {
 		.materialBinding { r_materialManager.get_binding() },
 		.materialId { r_materialManager.get_material(data.material) },
 		.indicesAddress { addr + mesh.mesh.indexOffset },
-		.uvAddress { addr + mesh.mesh.vertexOffsets.texCoordOffset },
+		.positionsAddress { addr + mesh.mesh.vertexOffsets.positionOffset },
+		.uvsAddress { addr + mesh.mesh.vertexOffsets.texCoordOffset },
 		.normalsAddress { addr + mesh.mesh.vertexOffsets.normalOffset },
 		.tangentsAddress { addr + mesh.mesh.vertexOffsets.tangentOffset },
 		});
@@ -80,8 +90,8 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.vertexBuffer { mesh.mesh.vertexBuffers.positionBuffer },
 			.vertexCount { static_cast<uint32_t>(data.positions.size()) },
 			.vertexOffset { mesh.mesh.vertexOffsets.positionOffset },
-			.vertexFormat { get_format<Math::vec3>() },
-			.vertexStride { format_bytesize(get_format<Math::vec3>()) },
+			.vertexFormat { get_format<decltype(data.positions)::value_type>() },
+			.vertexStride { format_bytesize<decltype(data.positions)::value_type>() },
 			.indexBuffer { mesh.mesh.indexBuffer },
 			.indexCount {mesh.mesh.indexCount},
 			.indexOffset { mesh.mesh.indexOffset },

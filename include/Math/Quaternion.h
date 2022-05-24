@@ -11,6 +11,7 @@ namespace Math {
 	template<ScalarT Scalar>
 	class Quaternion {
 	public:
+		using value_type = Scalar; 
 		Quaternion() : m_real(), m_imaginary() {
 
 		}

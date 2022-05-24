@@ -94,8 +94,8 @@ namespace nyan {
 		void add_depth_attachment(const std::string& name, ImageAttachment attachment);
 		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment);
 		void add_stencil_attachment(const std::string& name, ImageAttachment attachment);
-		void add_write(const std::string& name, ImageAttachment attachment);
-		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f });
+		void add_write(const std::string& name, ImageAttachment attachment, bool compute = false);
+		void add_swapchain_write(bool compute = false, Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f } );
 		//void add_read_dependency(const std::string& name, bool storageImage = false);
 		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&, Renderpass&) > & functor, bool renderpass) {
 			m_renderFunctions.push_back(functor);
@@ -118,12 +118,17 @@ namespace nyan {
 		void end_rendering(vulkan::CommandBufferHandle& cmd);
 		uint32_t get_write_bind(uint32_t idx);
 		uint32_t get_read_bind(uint32_t idx);
+		uint32_t get_write_bind(std::string_view v);
+		uint32_t get_read_bind(std::string_view v);
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
 		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
 	private:
+		bool is_read(RenderResourceId id) const;
 		bool is_write(RenderResourceId id) const;
+		bool is_compute_write(RenderResourceId id) const;
 		bool is_attachment(RenderResourceId id) const;
 		bool is_write(const RenderResource& resource) const;
+		bool is_compute_write(const RenderResource& resource) const;
 		bool is_attachment(const RenderResource& resource) const;
 
 
@@ -137,6 +142,7 @@ namespace nyan {
 		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
 		std::vector<RenderResourceId> m_reads;
 		std::vector<RenderResourceId> m_writes;
+		std::vector<bool> m_computeWrites;
 		std::vector<RenderResourceId> m_attachments;
 		RenderResourceId m_depth = InvalidResourceId;
 		RenderResourceId m_stencil = InvalidResourceId;
@@ -177,8 +183,8 @@ namespace nyan {
 		void build();
 		void execute();
 		RenderResource& add_ressource(const std::string& name, Attachment attachment);
-		RenderResource& get_resource(const std::string& name);
-		const RenderResource& get_resource(const std::string& name) const;
+		RenderResource& get_resource(std::string_view v);
+		const RenderResource& get_resource(std::string_view v) const;
 		void set_swapchain(const std::string& name);
 		vulkan::LogicalDevice& get_device() const;
 	private:

@@ -2,32 +2,18 @@
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #include "raycommon.glsl"
-
-//layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
-//layout(binding = 1, set = 0, rgba32f) uniform image2D image;
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "bindlessLayouts.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
     uint imageBinding;
     uint accBinding;
     uint sceneBinding;
+    uint meshBinding;
 } constants;
-
-layout(set = 0, binding = 0) buffer Scenes  {
-    layout(column_major) mat4x4 view;
-    layout(column_major) mat4x4 proj;
-    layout(column_major) mat4x4 invView;
-    layout(column_major) mat4x4 invProj;
-} scene [4096];
-layout(set = 0, binding = 4, rgb10_a2) uniform image2D images[4096];
-layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[4096];
-
-//layout(set = 0, binding = 0) buffer ssbos [];
-//layout(set = 0, binding = 1) uniform ubos[];
-//layout(set = 0, binding = 2) uniform sampler samplers[];
-//layout(set = 0, binding = 3) uniform texture2D textures[];
-//layout(set = 0, binding = 4) uniform image2D images[];
-//layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[];
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
 
@@ -36,9 +22,9 @@ void main()
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
     vec2 d = inUV * 2.0 - 1.0;
-    vec4 origin    = scene[constants.sceneBinding].invView * vec4(0, 0, 0, 1);
-    vec4 target    = scene[constants.sceneBinding].invProj * vec4(d.x, d.y, 1, 1);
-    vec4 direction = scene[constants.sceneBinding].invView * vec4(normalize(target.xyz), 0);
+    vec4 origin    = scenes[constants.sceneBinding].scene.invView * vec4(0, 0, 0, 1);
+    vec4 target    = scenes[constants.sceneBinding].scene.invProj * vec4(d.x, d.y, 1, 1);
+    vec4 direction = scenes[constants.sceneBinding].scene.invView * vec4(normalize(target.xyz), 0);
     uint  rayFlags = gl_RayFlagsOpaqueEXT;
     float tMin     = 0.001;
     float tMax     = 10000.0;
@@ -54,5 +40,5 @@ void main()
           tMax,           // ray max range
           0               // payload (location = 0)
      );
-    imageStore(images[constants.imageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.0));
+    imageStore(imagesRGB10_A2[constants.imageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.0));
 }

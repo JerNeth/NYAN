@@ -20,5 +20,6 @@ add_library(imgui STATIC ${IMGUI_SRC})
 target_include_directories(imgui SYSTEM PUBLIC
   ${imgui_SOURCE_DIR}
 )
+#target_compile_definitions(imgui PRIVATE IMGUI_DISABLE_OBSOLETE_KEYIO)
 #message(${imgui_SOURCE_DIR})
 #message(${IMGUI_SRC})

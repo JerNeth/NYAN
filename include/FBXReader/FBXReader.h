@@ -8,8 +8,8 @@
 #pragma warning disable 26451
 #endif
 #include <fbxsdk.h>
-#include "Renderer/MeshManager.h"
-#include "Renderer/MaterialManager.h"
+#include "Renderer/Mesh.h"
+#include "Renderer/Material.h"
 namespace Utility {
 
 	class FBXReader {

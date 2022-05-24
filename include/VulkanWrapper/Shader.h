@@ -391,15 +391,31 @@ namespace vulkan {
 		return VK_FORMAT_R16_SINT;
 	}
 	template< >
+	constexpr VkFormat get_format<::Math::half>() {
+		return VK_FORMAT_R16_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<float>() {
 		return VK_FORMAT_R32_SFLOAT;
 	}
 	template< >
+	constexpr VkFormat get_format<double>() {
+		return VK_FORMAT_R64_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<uint8_t>() {
-		return VK_FORMAT_R8_UNORM;
+		return VK_FORMAT_R8_UINT;
 	}
 	template< >
 	constexpr VkFormat get_format<int8_t>() {
+		return VK_FORMAT_R8_SINT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::unorm8>() {
+		return VK_FORMAT_R8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::snorm8>() {
 		return VK_FORMAT_R8_SNORM;
 	}
 	template< >
@@ -412,23 +428,47 @@ namespace vulkan {
 	}
 	template< >
 	constexpr VkFormat get_format<Math::ubvec2>() {
-		return VK_FORMAT_R8G8_UNORM;
+		return VK_FORMAT_R8G8_UINT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::bvec2>() {
-		return VK_FORMAT_R8G8_SNORM;
+		return VK_FORMAT_R8G8_SINT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::usvec2>() {
-		return VK_FORMAT_R16G16_UNORM;
+		return VK_FORMAT_R16G16_UINT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::svec2>() {
+		return VK_FORMAT_R16G16_SINT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un8vec2>() {
+		return VK_FORMAT_R8G8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn8vec2>() {
+		return VK_FORMAT_R8G8_SNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un16vec2>() {
+		return VK_FORMAT_R16G16_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn16vec2>() {
 		return VK_FORMAT_R16G16_SNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<::Math::hvec2>() {
+		return VK_FORMAT_R16G16_SFLOAT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::vec2>() {
 		return VK_FORMAT_R32G32_SFLOAT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::dvec2>() {
+		return VK_FORMAT_R64G64_SFLOAT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::uvec3>() {
@@ -447,16 +487,40 @@ namespace vulkan {
 		return VK_FORMAT_R16G16B16_SINT;
 	}
 	template< >
+	constexpr VkFormat get_format<::Math::hvec3>() {
+		return VK_FORMAT_R16G16B16_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::vec3>() {
 		return VK_FORMAT_R32G32B32_SFLOAT;
 	}
 	template< >
+	constexpr VkFormat get_format<Math::dvec3>() {
+		return VK_FORMAT_R64G64B64_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::ubvec3>() {
-		return VK_FORMAT_R8G8B8_UNORM;
+		return VK_FORMAT_R8G8B8_UINT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::bvec3>() {
+		return VK_FORMAT_R8G8B8_SINT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un8vec3>() {
+		return VK_FORMAT_R8G8B8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn8vec3>() {
 		return VK_FORMAT_R8G8B8_SNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un16vec3>() {
+		return VK_FORMAT_R16G16B16_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn16vec3>() {
+		return VK_FORMAT_R16G16B16_SNORM;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::uvec4>() {
@@ -475,22 +539,62 @@ namespace vulkan {
 		return VK_FORMAT_R16G16B16A16_SINT;
 	}
 	template< >
+	constexpr VkFormat get_format<::Math::hvec4>() {
+		return VK_FORMAT_R16G16B16A16_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::vec4>() {
 		return VK_FORMAT_R32G32B32A32_SFLOAT;
 	}
 	template< >
+	constexpr VkFormat get_format<Math::dvec4>() {
+		return VK_FORMAT_R64G64B64A64_SFLOAT;
+	}
+	template< >
 	constexpr VkFormat get_format<Math::ubvec4>() {
-		return VK_FORMAT_R8G8B8A8_UNORM;
+		return VK_FORMAT_R8G8B8A8_UINT;
 	}
 	template< >
 	constexpr VkFormat get_format<Math::bvec4>() {
+		return VK_FORMAT_R8G8B8A8_SINT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un8vec4>() {
+		return VK_FORMAT_R8G8B8A8_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn8vec4>() {
 		return VK_FORMAT_R8G8B8A8_SNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::un16vec4>() {
+		return VK_FORMAT_R16G16B16A16_UNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::sn16vec4>() {
+		return VK_FORMAT_R16G16B16A16_SNORM;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::quath>() {
+		return VK_FORMAT_R16G16B16A16_SFLOAT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::quat>() {
+		return VK_FORMAT_R32G32B32A32_SFLOAT;
+	}
+	template< >
+	constexpr VkFormat get_format<Math::quatd>() {
+		return VK_FORMAT_R64G64B64A64_SFLOAT;
 	}
 	template<typename T>
 	constexpr VkFormat get_format(T t) {
 		return get_format<T>();
 	}
 
+	template<typename T>
+	constexpr size_t format_bytesize() {
+		return format_bytesize(get_format<T>());
+	}
 	
 	class Shader
 	{

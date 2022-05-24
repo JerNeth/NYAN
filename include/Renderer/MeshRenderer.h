@@ -45,6 +45,9 @@ namespace nyan {
 			uint32_t imageBinding;
 			uint32_t accBinding;
 			uint32_t sceneBinding;
+			uint32_t meshBinding;
+			Math::vec4 col{ 0.4f, 0.3f, 0.8f, 1.0f };
+			Math::vec4 col2{ 0.0f, 0.2f, 0.3f, 1.0f };
 		};
 	public:
 		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);

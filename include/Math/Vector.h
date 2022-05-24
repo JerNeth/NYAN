@@ -16,6 +16,7 @@ namespace Math {
 	{
 
 	public:
+		using value_type = Scalar;
 		constexpr Vec() noexcept : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = Scalar();
@@ -45,8 +46,8 @@ namespace Math {
 				m_data = { static_cast<Scalar>(std::forward<Args>(args))... };
 			}
 		}
-		template<size_t Size_other>
-		constexpr Vec(Vec<Scalar, Size_other> other) noexcept : m_data() {
+		template<ScalarT OtherScalar,size_t Size_other>
+		constexpr Vec(Vec<OtherScalar, Size_other> other) noexcept : m_data() {
 			for (size_t i = 0; i < min(Size, Size_other); i++)
 				m_data[i] = other[i];
 			for (size_t i = min(Size, Size_other); i < Size; i++)
@@ -84,6 +85,13 @@ namespace Math {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
 				result.m_data[i] = lhs.m_data[i] & rhs.m_data[i];
+			return result;
+		}
+		template<ScalarT OtherScalar>
+		operator Vec<OtherScalar, Size>() {
+			Vec<OtherScalar, Size> result;
+			for (size_t i = 0; i < Size; i++)
+				result.m_data[i] = static_cast<OtherScalar>(m_data[i]);
 			return result;
 		}
 		/*
@@ -383,75 +391,12 @@ namespace Math {
 		}
 	private:
 		std::array<Scalar, Size> m_data;
-		static_assert(std::is_arithmetic<Scalar>::value);
 	};
-	template<typename T>
-	concept Unsigned = std::is_unsigned<T>::value;
-	template<typename T>
-	concept Signed = std::is_signed<T>::value;
 
-	template<Unsigned T, size_t size>
-	constexpr Vec<T, size> unormVec(const Vec<float, size>& vec) {
-		//c = convertFloatToUInt(f * (2^b-1), b)
-		Vec<T, size> ret;
-		float max = static_cast<float>(T(-1));
-		for (size_t i = 0; i < size; i++) {
-			auto temp = clamp(vec[i], 0.f, 1.f);
-			ret[i] = static_cast<T>(temp * max);
-		}
-		return ret;
-	}
-	template<Signed T, size_t size>
-	constexpr Vec<T, size> snormVec(const Vec<float, size>& vec) {
-		//See https://www.khronos.org/registry/vulkan/specs/1.1/html/vkspec.html#fundamentals-fixedfpconv
-		//f = max(c/2^(b-1)-1, -1.0) for int => float
-		//c = convertFloatToInt(f * (2^(b-1)-1), b)
-		Vec<T, size> ret;
-		float max = static_cast<float>((1ull<<(sizeof(T)*8ull-1ull))-1ull);
-		for (size_t i = 0; i < size; i++) {
-			//NaN not correctly handled
-			auto temp = clamp(vec[i], -1.f, 1.f);
-			ret[i] = static_cast<T>(temp * max);
-		}
-		return ret;
-	}
-	template<Unsigned T>
-	constexpr T unorm(float val) {
-		T ret;
-		float max = static_cast<float>(T(~0u));
-		auto temp = clamp(val, 0.f, 1.f);
-		//ret[i] = static_cast<T>(temp * max);
-		return ret;
-	}
-	template<typename T>
-	uint16_t to_half(T t) {
-		constexpr uint32_t signBit = 1 << 31;
-		constexpr 
-		float f = static_cast<float>(t);
-		auto bits = std::bit_cast<uint32_t>(f);
-		auto sign = bits & signBit;
-		bits ^= sign;
-		auto nan = 23 - 10;
-	}
 	template<typename... Args>
 	constexpr Vec<std::common_type_t<Args...>, sizeof...(Args)> make_vector(Args... args) {
 		return Vec<std::common_type_t<Args...>, sizeof...(Args)>(std::forward<Args>(args)...);
 	}
-	//template<typename Scalar,
-	//	size_t Size,
-	//	typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	//inline Scalar dot(Vec<Scalar, Size>& lhs, Vec<Scalar, Size>& rhs) {
-	//	// Not sure if this is better than = 0, but this way we correctly have a Scalar
-	//	Scalar result = Scalar();
-	//	for (size_t i = 0; i < Size; i++)
-	//		result += lhs[i] * rhs[i];
-	//	return result;
-	//}
-	//template<typename Scalar,
-	//	size_t Size,
-	//	typename = typename std::enable_if<std::is_arithmetic<Scalar>::value, Scalar>::type >
-	//	inline Vec<Scalar, Size> cross(Vec<Scalar, Size>& lhs, Vec<Scalar, Size>& rhs) {
-	//	return lhs.cross(rhs);
-	//}
+
 }
 #endif // !VECTOR_H

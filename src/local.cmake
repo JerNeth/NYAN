@@ -23,6 +23,10 @@ file(GLOB GLFW_SRC CONFIGURE_DEPENDS
 file(GLOB RENDERER_SRC CONFIGURE_DEPENDS 
 	${PROJECT_SOURCE_DIR}/src/Renderer/*.cpp
 )
+
+file(GLOB FBXREADER_SRC CONFIGURE_DEPENDS 
+	${PROJECT_SOURCE_DIR}/src/FBXReader/*.cpp
+)
 set(DEMO_SRC "${PROJECT_SOURCE_DIR}/src/Demo.cpp"
 )
 set(DEMO2_SRC "${PROJECT_SOURCE_DIR}/src/Demo_two.cpp"
@@ -30,4 +34,6 @@ set(DEMO2_SRC "${PROJECT_SOURCE_DIR}/src/Demo_two.cpp"
 set(FBXTest_SRC "${PROJECT_SOURCE_DIR}/src/FBXTest.cpp"
 )
 set(RTTest_SRC "${PROJECT_SOURCE_DIR}/src/RTTest.cpp"
+)
+set(GLTFTest_SRC "${PROJECT_SOURCE_DIR}/src/GLTFTest.cpp"
 )

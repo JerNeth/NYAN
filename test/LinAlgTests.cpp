@@ -13,7 +13,47 @@ namespace Math {
         EXPECT_TRUE(close(a, c, 0.1));
         EXPECT_FALSE(close(d, e));
         EXPECT_TRUE(close(d, e, 0.1));
-        
+
+    }
+    TEST(Linalg, Half) {
+        half a(3.141);
+        EXPECT_EQ(a.data, 0x4248) << std::hex << a.data << " should be " << 0x4248;
+        half b(std::numeric_limits<float>::quiet_NaN());
+        EXPECT_EQ(b.data, 0x7E00) << std::hex << b.data << " should be " << 0x7E00;
+        half c(std::numeric_limits<float>::infinity());
+        EXPECT_EQ(c.data, 0x7C00) << std::hex << c.data << " should be " << 0x7C00;
+        half d(-std::numeric_limits<float>::infinity());
+        EXPECT_EQ(d.data, 0xFC00) << std::hex << d.data << " should be " << 0xFC00;
+        half e(-65504);
+        EXPECT_EQ(e.data, 0xFBFF) << std::hex << e.data << " should be " << 0xFBFF;
+        half f(65504);
+        EXPECT_EQ(f.data, 0x7BFF) << std::hex << f.data << " should be " << 0x7BFF;
+    }
+    TEST(Linalg, Half2) {
+        for (int i = -1024; i < 1024; i++) {
+            half a(i);
+            float b = i;
+            EXPECT_TRUE(close(float(a), b)) << float(a) << " should be " << b << "\n";
+        }
+    }
+    TEST(Linalg, Half3) {
+        for (float i = -1.0; i < 1.0; i += 0.0025) {
+            half a(i);
+            float b = i;
+            EXPECT_TRUE(close(float(a), b, 5e-4f)) << float(a) << " should be " << b << "\n";
+        }
+    }
+    TEST(Linalg, Half4) {
+        for (int i = -65500; i < 65500; i += 10) {
+            half a(i);
+            float b = i;
+            EXPECT_TRUE(close(float(a), b, 30.f)) << float(a) << " should be " << b << "\n";
+        }
+    }
+    TEST(Linalg, HalfVecConversion) {
+        vec3 b(0, 1, 3);
+        hvec3 a{ b };
+        EXPECT_TRUE(a== static_cast<hvec3>(b));
     }
     TEST(Linalg, OperatorConversion) {
         std::array<float, 3> t;

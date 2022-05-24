@@ -68,6 +68,9 @@ include("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor.cmake")
 # Optick
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")
 
+# Optick
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyGLTF")
+
 # ---------------------------------------------------------------------------
 # Includes
 # ---------------------------------------------------------------------------
@@ -94,6 +97,10 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 #add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
 add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC})
+add_library(FBXReader STATIC ${FBXREADER_SRC})
+target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
+target_link_libraries(FBXReader fbx z xml2)
+
 
 
 add_dependencies(Engine shaders)
@@ -102,17 +109,19 @@ add_dependencies(Engine shaders)
 #add_executable(Demo2 ${DEMO2_SRC})
 add_executable(FBXTest ${FBXTest_SRC})
 add_executable(RTTest ${RTTest_SRC})
+add_executable(GLTFTest ${GLTFTest_SRC})
 
 #set_target_properties(FBXTest PROPERTIES 
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
-target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2 OptickCore stb EnTT imgui_entt_entity_editor )
+target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
-target_link_libraries(FBXTest Engine)
-target_link_libraries(RTTest Engine)
+target_link_libraries(FBXTest Engine FBXReader)
+target_link_libraries(GLTFTest Engine tinygltf)
+target_link_libraries(RTTest Engine FBXReader)
 
 target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
@@ -130,6 +139,9 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
 endif()
 
+target_compile_features(FBXReader PUBLIC 
+    cxx_std_20
+)
 target_compile_features(Engine PUBLIC 
     cxx_std_20
 )

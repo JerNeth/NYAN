@@ -13,12 +13,13 @@ namespace Math {
 
 	template<
 		ScalarT Scalar,
-		size_t Size_y, //height, row_count
-		size_t Size_x, //width, column_count 
+		size_t Size_y, //height, row_count, n rows
+		size_t Size_x, //width, column_count, n columns
 		bool column_major = true> 
 	class Mat
 	{
 	public:
+		using value_type = Scalar;
 		Mat() : m_data() {
 			for (size_t i = 0; i < Size_x * Size_y; i++)
 				m_data[i] = Scalar();
@@ -600,7 +601,7 @@ namespace Math {
 			matrix.set_col(translation_vector, 3);
 			return matrix;
 		}
-		static inline Mat<Scalar, Size_y , Size_x, column_major> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
+		static inline Mat<Scalar, Size_y, Size_x, column_major> look_at(Vec<Scalar, 3> eye, Vec<Scalar, 3> at, Vec<Scalar, 3> up) {
 			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
 			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y, column_major>::identity();
 			Vec<Scalar, 3> zAxis = at - eye;
@@ -622,7 +623,32 @@ namespace Math {
 			matrix.at(2, 2) = -(zAxis.z());
 			matrix.at(3, 0) = -(xAxis.dot(eye));
 			matrix.at(3, 1) = -(yAxis.dot(eye));
-			matrix.at(3, 2) =  (zAxis.dot(eye));
+			matrix.at(3, 2) = (zAxis.dot(eye));
+			return matrix;
+		}
+		static inline Mat<Scalar, Size_y, Size_x, column_major> first_person(Vec<Scalar, 3> eye, Vec<Scalar, 3> direction, Vec<Scalar, 3> up) {
+			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
+			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y, column_major>::identity();
+			Vec<Scalar, 3> zAxis = direction;
+			zAxis.normalize();
+			Vec<Scalar, 3> xAxis = zAxis.cross(up);
+			xAxis.normalize();
+			Vec<Scalar, 3> yAxis = zAxis.cross(xAxis);
+			//matrix.set_row(xAxis, 0);
+			//matrix.set_row(yAxis, 1);
+			//matrix.set_row(-zAxis, 2);
+			matrix.at(0, 0) = xAxis.x();
+			matrix.at(1, 0) = xAxis.y();
+			matrix.at(2, 0) = xAxis.z();
+			matrix.at(0, 1) = yAxis.x();
+			matrix.at(1, 1) = yAxis.y();
+			matrix.at(2, 1) = yAxis.z();
+			matrix.at(0, 2) = -(zAxis.x());
+			matrix.at(1, 2) = -(zAxis.y());
+			matrix.at(2, 2) = -(zAxis.z());
+			matrix.at(3, 0) = -(xAxis.dot(eye));
+			matrix.at(3, 1) = -(yAxis.dot(eye));
+			matrix.at(3, 2) = (zAxis.dot(eye));
 			return matrix;
 		}
 		

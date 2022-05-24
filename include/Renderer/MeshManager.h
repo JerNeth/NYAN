@@ -4,21 +4,27 @@
 #include "VkWrapper.h"
 #include "DataManager.h"
 #include "MaterialManager.h"
+#include "Mesh.h"
 #include "LinAlg.h"
+#include "ShaderInterface.h"
 namespace nyan {
 
-	struct Mesh {
-		std::string name;
-		std::string material;
-		Math::vec3 translate;
-		Math::vec3 rotate;
-		Math::vec3 scale;
-		std::vector<uint32_t> indices;
-		std::vector<Math::vec3> positions;
-		std::vector<Math::vec2> uvs;
-		std::vector<Math::vec3> normals;
-		std::vector<Math::vec3> tangents;
-	};
+	template<typename T>
+	constexpr std::array<uint8_t, vulkan::MAX_VERTEX_INPUTS> get_formats() {
+		return { static_cast<uint8_t>(vulkan::get_format<decltype(T::positions)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<decltype(T::uvs)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<decltype(T::normals)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<decltype(T::tangents)::value_type>()) };
+	}
+
+	template<typename T>
+	constexpr uint16_t get_num_formats() {
+		return { 0u };
+	}
+	template<>
+	constexpr uint16_t get_num_formats<nyan::Mesh>() {
+		return { 4u };
+	}
 	using MeshID = uint32_t;
 
 	struct TransformData {
@@ -31,14 +37,15 @@ namespace nyan {
 		Math::vec3 scale;
 		Math::vec3 orientation;
 	};
-	struct MeshData {
-		uint32_t materialBinding;
-		uint32_t materialId;
-		VkDeviceAddress indicesAddress;
-		VkDeviceAddress uvAddress;
-		VkDeviceAddress normalsAddress;
-		VkDeviceAddress tangentsAddress;
-	};
+	//struct MeshData {
+	//	uint32_t materialBinding;
+	//	uint32_t materialId;
+	//	VkDeviceAddress indicesAddress;
+	//	VkDeviceAddress positionsAddress;
+	//	VkDeviceAddress uvAddress;
+	//	VkDeviceAddress normalsAddress;
+	//	VkDeviceAddress tangentsAddress;
+	//};
 
 	struct StaticTangentVulkanMesh {
 		uint32_t indexCount;
@@ -76,7 +83,7 @@ namespace nyan {
 		} vertexOffsets;
 		
 	};
-	class MeshManager : public DataManager<MeshData>{
+	class MeshManager : public DataManager<nyan::shaders::Mesh>{
 	private:
 		struct Mesh {
 			vulkan::BufferHandle buffer;

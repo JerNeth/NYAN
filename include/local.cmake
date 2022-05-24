@@ -14,3 +14,7 @@ include_directories(
 include_directories(SYSTEM
 	${CMAKE_SOURCE_DIR}/include/third-party
 )
+
+file(GLOB FBXREADER_H CONFIGURE_DEPENDS 
+	${PROJECT_SOURCE_DIR}/include/FBXReader/*.h
+)

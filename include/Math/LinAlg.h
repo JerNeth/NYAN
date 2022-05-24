@@ -26,6 +26,9 @@ namespace Math
 
 
 
+	typedef Vec<half, 2> hvec2;
+	typedef Vec<half, 3> hvec3;
+	typedef Vec<half, 4> hvec4;
 	typedef Vec<float, 2> vec2;
 	typedef Vec<float, 3> vec3;
 	typedef Vec<float, 4> vec4;
@@ -45,6 +48,16 @@ namespace Math
 	typedef Vec<int8_t, 3> bvec3;
 	typedef Vec<int8_t, 4> bvec4;
 
+
+	typedef unorm<uint8_t> unorm8;
+	typedef unorm<uint16_t> unorm16;
+	typedef unorm<uint32_t> unorm32;
+	typedef unorm<uint64_t> unorm64;
+	typedef snorm<int8_t>  snorm8;
+	typedef snorm<int16_t> snorm16;
+	typedef snorm<int32_t> snorm32;
+	typedef snorm<int64_t> snorm64;
+
 	// Unsigned integer vectors do not really make that much sense right now
 	typedef Vec<uint32_t, 2> uvec2;
 	typedef Vec<uint32_t, 3> uvec3;
@@ -58,8 +71,27 @@ namespace Math
 	typedef Vec<uint8_t, 2> ubvec2;
 	typedef Vec<uint8_t, 3> ubvec3;
 	typedef Vec<uint8_t, 4> ubvec4;
+
+	typedef Vec<unorm8, 2> un8vec2;
+	typedef Vec<unorm8, 3> un8vec3;
+	typedef Vec<unorm8, 4> un8vec4;
+	typedef Vec<unorm16, 2> un16vec2;
+	typedef Vec<unorm16, 3> un16vec3;
+	typedef Vec<unorm16, 4> un16vec4;
+	typedef Vec<unorm32, 2> un32vec2;
+	typedef Vec<unorm32, 3> un32vec3;
+	typedef Vec<unorm32, 4> un32vec4;
 	
 
+	typedef Vec<snorm8, 2> sn8vec2;
+	typedef Vec<snorm8, 3> sn8vec3;
+	typedef Vec<snorm8, 4> sn8vec4;
+	typedef Vec<snorm16, 2> sn16vec2;
+	typedef Vec<snorm16, 3> sn16vec3;
+	typedef Vec<snorm16, 4> sn16vec4;
+	typedef Vec<snorm32, 2> sn32vec2;
+	typedef Vec<snorm32, 3> sn32vec3;
+	typedef Vec<snorm32, 4> sn32vec4;
 
 	
 	typedef Mat<float, 2, 2> mat22;
@@ -92,7 +124,7 @@ namespace Math
 	typedef Mat<uint8_t, 3, 3> ubmat33;
 	typedef Mat<uint8_t, 4, 4> ubmat44;
 	
-
+	typedef Quaternion<half>  quath;
 	typedef Quaternion<float>  quat;
 	typedef Quaternion<double> quatd;
 	

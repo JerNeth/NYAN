@@ -30,6 +30,8 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 
 void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 {
+	assert(m_type == Renderpass::Type::Graphics);
+	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
@@ -77,7 +79,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 //		resource.storageImage = true;
 //}
 
-void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment)
+void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment, bool compute)
 {
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
@@ -85,10 +87,13 @@ void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attach
 	resource.storageImage = true;
 	assert(std::find(m_writes.begin(), m_writes.end(), resource.m_id) == m_writes.end());
 	m_writes.push_back(resource.m_id);
+	m_computeWrites.push_back(compute);
 }
 
-void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor)
+void nyan::Renderpass::add_swapchain_write(bool compute, Math::vec4 clearColor)
 {
+	assert(m_type == Renderpass::Type::Graphics);
+	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
@@ -97,6 +102,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor)
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_writes.push_back(resource.m_id);
+	m_computeWrites.push_back(compute);
 	r_graph.set_swapchain("swap");
 	m_rendersSwap = true;
 }
@@ -123,6 +129,17 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 		else {
 			if (write.handle)
 				write.writeBinding = r_graph.r_device.get_bindless_set().set_storage_image(VkDescriptorImageInfo{ .imageView = write.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
+		}
+	}
+	for (auto readId : m_reads) {
+		auto& read = r_graph.get_resource(readId);
+		if (read.readBinding != ~0u) {
+			assert(is_read(readId));
+			r_graph.r_device.get_bindless_set().set_sampled_image(read.readBinding, VkDescriptorImageInfo{ .imageView = read.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
+		}
+		else {
+			if (read.handle)
+				read.readBinding = r_graph.r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = read.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
 		}
 	}
 	if (m_rendersSwap)
@@ -185,6 +202,18 @@ uint32_t nyan::Renderpass::get_read_bind(uint32_t idx)
 	return r_graph.get_resource(m_reads[idx]).readBinding;
 }
 
+uint32_t nyan::Renderpass::get_write_bind(std::string_view v)
+{
+	return r_graph.get_resource(v).writeBinding;
+
+}
+
+uint32_t nyan::Renderpass::get_read_bind(std::string_view v)
+{
+	return r_graph.get_resource(v).readBinding;
+
+}
+
 void nyan::Renderpass::add_wait(VkSemaphore wait, VkPipelineStageFlags stage)
 {
 	m_waitSemaphores.push_back(wait);
@@ -197,9 +226,22 @@ void nyan::Renderpass::add_signal(uint32_t passId, VkPipelineStageFlags stage)
 	m_signalStages.push_back(stage);
 }
 
+bool nyan::Renderpass::is_read(RenderResourceId id) const
+{
+	return std::find(m_reads.cbegin(), m_reads.cend(), id) != m_reads.cend();
+}
+
 bool nyan::Renderpass::is_write(RenderResourceId id) const
 {
 	return std::find(m_writes.cbegin(), m_writes.cend(), id) != m_writes.cend();
+}
+
+bool nyan::Renderpass::is_compute_write(RenderResourceId id) const
+{
+	auto it = std::find(m_writes.cbegin(), m_writes.cend(), id);
+	if (it == m_writes.cend())
+		return false;
+	return m_computeWrites[it - m_writes.cbegin()];
 }
 
 bool nyan::Renderpass::is_attachment(RenderResourceId id) const
@@ -210,6 +252,11 @@ bool nyan::Renderpass::is_attachment(RenderResourceId id) const
 bool nyan::Renderpass::is_write(const RenderResource& resource) const
 {
 	return is_write(resource.m_id);
+}
+
+bool nyan::Renderpass::is_compute_write(const RenderResource& resource) const
+{
+	return is_compute_write(resource.m_id);
 }
 
 bool nyan::Renderpass::is_attachment(const RenderResource& resource) const
@@ -510,6 +557,8 @@ void nyan::Rendergraph::execute()
 		for (size_t i{ 0 }; i < pass.m_waitSemaphores.size(); i++) {
 			r_device.add_wait_semaphores(commandBufferType, pass.m_waitSemaphores, pass.m_waitStages);
 		}
+		pass.m_waitSemaphores.clear();
+		pass.m_waitStages.clear();
 		std::vector<VkSemaphore> signals(pass.m_signalPassIds.size(), VK_NULL_HANDLE);
 		r_device.submit(cmd, static_cast<uint32_t>(signals.size()), signals.data());
 		for (size_t i{ 0 }; i < pass.m_signalPassIds.size(); i++) {
@@ -526,11 +575,12 @@ RenderResource& nyan::Rendergraph::add_ressource(const std::string& name, Attach
 	return r;
 }
 
-RenderResource& nyan::Rendergraph::get_resource(const std::string& name)
+
+RenderResource& nyan::Rendergraph::get_resource(std::string_view v)
 {
-	if (!m_renderresources.contains(name))
-		return m_renderresources.emplace(name, m_resourceCount++);
-	return m_renderresources.get(name);
+	if (!m_renderresources.contains(std::string(v)))
+		return m_renderresources.emplace(std::string(v), m_resourceCount++);
+	return m_renderresources.get(std::string(v));
 }
 
 RenderResource& nyan::Rendergraph::get_resource(RenderResourceId id)
@@ -538,10 +588,10 @@ RenderResource& nyan::Rendergraph::get_resource(RenderResourceId id)
 	return m_renderresources.get_direct(id);
 }
 
-const RenderResource& nyan::Rendergraph::get_resource(const std::string& name)const 
+const RenderResource& nyan::Rendergraph::get_resource(std::string_view v) const
 {
-	assert(m_renderresources.contains(name));
-	return m_renderresources.get(name);
+	assert(m_renderresources.contains(std::string(v)));
+	return m_renderresources.get(std::string(v));
 }
 
 const RenderResource& nyan::Rendergraph::get_resource(RenderResourceId id)const 
@@ -571,7 +621,7 @@ void nyan::Rendergraph::swapchain_present_transition(RenderpassId src_)
 
 	Barrier barrier;
 	assert(resource.m_type == RenderResource::Type::Image);
-	auto& attachment = std::get<ImageAttachment>(resource.attachment);
+	//auto& attachment = std::get<ImageAttachment>(resource.attachment);
 	VkImageMemoryBarrier imageBarrier{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 		.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -589,14 +639,23 @@ void nyan::Rendergraph::swapchain_present_transition(RenderpassId src_)
 			.layerCount = VK_REMAINING_ARRAY_LAYERS,
 		}
 	};
-	if (src.is_attachment(resource))
-		imageBarrier.oldLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	if (src.is_write(resource))
-		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	if (src.is_attachment(resource)) {
+		barrier.src = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	else {
+		if (src.is_compute_write(resource)) {
+			imageBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+			barrier.src = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+			barrier.src = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+	}
 
 	barrier.resourceId = resource.m_id;
-	barrier.src = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	barrier.dst = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 	barrier.imageBarrierCount = static_cast<uint16_t>(1);
 	assert(src.m_imageBarriers.size() <= USHRT_MAX);
@@ -638,15 +697,25 @@ void nyan::Rendergraph::swapchain_write_transition(RenderpassId dst_)
 		}
 	};
 
-	if (dst.is_attachment(resource))
+	if (dst.is_attachment(resource)) {
 		imageBarrier.newLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	if (dst.is_write(resource))
-		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		barrier.dst = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	else {
+		if (dst.is_compute_write(resource)) {
+			imageBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+			barrier.dst = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+			barrier.dst = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+	}
 	barrier.resourceId = resource.m_id;
 	barrier.src = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	barrier.dst = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	barrier.imageBarrierCount = static_cast<uint16_t>(1);
 	assert(dst.m_imageBarriers.size() <= USHRT_MAX);
 	barrier.imageBarrierOffset = static_cast<uint16_t>(dst.m_imageBarriers.size());
@@ -673,21 +742,28 @@ void nyan::Rendergraph::set_up_RaW(RenderpassId write, RenderpassId read, const 
 		if (src.is_attachment(resource))
 			barrier.srcLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		if (src.is_write(resource))
+		if (src.is_write(resource)) {
 			barrier.srcLayout = VK_IMAGE_LAYOUT_GENERAL;
-
+		}
 		if (src.get_type() == Renderpass::Type::Graphics) {
-			if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
-				barrier.srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-				barrier.srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				/*barrier.srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;*/
+
+			if (src.is_attachment(resource)) {
+				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+					barrier.srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					barrier.srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+					/*barrier.srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;*/
+				}
+				else {
+					barrier.srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+					barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+					//barrier.srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+				}
 			}
-			else {
-				barrier.srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				//barrier.srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+			if (src.is_write(resource)) {
+				barrier.srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 			}
 		}
 		else {
@@ -739,13 +815,20 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 			barrier.dstLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 		if (src.get_type() == Renderpass::Type::Graphics) {
-			if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
-				barrier.srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-				barrier.srcAccess =  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			if (src.is_attachment(resource)) {
+				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+					barrier.srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					barrier.srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				}
+				else {
+					barrier.srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+					barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				}
 			}
-			else {
-				barrier.srcStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			if (src.is_write(resource)) {
+				barrier.srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 			}
 		}
 		else {
@@ -753,13 +836,19 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 			barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 		}
 		if (dst.get_type() == Renderpass::Type::Graphics) {
-			if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
-				barrier.dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-				barrier.dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			if (dst.is_attachment(resource)) {
+				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+					barrier.dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+					barrier.dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				}
+				else {
+					barrier.dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+					barrier.dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				}
 			}
-			else {
-				barrier.dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				barrier.dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			if (dst.is_write(resource)) {
+				barrier.srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 			}
 		}
 		else {
@@ -791,10 +880,7 @@ void nyan::Rendergraph::set_up_WaR(RenderpassId read, RenderpassId write, const 
 		};
 
 		if (dst.is_attachment(resource))
-			barrier.dstLayout = vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format) ?
-			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		if (dst.is_write(resource))
-			barrier.dstLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 		barrier.srcAccess = VK_ACCESS_SHADER_READ_BIT;
 		if (src.get_type() == Renderpass::Type::Graphics) {
@@ -804,17 +890,26 @@ void nyan::Rendergraph::set_up_WaR(RenderpassId read, RenderpassId write, const 
 			barrier.srcStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		}
 		if (dst.get_type() == Renderpass::Type::Graphics) {
-			if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
-				barrier.dstStage =  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-				barrier.dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				//barrier.dstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+			if (dst.is_attachment(resource)) {
+				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+					barrier.dstStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+					barrier.dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+					barrier.dstLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+					//barrier.dstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+				}
+				else {
+					barrier.dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+					barrier.dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; 
+					barrier.dstLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					//barrier.dstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+					//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+				}
 			}
-			else {
-				barrier.dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
-				barrier.dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT ; // VK_ACCESS_SHADER_WRITE_BIT
-				//barrier.dstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-				//barrier.srcAccess = VK_ACCESS_MEMORY_WRITE_BIT;
+			if (dst.is_write(resource)) {
+				barrier.srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
+				barrier.dstLayout = VK_IMAGE_LAYOUT_GENERAL;
 			}
 		}
 		else {
@@ -862,53 +957,27 @@ void nyan::Rendergraph::set_up_barrier(const ImageBarrier& imageBarrier_, const 
 	barrier.imageBarrierCount = static_cast<uint16_t>(1);
 	assert(src.m_imageBarriers.size() <= USHRT_MAX);
 	barrier.imageBarrierOffset = static_cast<uint16_t>(src.m_imageBarriers.size());
+	assert((!(src.get_type() == Renderpass::Type::Compute) || (imageBarrier_.srcStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
+	assert((!(dst.get_type() == Renderpass::Type::Compute) || (imageBarrier_.dstStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
 	if (src.get_type() != dst.get_type() && r_device.get_graphics_family() != r_device.get_compute_family()) {
-		if (imageBarrier_.srcLayout != imageBarrier_.dstLayout) {
-			if (src.get_type() == Renderpass::Type::Graphics) {
-				imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();
-				imageBarrier.dstQueueFamilyIndex = r_device.get_compute_family();
-			}
-			else {
-				imageBarrier.srcQueueFamilyIndex = r_device.get_compute_family();
-				imageBarrier.dstQueueFamilyIndex = r_device.get_graphics_family();
-			}
-			auto queueImageBarrier = imageBarrier;
-			auto queueBarrier = barrier;
-			queueBarrier.imageBarrierOffset = static_cast<uint16_t>(dst.m_imageBarriers.size());
-			queueBarrier.imageBarrierCount = static_cast<uint16_t>(2);
-			barrier.dst = 0;
-			queueBarrier.src = 0;
-			imageBarrier.dstAccessMask = 0;
-			queueImageBarrier.srcAccessMask = 0;
-			dst.m_imageBarriers.push_back(queueImageBarrier);
-			dst.m_imageBarriers.push_back(queueImageBarrier);
-			dst.m_preBarriers.push_back(queueBarrier);
-			//std::cout << "Resource: " << resource.m_id << " Barrier (QueueFamilyChange) (" << barrier.imageBarrierOffset << "): " << imageBarrier_.src << " -> " << imageBarrier_.dst;
-			//std::cout << "\n\t" << vulkan::ImageLayoutNames[queueImageBarrier.oldLayout] << " -> " << vulkan::ImageLayoutNames[queueImageBarrier.newLayout];
-			//std::cout << "\n";
+		if (src.get_type() == Renderpass::Type::Graphics) {
+			imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();
+			imageBarrier.dstQueueFamilyIndex = r_device.get_compute_family();
 		}
 		else {
-			if (src.get_type() == Renderpass::Type::Graphics) {
-				imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();
-				imageBarrier.dstQueueFamilyIndex = r_device.get_compute_family();
-			}
-			else {
-				imageBarrier.srcQueueFamilyIndex = r_device.get_compute_family();
-				imageBarrier.dstQueueFamilyIndex = r_device.get_graphics_family();
-			}
-			auto queueImageBarrier = imageBarrier;
-			auto queueBarrier = barrier;
-			queueBarrier.imageBarrierOffset = static_cast<uint16_t>(dst.m_imageBarriers.size());
-			barrier.dst = 0;
-			queueBarrier.src = 0;
-			imageBarrier.dstAccessMask = 0;
-			queueImageBarrier.srcAccessMask = 0;
-			dst.m_imageBarriers.push_back(queueImageBarrier);
-			dst.m_preBarriers.push_back(queueBarrier);
-			//std::cout << "Resource: " << resource.m_id << " Barrier (QueueFamilyChange) (" << barrier.imageBarrierOffset << "): " << imageBarrier_.src << " -> " << imageBarrier_.dst;
-			//std::cout << "\n\t" << vulkan::ImageLayoutNames[queueImageBarrier.oldLayout] << " -> " << vulkan::ImageLayoutNames[queueImageBarrier.newLayout];
-			//std::cout << "\n";
+			imageBarrier.srcQueueFamilyIndex = r_device.get_compute_family();
+			imageBarrier.dstQueueFamilyIndex = r_device.get_graphics_family();
 		}
+		auto queueTransferImageBarrier = imageBarrier;
+		auto queueBarrier = barrier;
+
+		queueBarrier.imageBarrierOffset = static_cast<uint16_t>(dst.m_imageBarriers.size());
+		barrier.dst = 0;
+		queueBarrier.src = 0;
+		imageBarrier.dstAccessMask = 0;
+		queueTransferImageBarrier.srcAccessMask = 0;
+		dst.m_imageBarriers.push_back(queueTransferImageBarrier);
+		dst.m_preBarriers.push_back(queueBarrier);
 		src.add_signal(imageBarrier_.dst, imageBarrier_.dstStage);
 	}
 	else {

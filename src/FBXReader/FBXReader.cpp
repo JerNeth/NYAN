@@ -1,4 +1,6 @@
-#include "Utility/FBXReader.h"
+#include "FBXReader/FBXReader.h"
+#include <iostream>
+#include <assert.h>
 
 Utility::FBXReader::FBXReader()
 {
@@ -179,22 +181,22 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 
 
 
-				retVal.positions.push_back(Math::vec3{
+				retVal.positions.push_back(decltype(retVal.positions)::value_type{
 						static_cast<float>(ctrlPoint.mData[0]),
 						static_cast<float>(ctrlPoint.mData[1]),
 						static_cast<float>(ctrlPoint.mData[2]),
 					});
-				retVal.normals.push_back(Math::vec3{
+				retVal.normals.push_back(decltype(retVal.normals)::value_type{
 						static_cast<float>(normal.mData[0]),
 						static_cast<float>(normal.mData[1]),
 						static_cast<float>(normal.mData[2]),
 					});
-				retVal.tangents.push_back(Math::vec3{
+				retVal.tangents.push_back(decltype(retVal.tangents)::value_type{
 						static_cast<float>(tangent.mData[0]),
 						static_cast<float>(tangent.mData[1]),
 						static_cast<float>(tangent.mData[2]),
 					});
-				retVal.uvs.push_back(Math::vec2{
+				retVal.uvs.push_back(decltype(retVal.uvs)::value_type{
 						static_cast<float>(uv.mData[0]),
 						static_cast<float>(1.f - uv.mData[1]),
 					});

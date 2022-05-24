@@ -1,10 +1,17 @@
  cmake_minimum_required(VERSION 3.14)
+ 
+file(GLOB_RECURSE SHADER_H CONFIGURE_DEPENDS 
+	${PROJECT_SOURCE_DIR}/shader/*.glsl
+    ${PROJECT_SOURCE_DIR}/shader/*.h
+)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
     add_custom_command(
             OUTPUT ${OUTPUT_FILE} 
             COMMAND "glslc" "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}" #glslc is on the system path on my computer, so I am not currently worried about `find_package`ing it.
             MAIN_DEPENDENCY ${INPUT_FILE}
+            DEPENDS ${SHADER_H}
+
     ) 
 endfunction()
 
