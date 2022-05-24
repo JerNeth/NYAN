@@ -80,6 +80,11 @@ namespace nyan {
 	public:
 		InstanceManager(vulkan::LogicalDevice& device);
 		void set_transform(TransformBinding id, const Math::Mat<float, 3, 4, false>& transformMatrix);
+		void set_acceleration_structure(TransformBinding id, uint64_t accelerationStructureReference);
+		void set_flags(TransformBinding id, VkGeometryInstanceFlagsKHR flags);
+		void set_instance_shader_binding_table_record_offset(TransformBinding id, uint32_t instanceShaderBindingTableRecordOffset);
+		void set_mask(TransformBinding id, uint32_t mask);
+		void set_instance_custom_index(TransformBinding id, uint32_t instanceCustomIndex);
 		void set_instance(TransformBinding id, const InstanceData& instance);
 		TransformBinding add_instance(const InstanceData& instanceData = {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()});
 	private:

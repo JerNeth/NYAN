@@ -80,7 +80,9 @@ const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const 
 }
 
 nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device) :
-	DataManager(device)
+	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+		| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+		| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)
 {
 }
 
@@ -90,6 +92,26 @@ void nyan::InstanceManager::set_transform(TransformBinding id, const Math::Mat<f
 
 	instance.transformMatrix = transformMatrix;
 
+}
+void nyan::InstanceManager::set_acceleration_structure(TransformBinding id, uint64_t accelerationStructureReference)
+{
+	get(id).instance.accelerationStructureReference = accelerationStructureReference;
+}
+void nyan::InstanceManager::set_flags(TransformBinding id, VkGeometryInstanceFlagsKHR flags)
+{
+	get(id).instance.flags = flags;
+}
+void nyan::InstanceManager::set_instance_shader_binding_table_record_offset(TransformBinding id, uint32_t instanceShaderBindingTableRecordOffset)
+{
+	get(id).instance.instanceShaderBindingTableRecordOffset = instanceShaderBindingTableRecordOffset;
+}
+void nyan::InstanceManager::set_mask(TransformBinding id, uint32_t mask)
+{
+	get(id).instance.mask = mask;
+}
+void nyan::InstanceManager::set_instance_custom_index(TransformBinding id, uint32_t instanceCustomIndex)
+{
+	get(id).instance.instanceCustomIndex = instanceCustomIndex;
 }
 void nyan::InstanceManager::set_instance(TransformBinding id, const InstanceData& instance)
 {

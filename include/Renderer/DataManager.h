@@ -32,8 +32,9 @@ namespace nyan {
 			bool dirty;
 		};
 	public:
-		DataManager(vulkan::LogicalDevice& device) :
-			r_device(device)
+		DataManager(vulkan::LogicalDevice& device, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) :
+			r_device(device),
+			m_usage(usage)
 		{
 
 		}
@@ -97,7 +98,7 @@ namespace nyan {
 		vulkan::BufferHandle create_buffer(size_t size) {
 			vulkan::BufferInfo info{
 				.size = size * sizeof(T),
-				.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				.usage = m_usage,
 				.offset = 0,
 				.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
 			};
@@ -105,6 +106,7 @@ namespace nyan {
 		}
 
 		vulkan::LogicalDevice& r_device;
+		VkBufferUsageFlags m_usage;
 		std::unordered_map<uint32_t, Slot> m_slots;
 		std::unordered_map<std::string, Binding> m_index;
 		std::vector<uint32_t> m_emptySlots;
