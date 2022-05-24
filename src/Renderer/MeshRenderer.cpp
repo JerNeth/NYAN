@@ -38,10 +38,14 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		for (const auto& [entity, meshID, material, transform] : view.each()) {
 			nyan::MeshInstance instance{
 				.mesh_id {meshID},
-				.material {material},
 				.pad {0},
-				.transform {Math::Mat<float, 3, 4, true>::affine_transformation_matrix(transform.orientation, transform.position), transform.view, transform.proj},
+				.material {material},
+				.transform {Math::Mat<float, 3, 4, false>::affine_transformation_matrix(transform.orientation, transform.position), transform.view, transform.proj},
 			};
+			constexpr auto a = offsetof(nyan::MeshInstance, transform);
+			constexpr auto b = offsetof(nyan::TransformData, transform) + a;
+			constexpr auto c = offsetof(nyan::TransformData, view) + a;
+			constexpr auto d = offsetof(nyan::TransformData, proj) + a;
 			render(pipelineBind, instance);
 		}
 	});
@@ -76,8 +80,8 @@ void nyan::MeshRenderer::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	config.dynamicState.depth_write_enable = VK_FALSE;
-	config.dynamicState.depth_test_enable = VK_FALSE;
-	config.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	config.dynamicState.depth_write_enable = VK_TRUE;
+	config.dynamicState.depth_test_enable = VK_TRUE;
+	config.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
 	m_staticTangentPipeline = r_pass.add_pipeline(config);
 }

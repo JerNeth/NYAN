@@ -7,8 +7,9 @@ layout(std430, push_constant) uniform PushConstants
     uint materialBinding;
     uint materialId;
     uint padding;
-    layout(column_major) mat4x3 model;
-    //layout(column_major) mat4x4 view;
+	vec4 modelRow1;
+	vec4 modelRow2;
+	vec4 modelRow3;
     layout(column_major) mat4x4 view;
     layout(column_major) mat4x4 proj;
 } constants;
@@ -30,36 +31,39 @@ layout(location = 2) out vec3 fragNormal;
 layout(location = 3) out vec3 fragBitangent;
 
 void main() {
-
-	const vec3 positions[24] = vec3[24](vec3(-0.5f, -0.5f, 0.5f ),
-										vec3(0.5f, -0.5f, 0.5f  ),
-										vec3(0.5f, 0.5f, 0.5f   ),
-										vec3(-0.5f, 0.5f, 0.5f  ),
-										vec3(0.5f, -0.5f, -0.5f ),
-										vec3(0.5f, -0.5f, 0.5f  ),
-										vec3(0.5f, 0.5f, 0.5f   ),
-										vec3(0.5f, 0.5f, -0.5f  ),
-										vec3(-0.5f, 0.5f, -0.5f ),
-										vec3( 0.5f, 0.5f, -0.5f ),
-										vec3( 0.5f, 0.5f, 0.5f  ),
-										vec3(-0.5f, 0.5f, 0.5f  ),
-										vec3(-0.5f, -0.5f, -0.5f),
-										vec3(-0.5f, -0.5f, 0.5f ),
-										vec3(-0.5f, 0.5f, 0.5f  ),
-										vec3(-0.5f, 0.5f, -0.5f ),
-										vec3(-0.5f, -0.5f, -0.5f),
-										vec3( 0.5f, -0.5f, -0.5f),
-										vec3( 0.5f, -0.5f, 0.5f ),
-										vec3(-0.5f, -0.5f, 0.5f ),
-										vec3(-0.5f, -0.5f, -0.5f),
-										vec3(0.5f, -0.5f, -0.5f ),
-										vec3(0.5f, 0.5f, -0.5f  ),
-										vec3(-0.5f, 0.5f, -0.5f )
-										);
-										
-	gl_Position = constants.proj * constants.view * vec4( constants.model *vec4( inPosition, 1.0), 1.0);
-    vec3 tangent = vec3(constants.model * vec4(inTangent.xyz, 0));
-    vec3 normal = vec3(constants.model * vec4(inNormal.xyz, 0));
+//
+//	const vec3 positions[24] = vec3[24](vec3(-0.5f, -0.5f, 0.5f ),
+//										vec3(0.5f, -0.5f, 0.5f  ),
+//										vec3(0.5f, 0.5f, 0.5f   ),
+//										vec3(-0.5f, 0.5f, 0.5f  ),
+//										vec3(0.5f, -0.5f, -0.5f ),
+//										vec3(0.5f, -0.5f, 0.5f  ),
+//										vec3(0.5f, 0.5f, 0.5f   ),
+//										vec3(0.5f, 0.5f, -0.5f  ),
+//										vec3(-0.5f, 0.5f, -0.5f ),
+//										vec3( 0.5f, 0.5f, -0.5f ),
+//										vec3( 0.5f, 0.5f, 0.5f  ),
+//										vec3(-0.5f, 0.5f, 0.5f  ),
+//										vec3(-0.5f, -0.5f, -0.5f),
+//										vec3(-0.5f, -0.5f, 0.5f ),
+//										vec3(-0.5f, 0.5f, 0.5f  ),
+//										vec3(-0.5f, 0.5f, -0.5f ),
+//										vec3(-0.5f, -0.5f, -0.5f),
+//										vec3( 0.5f, -0.5f, -0.5f),
+//										vec3( 0.5f, -0.5f, 0.5f ),
+//										vec3(-0.5f, -0.5f, 0.5f ),
+//										vec3(-0.5f, -0.5f, -0.5f),
+//										vec3(0.5f, -0.5f, -0.5f ),
+//										vec3(0.5f, 0.5f, -0.5f  ),
+//										vec3(-0.5f, 0.5f, -0.5f )
+//										);
+	mat4x3 model = mat4x3(constants.modelRow1.x, constants.modelRow2.x, constants.modelRow3.x,
+						constants.modelRow1.y, constants.modelRow2.y, constants.modelRow3.y,
+						constants.modelRow1.z, constants.modelRow2.z, constants.modelRow3.z,
+						constants.modelRow1.w, constants.modelRow2.w, constants.modelRow3.w);
+	gl_Position = constants.proj * constants.view * vec4( model *vec4( inPosition, 1.0), 1.0);
+    vec3 tangent = vec3(model * vec4(inTangent.xyz, 0));
+    vec3 normal = vec3(model * vec4(inNormal.xyz, 0));
     vec3 bitangent = cross(normal, tangent);
     fragTexCoord = inTexCoord;
     fragTangent = tangent;

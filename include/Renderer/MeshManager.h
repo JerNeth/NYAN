@@ -26,7 +26,7 @@ namespace nyan {
 
 	using TransformBinding = Binding;
 	struct TransformData {
-		Math::Mat<float, 3, 4, true> transform;
+		Math::Mat<float, 3, 4, false> transform;
 		Math::Mat<float, 4, 4, true> view;
 		Math::Mat<float, 4, 4, true> proj;
 	};
@@ -58,8 +58,8 @@ namespace nyan {
 	};
 	struct MeshInstance {
 		MeshID mesh_id;
-		MaterialBinding material;
 		uint32_t pad;
+		MaterialBinding material;
 		//TODO change to transformId
 		TransformData transform;
 	};

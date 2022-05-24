@@ -137,14 +137,9 @@ void vulkan::LogicalDevice::next_frame()
 	end_frame();
 
 	if (!m_fenceCallbacks.empty()) {
-		//auto range = m_fenceCallbacks.equal_range(m_fenceCallbacks.begin()->first);
 		std::unordered_set<VkFence> clear;
 		for (auto it = m_fenceCallbacks.begin(); it != m_fenceCallbacks.end();) {
-			//range = m_fenceCallbacks.equal_range(it->first);
 			if (vkGetFenceStatus(m_device, it->first) == VK_SUCCESS) {
-				//for (auto& cb = range.first; cb != range.second; cb++) {
-				//	
-				//}
 				it->second();
 				clear.insert(it->first);
 				it = m_fenceCallbacks.erase(it);
