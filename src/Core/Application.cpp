@@ -1,3 +1,5 @@
+#include "..\..\include\Core\Application.h"
+#include "..\..\include\Core\Application.h"
 #include "Application.h"
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
@@ -9,6 +11,8 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 		throw InitializationError("Could not instantiate Vulkan, maybe no vulkan support or outdated drivers?");
 	if (!setup_glfw_window())
 		throw InitializationError("Could not create GLFW window");
+	if (!setup_glfw_input())
+		throw InitializationError("Could not create GLFW window");
 	if (!setup_vulkan_surface())
 		throw InitializationError("Could not create Vulkan Surface");
 	if (!setup_vulkan_device())//OpenGL fallback maybe?
@@ -17,12 +21,20 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 
 vulkan::LogicalDevice& nyan::Application::get_device()
 {
+	assert(m_vulkanDevice);
 	return *m_vulkanDevice;
 }
 
 glfww::Window& nyan::Application::get_window()
 {
+	assert(m_window);
 	return *m_window;
+}
+
+nyan::Input& nyan::Application::get_input()
+{
+	assert(m_input);
+	return *m_input;
 }
 
 int nyan::Application::get_width()
@@ -90,6 +102,7 @@ void nyan::Application::update()
 	lastUpdate = now;
 	OPTICK_FRAME("MainThread");
 	glfwPollEvents();
+	m_input->update();
 	
 	for (const auto& update : m_updateFunctions) {
 		update(delta);
@@ -123,6 +136,17 @@ bool nyan::Application::setup_glfw_window()
 		glfww::WindowMode windowMode = m_settings.get_or_default(Settings::Setting::WindowMode,glfww::WindowMode::Windowed);
 		m_monitor = std::make_unique<glfww::Monitor>();
 		m_window = std::make_unique<glfww::Window>(width, height, *m_monitor, windowMode, m_name);
+	}
+	catch (const std::runtime_error& error) {
+		std::cerr << error.what() << std::endl;
+		return false;
+	}
+	return true;
+}
+bool nyan::Application::setup_glfw_input()
+{
+	try {
+		m_input = std::make_unique<nyan::Input>(*m_window);
 	}
 	catch (const std::runtime_error& error) {
 		std::cerr << error.what() << std::endl;

@@ -3,6 +3,8 @@
 #define NYANSETTINGS_H
 #include <unordered_map>
 #include <string>
+#include <cassert>
+#include <array>
 #include <variant>
 namespace nyan {
 	

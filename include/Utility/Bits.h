@@ -1,11 +1,14 @@
 #pragma once
 #ifndef BITS_H
 #define BITS_H
+#include <cstdint>
+#include <bit>
+#include <cassert>
 namespace Utility {
-	inline constexpr uint32_t bit_width(uint64_t value) {
+	constexpr inline uint32_t bit_width(uint64_t value) {
 		return static_cast<uint32_t>(std::bit_width(value));
 	}
-	inline constexpr uint32_t bit_pos(uint64_t value) {
+	constexpr inline uint32_t bit_pos(uint64_t value) {
 		return value? bit_width(value) - 1 : 0;
 	}
 

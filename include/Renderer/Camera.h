@@ -2,11 +2,12 @@
 
 namespace nyan {
 	struct PerspectiveCamera {
-		float nearPlane { 0.1};
-		float farPlane {1000};
-		float fovX {75};
-		float aspect { 16. / 9};
-		Math::vec3 forward {1, 0, 0};
-		Math::vec3 up {0, 1, 0};
+		float nearPlane { 0.1f};
+		float farPlane {1000.f };
+		float fovX {75.f };
+		float aspect { 16.f / 9.f };
+		Math::vec3 forward {1.f, 0.f, 0.f};
+		Math::vec3 up{ 0.f, 1.f, 0.f };
+		Math::vec3 right{ 0.f, 0.f, 1.f };
 	};
 }

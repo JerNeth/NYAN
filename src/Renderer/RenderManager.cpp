@@ -120,10 +120,12 @@ void nyan::RenderManager::update()
 			perspective = m_registry.get<PerspectiveCamera>(m_primaryCamera);
 		}
 		m_sceneManager.set_proj_matrix(
-			Math::Mat<float, 4, 4, true>::perspectiveY(perspective.nearPlane, perspective.farPlane, perspective.fovX, perspective.aspect));
+			Math::Mat<float, 4, 4, true>::perspectiveX(perspective.nearPlane, perspective.farPlane, perspective.fovX, perspective.aspect));
 		Math::vec3 cameraPos = transformMatrix.col(3);
 		Math::vec3 cameraDir = transformMatrix * perspective.forward;
-		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, perspective.up));
+		Math::vec3 cameraUp = transformMatrix * perspective.up;
+		Math::vec3 cameraRight = transformMatrix * perspective.right;
+		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
 
 	}
 	m_meshManager.upload();

@@ -2,6 +2,7 @@
 #include <fbxsdk.h>
 #include <Util>
 #include "Application.h"
+#include "Input.h"
 #include "FBXReader/FBXReader.h"
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/DeferredLighting.h"
@@ -15,6 +16,17 @@ int main() {
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();
+
+	auto& input = application.get_input();
+
+	input.set_axis_mapping(Input::Inputs::W, Input::Axis::MoveForward, 1.f);
+	input.set_axis_mapping(Input::Inputs::S, Input::Axis::MoveForward, -1.f);
+	input.set_axis_mapping(Input::Inputs::D, Input::Axis::MoveRight, 1.f);
+	input.set_axis_mapping(Input::Inputs::A, Input::Axis::MoveRight, -1.f);
+	input.set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, 1.f);
+	input.set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, -1.f);
+	input.set_axis_mapping(Input::Inputs::Right, Input::Axis::LookRight, 1.f);
+	input.set_axis_mapping(Input::Inputs::Left, Input::Axis::LookRight, -1.f);
 
 	nyan::RenderManager renderManager(device, false);
 	auto& registry = renderManager.get_registry();
@@ -47,18 +59,19 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{},
+			.position{0.f, 150.f, 500.f},
 			.scale{},
-			.orientation{},
+			.orientation{0.f, 90.f, 0.f},
 		});
 	registry.emplace<PerspectiveCamera>(camera, 
 		PerspectiveCamera {
-			.nearPlane {.1},
-			.farPlane {10000},
-			.fovX {90.},
-			.aspect {9. / 16.},
-			.forward {1.f, 0.f ,0.f},
+			.nearPlane {.1f},
+			.farPlane {10000.f},
+			.fovX {90.f},
+			.aspect {9.f / 16.f},
+			.forward {0.f, 0.f ,1.f},
 			.up {0.f, 1.f ,0.f},
+			.right {1.f, 0.f ,0.f},
 		});
 	renderManager.set_primary_camera(camera);
 	for (const auto& a : meshes) {
@@ -151,6 +164,19 @@ int main() {
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
+			auto dtf = std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
+			auto& transform = registry.get<Transform>(camera);
+			auto& perspectiveCamera = registry.get<PerspectiveCamera>(camera);
+
+			transform.orientation.z() += dtf * (15.f) * input.get_axis(Input::Axis::LookUp);
+			transform.orientation.x() += dtf * (15.f) * input.get_axis(Input::Axis::LookRight);
+
+			auto mat = Math::mat33::rotation_matrix(transform.orientation);
+
+			transform.position += mat * perspectiveCamera.right * dtf * 30 * input.get_axis(Input::Axis::MoveRight);
+			transform.position += mat * perspectiveCamera.forward * dtf * 30 * input.get_axis(Input::Axis::MoveForward);
+
+
 			//imgui.update();
 		});
 	application.each_frame_end([&rendergraph]()

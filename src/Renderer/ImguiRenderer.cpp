@@ -49,6 +49,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	}, true);
 	ptr_window->configure_imgui();
 	m_editor.registerComponent<Transform>("Transform");
+	m_editor.registerComponent<PerspectiveCamera>("Camera");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}

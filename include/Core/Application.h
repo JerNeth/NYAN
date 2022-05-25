@@ -5,6 +5,7 @@
 #include "VulkanRenderer"
 #include "glfwWrapper.h"
 #include "Settings.h"
+#include "Input.h"
 namespace nyan {
 	struct InitializationError : public std::exception {
 
@@ -18,6 +19,7 @@ namespace nyan {
 		//Remove these functions and refactor
 		vulkan::LogicalDevice& get_device();
 		glfww::Window& get_window();
+		nyan::Input& get_input();
 		int get_width();
 		int get_height();
 
@@ -31,6 +33,7 @@ namespace nyan {
 	private:
 		bool setup_glfw();
 		bool setup_glfw_window();
+		bool setup_glfw_input();
 		bool setup_vulkan_instance();
 		bool setup_vulkan_device();
 		bool setup_vulkan_surface();
@@ -42,6 +45,7 @@ namespace nyan {
 		std::unique_ptr<glfww::Library> m_glfwLibrary;
 		std::unique_ptr<glfww::Monitor> m_monitor;
 		std::unique_ptr<glfww::Window> m_window;
+		std::unique_ptr<nyan::Input> m_input;
 		std::unique_ptr<vulkan::Instance> m_vulkanInstance;
 		std::unique_ptr<vulkan::LogicalDevice> m_vulkanDevice;
 		std::unique_ptr<vulkan::WindowSystemInterface> m_windowSystemInterface;

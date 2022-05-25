@@ -3,7 +3,11 @@
 #pragma once
 
 #include "imgui.h"
+#include "glfwIncludes.h"
+#include "Utility/Log.h"
 #include <vector>
+#include <string>
+#include <stdexcept>
 
 namespace glfww {
 	class Library {
@@ -19,6 +23,7 @@ namespace glfww {
 				int error = glfwGetError(&error_msg);
 				if (error) {
 					if (error == GLFW_INVALID_ENUM)
+						Utility::log_error("Invalid Enum: ");
 						std::cerr << "Invalid Enum: " << error_msg;
 					if (error == GLFW_INVALID_VALUE)
 						std::cerr << "Invalid Value: " << error_msg;
@@ -74,7 +79,7 @@ namespace glfww {
 			const auto* name = glfwGetMonitorName(m_monitor);
 			if (!name)
 				throw std::runtime_error("GLFW: Couldn't find name for monitor");
-			m_name = name;
+			m_name = std::string(name);
 #ifdef GLFW_EXPOSE_NATIVE_WIN32
 			m_identifier = glfwGetWin32Monitor(m_monitor);
 #else 
@@ -329,7 +334,7 @@ namespace glfww {
 			}
 			const ImVec2 mouse_pos_backup = io.MousePos;
 			io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-			const bool focused = glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != 0;
+			const bool focused = is_focused();
 			if (focused)
 			{
 				if (io.WantSetMousePos)
@@ -343,6 +348,12 @@ namespace glfww {
 					io.MousePos = ImVec2((float)mouse_x, (float)mouse_y);
 				}
 			}
+		}
+		bool is_focused() {
+			return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != 0;
+		}
+		int get_key(int key) {
+			return glfwGetKey(m_window, key);
 		}
 	private:
 		GLFWwindow* m_window = nullptr;

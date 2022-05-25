@@ -611,14 +611,12 @@ namespace Math {
 			matrix.at(3, 2) = (zAxis.dot(eye));
 			return matrix;
 		}
-		static inline Mat<Scalar, Size_y, Size_x, column_major> first_person(Vec<Scalar, 3> eye, Vec<Scalar, 3> direction, Vec<Scalar, 3> up) {
+		static inline Mat<Scalar, Size_y, Size_x, column_major> first_person(Vec<Scalar, 3> eye, Vec<Scalar, 3> direction, Vec<Scalar, 3> up, Vec<Scalar, 3> right) {
 			static_assert(Size_x == 4 && (Size_y == 3 || Size_y == 4));
 			Mat<Scalar, Size_x, Size_y, column_major> matrix = Mat<Scalar, Size_x, Size_y, column_major>::identity();
-			Vec<Scalar, 3> zAxis = direction;
-			zAxis.normalize();
-			Vec<Scalar, 3> xAxis = zAxis.cross(up);
-			xAxis.normalize();
-			Vec<Scalar, 3> yAxis = zAxis.cross(xAxis);
+			Vec<Scalar, 3> zAxis = up;
+			Vec<Scalar, 3> xAxis = direction;
+			Vec<Scalar, 3> yAxis = right;
 			//matrix.set_row(xAxis, 0);
 			//matrix.set_row(yAxis, 1);
 			//matrix.set_row(-zAxis, 2);

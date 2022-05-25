@@ -568,27 +568,27 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 	const auto& rtProperties = r_device.get_physical_device().get_acceleration_structure_properties();
 
 	if (m_createInfo.storage_buffer_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers) {
-		Utility::log(std::format("Not enough bindless storage buffers {} | {}", m_createInfo.storage_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers));
+		Utility::log().location().format("Not enough bindless storage buffers {} | {}", m_createInfo.storage_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers);
 		m_createInfo.storage_buffer_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
 	}	
 	if (m_createInfo.uniform_buffer_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers) {
-		Utility::log(std::format("Not enough bindless uniform buffers {} | {}", m_createInfo.uniform_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers));
+		Utility::log().location().format("Not enough bindless uniform buffers {} | {}", m_createInfo.uniform_buffer_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers);
 		m_createInfo.uniform_buffer_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
 	}
 	if (m_createInfo.sampled_image_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages) {
-		Utility::log(std::format("Not enough bindless sampled images {} | {}", m_createInfo.sampled_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages));
+		Utility::log().location().format("Not enough bindless sampled images {} | {}", m_createInfo.sampled_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages);
 		m_createInfo.sampled_image_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages;
 	}
 	if (m_createInfo.storage_image_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages) {
-		Utility::log(std::format("Not enough bindless storage images {} | {}", m_createInfo.storage_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages));
+		Utility::log().location().format("Not enough bindless storage images {} | {}", m_createInfo.storage_image_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages);
 		m_createInfo.storage_image_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages;
 	}
 	if (m_createInfo.sampler_count > vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers) {
-		Utility::log(std::format("Not enough bindless samplers {} | {}", m_createInfo.sampler_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers));
+		Utility::log().location().format("Not enough bindless samplers {} | {}", m_createInfo.sampler_count, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers);
 		m_createInfo.sampler_count = vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers;
 	}
 	if (m_createInfo.acceleration_structure_count > rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures) {
-		Utility::log(std::format("Not enough bindless acceleration structures {} | {}", m_createInfo.acceleration_structure_count, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures));
+		Utility::log().location().format("Not enough bindless acceleration structures {} | {}", m_createInfo.acceleration_structure_count, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures);
 		m_createInfo.acceleration_structure_count = rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures;
 	}
 
@@ -719,7 +719,8 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 	};
 
 	if (auto result = vkCreateDescriptorSetLayout(r_device.get_device(), &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
-		Utility::log_error(std::to_string((int)result));
+		Utility::log_error().location().message(std::to_string((int)result));
+
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
 		}
@@ -740,7 +741,8 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		.pPoolSizes = poolSizes.data(),
 	};
 	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_pool); result != VK_SUCCESS) {
-		Utility::log_error(std::to_string((int)result));
+		Utility::log_error().location().message(std::to_string((int)result));
+
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create DescriptorPool, out of host memory");
 		}
@@ -783,7 +785,8 @@ vulkan::DescriptorSet vulkan::DescriptorPool::allocate_set()
 		.pSetLayouts = &m_layout
 	};
 	if (auto result = vkAllocateDescriptorSets(r_device.get_device(), &allocateInfo, &set); result != VK_SUCCESS) {
-		Utility::log_error(std::to_string((int)result));
+		Utility::log_error().location().message(std::to_string((int)result));
+
 		throw std::runtime_error("VK: error");
 	}
 	return { *this, set };

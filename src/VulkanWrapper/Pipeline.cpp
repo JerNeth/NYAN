@@ -157,7 +157,7 @@ vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vecto
 	};
 
 	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
-		Utility::log_error(std::to_string((int)result));
+		Utility::log_error().location().message(std::to_string((int)result));
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
 		}
@@ -737,8 +737,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
 		result != VK_SUCCESS) {
-
-		Utility::log_error(std::to_string((int)result));
+		Utility::log_error().location().message(std::to_string((int)result));
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
 		}
@@ -797,7 +796,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			stageMap.emplace(group.generalShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
 			if (info.stage & ~VK_SHADER_STAGE_RAYGEN_BIT_KHR) {
-				Utility::log(std::format("Invalid shadertype for ray tracing pipeline ray generation shader"));
+				Utility::log().location().format("Invalid shadertype for ray tracing pipeline ray generation shader");
 				assert(false);
 				return;
 			}
@@ -827,7 +826,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			stageMap.emplace(group.closestHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
 			if (info.stage & ~VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR) {
-				Utility::log(std::format("Invalid shadertype for ray tracing pipeline closest hit shader"));
+				Utility::log().location().format("Invalid shadertype for ray tracing pipeline closest hit shader");
 				assert(false);
 				return;
 			}
@@ -838,7 +837,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			stageMap.emplace(group.anyHitShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
 			if (info.stage & ~VK_SHADER_STAGE_ANY_HIT_BIT_KHR) {
-				Utility::log(std::format("Invalid shadertype for ray tracing pipeline any hit shader"));
+				Utility::log().location().format("Invalid shadertype for ray tracing pipeline any hit shader");
 				assert(false);
 				return;
 			}
@@ -849,7 +848,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 			stageMap.emplace(group.intersectionShader, static_cast<uint32_t>(stageCreateInfos.size()));
 			const auto& info = stageCreateInfos.emplace_back(instance->get_stage_info());
 			if (info.stage & ~VK_SHADER_STAGE_INTERSECTION_BIT_KHR) {
-				Utility::log(std::format("Invalid shadertype for ray tracing pipeline intersection shader"));
+				Utility::log().location().format("Invalid shadertype for ray tracing pipeline intersection shader");
 				assert(false);
 				return;
 			}
@@ -949,7 +948,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		.basePipelineIndex { 0 },
 	};
 	if (createInfo.maxPipelineRayRecursionDepth > rtProperties.maxRayRecursionDepth) {
-		Utility::log(std::format("Requested Recursion Depth for Pipeline too high\n requested: {} \t supported {}", createInfo.maxPipelineRayRecursionDepth, rtProperties.maxRayRecursionDepth));
+		Utility::log().location().format("Requested Recursion Depth for Pipeline too high\n requested: {} \t supported {}", createInfo.maxPipelineRayRecursionDepth, rtProperties.maxRayRecursionDepth);
 		createInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 	}
 	vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
