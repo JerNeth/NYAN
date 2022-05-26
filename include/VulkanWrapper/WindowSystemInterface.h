@@ -1,9 +1,9 @@
+#pragma once
 #ifndef VKWINDOWSYSTEMINTERFACE_H
 #define VKWINDOWSYSTEMINTERFACE_H
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 namespace vulkan {
-	class LogicalDevice;
-	class Instance;
 	class WindowSystemInterface {
 	public:
 		WindowSystemInterface(LogicalDevice& device, Instance& instance, VkPresentModeKHR preferedPresentMode = VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR);

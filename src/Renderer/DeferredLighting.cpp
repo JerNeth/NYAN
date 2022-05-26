@@ -1,5 +1,6 @@
 #include "Renderer/DeferredLighting.h"
 #include "entt/entt.hpp"
+#include "VulkanWrapper/CommandBuffer.h"
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),

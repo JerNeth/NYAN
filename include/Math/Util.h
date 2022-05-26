@@ -165,18 +165,9 @@ namespace Math {
 			constexpr auto max = static_cast<float>(dMax);
 			data = std::min(static_cast<T>(std::round(f * max)), T(-1));
 		}
-		constexpr unorm(double f) {
-			constexpr auto dMax = static_cast<T>((1 << ((sizeof(T) * 8))) - 1);
-			constexpr auto max = static_cast<double>(dMax);
-			data = std::min(static_cast<T>(std::round(f * max)), dMax);
-		}
 		operator float() const {
 			constexpr auto max = 1.f / static_cast<float>(T(-1));
 			return static_cast<float>(data) * max;
-		}
-		operator double() const {
-			constexpr auto max = 1. / static_cast<double>(T(-1));
-			return static_cast<double>(data) * max;
 		}
 		T data;
 	};
@@ -191,19 +182,12 @@ namespace Math {
 			constexpr auto max = static_cast<float>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
 			data = static_cast<T>(std::round(Math::clamp(f , -1.0f, 1.0f) * max));
 		}
-		constexpr snorm(double f) {
-			constexpr auto max = static_cast<double>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
-			data = static_cast<T>(std::round(Math::clamp(f, -1.0, 1.0) * max));
-		}
 		operator float() const {
 			constexpr auto max = 1.f / static_cast<float>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
 			return std::max(static_cast<float>(data) * max, -1.0f);
 		}
-		operator double() const {
-			constexpr auto max = 1. / static_cast<double>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
-			return std::max(static_cast<double>(data) * max, -1.0);
-		}
 		T data;
 	};
+
 }
 #endif

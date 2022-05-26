@@ -405,6 +405,94 @@ namespace Math {
         EXPECT_TRUE(res);
         //EXPECT_EQ(a.dot(b), 0);
     }
+    TEST(Matrices, perspectiveInverseDepth) {
+        auto near = 0.1f;
+        auto far = 10000.f;
+        auto fov = 90.f;
+        auto aspect = 16.f / 9.f;
+        auto mat = mat44::perspectiveInverseDepthFovXLH(near, far, fov, aspect);
+
+        {
+            auto nearVec = vec4(0, 0, -near, 1);
+            auto farVec = vec4(0, 0, -far, 1);
+            auto result0 = vec4(0, 0, 1, 1);
+            auto result1 = vec4(0, 0, 0, 1);
+            nearVec = mat * nearVec;
+            nearVec /= nearVec.w();
+            farVec = mat * farVec;
+            farVec /= farVec.w();
+            EXPECT_EQ(nearVec, result0);
+            EXPECT_EQ(farVec, result1);
+        }
+        {
+            auto nearVecLeft = vec4(-tan(fov * 0.5 * Math::deg_to_rad) * near, 0, -near, 1);
+            auto nearVecRight = vec4(tan(fov * 0.5 * Math::deg_to_rad) * near, 0, -near, 1);
+            auto result0 = vec4(-1, 0, 1, 1);
+            auto result1 = vec4(1, 0, 1, 1);
+            nearVecLeft = mat * nearVecLeft;
+            nearVecLeft /= nearVecLeft.w();
+            nearVecRight = mat * nearVecRight;
+            nearVecRight /= nearVecRight.w();
+            EXPECT_EQ(nearVecLeft, result0);
+            EXPECT_EQ(nearVecRight, result1);
+        }
+        {
+            auto nearVecTop = vec4(0, tan(fov * 0.5 * Math::deg_to_rad) * near * aspect, -near, 1);
+            auto nearVecBot = vec4(0, -tan(fov * 0.5 * Math::deg_to_rad) * near * aspect, -near, 1);
+            auto result0 = vec4(0, -1, 1, 1);
+            auto result1 = vec4(0, 1, 1, 1);
+            nearVecTop = mat * nearVecTop;
+            nearVecTop /= nearVecTop.w();
+            nearVecBot = mat * nearVecBot;
+            nearVecBot /= nearVecBot.w();
+            EXPECT_EQ(nearVecTop, result0);
+            EXPECT_EQ(nearVecBot, result1);
+        }
+    }
+    TEST(Matrices, perspectiveFov) {
+        auto near = 0.1f;
+        auto far = 10000.f;
+        auto fov = 90.f;
+        auto aspect = 16.f / 9.f;
+        auto mat = mat44::perspectiveFovXLH(near, far, fov, aspect);
+
+        {
+            auto nearVec = vec4(0, 0, -near, 1);
+            auto farVec = vec4(0, 0, -far, 1);
+            auto result0 = vec4(0, 0, 0, 1);
+            auto result1 = vec4(0, 0, 1, 1);
+            nearVec = mat * nearVec;
+            nearVec /= nearVec.w();
+            farVec = mat * farVec;
+            farVec /= farVec.w();
+            EXPECT_TRUE(close(nearVec, result0));
+            EXPECT_TRUE(close(farVec, result1));
+        }
+        {
+            auto nearVecLeft = vec4(-tan(fov * 0.5 * Math::deg_to_rad) * near, 0, -near, 1);
+            auto nearVecRight = vec4(tan(fov * 0.5 * Math::deg_to_rad) * near, 0, -near, 1);
+            auto result0 = vec4(-1, 0, 0, 1);
+            auto result1 = vec4(1, 0, 0, 1);
+            nearVecLeft = mat * nearVecLeft;
+            nearVecLeft /= nearVecLeft.w();
+            nearVecRight = mat * nearVecRight;
+            nearVecRight /= nearVecRight.w();
+            EXPECT_TRUE(close(nearVecLeft, result0));
+            EXPECT_TRUE(close(nearVecRight, result1));
+        }
+        {
+            auto nearVecTop = vec4(0, tan(fov * 0.5 * Math::deg_to_rad) * near * aspect, -near, 1);
+            auto nearVecBot = vec4(0, -tan(fov * 0.5 * Math::deg_to_rad) * near * aspect, -near, 1);
+            auto result0 = vec4(0, -1, 0, 1);
+            auto result1 = vec4(0, 1, 0, 1);
+            nearVecTop = mat * nearVecTop;
+            nearVecTop /= nearVecTop.w();
+            nearVecBot = mat * nearVecBot;
+            nearVecBot /= nearVecBot.w();
+            EXPECT_TRUE(close(nearVecTop, result0));
+            EXPECT_TRUE(close(nearVecBot, result1));
+        }
+    }
     TEST(Matrices, multiplication) {
 
         mat33 a({ 1, 0, 0,

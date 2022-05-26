@@ -2,10 +2,10 @@
 #define VKBUFFER_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include <Util>
 #include "Allocator.h"
 namespace vulkan {
-	class LogicalDevice;
 	struct BufferInfo {
 		VkDeviceSize size = 0;
 		VkBufferUsageFlags usage = 0;

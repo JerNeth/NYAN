@@ -23,8 +23,8 @@ int main() {
 	input.set_axis_mapping(Input::Inputs::S, Input::Axis::MoveForward, -1.f);
 	input.set_axis_mapping(Input::Inputs::D, Input::Axis::MoveRight, 1.f);
 	input.set_axis_mapping(Input::Inputs::A, Input::Axis::MoveRight, -1.f);
-	input.set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, 1.f);
-	input.set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, -1.f);
+	input.set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, -1.f);
+	input.set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, 1.f);
 	input.set_axis_mapping(Input::Inputs::Right, Input::Axis::LookRight, 1.f);
 	input.set_axis_mapping(Input::Inputs::Left, Input::Axis::LookRight, -1.f);
 
@@ -59,16 +59,16 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{0.f, 150.f, 500.f},
+			.position{0.f, 0.f, 500.f},
 			.scale{},
-			.orientation{0.f, 90.f, 0.f},
+			.orientation{0.f, 180.f, 0.f},
 		});
 	registry.emplace<PerspectiveCamera>(camera, 
 		PerspectiveCamera {
 			.nearPlane {.1f},
 			.farPlane {10000.f},
 			.fovX {90.f},
-			.aspect {9.f / 16.f},
+			.aspect {16.f / 9.f },
 			.forward {0.f, 0.f ,1.f},
 			.up {0.f, 1.f ,0.f},
 			.right {1.f, 0.f ,0.f},
@@ -106,8 +106,8 @@ int main() {
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
 	deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
 		{
-			.format{VK_FORMAT_D24_UNORM_S8_UINT},
-			.clearColor{1.f, 0.f, 0.f, 0.f},
+			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
+			.clearColor{0.f, 0.f, 0.f, 0.f},
 		});
 	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
 		{
@@ -168,13 +168,13 @@ int main() {
 			auto& transform = registry.get<Transform>(camera);
 			auto& perspectiveCamera = registry.get<PerspectiveCamera>(camera);
 
-			transform.orientation.z() += dtf * (15.f) * input.get_axis(Input::Axis::LookUp);
-			transform.orientation.x() += dtf * (15.f) * input.get_axis(Input::Axis::LookRight);
+			transform.orientation.x() += dtf * (45.f) * input.get_axis(Input::Axis::LookUp);
+			transform.orientation.y() += dtf * (45.f) * input.get_axis(Input::Axis::LookRight);
 
 			auto mat = Math::mat33::rotation_matrix(transform.orientation);
 
-			transform.position += mat * perspectiveCamera.right * dtf * 30 * input.get_axis(Input::Axis::MoveRight);
-			transform.position += mat * perspectiveCamera.forward * dtf * 30 * input.get_axis(Input::Axis::MoveForward);
+			transform.position += mat * perspectiveCamera.right * dtf * 100 * input.get_axis(Input::Axis::MoveRight);
+			transform.position += mat * perspectiveCamera.forward * dtf * 100 * input.get_axis(Input::Axis::MoveForward);
 
 
 			//imgui.update();

@@ -4,12 +4,11 @@
 #include <Util>
 #include <Math/LinAlg.h>
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include "Buffer.h"
 #include "Shader.h"
 
 namespace vulkan {
-	class Buffer;
-	class LogicalDevice;
 
 	class AccelerationStructure : public Utility::UIDC {
 	public:
@@ -31,7 +30,6 @@ namespace vulkan {
 		VkAccelerationStructureCreateInfoKHR m_info;
 		bool m_isCompactable = false;
 	};
-	using AccelerationStructureHandle = Utility::ObjectHandle<AccelerationStructure, Utility::LinkedBucketList<AccelerationStructure>>;
 	class AccelerationStructureBuilder {
 	private:
 		struct BLASBuildEntry {

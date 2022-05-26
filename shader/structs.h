@@ -41,12 +41,15 @@ struct Scene {
 	uint pad;
 	uint pad1;
 	uint pad2;
-	PointLight pointLights[8];
+	PointLight pointLights[256];
 };
 
-struct Transform {
+struct Instance {
 	vec4 modelRow1;
 	vec4 modelRow2;
 	vec4 modelRow3;
-	ivec4 pad;
+	uint meshId;
+	uint pad1;
+	uint pad2;
+	uint pad3;
 };

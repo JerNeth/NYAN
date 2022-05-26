@@ -1,5 +1,6 @@
 #include "AccelerationStructure.h"
 #include "LogicalDevice.h"
+#include "CommandBuffer.h"
 
 
 vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAccelerationStructureKHR handle, BufferHandle buffer, VkAccelerationStructureCreateInfoKHR info) :
@@ -197,7 +198,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 		batchSize += (((m_pendingBuilds[idx].sizeInfo.accelerationStructureSize) + 255) / 256) * 256;
 		VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 		if (batchSize >= batchLimit || idx == m_pendingBuilds.size() - 1) {
-			auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
+			auto cmd = r_device.request_command_buffer(CommandBufferType::Compute);
 			if (queryPool) 
 				vkResetQueryPool(r_device, queryPool, 0, static_cast<uint32_t>(buildIndices.size()));
 
@@ -243,7 +244,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 
 			if (queryPool) {
 
-				auto cmdCompact = r_device.request_command_buffer(CommandBuffer::Type::Compute);
+				auto cmdCompact = r_device.request_command_buffer(CommandBufferType::Compute);
 
 				std::vector<VkDeviceSize> compactSizes(queryCount);
 				vkGetQueryPoolResults(r_device, queryPool, 0, queryCount, queryCount * sizeof(VkDeviceSize),
@@ -307,7 +308,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 		.buffer = *instanceDataBuffer
 	};
 	auto instanceDataBufferAddr = vkGetBufferDeviceAddress(r_device, &addressInfo);
-	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
+	auto cmd = r_device.request_command_buffer(CommandBufferType::Compute);
 	cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 		VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
 
@@ -389,7 +390,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 
 vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(uint32_t size, VkDeviceAddress address, VkBuildAccelerationStructureFlagsKHR flags)
 {
-	auto cmd = r_device.request_command_buffer(CommandBuffer::Type::Compute);
+	auto cmd = r_device.request_command_buffer(CommandBufferType::Compute);
 
 
 	VkAccelerationStructureGeometryKHR geometry{

@@ -4,5 +4,4 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderGraph.h"
 #include "Renderer/ShaderManager.h"
-#include "Renderer/Skeleton.h"
 #include "Renderer/TextureManager.h"

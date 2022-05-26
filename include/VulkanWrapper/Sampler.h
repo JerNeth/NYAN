@@ -2,24 +2,12 @@
 #define VKSAMPLER_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include <Util>
 
 namespace vulkan {
 
-	class LogicalDevice;
-	enum class DefaultSampler : uint32_t {
-		NearestClamp,
-		LinearClamp,
-		TrilinearClamp,
-		NearestWrap,
-		LinearWrap,
-		TrilinearWrap,
-		NearestShadow,
-		LinearShadow,
-		Size
-	};
-
-	class Sampler : public Utility::UIDC{
+	class Sampler : public Utility::UIDC {
 	public:
 		Sampler(LogicalDevice& parent, const VkSamplerCreateInfo& createInfo);
 		explicit operator VkSampler() const noexcept { return m_vkHandle; }

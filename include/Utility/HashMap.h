@@ -499,7 +499,7 @@ namespace Utility {
 	private:
 		//KeyHashMap<Key, size_t> m_hashMap;
 		std::unordered_map<Key, size_t> m_hashMap;
-		LinkedBucketList<Value> m_storage;
+		LinkedBucketList<Value, 16> m_storage;
 	};
 }
 #endif

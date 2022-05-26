@@ -1,4 +1,6 @@
 #include "Renderer/RenderManager.h"
+#include "LogicalDevice.h"
+#include "AccelerationStructure.h"
 
 nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing) :
 	r_device(device),
@@ -119,12 +121,14 @@ void nyan::RenderManager::update()
 		if (m_primaryCamera != entt::null && m_registry.all_of<PerspectiveCamera>(m_primaryCamera)) {
 			perspective = m_registry.get<PerspectiveCamera>(m_primaryCamera);
 		}
+
+
 		m_sceneManager.set_proj_matrix(
-			Math::Mat<float, 4, 4, true>::perspectiveX(perspective.nearPlane, perspective.farPlane, perspective.fovX, perspective.aspect));
-		Math::vec3 cameraPos = transformMatrix.col(3);
-		Math::vec3 cameraDir = transformMatrix * perspective.forward;
-		Math::vec3 cameraUp = transformMatrix * perspective.up;
-		Math::vec3 cameraRight = transformMatrix * perspective.right;
+			Math::Mat<float, 4, 4, true>::perspectiveInverseDepthFovXLH(perspective.nearPlane, perspective.fovX, perspective.aspect));
+		auto cameraPos = static_cast<Math::vec3>(transformMatrix.col(3));
+		auto cameraDir = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.forward));
+		auto cameraUp = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.up));
+		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right));
 		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
 
 	}

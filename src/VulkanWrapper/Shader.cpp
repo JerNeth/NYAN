@@ -14,7 +14,7 @@ vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shade
 vulkan::Shader::~Shader()
 {
 	if(m_module != VK_NULL_HANDLE)
-		vkDestroyShaderModule(m_parent.m_device, m_module, m_parent.m_allocator);
+		vkDestroyShaderModule(m_parent.get_device(), m_module, m_parent.get_allocator());
 }
 
 vulkan::ShaderStage vulkan::Shader::get_stage()
@@ -196,7 +196,7 @@ void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 		.codeSize = shaderCode.size() * sizeof(uint32_t),
 		.pCode = shaderCode.data(),
 	};
-	if (auto result = vkCreateShaderModule(m_parent.m_device, &createInfo, m_parent.m_allocator, &m_module); result != VK_SUCCESS) {
+	if (auto result = vkCreateShaderModule(m_parent.get_device(), &createInfo, m_parent.get_allocator(), &m_module); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create shader module, out of host memory");
 		}
@@ -277,37 +277,4 @@ void vulkan::ShaderStorage::clear()
 {
 	m_instanceStorage.clear();
 	m_shaderStorage.clear();
-}
-
-vulkan::Program::Program(const std::vector<Shader*>& shaders)
-{
-	Utility::Hasher h;
-	for (auto shader : shaders) {
-		h(shader->get_hash());
-		set_shader(shader);
-	}
-	m_hashValue = h();
-}
-
-vulkan::Shader* vulkan::Program::get_shader(ShaderStage stage) const
-{
-	assert(static_cast<uint32_t>(stage) < NUM_SHADER_STAGES);
-	return m_shaders[static_cast<uint32_t>(stage)];
-}
-
-void vulkan::Program::set_pipeline_layout(PipelineLayout* layout)
-{
-	m_layout = layout;
-}
-
-vulkan::PipelineLayout* vulkan::Program::get_pipeline_layout() const
-{
-	return m_layout;
-}
-
-void vulkan::Program::set_shader(Shader* shader)
-{
-	assert(shader);
-	assert(static_cast<uint32_t>(shader->get_stage()) < NUM_SHADER_STAGES);
-	m_shaders[static_cast<uint32_t>(shader->get_stage())] = shader;
 }

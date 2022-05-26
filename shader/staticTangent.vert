@@ -4,12 +4,13 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "extracts.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
     uint meshBinding;
-    uint transformBinding;
-    uint transformId;
+    uint instanceBinding;
+    uint instanceId;
     uint sceneBinding;
 } constants;
 
@@ -23,22 +24,12 @@ layout(location = 1) out vec3 fragTangent;
 layout(location = 2) out vec3 fragNormal;
 layout(location = 3) out vec3 fragBitangent;
 
-mat4x3 fetchRowMatrix(vec4 row1, vec4 row2, vec4 row3) {
-	return mat4x3(row1.x, row2.x, row3.x,
-						row1.y, row2.y, row3.y,
-						row1.z, row2.z, row3.z,
-						row1.w, row2.w, row3.w);
-}
-mat4x3 fetchTransformMatrix(Transform transform) {
-    return fetchRowMatrix(transform.modelRow1, 
-                       transform.modelRow2,
-                        transform.modelRow3);
-}
 
 void main() {
-    Transform transform = transforms[constants.transformBinding].transforms[constants.transformId];
-	Mesh mesh = meshData[constants.meshBinding].meshes[transform.pad.x];
-	mat4x3 model = fetchTransformMatrix(transform);
+    Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
+    uint meshId = instance.meshId & 0x00FFFFFF;
+	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
+	mat4x3 model = fetchTransformMatrix(instance);
 	gl_Position = scenes[constants.sceneBinding].scene.proj * scenes[constants.sceneBinding].scene.view * vec4( model *vec4( inPosition, 1.0), 1.0);
     vec3 tangent = normalize(vec3(model * vec4(inTangent.xyz, 0)));
     vec3 normal = normalize(vec3(model * vec4(inNormal.xyz, 0)));

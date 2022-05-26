@@ -2,12 +2,11 @@
 #define VKSHADER_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include <Util>
 #include "LinAlg.h"
 
 namespace vulkan {
-	class LogicalDevice;
-	class PipelineLayout;
 	struct ResourceBinding {
 		union {
 			VkDescriptorBufferInfo buffer;
@@ -32,7 +31,6 @@ namespace vulkan {
 		Intersection = Utility::bit_pos(VK_SHADER_STAGE_INTERSECTION_BIT_NV),//12
 		Callable = Utility::bit_pos(VK_SHADER_STAGE_CALLABLE_BIT_NV),//13
 		Size,
-		
 	};
 	constexpr uint32_t NUM_SHADER_STAGES = static_cast<uint32_t>(ShaderStage::Size);
 
@@ -632,8 +630,6 @@ namespace vulkan {
 		VkShaderStageFlagBits m_stage;
 		std::vector<std::byte> m_dataStorage;
 	};
-	using ShaderId = uint32_t;
-	constexpr ShaderId invalidShaderId = ~ShaderId{ 0 };
 	class ShaderStorage {
 	public:
 		ShaderStorage(LogicalDevice& device);
@@ -648,21 +644,7 @@ namespace vulkan {
 		Utility::LinkedBucketList<ShaderInstance> m_instanceStorage;
 		Utility::LinkedBucketList<Shader> m_shaderStorage;
 	};
-	class Program {
-	public:
-		Program(const std::vector<Shader*>& shaders);
-		Shader* get_shader(ShaderStage stage) const;
-		void set_pipeline_layout(PipelineLayout* layout);
-		PipelineLayout* get_pipeline_layout()const ;
-		Utility::HashValue get_hash() const noexcept {
-			return m_hashValue;
-		}
-	private:
-		void set_shader(Shader* shader);
-		PipelineLayout* m_layout = nullptr;
-		std::array<Shader*, NUM_SHADER_STAGES> m_shaders{};
-		Utility::HashValue m_hashValue;
-	};
+
 };
 
 #endif //VKSHADER_H

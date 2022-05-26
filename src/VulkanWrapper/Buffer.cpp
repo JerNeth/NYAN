@@ -1,5 +1,4 @@
 #include "Buffer.h"
-#include "Buffer.h"
 #include "LogicalDevice.h"
 
 void vulkan::Buffer::resize(VkDeviceSize newSize, bool copyData) {

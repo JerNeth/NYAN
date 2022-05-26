@@ -25,6 +25,14 @@ namespace Math
 
 
 
+	typedef unorm<uint8_t> unorm8;
+	typedef unorm<uint16_t> unorm16;
+	typedef unorm<uint32_t> unorm32;
+	typedef unorm<uint64_t> unorm64;
+	typedef snorm<int8_t>  snorm8;
+	typedef snorm<int16_t> snorm16;
+	typedef snorm<int32_t> snorm32;
+	typedef snorm<int64_t> snorm64;
 
 	typedef Vec<half, 2> hvec2;
 	typedef Vec<half, 3> hvec3;
@@ -49,14 +57,6 @@ namespace Math
 	typedef Vec<int8_t, 4> bvec4;
 
 
-	typedef unorm<uint8_t> unorm8;
-	typedef unorm<uint16_t> unorm16;
-	typedef unorm<uint32_t> unorm32;
-	typedef unorm<uint64_t> unorm64;
-	typedef snorm<int8_t>  snorm8;
-	typedef snorm<int16_t> snorm16;
-	typedef snorm<int32_t> snorm32;
-	typedef snorm<int64_t> snorm64;
 
 	// Unsigned integer vectors do not really make that much sense right now
 	typedef Vec<uint32_t, 2> uvec2;

@@ -165,7 +165,7 @@ namespace Utility {
 	/// Linked Bucked List
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
-	template<typename T, size_t bucketSize = 16>
+	template<typename T, size_t bucketSize>
 	class LinkedBucketList {
 
 		using Bucket = ListBucket<T, bucketSize>;
@@ -254,8 +254,8 @@ namespace Utility {
 			return current->emplace(std::forward<Args>(args)...);
 		}
 		template<class... Args>
-		[[nodiscard]] ObjectHandle<T, LinkedBucketList<T>> emplace(Args&&... args) {
-			return ObjectHandle<T, LinkedBucketList<T>>(emplace_intrusive(std::forward<Args>(args)...), this);
+		[[nodiscard]] ObjectHandle<T, LinkedBucketList<T, bucketSize>> emplace(Args&&... args) {
+			return ObjectHandle<T, LinkedBucketList<T, bucketSize>>(emplace_intrusive(std::forward<Args>(args)...), this);
 		}
 		void remove(size_t id) {
 			if (!head)

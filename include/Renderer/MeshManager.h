@@ -2,11 +2,13 @@
 #ifndef RDMESHMANAGER_H
 #define RDMESHMANAGER_H
 #include "VkWrapper.h"
+#include "VulkanForwards.h"
 #include "DataManager.h"
 #include "MaterialManager.h"
 #include "Mesh.h"
-#include "LinAlg.h"
 #include "ShaderInterface.h"
+#include "Transform.h"
+#include "AccelerationStructure.h"
 namespace nyan {
 
 	template<typename T>
@@ -26,17 +28,6 @@ namespace nyan {
 		return { 4u };
 	}
 	using MeshID = uint32_t;
-
-	struct TransformData {
-		Math::Mat<float, 3, 4, false> transform;
-		Math::Mat<float, 4, 4, true> view;
-		Math::Mat<float, 4, 4, true> proj;
-	};
-	struct Transform {
-		Math::vec3 position;
-		Math::vec3 scale;
-		Math::vec3 orientation;
-	};
 
 	struct StaticTangentVulkanMesh {
 		uint32_t indexCount;
@@ -84,6 +75,7 @@ namespace nyan {
 		};
 	public:
 		MeshManager(vulkan::LogicalDevice& device, nyan::MaterialManager& materialManager, bool buildAccelerationStructures = false);
+		~MeshManager();
 		MeshID add_mesh(const nyan::Mesh& data);
 		MeshID get_mesh(const std::string& name);
 		void build();
@@ -93,7 +85,7 @@ namespace nyan {
 		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(const std::string& name);
 	private:
 		nyan::MaterialManager& r_materialManager;
-		vulkan::AccelerationStructureBuilder m_builder;
+		std::unique_ptr<vulkan::AccelerationStructureBuilder> m_builder;
 		bool m_buildAccs;
 		std::unordered_map<MeshID, MeshManager::Mesh> m_staticTangentMeshes;
 		std::unordered_map<std::string, MeshID> m_meshIndex;
@@ -127,7 +119,7 @@ namespace nyan {
 		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
 		std::optional<uint32_t> get_tlas_bind();
 	private:
-		vulkan::AccelerationStructureBuilder m_builder;
+		std::unique_ptr<vulkan::AccelerationStructureBuilder> m_builder;
 		bool m_buildAccs;
 		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
 		std::optional<uint32_t> m_tlasBind;

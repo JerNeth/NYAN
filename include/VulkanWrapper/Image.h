@@ -2,15 +2,12 @@
 #define VKIMAGE_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include <Util>
 #include "LinAlg.h"
 #include <optional>
 
 namespace vulkan {
-	class LogicalDevice;
-	class Allocation;
-	class Image;
-	class ImageView;
 	constexpr std::array<const char*,9> ImageLayoutNames{
 		"VK_IMAGE_LAYOUT_UNDEFINED",
 		"VK_IMAGE_LAYOUT_GENERAL",

@@ -2,26 +2,13 @@
 #define VKLOGICALDEVICE_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include <Util>
-#include "Framebuffer.h"
-#include "LinAlg.h"
-#include "Shader.h"
-#include "Instance.h"
+#include "Allocator.h"
+#include "Manager.h"
 #include "DescriptorSet.h"
 #include "Pipeline.h"
-#include "Sampler.h"
-#include "Swapchain.h"
-#include "Allocator.h"
-#include "CommandPool.h"
-#include "CommandBuffer.h"
-#include "Manager.h"
-#include "Buffer.h"
-#include "AccelerationStructure.h"
 namespace vulkan {
-	class LogicalDevice;
-	class PhysicalDevice;
-	class Instance;
-	struct Extensions;
 	//Important to delete the device after everything else
 
 	class DeviceWrapper {
@@ -65,20 +52,8 @@ namespace vulkan {
 		size_t stride {0};
 	};
 
-	//Alignment due to Graphicscard alignment requirements
-	//TODO currently hard-coded for minimum Nvidia reqs.
-	struct alignas(256) Ubo   {
-		Math::mat44 model;
-		Math::mat44 view;
-		Math::mat44 proj;
-	private:
-		std::array<std::byte, 256-(3* sizeof(Math::mat44))> _pad;
-	};
 	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
-	enum class SwapchainRenderpassType {
-		Color,
-		Depth
-	};
+
 	struct InitialImageData {
 		const void* data = nullptr;
 		std::array<uint32_t, 16> mipOffsets{};
@@ -118,8 +93,8 @@ namespace vulkan {
 			FrameResource(LogicalDevice& device);
 			~FrameResource();
 			void recycle_semaphore(VkSemaphore sempahore);
-			std::vector<CommandBufferHandle>& get_submissions(CommandBuffer::Type type) noexcept;
-			vulkan::CommandPool& get_pool(CommandBuffer::Type type) noexcept;
+			std::vector<CommandBufferHandle>& get_submissions(CommandBufferType type) noexcept;
+			vulkan::CommandPool& get_pool(CommandBufferType type) noexcept;
 			std::vector<VkSemaphore>& get_signal_semaphores() noexcept;
 			void signal_semaphore(VkSemaphore semaphore) noexcept;
 			void wait_for_fence(FenceHandle&& fence) noexcept;
@@ -171,16 +146,6 @@ namespace vulkan {
 			std::vector<FenceHandle> waitForFences;
 
 		};
-		friend class Swapchain;
-		friend class DeviceWrapper;
-		friend class Sampler;
-		friend class Renderpass;
-		friend class PipelineLayout;
-		friend class Shader;
-		friend class Pipeline;
-		friend class Renderpass;
-		friend class DescriptorSetAllocator;
-
 	public:
 
 		LogicalDevice(const vulkan::Instance& parentInstance,
@@ -202,22 +167,13 @@ namespace vulkan {
 		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
-		DescriptorSetAllocator* request_descriptor_set_allocator(const DescriptorSetLayout& layout);
 		size_t register_shader(const std::vector<uint32_t>& shaderCode);
 		//Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
 		//Shader* request_shader(const std::string& shaderName) noexcept;
 		Shader* request_shader(size_t id);
-		Program* request_program(const std::vector<Shader*>& shaders);
-		PipelineLayout* request_pipeline_layout(const ShaderLayout& layout);
-		Renderpass* request_render_pass(const RenderpassCreateInfo& info);
-		Renderpass* request_compatible_render_pass(const RenderpassCreateInfo& info);
-		VkPipeline request_pipeline(const PipelineCompile& compile) noexcept;
-		VkPipeline request_pipeline(const Program& program) noexcept;
-		RenderpassCreateInfo request_swapchain_render_pass(SwapchainRenderpassType type) noexcept;
-		Framebuffer* request_framebuffer(const RenderpassCreateInfo& info);
 		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
-		CommandBufferHandle request_command_buffer(CommandBuffer::Type type);
+		CommandBufferHandle request_command_buffer(CommandBufferType type);
 		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 
@@ -233,7 +189,7 @@ namespace vulkan {
 
 		void next_frame();
 		void end_frame();
-		void submit_queue(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr);
+		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr);
 		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
 		void queue_image_deletion(VkImage image) noexcept;
 		void queue_image_view_deletion(VkImageView imageView) noexcept;
@@ -243,9 +199,9 @@ namespace vulkan {
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
 		void queue_buffer_deletion(VkBuffer buffer) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
-		void add_wait_semaphore(CommandBuffer::Type type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
-		void add_wait_semaphores(CommandBuffer::Type type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
-		void submit_empty(CommandBuffer::Type type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
+		void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
+		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
+		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
 		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
@@ -286,17 +242,16 @@ namespace vulkan {
 		VkPipelineCache get_pipeline_cache() const noexcept;
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
 
-		void wait_on_idle_queue(CommandBuffer::Type type);
-		AccelerationStructureBuilder& get_acceleration_structure_builder() noexcept;
+		void wait_on_idle_queue(CommandBufferType type);
 
 	private:
-		Queue& get_queue(CommandBuffer::Type type) noexcept {
+		Queue& get_queue(CommandBufferType type) noexcept {
 			switch (type) {
-			case CommandBuffer::Type::Generic:
+			case CommandBufferType::Generic:
 				return m_graphics;
-			case CommandBuffer::Type::Compute:
+			case CommandBufferType::Compute:
 				return m_compute;
-			case CommandBuffer::Type::Transfer:
+			case CommandBufferType::Transfer:
 				return m_transfer;
 			default:
 				assert(false);
@@ -312,8 +267,8 @@ namespace vulkan {
 		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);
 		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel);
 
-		std::vector<CommandBufferHandle>& get_current_submissions(CommandBuffer::Type type);
-		CommandPool& get_pool(CommandBuffer::Type type);
+		std::vector<CommandBufferHandle>& get_current_submissions(CommandBufferType type);
+		CommandPool& get_pool(CommandBufferType type);
 		void create_vma_allocator();
 		void create_default_sampler();
 
@@ -339,11 +294,9 @@ namespace vulkan {
 		Utility::LinkedBucketList<Buffer> m_bufferPool;
 		Utility::LinkedBucketList<ImageView> m_imageViewPool;
 		Utility::LinkedBucketList<Image> m_imagePool;
-		AccelerationStructureBuilder m_accelerationStructureBuilder;
 		WSIState m_wsiState;
 
 		AttachmentAllocator m_attachmentAllocator;
-		FramebufferAllocator m_framebufferAllocator;
 		Queue m_graphics;
 		Queue m_compute;
 		Queue m_transfer;
@@ -353,27 +306,13 @@ namespace vulkan {
 		std::unordered_multimap<VkFence, std::function<void(void)>> m_fenceCallbacks;
 
 
-		std::unordered_map< DescriptorSetLayout, size_t, Utility::Hash<DescriptorSetLayout>> m_descriptorAllocatorIds;
-		Utility::LinkedBucketList<DescriptorSetAllocator> m_descriptorAllocatorsStorage;
-
 		ShaderStorage m_shaderStorage;
 		PipelineStorage2 m_pipelineStorage2;
 
-		std::unordered_map< std::vector<Shader*>, size_t, Utility::VectorHash<Shader*>> m_programIds;
-		Utility::LinkedBucketList<Program> m_programStorage;
-
-		std::unordered_map< ShaderLayout, size_t, Utility::Hash<ShaderLayout>> m_pipelineLayoutIds;
-		Utility::LinkedBucketList<PipelineLayout> m_pipelineLayoutStorage;
 
 		std::array<std::unique_ptr<Sampler>, static_cast<size_t>(vulkan::DefaultSampler::Size)> m_defaultSampler;
 
-		std::unordered_map<Utility::HashValue, size_t> m_renderpassIds;
-		std::unordered_map<Utility::HashValue, size_t> m_compatibleRenderpassIds;
-		Utility::LinkedBucketList<Renderpass> m_renderpassStorage;
-
 		std::unique_ptr<PipelineCache> m_pipelineCache;
-
-		PipelineStorage m_pipelineStorage;
 
 		DescriptorPool m_bindlessPool;
 		DescriptorSet m_bindlessSet;

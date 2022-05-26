@@ -6,6 +6,7 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "extracts.glsl"
 
 
 layout(std430, push_constant) uniform PushConstants

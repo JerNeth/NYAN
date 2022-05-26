@@ -1,5 +1,6 @@
 #include "Utility/DDSReader.h"
 #include "LinAlg.h"
+#include "VulkanWrapper/VulkanIncludes.h"
 #include "VkWrapper.h"
 
 static VkFormat convertToVk(Utility::DXGI_FORMAT format) {

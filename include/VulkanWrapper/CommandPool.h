@@ -2,8 +2,8 @@
 #define VKCOMMANDPOOL_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 namespace vulkan {
-	class LogicalDevice;
 	class CommandPool {
 	public:
 		CommandPool(LogicalDevice& parent, uint32_t queueFamilyIndex);

@@ -8,9 +8,9 @@ layout(set = 0, binding = 0, std430) buffer MeshData {
 	Mesh meshes[];
 } meshData[SSBO_COUNT];
 
-layout(set = 0, binding = 0, std430) buffer Transforms {
-	Transform transforms[];
-} transforms[SSBO_COUNT];
+layout(set = 0, binding = 0, std430) buffer Instances {
+	Instance instances[];
+} instances[SSBO_COUNT];
 
 layout(set = 0, binding = 0, std430) buffer Scenes {
 	Scene scene;

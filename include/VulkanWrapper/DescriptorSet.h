@@ -2,33 +2,12 @@
 #define VKDESCRIPTORSET_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include "Shader.h"
 #include <Util>
 #include <numeric>
 #include <format>
 namespace vulkan {
-	class LogicalDevice;
-	class DescriptorSetAllocator {
-	public:
-		DescriptorSetAllocator(LogicalDevice& parent, const DescriptorSetLayout& layout);
-		~DescriptorSetAllocator();
-		std::pair<VkDescriptorSet, bool> find(unsigned threadId, Utility::HashValue hash);
-		VkDescriptorSetLayout get_layout() const noexcept;
-		void clear();
-	private:
-		struct PerThread {
-			bool removeStale = false;
-			std::vector<VkDescriptorPool> pools;
-			std::vector<VkDescriptorSet> vacant;
-			std::vector<Utility::HashValue> stale;
-			Utility::HashMap<VkDescriptorSet> hashMap;
-		};
-		std::vector<std::unique_ptr<PerThread>> perThread;
-		std::vector<VkDescriptorPoolSize> poolSizes;
-		LogicalDevice& r_device;
-		VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
-		
-	};
 	constexpr uint32_t storageBufferBinding = 0;
 	constexpr uint32_t uniformBufferBinding = 1;
 	constexpr uint32_t samplerBinding = 2;
@@ -43,7 +22,6 @@ namespace vulkan {
 		uint32_t storage_image_count = 8 * 1024;
 		uint32_t acceleration_structure_count = 256;
 	};
-	class DescriptorPool;
 	class DescriptorSet {
 	public:
 		DescriptorSet(DescriptorPool& pool, VkDescriptorSet vkHandle);

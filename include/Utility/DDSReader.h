@@ -2,7 +2,7 @@
 #ifndef DDSREADER_H
 #define DDSREADER_H
 #include <filesystem>
-#include "VulkanWrapper/VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include "ImageReader.h"
 namespace Utility {
 	//Really don't want to write this but did not really find a good implementation

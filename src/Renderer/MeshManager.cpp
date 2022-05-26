@@ -1,4 +1,6 @@
 #include "Renderer/MeshManager.h"
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/LogicalDevice.h"
 
 using namespace vulkan;
 using namespace nyan;
@@ -6,11 +8,13 @@ using namespace nyan;
 nyan::MeshManager::MeshManager(vulkan::LogicalDevice& device, nyan::MaterialManager& materialManager, bool buildAccelerationStructures) :
 	DataManager(device),
 	r_materialManager(materialManager),
-	m_builder(r_device),
+	m_builder(std::make_unique<AccelerationStructureBuilder>(r_device)),
 	m_buildAccs(buildAccelerationStructures)
 {
 }
-
+nyan::MeshManager::~MeshManager()
+{
+}
 nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 {
 	std::vector<vulkan::InputData> inputData;
@@ -99,7 +103,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.transformOffset { 0 },
 			.indexType { mesh.mesh.indexType },
 		};
-		auto ret = m_builder.queue_item(blasInfo);
+		auto ret = m_builder->queue_item(blasInfo);
 		if(ret)
 			m_pendingAccBuildIndex.emplace_back( *ret, id);
 	}
@@ -116,7 +120,7 @@ nyan::MeshID nyan::MeshManager::get_mesh(const std::string& name)
 void nyan::MeshManager::build()
 {
 	if (m_buildAccs) {
-		auto handles = m_builder.build_pending();
+		auto handles = m_builder->build_pending();
 		for (auto [handleId, meshId] : m_pendingAccBuildIndex) {
 			assert(handleId < handles.size());
 			auto it = m_staticTangentMeshes.find(meshId);
@@ -156,7 +160,7 @@ nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device, bool build
 	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
 		| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR),
-	m_builder(device),
+	m_builder(std::make_unique<AccelerationStructureBuilder>(r_device)),
 	m_buildAccs(buildAccelerationStructures)
 {
 }
@@ -202,7 +206,7 @@ InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
-		m_tlas = m_builder.build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->buffer->get_address());
+		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->buffer->get_address());
 		if (m_tlasBind)
 			r_device.get_bindless_set().set_acceleration_structure(*m_tlasBind, *(*m_tlas));
 		else

@@ -4,116 +4,13 @@
 #include "VulkanIncludes.h"
 #include "Pipeline.h"
 #include <Util>
+#include "VulkanForwards.h"
 namespace vulkan {
-	class LogicalDevice;
-	class Framebuffer;
-	class Renderpass;
-	class ImageView;
-	class Buffer;
-	class Sampler;
-	class AccelerationStructure;
-	struct RenderpassCreateInfo;
-	struct IndexState {
-		VkBuffer buffer;
-		VkDeviceSize offset;
-		VkIndexType indexType;
-		friend bool operator==(const IndexState& lhs, const IndexState& rhs) {
-			return lhs.buffer == rhs.buffer &&
-				lhs.offset == rhs.offset &&
-				lhs.indexType == rhs.indexType;
-		}
-	};
-	struct VertexState {
-		std::array<VkBuffer, MAX_VERTEX_BINDINGS> buffers;
-		std::array<VkDeviceSize, MAX_VERTEX_BINDINGS> offsets;
-		std::bitset<MAX_VERTEX_BINDINGS> dirty{ ~0ull };
-		std::bitset<MAX_VERTEX_BINDINGS> active{ 0ull };
-		std::pair<const VkBuffer*, const VkDeviceSize*> operator[](size_t idx) const noexcept {
-			return { buffers.data() + idx, offsets.data() + idx };
-		}
-		void update(std::bitset<MAX_VERTEX_BINDINGS> updateMask) {
-			dirty &= ~updateMask;
-		}
-	};
-	struct DynamicVertexState {
-		uint32_t inputBindingCount = 0;
-		uint32_t inputAttributesCount = 0;
-		std::array<VkVertexInputAttributeDescription2EXT, MAX_VERTEX_BINDINGS> inputAttributes;
-		std::array<VkVertexInputBindingDescription2EXT, MAX_VERTEX_BINDINGS> inputBindings;
-	};
-	struct ResourceBindings {
-		std::array<std::array<std::vector<ResourceBinding>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindings;
-		std::array<std::array<std::vector<VkDeviceSize>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> dynamicOffsets;
-		std::array<std::array<std::vector<Utility::UID>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> bindingIds;
-		std::array<std::array<std::vector<Utility::UID>, MAX_BINDINGS>, MAX_DESCRIPTOR_SETS> samplerIds;
-		std::array<std::byte, PUSH_CONSTANT_SIZE> pushConstantData{};
-	};
-	struct DynamicState {
-		float depthBias = 0.0f;
-		float depthBiasSlope = 0.0f;
-		uint32_t frontCompareMask = 0;
-		uint32_t frontWriteMask = 0;
-		uint32_t frontReference = 0;
-		uint32_t backCompareMask = 0;
-		uint32_t backWriteMask = 0;
-		uint32_t backReference = 0;
-		unsigned cull_mode : CULL_MODE_BITS;
-		unsigned front_face : FRONT_FACE_BITS;
-		unsigned topology : TOPOLOGY_BITS;
-		unsigned depth_write : 1;
-		unsigned depth_test : 1;
-		unsigned depth_compare : COMPARE_OP_BITS;
-		unsigned depth_bound_test : 1;
-		unsigned stencil_test : 1;
-		unsigned depth_bias_enable : 1;
-		unsigned primitive_restart : 1;
-		unsigned rasterizer_discard : 1;
-		unsigned stencil_front_fail : STENCIL_OP_BITS;
-		unsigned stencil_front_pass : STENCIL_OP_BITS;
-		unsigned stencil_front_depth_fail : STENCIL_OP_BITS;
-		unsigned stencil_back_fail : STENCIL_OP_BITS;
-		unsigned stencil_back_pass : STENCIL_OP_BITS;
-		unsigned stencil_back_depth_fail : STENCIL_OP_BITS;
-		unsigned stencil_front_compare_op : COMPARE_OP_BITS;
-		unsigned stencil_back_compare_op : COMPARE_OP_BITS;
-		std::array< VkDeviceSize, MAX_VERTEX_BINDINGS> vertexStrides;
-	};
 	class CommandBuffer {
-	public:
-		enum class Type {
-			Generic,
-			Compute,
-			Transfer
-		};
-		enum class InvalidFlags {
-			Pipeline,
-			StaticPipeline,
-			StaticVertex,
-			DynamicVertex,
-			DynamicState,
-			PushConstants,
-			Viewport,
-			Scissor,
-			DepthBias,
-			Stencil,
-			CullMode,
-			FrontFace,
-			PrimitiveTopology,
-			DepthTest,
-			DepthWrite,
-			DepthCompare,
-			DepthBoundsTest,
-			StencilTest,
-			StencilOp,
-			DepthBiasEnable,
-			PrimitiveRestart,
-			RasterizerDiscard,
-			Size
-		};
 	public:
 		
 	
-		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type = Type::Generic, uint32_t threadIdx = 0);
+		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type = CommandBufferType::Generic, uint32_t threadIdx = 0);
 
 
 		//void begin_rendering()
@@ -149,7 +46,7 @@ namespace vulkan {
 		void end();
 		void begin_region(const char* name, const float* color = nullptr);
 		void end_region();
-		Type get_type() const noexcept;
+		CommandBufferType get_type() const noexcept;
 	private:
 		/// *******************************************************************
 		/// Private functions
@@ -159,7 +56,7 @@ namespace vulkan {
 		/// *******************************************************************
 		LogicalDevice& r_device;
 		VkCommandBuffer m_vkHandle;
-		Type m_type;
+		CommandBufferType m_type;
 		uint32_t m_threadIdx = 0;
 		bool m_swapchainTouched = false;
 		bool m_isSecondary = false;

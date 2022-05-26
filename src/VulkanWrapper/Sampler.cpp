@@ -1,5 +1,6 @@
 #include "Sampler.h"
 #include "LogicalDevice.h"
+
 vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSamplerCreateInfo& createInfo):
 	r_device(device),
 	m_createInfo(createInfo)

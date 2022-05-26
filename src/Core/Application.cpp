@@ -4,7 +4,7 @@
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
-	OPTICK_THREAD("Main Thread");
+	//OPTICK_THREAD("Main Thread");
 	if (!setup_glfw())
 		throw InitializationError("Could not initialize GLFW");
 	if (!setup_vulkan_instance())//OpenGL fallback maybe?
@@ -49,7 +49,7 @@ int nyan::Application::get_height()
 
 void nyan::Application::next_frame()
 {
-	OPTICK_GPU_FLIP(nullptr);
+	//OPTICK_GPU_FLIP(nullptr);
 	m_windowSystemInterface->begin_frame();
 	for (const auto& beginFrameFunction : m_beginFrameFunctions) {
 		beginFrameFunction();
@@ -100,7 +100,7 @@ void nyan::Application::update()
 	auto now = std::chrono::steady_clock::now();
 	auto delta = now - lastUpdate;
 	lastUpdate = now;
-	OPTICK_FRAME("MainThread");
+	//OPTICK_FRAME("MainThread");
 	glfwPollEvents();
 	m_input->update();
 	

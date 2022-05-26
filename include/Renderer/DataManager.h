@@ -65,21 +65,9 @@ namespace nyan {
 			assert(m_slot->data.size() > id);
 			return m_slot->data[id];
 		}
-		uint32_t bind_buffer(vulkan::BufferHandle& buffer) {
-			return r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
-		}
-		void rebind_buffer(vulkan::BufferHandle& buffer) {
-			r_device.get_bindless_set().set_storage_buffer(m_slot->binding, VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
-		}
-		vulkan::BufferHandle create_buffer(size_t size) {
-			vulkan::BufferInfo info{
-				.size = size * sizeof(T),
-				.usage = m_usage,
-				.offset = 0,
-				.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
-			};
-			return r_device.create_buffer(info, {});
-		}
+		uint32_t bind_buffer(vulkan::BufferHandle& buffer);
+		void rebind_buffer(vulkan::BufferHandle& buffer);
+		vulkan::BufferHandle create_buffer(size_t size);
 
 		vulkan::LogicalDevice& r_device;
 		VkBufferUsageFlags m_usage;

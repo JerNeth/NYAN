@@ -4,12 +4,13 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "extracts.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
     uint meshBinding;
-    uint transformBinding;
-    uint transformId;
+    uint instanceBinding;
+    uint instanceId;
     uint sceneBinding;
 } constants;
 
@@ -24,7 +25,9 @@ layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec4 outPBR;
 
 void main() {
-	Mesh mesh = meshData[constants.meshBinding].meshes[transforms[constants.transformBinding].transforms[constants.transformId].pad.x];
+    Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
+    uint meshId = instance.meshId & 0x00FFFFFF;
+	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
     Scene scene = scenes[constants.sceneBinding].scene;
 	DirectionalLight light1 = scene.dirLight1;
 	DirectionalLight light2 = scene.dirLight2;

@@ -2,12 +2,12 @@
 #define VKALLOCATOR_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 #include "Image.h"
 #include <Util>
 #include <unordered_map>
 
 namespace vulkan {
-	class LogicalDevice;
 	class Allocator {
 	public:
 		Allocator(VmaAllocator handle);

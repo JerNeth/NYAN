@@ -14,13 +14,13 @@ namespace Utility {
 			Info,
 			Error
 		};
-		Logger(Type type = Type::Info) : m_type(type) {
+		constexpr Logger(Type type = Type::Info) : m_type(type) {
 
 		}
-		Logger(const Logger& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
+		constexpr Logger(const Logger& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
 
 		}
-		Logger(Logger&& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
+		constexpr Logger(Logger&& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
 			other.m_newLine = false;
 		}
 		Logger& operator=(const Logger& other) {
@@ -39,11 +39,12 @@ namespace Utility {
 				return;
 			stream() << '\n';
 		}
-		Logger& message(const std::string_view message) {
+		const Logger& message(const std::string_view message) const {
 			stream() << message;
 			return *this;
 		}
-		Logger& location(const std::source_location location = std::source_location::current()) {
+		//Logger& location() {
+		const Logger& location(const std::source_location location = std::source_location::current()) const {
 			stream() << "file: "
 				<< location.file_name() << "("
 				<< location.line() << ":"
@@ -51,14 +52,13 @@ namespace Utility {
 				<< location.function_name() << "`: ";
 			return *this;
 		}
-		template<class... Args>
-		Logger& format(Args&&... args) {
-
-			stream() << std::format(std::forward<Args>(args)...);
+		template<typename ...Args>
+		const Logger& format(std::string_view view, Args&&... args) const {
+			stream() << std::vformat(view, std::make_format_args(args...));
 			return *this;
 		}
 	private:
-		std::ostream& stream() {
+		std::ostream& stream() const {
 			if (m_type == Type::Error) {
 				return std::cerr;
 			}
@@ -67,7 +67,7 @@ namespace Utility {
 			}
 			return std::cout;
 		}
-		Type m_type;
+		Type m_type {Type::Info};
 		bool m_newLine = true;
 	};
 	inline Logger log()

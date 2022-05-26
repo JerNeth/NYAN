@@ -3,6 +3,7 @@
 #pragma once
 #include <string>
 #include <cmath>
+#include <cassert>
 #include "Util.h"
 
 namespace Math {
@@ -14,7 +15,6 @@ namespace Math {
 		size_t Size>
 		class Vec
 	{
-
 	public:
 		using value_type = Scalar;
 		constexpr Vec() noexcept : m_data() {
@@ -34,7 +34,7 @@ namespace Math {
 		//}
 		template<typename... Args>
 		constexpr explicit Vec(Args... args) {
-			static_assert(sizeof...(Args) <= Size);
+			assert(sizeof...(Args) <= Size);
 			if constexpr (sizeof...(Args) == 1) {
 				for (size_t i = 0; i < Size; i++)
 				{
@@ -43,11 +43,15 @@ namespace Math {
 				}
 			}
 			else {
-				m_data = { static_cast<Scalar>(std::forward<Args>(args))... };
+				std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
+				for (size_t i = 0; i < Size; i++)
+				{
+					m_data[i] = static_cast<Scalar>(list[i]);
+				}
 			}
 		}
 		template<ScalarT OtherScalar,size_t Size_other>
-		constexpr Vec(Vec<OtherScalar, Size_other> other) noexcept : m_data() {
+		constexpr explicit Vec(Vec<OtherScalar, Size_other> other) noexcept : m_data() {
 			for (size_t i = 0; i < min(Size, Size_other); i++)
 				m_data[i] = other[i];
 			for (size_t i = min(Size, Size_other); i < Size; i++)
@@ -75,18 +79,18 @@ namespace Math {
 				result.m_data[i] = lhs.m_data[i] - rhs.m_data[i];
 			return result;
 		}
-		constexpr friend inline Vec operator|(const Vec& lhs, const Vec& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs.m_data[i] | rhs.m_data[i];
-			return result;
-		}
-		constexpr friend inline Vec operator&(const Vec& lhs, const Vec& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs.m_data[i] & rhs.m_data[i];
-			return result;
-		}
+		//constexpr friend inline Vec operator|(const Vec& lhs, const Vec& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs.m_data[i] | rhs.m_data[i];
+		//	return result;
+		//}
+		//constexpr friend inline Vec operator&(const Vec& lhs, const Vec& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs.m_data[i] & rhs.m_data[i];
+		//	return result;
+		//}
 		template<ScalarT OtherScalar>
 		constexpr operator Vec<OtherScalar, Size>() {
 			Vec<OtherScalar, Size> result;
@@ -103,14 +107,14 @@ namespace Math {
 				result.m_data[i] = lhs.m_data[i] * rhs.m_data[i];
 			return result;
 		}
-		inline std::string convert_to_string() {
+		inline std::string convert_to_string() const {
 			std::string result("(");
 			for (size_t i = 0; i < (Size-1); i++)
 				result += std::to_string(m_data[i]) + ", ";
 			result += std::to_string(m_data[Size - 1]) + ")";
 			return result;
 		}
-		constexpr friend inline bool close(const Vec& lhs, const Vec& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
+		constexpr friend inline bool close(const Vec& lhs, const Vec& rhs, const Scalar& eps = static_cast<Scalar>(1e-5)) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (!close(lhs.m_data[i], rhs.m_data[i], eps))
 					return false;
@@ -164,7 +168,6 @@ namespace Math {
 				result.m_data[i] = lhs.m_data[i] * rhs;
 			return result;
 		}
-
 		constexpr friend inline Vec operator*(const Scalar& lhs, const Vec& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
@@ -183,43 +186,43 @@ namespace Math {
 				result.m_data[i] = lhs / rhs.m_data[i];
 			return result;
 		}
-		constexpr friend inline Vec operator&(const Vec& lhs, const Scalar& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs.m_data[i] & rhs;
-			return result;
-		}
-		constexpr friend inline Vec operator&(const Scalar& lhs, const Vec& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs & rhs.m_data[i];
-			return result;
-		}
-		constexpr friend inline Vec operator|(const Scalar& lhs, const Vec& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs | rhs.m_data[i];
-			return result;
-		}
-		constexpr friend inline Vec operator|(const Vec& lhs, const Scalar& rhs) noexcept {
-			Vec result;
-			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = lhs.m_data[i] | rhs;
-			return result;
-		}
+		//constexpr friend inline Vec operator&(const Vec& lhs, const Scalar& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs.m_data[i] & rhs;
+		//	return result;
+		//}
+		//constexpr friend inline Vec operator&(const Scalar& lhs, const Vec& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs & rhs.m_data[i];
+		//	return result;
+		//}
+		//constexpr friend inline Vec operator|(const Scalar& lhs, const Vec& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs | rhs.m_data[i];
+		//	return result;
+		//}
+		//constexpr friend inline Vec operator|(const Vec& lhs, const Scalar& rhs) noexcept {
+		//	Vec result;
+		//	for (size_t i = 0; i < Size; i++)
+		//		result.m_data[i] = lhs.m_data[i] | rhs;
+		//	return result;
+		//}
 		constexpr inline Scalar L2_square() const noexcept {
 			Scalar sum = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
-				sum += m_data[i] * m_data[i];
+				sum = sum +  m_data[i] * m_data[i];
 			return sum;
 		}
 		inline Scalar L2_norm() const noexcept {
-			return std::sqrt(L2_square());
+			return static_cast<Scalar>(std::sqrt(L2_square()));
 		}
 		inline Scalar L1_norm() const noexcept {
 			Scalar sum = Scalar(0);
 			for (size_t i = 0; i < Size; i++)
-				sum += std::abs(m_data[i]);
+				sum = sum + std::abs(static_cast<double>(m_data[i]));
 			return sum;
 		}
 		constexpr inline Vec operator-() const noexcept {
@@ -230,7 +233,7 @@ namespace Math {
 		}
 		constexpr inline Vec& operator=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] += rhs;
+				m_data[i] = m_data[i] + rhs;
 			return *this;
 		}
 		constexpr inline Vec& operator=(Scalar& rhs) noexcept {
@@ -240,42 +243,44 @@ namespace Math {
 		}
 		constexpr inline Vec& operator+=(const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] += rhs.m_data[i];
+				m_data[i] = m_data[i] + rhs.m_data[i];
 			return *this;
 		}
 		constexpr inline Vec& operator-=(const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] -= rhs.m_data[i];
+				m_data[i] = m_data[i] - rhs.m_data[i];
 			return *this;
 		}
 		constexpr inline Vec& operator*=(const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] *= rhs.m_data[i];
+				m_data[i] = m_data[i] * rhs.m_data[i];
 			return *this;
 		}
 		constexpr inline Vec& operator+=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] += rhs;
+				m_data[i] = m_data[i] + rhs;
 			return *this;
 		}
 		constexpr inline Vec& operator-=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] -= rhs;
+				m_data[i] = m_data[i] - rhs;
 			return *this;
 		}
 		constexpr inline Vec& operator*=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] *= rhs;
+				m_data[i] = m_data[i] * rhs;
 			return *this;
 		}
 		constexpr inline Vec& operator/=(const Scalar& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
-				m_data[i] /= rhs;
+				m_data[i] = m_data[i] / rhs;
 			return *this;
 		}
 		constexpr inline Vec& operator*=(const Quaternion<Scalar>& rhs) noexcept {
-			static_assert(Size == 3 || Size == 4, "Only works for three dimensional vectors");
-			*this = rhs * *this;
+			assert(("Only works for three dimensional vectors", Size == 3 || Size == 4));
+			if constexpr (Size == 3) {
+				*this = rhs * *this;
+			}
 			return *this;
 		}
 		constexpr inline const Scalar& operator[] (const size_t index) const noexcept {
@@ -315,16 +320,16 @@ namespace Math {
 		}
 		constexpr inline Scalar dot(const Vec& rhs) const noexcept {
 			// Not sure if this is better than = 0, but this way we correctly have a Scalar
-			Scalar result = Scalar(0);
+			Scalar result = static_cast<Scalar>(0);
 			for (size_t i = 0; i < Size; i++)
-				result += m_data[i] * rhs.m_data[i];
+				result = result + m_data[i] * rhs.m_data[i];
 			return result;
 		}
 		constexpr inline Vec cross(const Vec& other) const noexcept {
-			static_assert(Size == 3, "Cross Product is only defined for three dimensions");
-			return Vec({ m_data[1] * other.m_data[2] - m_data[2] * other.m_data[1],
+			assert(("Cross Product is only defined for three dimensions", Size == 3));
+			return Vec( m_data[1] * other.m_data[2] - m_data[2] * other.m_data[1],
 						m_data[2] * other.m_data[0] - m_data[0] * other.m_data[2],
-						m_data[0] * other.m_data[1] - m_data[1] * other.m_data[0] });
+						m_data[0] * other.m_data[1] - m_data[1] * other.m_data[0] );
 		}
 		constexpr inline Vec& apply_fun(Scalar fun(Scalar)) noexcept {
 			for (size_t i = 0; i < Size; i++)
@@ -333,47 +338,47 @@ namespace Math {
 		}
 
 		constexpr inline Scalar& x() noexcept {
-			static_assert(Size > 0, "Vector too small");
+			assert(("Vector too small", Size > 0));
 			return m_data[0];
 		}
 		constexpr inline Scalar& y() noexcept {
-			static_assert(Size > 1, "Vector too small");
+			assert(("Vector too small", Size > 1));
 			return m_data[1];
 		}
 		constexpr inline Scalar& z() noexcept {
-			static_assert(Size > 2, "Vector too small");
+			assert(("Vector too small", Size > 2));
 			return m_data[2];
 		}
 		constexpr inline Scalar& w() noexcept {
-			static_assert(Size > 3, "Vector too small");
+			assert(("Vector too small", Size > 3));
 			return m_data[3];
 		}
 		constexpr inline Scalar& r() noexcept {
-			static_assert(Size > 0, "Vector too small");
+			assert(("Vector too small", Size > 0));
 			return m_data[0];
 		}
 		constexpr inline Scalar& g() noexcept {
-			static_assert(Size > 1, "Vector too small");
+			assert(("Vector too small", Size > 1));
 			return m_data[1];
 		}
 		constexpr inline Scalar& b() noexcept {
-			static_assert(Size > 2, "Vector too small");
+			assert(("Vector too small", Size > 2));
 			return m_data[2];
 		}
 		constexpr inline Scalar& a() noexcept {
-			static_assert(Size > 3, "Vector too small");
+			assert(("Vector too small", Size > 3));
 			return m_data[3];
 		}
 		inline Vec& normalize() noexcept {
-			Scalar inverseNorm = Scalar(1)/L2_norm();
+			Scalar inverseNorm = static_cast<Scalar>(1.0) /L2_norm();
 			for (size_t i = 0; i < m_data.size(); i++) {
-				m_data[i] *= inverseNorm;
+				m_data[i] = m_data[i]* inverseNorm;
 			}
 			return *this;
 		}
 		inline Vec normalized() const noexcept  {
 			Vec ret {};
-			Scalar inverseNorm = Scalar(1) / L2_norm();
+			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
 			for (int i = 0; i < m_data.size(); i++) {
 				ret.m_data[i] = m_data[i]*inverseNorm;
 			}
@@ -394,5 +399,9 @@ namespace Math {
 		return Vec<std::common_type_t<Args...>, sizeof...(Args)>(std::forward<Args>(args)...);
 	}
 
+	template<ScalarT Scalar, size_t size>
+	void PrintTo(const Vec<Scalar, size>& t, std::ostream* os) {
+		*os << t.convert_to_string();
+	}
 }
 #endif // !VECTOR_H

@@ -1,4 +1,5 @@
 #include "Renderer/RenderGraph.h"
+#include "CommandBuffer.h"
 
 using namespace nyan;
 //using namespace vulkan;
@@ -538,13 +539,13 @@ void nyan::Rendergraph::execute()
 		};
 		barrierUpdate(pass.m_postBarriers);
 		barrierUpdate(pass.m_preBarriers);
-		vulkan::CommandBuffer::Type commandBufferType = vulkan::CommandBuffer::Type::Generic;
+		vulkan::CommandBufferType commandBufferType = vulkan::CommandBufferType::Generic;
 		switch (pass.get_type()) {
 		case Renderpass::Type::Compute:
-			commandBufferType = vulkan::CommandBuffer::Type::Compute;
+			commandBufferType = vulkan::CommandBufferType::Compute;
 			break;
 		case Renderpass::Type::Graphics:
-			commandBufferType = vulkan::CommandBuffer::Type::Generic;
+			commandBufferType = vulkan::CommandBufferType::Generic;
 			break;
 		}
 		//std::cout << "Execute pass: "<< pass.get_id() << "\n";

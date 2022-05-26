@@ -2,11 +2,9 @@
 #define VKINSTANCE_H
 #pragma once
 #include "VulkanIncludes.h"
-#include "LogicalDevice.h"
+#include "VulkanForwards.h"
 
 namespace vulkan {
-	class PhysicalDevice;
-	class LogicalDevice;
 	class Instance {
 	public:
 		Instance(const char** extensions, uint32_t extensionCount, std::string applicationName = "", std::string engineName = "");

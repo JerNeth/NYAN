@@ -1,6 +1,11 @@
 #include "CommandBuffer.h"
+#include "Instance.h"
 #include "LogicalDevice.h"
-vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, Type type, uint32_t threadIdx) :
+#include "Image.h"
+#include "Buffer.h"
+#include "AccelerationStructure.h"
+
+vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type, uint32_t threadIdx) :
 	r_device(parent),
 	m_vkHandle(handle),
 	m_threadIdx(threadIdx),
@@ -335,6 +340,6 @@ void vulkan::CommandBuffer::end_region()
 	}
 }
 
-vulkan::CommandBuffer::Type vulkan::CommandBuffer::get_type() const noexcept {
+vulkan::CommandBufferType vulkan::CommandBuffer::get_type() const noexcept {
 	return m_type;
 }

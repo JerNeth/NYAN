@@ -1,5 +1,8 @@
 #include "Renderer/ImguiRenderer.h"
 #include "entt/entt.hpp"
+#include "CommandBuffer.h"
+#include "Pipeline.h"
+#include "Buffer.h"
 using namespace vulkan;
 
 namespace MM {
@@ -21,6 +24,16 @@ namespace MM {
 		ImGui::DragFloat("near", &t.nearPlane, 0.1f);
 		ImGui::DragFloat("far", &t.farPlane, 0.1f);
 		ImGui::DragFloat("fov", &t.fovX, 0.1f);
+		ImGui::DragFloat("aspect", &t.aspect, 0.1f);
+		ImGui::DragFloat("up_x", &t.up.x(), 0.1f);
+		ImGui::DragFloat("up_y", &t.up.y(), 0.1f);
+		ImGui::DragFloat("up_z", &t.up.z(), 0.1f);
+		ImGui::DragFloat("right_x", &t.right.x(), 0.1f);
+		ImGui::DragFloat("right_y", &t.right.y(), 0.1f);
+		ImGui::DragFloat("right_z", &t.right.z(), 0.1f);
+		ImGui::DragFloat("forward_x", &t.forward.x(), 0.1f);
+		ImGui::DragFloat("forward_y", &t.forward.y(), 0.1f);
+		ImGui::DragFloat("forward_z", &t.forward.z(), 0.1f);
 	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :

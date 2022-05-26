@@ -1,5 +1,8 @@
 #include "Renderer/MeshRenderer.h"
 #include "entt/entt.hpp"
+#include "CommandBuffer.h"
+#include "Buffer.h"
+#include "Pipeline.h"
 
 nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),

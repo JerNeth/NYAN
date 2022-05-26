@@ -1,6 +1,7 @@
 #include "Renderer/MaterialManager.h"
 #include "Renderer/TextureManager.h"
 #include "VulkanWrapper/Sampler.h"
+#include "Buffer.h"
 
 nyan::MaterialManager::MaterialManager(vulkan::LogicalDevice& device, nyan::TextureManager& textureManager) :
 	DataManager(device),
@@ -38,7 +39,7 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 nyan::MaterialId nyan::MaterialManager::get_material(const std::string& name)
 {
 	if (m_materialIndex.find(name) == m_materialIndex.end()) {
-		Utility::log(std::format("Couldn't get material \"{}\"", name));
+		Utility::log().format("Couldn't get material \"{}\"", name);
 		return 0;
 	}
 	assert(m_materialIndex.find(name) != m_materialIndex.end());

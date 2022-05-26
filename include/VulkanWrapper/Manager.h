@@ -2,10 +2,9 @@
 #define VKMANAGER_H
 #pragma once
 #include "VulkanIncludes.h"
+#include "VulkanForwards.h"
 
 namespace vulkan {
-	class LogicalDevice;
-	class FenceHandle;
 	class FenceManager {
 	public:
 		FenceManager(LogicalDevice& device) : r_device(device) {

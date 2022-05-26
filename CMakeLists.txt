@@ -96,7 +96,7 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
 #add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC} ${MATH_SRC})
 add_library(FBXReader STATIC ${FBXREADER_SRC})
 target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
 target_link_libraries(FBXReader fbx z xml2)
@@ -116,7 +116,9 @@ add_executable(GLTFTest ${GLTFTest_SRC})
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
-target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma Vulkan::Vulkan volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
+#target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
+target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma  spirv-cross-core  EnTT imgui_entt_entity_editor )
+target_link_libraries(Engine PRIVATE imgui OptickCore stb)
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine FBXReader)
@@ -145,7 +147,6 @@ target_compile_features(FBXReader PUBLIC
 target_compile_features(Engine PUBLIC 
     cxx_std_20
 )
-
 if(WIN32)
     target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_WIN32_KHR)
 elseif(APPLE)
