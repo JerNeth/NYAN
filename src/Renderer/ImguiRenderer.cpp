@@ -5,6 +5,7 @@
 #include "Buffer.h"
 using namespace vulkan;
 
+static nyan::MaterialManager* manager;
 namespace MM {
 	template <>
 	void ComponentEditorWidget<nyan::Transform>(entt::registry& reg, entt::registry::entity_type e)
@@ -35,12 +36,22 @@ namespace MM {
 		ImGui::DragFloat("forward_y", &t.forward.y(), 0.1f);
 		ImGui::DragFloat("forward_z", &t.forward.z(), 0.1f);
 	}
+	template <>
+	void ComponentEditorWidget<nyan::MaterialId>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& t = reg.get<nyan::MaterialId>(e);
+		auto& mat = manager->get_material(t);
+		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
+		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
+	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
 	r_registry(registry),
 	ptr_window(window)
 {
+	manager = &renderManager.get_material_manager();
+
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -63,6 +74,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	ptr_window->configure_imgui();
 	m_editor.registerComponent<Transform>("Transform");
 	m_editor.registerComponent<PerspectiveCamera>("Camera");
+	m_editor.registerComponent<MaterialId>("Material");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}

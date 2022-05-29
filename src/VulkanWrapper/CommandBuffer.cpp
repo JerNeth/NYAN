@@ -1,4 +1,7 @@
 #include "CommandBuffer.h"
+
+#include <stdexcept>
+
 #include "Instance.h"
 #include "LogicalDevice.h"
 #include "Image.h"
@@ -287,7 +290,8 @@ void vulkan::CommandBuffer::end()
 			throw std::runtime_error("VK: could not end command buffer, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while ending command buffer", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }

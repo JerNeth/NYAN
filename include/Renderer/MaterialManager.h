@@ -22,6 +22,8 @@ namespace nyan {
 		void set_material(MaterialId idx, const MaterialData& data);
 		MaterialId add_material(const MaterialData& data);
 		MaterialId get_material(const std::string& name);
+		nyan::shaders::Material& get_material(MaterialId idx);
+		const nyan::shaders::Material& get_material(MaterialId idx) const;
 	private:
 
 		nyan::TextureManager& r_textureManager;

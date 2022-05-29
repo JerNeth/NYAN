@@ -128,8 +128,11 @@ namespace nyan {
 	class SceneManager {
 	public:
 		SceneManager(vulkan::LogicalDevice& device);
+		void set_dirlight(const nyan::shaders::DirectionalLight& light);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);
+		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse);
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);
+		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj, const Math::Mat<float, 4, 4, true>& projInverse);
 		uint32_t get_binding() const;
 		void update();
 		void upload();

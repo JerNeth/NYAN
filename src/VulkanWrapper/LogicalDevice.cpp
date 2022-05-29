@@ -1,4 +1,8 @@
 #include "LogicalDevice.h"
+
+#include <unordered_set>
+#include <stdexcept>
+
 #include "Shader.h"
 #include "Instance.h"
 #include "Sampler.h"
@@ -311,7 +315,8 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 			throw std::runtime_error("VK: could not submit to Queue, device lost");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while submitting queue", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	submissions.clear();
@@ -747,7 +752,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 			throw std::runtime_error("VK: could create image, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating Image", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	auto tmp = info;
@@ -801,7 +807,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 	}
 	VkImage image = VK_NULL_HANDLE;
 	if (auto result = vkCreateImage(m_device, &createInfo, m_allocator, &image); result != VK_SUCCESS) {
-		throw std::runtime_error("Vk: error creating image");
+		Utility::log_error().location().format("VK: error %d while creating sparse image", static_cast<int>(result));
+		throw std::runtime_error("VK: error");
 	}
 
 	VmaAllocationCreateInfo allocCreateInfo{

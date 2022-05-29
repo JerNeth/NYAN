@@ -71,7 +71,8 @@ void vulkan::WindowSystemInterface::begin_frame()
 				throw std::runtime_error("VK: could not acquire next image, fullscreen exclusive mode lost");
 			}
 			else if (result != VK_NOT_READY) {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+				Utility::log_error().location().format("VK: error %d while aquiring swapchain Images", static_cast<int>(result));
+				throw std::runtime_error("VK: error");
 			}
 		}
 		else {
@@ -120,7 +121,8 @@ void vulkan::WindowSystemInterface::end_frame()
 			destroy_swapchain();
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while presenting queue", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }
@@ -243,7 +245,8 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 			throw std::runtime_error("VK: could not create swapchain, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating swapchain", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 
@@ -259,7 +262,8 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 			throw std::runtime_error("VK: could not get swapchain image count, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while getting swapchain image count", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	m_swapchainImages.resize(imageCount);
@@ -271,7 +275,8 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 			throw std::runtime_error("VK: could not get swapchain images, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while getting swapchain images", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	return true;

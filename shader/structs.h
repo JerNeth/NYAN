@@ -15,6 +15,10 @@ struct Material {
 	uint normalSampler;
 	uint pbrTexId;
 	uint pbrSampler;
+	float metalness;
+	float roughness;
+	float anisotropy;
+	float IoR;
 };
 
 struct DirectionalLight {
@@ -33,14 +37,16 @@ struct PointLight {
 struct Scene {
 	mat4 view;
 	mat4 proj;
+	mat4 viewProj;
 	mat4 invView;
 	mat4 invProj;
+	mat4 invViewProj;
 	DirectionalLight dirLight1;
 	DirectionalLight dirLight2;
 	uint numLights;
-	uint pad;
-	uint pad1;
-	uint pad2;
+	float viewerPosX;
+	float viewerPosY;
+	float viewerPosZ;
 	PointLight pointLights[256];
 };
 

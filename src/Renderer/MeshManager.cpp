@@ -303,17 +303,51 @@ nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 
 }
 
+void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& light)
+{
+	m_sceneData.dirLight1 = light;
+	m_dirtyScene = true;
+}
+
 void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view)
 {
 	m_sceneData.view = view;
+	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.view.inverse(m_sceneData.invView);
+	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.viewerPosX = -m_sceneData.view.at(3, 0);
+	m_sceneData.viewerPosY = -m_sceneData.view.at(3, 1);
+	m_sceneData.viewerPosZ = -m_sceneData.view.at(3, 2);
+	m_dirtyScene = true;
+}
+
+void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse)
+{
+	m_sceneData.view = view;
+	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
+	m_sceneData.invView = viewInverse;
+	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.viewerPosX = -m_sceneData.view.at(3, 0);
+	m_sceneData.viewerPosY = -m_sceneData.view.at(3, 1);
+	m_sceneData.viewerPosZ = -m_sceneData.view.at(3, 2);
 	m_dirtyScene = true;
 }
 
 void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj)
 {
-	m_sceneData.proj = proj;	
+	m_sceneData.proj = proj;
+	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.proj.inverse(m_sceneData.invProj);
+	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_dirtyScene = true;
+}
+
+void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj, const Math::Mat<float, 4, 4, true>& projInverse)
+{
+	m_sceneData.proj = proj;
+	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
+	m_sceneData.invProj = projInverse;
+	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
 	m_dirtyScene = true;
 }
 

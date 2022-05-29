@@ -2,9 +2,6 @@
 #ifndef VKVULKANINCLUDES_H
 #define VKVULKANINCLUDES_H
 
-#ifdef _WIN32
-#define __PRETTY_FUNCTION__ __FUNCSIG__
-#endif
 #define NOMINMAX
 #ifdef __clang__
 	#pragma clang diagnostic push
@@ -55,27 +52,12 @@ constexpr bool debug = true;
 #endif
 #include "glfwIncludes.h"
 
-#include "MaxVals.h"
 
-#ifdef __clang__
-	#pragma clang diagnostic push
-#endif
-#ifdef _MSC_VER
-	#pragma warning(push, 0)
-	#pragma warning( disable : 26812 )
-#endif
-#include "spirv_cross.hpp"
-#ifdef _MSC_VER
-	#pragma warning(pop)
-#endif
-#ifdef __clang__
-	#pragma clang diagnostic pop
-#endif
+#include "MaxVals.h"
 #include <array>
 #include <bitset>
 #include <vector>
 #include <fstream>
-#include <assert.h>
 #include <unordered_map>
 #include <shared_mutex>
 #include <stdexcept>

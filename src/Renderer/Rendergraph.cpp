@@ -247,7 +247,7 @@ bool nyan::Renderpass::is_compute_write(RenderResourceId id) const
 
 bool nyan::Renderpass::is_attachment(RenderResourceId id) const
 {
-	return std::find(m_attachments.cbegin(), m_attachments.cend(), id) != m_attachments.cend();
+	return std::find(m_attachments.cbegin(), m_attachments.cend(), id) != m_attachments.cend() || m_depth ==id || m_stencil == id;
 }
 
 bool nyan::Renderpass::is_write(const RenderResource& resource) const

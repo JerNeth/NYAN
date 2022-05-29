@@ -16,7 +16,8 @@ vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyInde
 			throw std::runtime_error("VK: could not create command pool, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating command pool", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }
@@ -61,7 +62,8 @@ VkCommandBuffer vulkan::CommandPool::request_command_buffer()
 				throw std::runtime_error("VK: could not allocate command buffers, out of device memory");
 			}
 			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+				Utility::log_error().location().format("VK: error %d while allocating command buffers", static_cast<int>(result));
+				throw std::runtime_error("VK: error");
 			}
 		}
 		m_primaryBuffers.push_back(buffer);
@@ -92,7 +94,8 @@ VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 				throw std::runtime_error("VK: could not allocate command buffers, out of device memory");
 			}
 			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+				Utility::log_error().location().format("VK: error %d while allocating secondary command buffers", static_cast<int>(result));
+				throw std::runtime_error("VK: error");
 			}
 		}
 		m_secondaryBuffers.push_back(buffer);

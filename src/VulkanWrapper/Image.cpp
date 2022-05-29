@@ -28,7 +28,8 @@ vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& i
 			throw std::runtime_error("VK: could not create image view, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating ImageView", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }

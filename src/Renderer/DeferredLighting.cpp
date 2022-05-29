@@ -41,12 +41,15 @@ nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::re
 void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 {
 	PushConstants constants{
+		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 		.albedoBinding {r_pass.get_read_bind("g_Albedo")},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalBinding {r_pass.get_read_bind("g_Normal")},
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.pbrBinding {r_pass.get_read_bind("g_PBR")},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.depthBinding {r_pass.get_read_bind("g_Depth")},
+		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 	};
 	bind.push_constants(constants);
 	bind.draw(3, 1);

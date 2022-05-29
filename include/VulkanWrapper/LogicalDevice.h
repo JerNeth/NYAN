@@ -3,7 +3,10 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
-#include <Util>
+
+#include <functional>
+
+#include "Util"
 #include "Allocator.h"
 #include "Manager.h"
 #include "DescriptorSet.h"

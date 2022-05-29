@@ -30,7 +30,7 @@ void main() {
     uint meshId = instance.meshId & 0x00FFFFFF;
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
 	mat4x3 model = fetchTransformMatrix(instance);
-	gl_Position = scenes[constants.sceneBinding].scene.proj * scenes[constants.sceneBinding].scene.view * vec4( model *vec4( inPosition, 1.0), 1.0);
+	gl_Position = scenes[constants.sceneBinding].scene.viewProj * vec4( model *vec4( inPosition, 1.0), 1.0);
     vec3 tangent = normalize(vec3(model * vec4(inTangent.xyz, 0)));
     vec3 normal = normalize(vec3(model * vec4(inNormal.xyz, 0)));
 //    Uvs uvs = Uvs(mesh.uvs);

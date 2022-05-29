@@ -28,19 +28,16 @@ void main() {
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
     uint meshId = instance.meshId & 0x00FFFFFF;
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
-    Scene scene = scenes[constants.sceneBinding].scene;
-	DirectionalLight light1 = scene.dirLight1;
-	DirectionalLight light2 = scene.dirLight2;
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
     vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
-    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg, 0);
+    vec3 normal = vec3(texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg, 0) ;
     normal.z = sqrt(1-normal.x*normal.x + normal.y*normal.y);
 	mat3 tangentFrame = mat3(fragTangent, fragBitangent, fragNormal);
 
     normal = normalize(tangentFrame * normal);
     outAlbedo = albedo;
-    outNormal = vec4(normal.xy, normal.z, 0);
-    outPBR = vec4(0, 0, 0, 0);
+    outNormal = vec4(normal.xyz * 0.5 + 0.5, 0);
+    outPBR = vec4(material.metalness, material.roughness, 0, 0);
     //outColor = vec4(0.2,0.6,0.5,1.0);
 }
 

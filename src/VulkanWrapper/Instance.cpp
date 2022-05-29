@@ -1,4 +1,6 @@
 #include "Instance.h"
+#include <stdexcept>
+
 #include "LogicalDevice.h"
 
 
@@ -79,7 +81,8 @@ void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 			throw std::runtime_error("VK: could not create win32 surface, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating Win32 Surface", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }
@@ -98,7 +101,8 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 			throw std::runtime_error("VK: could not create Xlib surface, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating xlib surface", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }
@@ -188,7 +192,8 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 			throw std::runtime_error("VK: could not create instance, out of device memory");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating Instance", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	volkLoadInstance(m_instance);
@@ -204,7 +209,8 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 			.pUserData = nullptr
 		};
 		if (auto result = vkCreateDebugReportCallbackEXT(m_instance, &debugReportCallbackCreateInfo, m_allocator, &m_debugReport); result != VK_SUCCESS) {
-			throw std::runtime_error("VK: could not create debug report callback");
+			Utility::log_error().location().format("VK: error %d while creating debug report callback", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 }
@@ -381,7 +387,8 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_de
 			throw std::runtime_error("VK: could not create device, extension not present");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating Logical Device", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	return std::make_unique<LogicalDevice>(instance,*this, logicalDevice, m_genericQueueFamily, m_computeQueueFamily, m_transferQueueFamily);

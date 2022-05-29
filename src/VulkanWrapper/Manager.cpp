@@ -1,4 +1,7 @@
 #include "Manager.h"
+
+#include <stdexcept>
+
 #include "LogicalDevice.h"
 
 vulkan::FenceManager::~FenceManager() noexcept {
@@ -74,7 +77,8 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 				throw std::runtime_error("VK: could not create Semaphore, out of device memory");
 			}
 			else {
-				throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+				Utility::log_error().location().format("VK: error %d while creating semaphore", static_cast<int>(result));
+				throw std::runtime_error("VK: error");
 			}
 		}
 		return semaphore;

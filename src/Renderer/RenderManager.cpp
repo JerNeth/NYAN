@@ -122,7 +122,6 @@ void nyan::RenderManager::update()
 			perspective = m_registry.get<PerspectiveCamera>(m_primaryCamera);
 		}
 
-
 		m_sceneManager.set_proj_matrix(
 			Math::Mat<float, 4, 4, true>::perspectiveInverseDepthFovXLH(perspective.nearPlane, perspective.fovX, perspective.aspect));
 		auto cameraPos = static_cast<Math::vec3>(transformMatrix.col(3));
@@ -131,6 +130,12 @@ void nyan::RenderManager::update()
 		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right));
 		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
 
+		nyan::shaders::DirectionalLight light;
+		light.enabled = true;
+		light.color = Math::vec3{ 1, 1, 1 };
+		light.intensity = 1;
+		light.dir = Math::vec3{0.577, 0.577, 0.577};
+		m_sceneManager.set_dirlight(light);
 	}
 	m_meshManager.upload();
 	m_materialManager.upload();

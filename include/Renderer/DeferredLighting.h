@@ -11,12 +11,15 @@ namespace nyan {
 
 	class DeferredLighting {
 		struct PushConstants {
+			uint32_t sceneBinding;
 			uint32_t albedoBinding;
 			uint32_t albedoSampler;
 			uint32_t normalBinding;
 			uint32_t normalSampler;
 			uint32_t pbrBinding;
 			uint32_t pbrSampler;
+			uint32_t depthBinding;
+			uint32_t depthSampler;
 		};
 	public:
 		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);

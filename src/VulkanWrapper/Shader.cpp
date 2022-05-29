@@ -1,9 +1,23 @@
 #include "Shader.h"
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
+#ifdef __clang__
+#pragma clang diagnostic push
+#endif
+#ifdef _MSC_VER
+#pragma warning(push, 0)
+#pragma warning( disable : 26812 )
+#endif
+#include "spirv_cross.hpp"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
-	m_parent(parent),
-	m_layout{}
+	m_parent(parent)
 {
 	Utility::VectorHash<uint32_t> hasher;
 	m_hashValue = hasher(shaderCode);
@@ -22,28 +36,28 @@ vulkan::ShaderStage vulkan::Shader::get_stage()
 	return m_stage;
 }
 
-static inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp)
-{
-	auto set = comp.get_decoration(resource.id, spv::DecorationDescriptorSet);
-	auto binding = comp.get_decoration(resource.id, spv::DecorationBinding);
-	const auto& type = comp.get_type(resource.type_id);
-	return { set, binding, type };
-}
+//static inline std::tuple<uint32_t, uint32_t, spirv_cross::SPIRType> get_values(const spirv_cross::Resource& resource, const spirv_cross::Compiler& comp)
+//{
+//	auto set = comp.get_decoration(resource.id, spv::DecorationDescriptorSet);
+//	auto binding = comp.get_decoration(resource.id, spv::DecorationBinding);
+//	const auto& type = comp.get_type(resource.type_id);
+//	return { set, binding, type };
+//}
 
-inline void vulkan::Shader::array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding) const
-{
-
-	layouts[set].descriptors[binding].stages.set(m_stage);
-	//layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
-	auto& size = layouts[set].descriptors[binding].arraySize;
-	if (type.array.empty()) {
-		size = 1;
-	}
-	else {
-		//TODO Error handling
-		size = static_cast<uint8_t>(type.array.front());
-	}
-}
+//static inline void array_info(std::array<DescriptorSetLayout, MAX_DESCRIPTOR_SETS>& layouts, const spirv_cross::SPIRType& type, uint32_t set, uint32_t binding, vulkan::ShaderStage stage)
+//{
+//
+//	layouts[set].descriptors[binding].stages.set(stage);
+//	//layouts[set].stages[binding] |= 1u << static_cast<uint32_t>(m_stage);
+//	auto& size = layouts[set].descriptors[binding].arraySize;
+//	if (type.array.empty()) {
+//		size = 1;
+//	}
+//	else {
+//		//TODO Error handling
+//		size = static_cast<uint8_t>(type.array.front());
+//	}
+//}
 static vulkan::ShaderStage convert_spriv_execution_model(spv::ExecutionModel model) {
 	switch (model) {
 	case spv::ExecutionModel::ExecutionModelVertex:
@@ -92,80 +106,77 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	//auto specs = comp.get_specialization_constants();
 	//const auto& val = comp.get_constant(specs[0].id);
 	//auto t =val.constant_type;
-
-	for (auto& uniformBuffer : resources.uniform_buffers) {
-		auto [set, binding, type] = get_values(uniformBuffer, comp);
-		m_layout.used.set(set);
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformBuffer;
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& sampledImage : resources.sampled_images) {
-		auto [set, binding, type] = get_values(sampledImage, comp);
-		m_layout.used.set(set);
-		if (type.image.dim == spv::DimBuffer) {
-			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
-		}
-		else {
-			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::CombinedImageSampler;
-		}
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& subpassInput : resources.subpass_inputs) {
-		auto [set, binding, type] = get_values(subpassInput, comp);
-		m_layout.used.set(set);
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::InputAttachment;
-
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& separateImage : resources.separate_images) {
-		auto [set, binding, type] = get_values(separateImage, comp);
-		m_layout.used.set(set);
-		if (type.image.dim == spv::DimBuffer) {
-			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
-		}
-		else {
-			m_layout.descriptors[set].descriptors[binding].type = DescriptorType::SampledImage;
-		}
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& separateSampler : resources.separate_samplers) {
-		auto [set, binding, type] = get_values(separateSampler, comp);
-		m_layout.used.set(set); 
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::Sampler;
-
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& storageImage : resources.storage_images) {
-		auto [set, binding, type] = get_values(storageImage, comp);
-		m_layout.used.set(set);
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageImage;
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& storageImage : resources.storage_buffers) {
-		auto [set, binding, type] = get_values(storageImage, comp);
-		m_layout.used.set(set); 
-		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageBuffer;
-		array_info(m_layout.descriptors, type, set, binding);
-	}
-	for (auto& attrib : resources.stage_inputs) {
-		if (m_stage == vulkan::ShaderStage::Vertex) {
-			auto& type = comp.get_type(attrib.type_id);
-			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			assert(type.vecsize <= 255);
-			m_layout.attributeElementCounts[location] = static_cast<uint8_t>(type.vecsize);
-			m_layout.inputs.set(location);
-		}
-	}
-	for (auto& attrib : resources.stage_outputs) {
-		if (m_stage == vulkan::ShaderStage::Fragment) {
-			auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
-			m_layout.outputs.set(location);
-		}
-	}
-	if (!resources.push_constant_buffers.empty()) {
-		m_layout.pushConstantRange.stageFlags |= static_cast<VkShaderStageFlagBits>(1u << static_cast<uint32_t>(m_stage));
-		m_layout.pushConstantRange.size =  static_cast<uint32_t>(comp.get_declared_struct_size(comp.get_type(resources.push_constant_buffers.front().base_type_id)));
-	}
+	//for (auto& uniformBuffer : resources.uniform_buffers) {
+	//	auto [set, binding, type] = get_values(uniformBuffer, comp);
+	//	m_layout.used.set(set);
+	//	m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformBuffer;
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& sampledImage : resources.sampled_images) {
+	//	auto [set, binding, type] = get_values(sampledImage, comp);
+	//	m_layout.used.set(set);
+	//	if (type.image.dim == spv::DimBuffer) {
+	//		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
+	//	}
+	//	else {
+	//		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::CombinedImageSampler;
+	//	}
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& subpassInput : resources.subpass_inputs) {
+	//	auto [set, binding, type] = get_values(subpassInput, comp);
+	//	m_layout.used.set(set);
+	//	m_layout.descriptors[set].descriptors[binding].type = DescriptorType::InputAttachment;
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& separateImage : resources.separate_images) {
+	//	auto [set, binding, type] = get_values(separateImage, comp);
+	//	m_layout.used.set(set);
+	//	if (type.image.dim == spv::DimBuffer) {
+	//		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::UniformTexelBuffer;
+	//	}
+	//	else {
+	//		m_layout.descriptors[set].descriptors[binding].type = DescriptorType::SampledImage;
+	//	}
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& separateSampler : resources.separate_samplers) {
+	//	auto [set, binding, type] = get_values(separateSampler, comp);
+	//	m_layout.used.set(set); 
+	//	m_layout.descriptors[set].descriptors[binding].type = DescriptorType::Sampler;
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& storageImage : resources.storage_images) {
+	//	auto [set, binding, type] = get_values(storageImage, comp);
+	//	m_layout.used.set(set);
+	//	m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageImage;
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& storageImage : resources.storage_buffers) {
+	//	auto [set, binding, type] = get_values(storageImage, comp);
+	//	m_layout.used.set(set); 
+	//	m_layout.descriptors[set].descriptors[binding].type = DescriptorType::StorageBuffer;
+	//	array_info(m_layout.descriptors, type, set, binding);
+	//}
+	//for (auto& attrib : resources.stage_inputs) {
+	//	if (m_stage == vulkan::ShaderStage::Vertex) {
+	//		auto& type = comp.get_type(attrib.type_id);
+	//		auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
+	//		assert(type.vecsize <= 255);
+	//		m_layout.attributeElementCounts[location] = static_cast<uint8_t>(type.vecsize);
+	//		m_layout.inputs.set(location);
+	//	}
+	//}
+	//for (auto& attrib : resources.stage_outputs) {
+	//	if (m_stage == vulkan::ShaderStage::Fragment) {
+	//		auto location = comp.get_decoration(attrib.id, spv::DecorationLocation);
+	//		m_layout.outputs.set(location);
+	//	}
+	//}
+	//if (!resources.push_constant_buffers.empty()) {
+	//	m_layout.pushConstantRange.stageFlags |= static_cast<VkShaderStageFlagBits>(1u << static_cast<uint32_t>(m_stage));
+	//	m_layout.pushConstantRange.size =  static_cast<uint32_t>(comp.get_declared_struct_size(comp.get_type(resources.push_constant_buffers.front().base_type_id)));
+	//}
 }
 
 VkPipelineShaderStageCreateInfo vulkan::Shader::get_create_info()
@@ -207,7 +218,8 @@ void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 			throw std::runtime_error("VK: could not create shader module, invalid shader NV");
 		}
 		else {
-			throw std::runtime_error("VK: error " + std::to_string((int)result) + std::string(" in ") + std::string(__PRETTY_FUNCTION__) + std::to_string(__LINE__));
+			Utility::log_error().location().format("VK: error %d while creating Shader Module", static_cast<int>(result));
+			throw std::runtime_error("VK: error");
 		}
 	}
 	

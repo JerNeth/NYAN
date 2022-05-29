@@ -33,7 +33,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
 
 	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
 	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 500, 500}, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
@@ -59,9 +59,9 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{0.f, 0.f, 500.f},
+			.position{0.f, 100.f, 500.f},
 			.scale{},
-			.orientation{0.f, 180.f, 0.f},
+			.orientation{-10.f, 180.f, 0.f},
 		});
 	registry.emplace<PerspectiveCamera>(camera, 
 		PerspectiveCamera {
@@ -77,6 +77,7 @@ int main() {
 	for (const auto& a : meshes) {
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
 		auto entity = registry.create();
+		registry.emplace <MaterialId >(entity, renderManager.get_material_manager().get_material(a.material));
 		registry.emplace<MeshID>(entity, meshId);
 		auto instance = 
 			InstanceData{
@@ -87,6 +88,12 @@ int main() {
 		instance.instance.instanceCustomIndex = meshId;
 
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
+		registry.emplace<Transform>(entity,
+			Transform{
+				.position{},
+				.scale{},
+				.orientation{},
+			});
 		//registry.emplace<Transform>(entity,
 		//	Transform{
 		//		.position{},
@@ -104,9 +111,9 @@ int main() {
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
-	deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
+	deferredPass.add_depth_attachment("g_Depth", nyan::ImageAttachment
 		{
-			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
+			.format{VK_FORMAT_D32_SFLOAT},
 			.clearColor{0.f, 0.f, 0.f, 0.f},
 		});
 	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
@@ -119,7 +126,7 @@ int main() {
 	deferredPass.add_attachment("g_Normal", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_R8G8B8A8_UNORM},
-			.clearColor{1.f, 0.f, 0.f, 1.f},
+			.clearColor{0.f, 0.f, 1.f, 1.f},
 		});
 	deferredPass.add_attachment("g_PBR", nyan::ImageAttachment
 		{
@@ -132,6 +139,7 @@ int main() {
 	deferredLightingPass.add_read("g_Albedo");
 	deferredLightingPass.add_read("g_Normal");
 	deferredLightingPass.add_read("g_PBR");
+	deferredLightingPass.add_read("g_Depth");
 	deferredLightingPass.add_attachment("SpecularLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_R16G16B16A16_SFLOAT},

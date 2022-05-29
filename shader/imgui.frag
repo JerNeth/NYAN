@@ -1,6 +1,8 @@
 #version 450 core
-#extension GL_KHR_vulkan_glsl:enable
 #extension GL_EXT_nonuniform_qualifier:require
+#extension GL_GOOGLE_include_directive : enable
+#include "common.glsl"
+
 layout(location = 0) out vec4 fColor;
 
 //layout(set = 0, binding = 0) buffer ssbos[];
@@ -22,6 +24,6 @@ layout(location = 0) in struct { vec4 Color; vec2 UV; } In;
 void main()
 {
     
-    fColor = In.Color * texture(sampler2D(textures[pc.texId], samplers[pc.samplerId]), In.UV.st);
+    fColor = fromLinear(In.Color * texture(sampler2D(textures[pc.texId], samplers[pc.samplerId]), In.UV.st));
     //fColor = In.Color * texture(sampler2D(textures[0], samplers[4]), In.UV.st);
 }

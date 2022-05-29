@@ -3,6 +3,7 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
+#include <unordered_set>
 
 namespace vulkan {
 	class FenceManager {

@@ -5,6 +5,7 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "common.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -23,8 +24,8 @@ void main() {
 //    float diff = max(dot(normal, constants.lightDir.xyz), 0.0);
 //    vec3 diffuse = diff * constants.lightColor.xyz;
 //
-    outColor = texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
-               texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord) ;
+    outColor = fromLinear(texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
+               texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord)) ;
     
     
     //outColor = vec4(subpassLoad(inputColor).xyz * (diffuse + ambient), 1.0);
