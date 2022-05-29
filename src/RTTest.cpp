@@ -22,8 +22,9 @@ int main() {
 	//Possible alternative: Real-Time Polygonal-Light Shading with Linearly Transformed Cosines +
 	//						REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS
 	//Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
-
-
+	//https://www.shadertoy.com/view/7dffD2
+	//Physics and Math of Shading Naty Hoffman 2k Siggraph 2015
+	//Sampling the GGX Distribution of Visible Normals
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();
