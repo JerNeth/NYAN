@@ -17,6 +17,8 @@ layout(std430, push_constant) uniform PushConstants
     uint pbrSampler;
     uint depthBinding;
     uint depthSampler;
+    uint stencilBinding;
+    uint stencilSampler;
 } constants;
 
 layout(location = 0) in vec2 inTexCoord;
@@ -96,6 +98,11 @@ void main() {
 	DirectionalLight light1 = scene.dirLight1;
 	DirectionalLight light2 = scene.dirLight2;
     
+    uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_FragCoord.xy), 0).x;
+
+    if(stencil == 0) {
+        discard;
+    } else {
     vec3 normal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord).xyz * 2.0 - 1.0;
     vec4 pbr = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inTexCoord);
     vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
@@ -128,6 +135,7 @@ void main() {
     //outSpecular = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
     outSpecular = vec4(specular, 1);
     outDiffuse = vec4(diffuse,1);
+    }
     //outDiffuse = vec4(albedo.xyz * NdotL,1);
     //outDiffuse = vec4(LdotV, NdotL, NdotV,1);
     //outDiffuse = vec4(light1.dir,1);

@@ -161,7 +161,7 @@ namespace Math {
 		constexpr unorm() : data(0) {
 		}
 		constexpr unorm(float f) {
-			constexpr auto dMax = static_cast<T>((1 << ((sizeof(T) * 8))) - 1);
+			constexpr auto dMax = static_cast<T>(~static_cast<T>(0));
 			constexpr auto max = static_cast<float>(dMax);
 			data = std::min(static_cast<T>(std::round(f * max)), T(-1));
 		}
@@ -179,11 +179,11 @@ namespace Math {
 		constexpr snorm() : data(0) {
 		}
 		constexpr snorm(float f) {
-			constexpr auto max = static_cast<float>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
+			constexpr auto max = static_cast<float>(static_cast<T>(-1) >> 1);
 			data = static_cast<T>(std::round(Math::clamp(f , -1.0f, 1.0f) * max));
 		}
 		operator float() const {
-			constexpr auto max = 1.f / static_cast<float>(static_cast<T>((1 << ((sizeof(T) * 8)) - 1) - 1));
+			constexpr auto max = 1.f / static_cast<float>(static_cast<T>(-1) >> 1);
 			return std::max(static_cast<float>(data) * max, -1.0f);
 		}
 		T data;

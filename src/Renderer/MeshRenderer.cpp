@@ -104,6 +104,22 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
 	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
 	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
+	staticTangentConfig.dynamicState.stencil_test_enable = VK_TRUE;
+	staticTangentConfig.dynamicState.stencil_front_reference = 0;
+	staticTangentConfig.dynamicState.stencil_front_write_mask = 0xFF;
+	staticTangentConfig.dynamicState.stencil_front_compare_mask = 0xFF;
+	staticTangentConfig.dynamicState.stencil_front_compare_op = VK_COMPARE_OP_ALWAYS;
+	staticTangentConfig.dynamicState.stencil_front_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencil_front_pass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencil_front_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencil_back_reference = 0;
+	staticTangentConfig.dynamicState.stencil_back_write_mask = 0xFF;
+	staticTangentConfig.dynamicState.stencil_back_compare_mask = 0xFF;
+	staticTangentConfig.dynamicState.stencil_back_compare_op = VK_COMPARE_OP_ALWAYS;
+	staticTangentConfig.dynamicState.stencil_back_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencil_back_pass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+
 	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
 }
 

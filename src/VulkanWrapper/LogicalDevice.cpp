@@ -1762,6 +1762,9 @@ void vulkan::LogicalDevice::FrameResource::begin()
 			fences.push_back(fence);
 		auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
 		assert(result != VK_ERROR_DEVICE_LOST);
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Couldn't wait for fence");
+		}
 #ifdef DEBUGSUBMISSIONS
 		std::cout << "Frame(" << std::to_string(r_device.m_currentFrame) << ")\n\t FencesWait: ";
 		for (auto& fence : fences)

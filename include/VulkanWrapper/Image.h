@@ -378,30 +378,6 @@ namespace vulkan {
 			info.layout = VK_IMAGE_LAYOUT_GENERAL;
 			return info;
 		}
-		static uint32_t compute_view_formats(const ImageInfo& info, std::array<VkFormat, 2>& formats) {
-			switch (info.format) {
-			case VK_FORMAT_R8G8B8A8_UNORM:
-			case VK_FORMAT_R8G8B8A8_SRGB:
-				formats[0] = VK_FORMAT_R8G8B8A8_UNORM;
-				formats[1] = VK_FORMAT_R8G8B8A8_SRGB;
-				return 2;
-
-			case VK_FORMAT_B8G8R8A8_UNORM:
-			case VK_FORMAT_B8G8R8A8_SRGB:
-				formats[0] = VK_FORMAT_B8G8R8A8_UNORM;
-				formats[1] = VK_FORMAT_B8G8R8A8_SRGB;
-				return 2;
-
-			case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
-			case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-				formats[0] = VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-				formats[1] = VK_FORMAT_A8B8G8R8_SRGB_PACK32;
-				return 2;
-
-			default:
-				return 0;
-			}
-		}
 		static inline VkImageAspectFlags format_to_aspect_mask(VkFormat format)
 		{
 			switch (format)
@@ -426,6 +402,35 @@ namespace vulkan {
 				return VK_IMAGE_ASPECT_COLOR_BIT;
 			}
 		}
+		static inline bool is_depth(VkFormat format)
+		{
+			switch (format)
+			{
+			case VK_FORMAT_D16_UNORM_S8_UINT:
+			case VK_FORMAT_D24_UNORM_S8_UINT:
+			case VK_FORMAT_D32_SFLOAT_S8_UINT:
+			case VK_FORMAT_D16_UNORM:
+			case VK_FORMAT_D32_SFLOAT:
+			case VK_FORMAT_X8_D24_UNORM_PACK32:
+				return true;
+			default:
+				return false;
+			}
+		}
+		static inline bool is_stencil(VkFormat format)
+		{
+			switch (format)
+			{
+			case VK_FORMAT_S8_UINT:
+			case VK_FORMAT_D16_UNORM_S8_UINT:
+			case VK_FORMAT_D24_UNORM_S8_UINT:
+			case VK_FORMAT_D32_SFLOAT_S8_UINT:
+				return true;
+			default:
+				return false;
+			}
+		}
+
 		VkImageViewType view_type() const noexcept {
 			switch (type) {
 			case VK_IMAGE_TYPE_1D:
@@ -526,84 +531,37 @@ namespace vulkan {
 		void append_allocations(const std::vector< AllocationHandle>& allocations);
 		void drop_allocations(uint32_t count);
 
-		ImageView* get_view() noexcept {
-			return &(*m_view);
-		}
-		const ImageView* get_view() const noexcept {
-			return &(*m_view);
-		}
+		ImageView* get_view() noexcept;
+		const ImageView* get_view() const noexcept;
+		ImageView* get_stencil_view() noexcept;
+		const ImageView* get_stencil_view() const noexcept;
+		ImageView* get_depth_view() noexcept;
+		const ImageView* get_depth_view() const noexcept;
 		ImageView* change_view_mip_level(uint32_t mip);
 
-		uint32_t get_available_mip() const noexcept {
-			return m_availableMip;
-		}
-		void set_available_mip(uint32_t mip) noexcept {
-			if(mip <= m_mipTail)
-				m_availableMip = mip;
-		}
-		bool is_sparse() const noexcept {
-			return m_info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
-		}
-		uint32_t get_mip_tail() const noexcept {
-			return m_mipTail;
-		}
-		uint32_t get_width(uint32_t mipLevel = 0) const noexcept {
-			return Math::max(1u, m_info.width >> mipLevel);
-		}
-		uint32_t get_height(uint32_t mipLevel = 0) const noexcept {
-			return Math::max(1u, m_info.height >> mipLevel);
-		}
-		uint32_t get_depth(uint32_t mipLevel = 0) const noexcept {
-			return Math::max(1u, m_info.depth >> mipLevel);
-		}
-		VkImage get_handle() const noexcept {
-			return m_vkHandle;
-		}
-		VkImageUsageFlags get_usage() const noexcept {
-			return m_info.usage;
-		}
-		const ImageInfo& get_info() const {
-			return m_info;
-		}
-		VkFormat get_format() const {
-			return m_info.format;
-		}
-		void set_optimal(bool optimal = true) noexcept {
-			m_optimal = optimal;
-		}
-		bool is_optimal() const noexcept {
-			return m_optimal;
-		}
-		void disown_image() noexcept {
-			m_ownsImage = false;
-		}
-		void set_layout(VkImageLayout format) noexcept {
-			m_info.layout = format;
-		}
-		void disown() noexcept {
-			disown_image();
-		}
-		VkPipelineStageFlags get_stage_flags() const noexcept {
-			return m_stageFlags;
-		}
-		VkAccessFlags get_access_flags() const noexcept {
-			return m_accessFlags;
-		}
-		void set_stage_flags(VkPipelineStageFlags flags)  noexcept {
-			m_stageFlags =flags;
-		}
-		void set_access_flags(VkAccessFlags flags) noexcept {
-			m_accessFlags =flags;
-		}
-		void set_single_mip_tail(bool mipTail) noexcept {
-			m_singleMipTail = mipTail;
-		}
-		bool is_being_resized() const noexcept {
-			return m_isBeingResized;
-		}
-		void set_being_resized(bool resized) noexcept {
-			m_isBeingResized = resized;
-		}
+		uint32_t get_available_mip() const noexcept;
+		void set_available_mip(uint32_t mip) noexcept;
+		bool is_sparse() const noexcept;
+		uint32_t get_mip_tail() const noexcept;
+		uint32_t get_width(uint32_t mipLevel = 0) const noexcept;
+		uint32_t get_height(uint32_t mipLevel = 0) const noexcept;
+		uint32_t get_depth(uint32_t mipLevel = 0) const noexcept;
+		VkImage get_handle() const noexcept;
+		VkImageUsageFlags get_usage() const noexcept;
+		const ImageInfo& get_info() const;
+		VkFormat get_format() const;
+		void set_optimal(bool optimal = true) noexcept;
+		bool is_optimal() const noexcept;
+		void disown_image() noexcept;
+		void set_layout(VkImageLayout format) noexcept;
+		void disown() noexcept;
+		VkPipelineStageFlags get_stage_flags() const noexcept;
+		VkAccessFlags get_access_flags() const noexcept;
+		void set_stage_flags(VkPipelineStageFlags flags)  noexcept;
+		void set_access_flags(VkAccessFlags flags) noexcept;
+		void set_single_mip_tail(bool mipTail) noexcept;
+		bool is_being_resized() const noexcept;
+		void set_being_resized(bool resized) noexcept;
 		static inline VkPipelineStageFlags possible_stages_from_image_usage(VkImageUsageFlags usage)
 		{
 			VkPipelineStageFlags flags{};
@@ -683,6 +641,8 @@ namespace vulkan {
 		ImageInfo m_info;
 		std::vector<AllocationHandle> m_allocations;
 		ImageViewHandle m_view;
+		std::optional<ImageViewHandle> m_stencilView;
+		std::optional<ImageViewHandle> m_depthView;
 		uint32_t m_availableMip = 0;
 		uint32_t m_mipTail = 0;
 		bool m_singleMipTail = false; //If false => first <Layer> allocations are mip tails, otherwise first allocation only

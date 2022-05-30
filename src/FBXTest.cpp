@@ -111,10 +111,10 @@ int main() {
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
-	deferredPass.add_depth_attachment("g_Depth", nyan::ImageAttachment
+	deferredPass.add_depth_stencil_attachment("g_Depth", nyan::ImageAttachment
 		{
-			.format{VK_FORMAT_D32_SFLOAT},
-			.clearColor{0.f, 0.f, 0.f, 0.f},
+			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
+			.clearColor{0.f, std::bit_cast<float>(static_cast<uint32_t>(static_cast<int8_t>(0))), 0.f, 0.f},
 		});
 	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
 		{
@@ -139,7 +139,8 @@ int main() {
 	deferredLightingPass.add_read("g_Albedo");
 	deferredLightingPass.add_read("g_Normal");
 	deferredLightingPass.add_read("g_PBR");
-	deferredLightingPass.add_read("g_Depth");
+	deferredLightingPass.add_read("g_Depth", nyan::Renderpass::Read::Type::ImageDepth);
+	deferredLightingPass.add_read("g_Depth", nyan::Renderpass::Read::Type::ImageStencil);
 	deferredLightingPass.add_attachment("SpecularLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
@@ -148,7 +149,7 @@ int main() {
 	deferredLightingPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.f, 0.f, 0.f, 1.f},
+			.clearColor{0.5f, 0.1f, 0.5f, 1.f},
 		});
 
 	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Graphics);

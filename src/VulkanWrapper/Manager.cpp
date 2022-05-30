@@ -51,8 +51,13 @@ void vulkan::FenceManager::reset_fence(VkFence fence) {
 	auto fence_ = fence;
 	auto status = vkGetFenceStatus(r_device.get_device(), fence);
 	assert(status == VK_SUCCESS);
-	vkResetFences(r_device.get_device(), 1, &fence_);
 	m_fences.push_back(fence_);
+	if (status == VK_SUCCESS) {
+		vkResetFences(r_device.get_device(), 1, &fence_);
+	}
+	else {
+		throw std::runtime_error("Couldn't reset fence");
+	}
 }
 vulkan::SemaphoreManager::~SemaphoreManager() noexcept
 {

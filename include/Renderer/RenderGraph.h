@@ -38,8 +38,6 @@ namespace nyan {
 		Attachment attachment;
 		bool storageImage = false;
 		vulkan::ImageView* handle = nullptr;
-		uint32_t writeBinding = InvalidResourceId;
-		uint32_t readBinding = InvalidResourceId;
 	};
 	struct Barrier {
 		RenderResourceId resourceId = InvalidResourceId;
@@ -77,6 +75,29 @@ namespace nyan {
 		VkAccessFlags dstAccess = 0;
 	};
 	class Renderpass {
+	public:
+		struct Read {
+			enum class Type {
+				ImageColor,
+				ImageDepth,
+				ImageStencil
+			};
+			RenderResourceId id;
+			Type type;
+			VkImageView view;
+			uint32_t binding = InvalidResourceId;
+		};
+		struct Write {
+			enum class Type {
+				Graphics,
+				Compute
+			};
+			RenderResourceId id;
+			Type type;
+			VkImageView view;
+			uint32_t binding = InvalidResourceId;
+		};
+	private:
 		friend class Rendergraph;
 	public:
 		enum class Type :uint8_t{
@@ -88,14 +109,18 @@ namespace nyan {
 		Renderpass(Renderpass&&) = default;
 		Renderpass& operator=(const Renderpass&) = delete;
 		Renderpass& operator=(Renderpass&&) = default;
-		void add_read(const std::string& name);
+		void add_read(const std::string& name, Renderpass::Read::Type readType = Read::Type::ImageColor);
 		void add_attachment(const std::string& name, ImageAttachment attachment);
+		void add_attachment(const std::string& name);
 		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.48f, 0.66f, 0.35f, 1.f});
 		void add_depth_attachment(const std::string& name, ImageAttachment attachment);
+		void add_depth_attachment(const std::string& name);
 		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment);
+		void add_depth_stencil_attachment(const std::string& name);
 		void add_stencil_attachment(const std::string& name, ImageAttachment attachment);
-		void add_write(const std::string& name, ImageAttachment attachment, bool compute = false);
-		void add_swapchain_write(bool compute = false, Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f } );
+		void add_stencil_attachment(const std::string& name);
+		void add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics);
+		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f }, Renderpass::Write::Type writeType = Write::Type::Graphics);
 		//void add_read_dependency(const std::string& name, bool storageImage = false);
 		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&, Renderpass&) > & functor, bool renderpass) {
 			m_renderFunctions.push_back(functor);
@@ -118,8 +143,8 @@ namespace nyan {
 		void end_rendering(vulkan::CommandBufferHandle& cmd);
 		uint32_t get_write_bind(uint32_t idx);
 		uint32_t get_read_bind(uint32_t idx);
-		uint32_t get_write_bind(std::string_view v);
-		uint32_t get_read_bind(std::string_view v);
+		uint32_t get_write_bind(std::string_view v, Write::Type type = Write::Type::Graphics);
+		uint32_t get_read_bind(std::string_view v, Read::Type type = Read::Type::ImageColor);
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
 		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
 	private:
@@ -140,9 +165,8 @@ namespace nyan {
 		std::vector<bool> m_useRendering;
 		bool m_rendersSwap = false;
 		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
-		std::vector<RenderResourceId> m_reads;
-		std::vector<RenderResourceId> m_writes;
-		std::vector<bool> m_computeWrites;
+		std::vector<Read> m_reads;
+		std::vector<Write> m_writes;
 		std::vector<RenderResourceId> m_attachments;
 		RenderResourceId m_depth = InvalidResourceId;
 		RenderResourceId m_stencil = InvalidResourceId;
@@ -160,8 +184,6 @@ namespace nyan {
 		VkRenderingAttachmentInfo m_stencilAttachment;
 		vulkan::RenderingCreateInfo m_renderingCreateInfo;
 
-		std::vector<VkImageView> m_imageReads;
-		std::vector<VkImageView> m_imageWrites;
 		std::vector<VkSemaphore> m_waitSemaphores;
 		std::vector<VkPipelineStageFlags> m_waitStages;
 		std::vector<VkPipelineStageFlags> m_signalStages;

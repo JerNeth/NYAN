@@ -12,12 +12,12 @@ nyan::Renderpass::Renderpass(Rendergraph& graph, Type type, uint32_t id, const s
 {
 }
 
-void nyan::Renderpass::add_read(const std::string& name)
+void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type readType)
 {
 	auto& resource = r_graph.get_resource(name);
 	resource.m_readIn.insert(std::upper_bound(resource.m_readIn.begin(), resource.m_readIn.end(), m_id), m_id);
-	assert(std::find(m_reads.begin(), m_reads.end(), resource.m_id) == m_reads.end());
-	m_reads.push_back(resource.m_id);
+	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
+	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
 }
 
 void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment attachment)
@@ -25,6 +25,14 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	resource.attachment = attachment;
+	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
+	m_attachments.push_back(resource.m_id);
+}
+
+void nyan::Renderpass::add_attachment(const std::string& name)
+{
+	auto& resource = r_graph.get_resource(name);
+	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
 }
@@ -54,12 +62,26 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttach
 	m_depth = resource.m_id;
 }
 
+void nyan::Renderpass::add_depth_attachment(const std::string& name)
+{
+	auto& resource = r_graph.get_resource(name);
+	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	m_depth = resource.m_id;
+}
+
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment)
 {
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
+	m_depth = m_stencil = resource.m_id;
+}
+
+void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
+{
+	auto& resource = r_graph.get_resource(name);
+	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	m_depth = m_stencil = resource.m_id;
 }
 
@@ -72,6 +94,13 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 	m_stencil = resource.m_id;
 }
 
+void nyan::Renderpass::add_stencil_attachment(const std::string& name)
+{
+	auto& resource = r_graph.get_resource(name);
+	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	m_stencil = resource.m_id;
+}
+
 //void nyan::Renderpass::add_read_dependency(const std::string& name, bool storageImage)
 //{
 //	auto& resource = r_graph.get_resource(name);
@@ -80,18 +109,17 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 //		resource.storageImage = true;
 //}
 
-void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment, bool compute)
+void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType)
 {
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	resource.attachment = attachment;
 	resource.storageImage = true;
-	assert(std::find(m_writes.begin(), m_writes.end(), resource.m_id) == m_writes.end());
-	m_writes.push_back(resource.m_id);
-	m_computeWrites.push_back(compute);
+	assert(std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource](const auto& write) { return write.id == resource.m_id; }) == m_writes.cend());
+	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE});
 }
 
-void nyan::Renderpass::add_swapchain_write(bool compute, Math::vec4 clearColor)
+void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType)
 {
 	assert(m_type == Renderpass::Type::Graphics);
 	//Currently only support hybrid queue for swapchain Synchronization
@@ -102,8 +130,7 @@ void nyan::Renderpass::add_swapchain_write(bool compute, Math::vec4 clearColor)
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
-	m_writes.push_back(resource.m_id);
-	m_computeWrites.push_back(compute);
+	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE });
 	r_graph.set_swapchain("swap");
 	m_rendersSwap = true;
 }
@@ -121,26 +148,42 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 	//		assert(false);
 	//	}
 	//}
-	for (auto writeId : m_writes) {
+	for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
 		auto& write = r_graph.get_resource(writeId);
-		if (write.writeBinding != ~0u) {
-			assert(is_write(writeId));
-			r_graph.r_device.get_bindless_set().set_storage_image(write.writeBinding, VkDescriptorImageInfo{ .imageView = write.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
+		if (write.m_type == RenderResource::Type::Image) {
+			if (writeBinding != ~0u) {
+				assert(is_write(writeId));
+				assert(write.handle != VK_NULL_HANDLE);
+				if (write.handle != VK_NULL_HANDLE)
+					r_graph.r_device.get_bindless_set().set_storage_image(writeBinding, VkDescriptorImageInfo{ .imageView = writeView, .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
+			}
+			else {
+				assert(write.handle != VK_NULL_HANDLE);
+				if (write.handle != VK_NULL_HANDLE)
+					writeBinding = r_graph.r_device.get_bindless_set().set_storage_image(VkDescriptorImageInfo{ .imageView = writeView, .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
+			}
 		}
 		else {
-			if (write.handle)
-				write.writeBinding = r_graph.r_device.get_bindless_set().set_storage_image(VkDescriptorImageInfo{ .imageView = write.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
+			assert(false);
 		}
 	}
-	for (auto readId : m_reads) {
+	for (auto& [readId, readType, readView, readBinding] : m_reads) {
 		auto& read = r_graph.get_resource(readId);
-		if (read.readBinding != ~0u) {
-			assert(is_read(readId));
-			r_graph.r_device.get_bindless_set().set_sampled_image(read.readBinding, VkDescriptorImageInfo{ .imageView = read.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
+		if (read.m_type == RenderResource::Type::Image) {
+			if (readBinding != ~0u) {
+				assert(is_read(readId));
+				assert(readView != VK_NULL_HANDLE);
+				if (readView != VK_NULL_HANDLE)
+					r_graph.r_device.get_bindless_set().set_sampled_image(readBinding, VkDescriptorImageInfo{ .imageView = readView, .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
+			}
+			else {
+				assert(readView != VK_NULL_HANDLE);
+				if (readView != VK_NULL_HANDLE)
+					readBinding = r_graph.r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = readView, .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
+			}
 		}
 		else {
-			if (read.handle)
-				read.readBinding = r_graph.r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = read.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
+			assert(false);
 		}
 	}
 	if (m_rendersSwap)
@@ -194,24 +237,34 @@ void nyan::Renderpass::end_rendering(vulkan::CommandBufferHandle& cmd)
 uint32_t nyan::Renderpass::get_write_bind(uint32_t idx)
 {
 	assert(m_writes.size() > idx);
-	return r_graph.get_resource(m_writes[idx]).writeBinding;
+	return m_writes[idx].binding;
 }
 
 uint32_t nyan::Renderpass::get_read_bind(uint32_t idx)
 {
 	assert(m_reads.size() > idx);
-	return r_graph.get_resource(m_reads[idx]).readBinding;
+	return m_reads[idx].binding;
+}
+uint32_t nyan::Renderpass::get_write_bind(std::string_view v, Write::Type type)
+{
+	const auto& resource = r_graph.get_resource(v);
+	auto res = std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource, type](const auto& write) { return resource.m_id == write.id && type == write.type; });
+	assert(res != m_writes.cend());
+	if (res != m_writes.cend())
+		return res->binding;
+	else
+		return InvalidResourceId;
 }
 
-uint32_t nyan::Renderpass::get_write_bind(std::string_view v)
+uint32_t nyan::Renderpass::get_read_bind(std::string_view v, Read::Type type)
 {
-	return r_graph.get_resource(v).writeBinding;
-
-}
-
-uint32_t nyan::Renderpass::get_read_bind(std::string_view v)
-{
-	return r_graph.get_resource(v).readBinding;
+	const auto& resource = r_graph.get_resource(v);
+	auto res = std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, type](const auto& read) { return resource.m_id == read.id && type == read.type; });
+	assert(res != m_reads.cend());
+	if (res != m_reads.cend())
+		return res->binding;
+	else
+		return InvalidResourceId;
 
 }
 
@@ -229,20 +282,20 @@ void nyan::Renderpass::add_signal(uint32_t passId, VkPipelineStageFlags stage)
 
 bool nyan::Renderpass::is_read(RenderResourceId id) const
 {
-	return std::find(m_reads.cbegin(), m_reads.cend(), id) != m_reads.cend();
+	return std::find_if(m_reads.cbegin(), m_reads.cend(), [id](const auto& read) { return read.id == id; }) != m_reads.cend();
 }
 
 bool nyan::Renderpass::is_write(RenderResourceId id) const
 {
-	return std::find(m_writes.cbegin(), m_writes.cend(), id) != m_writes.cend();
+	return std::find_if(m_writes.cbegin(), m_writes.cend(), [id](const auto& write) { return write.id == id; }) != m_writes.cend();
 }
 
 bool nyan::Renderpass::is_compute_write(RenderResourceId id) const
 {
-	auto it = std::find(m_writes.cbegin(), m_writes.cend(), id);
+	auto it = std::find_if(m_writes.cbegin(), m_writes.cend(), [id](const auto& write) { return write.id == id; });
 	if (it == m_writes.cend())
 		return false;
-	return m_computeWrites[it - m_writes.cbegin()];
+	return it->type == Renderpass::Write::Type::Compute;
 }
 
 bool nyan::Renderpass::is_attachment(RenderResourceId id) const
@@ -292,6 +345,7 @@ void nyan::Rendergraph::build()
 		}
 		auto followRead = resource.m_readIn.begin();
 		for (auto write = resource.m_writeToIn.begin(); write != resource.m_writeToIn.end(); write++) {
+			
 			for (; followRead != resource.m_readIn.end(); followRead++)
 				if (*followRead > *write)
 					break;
@@ -341,16 +395,16 @@ void nyan::Rendergraph::build()
 	m_renderpasses.for_each([&](Renderpass& pass) {
 		//pass.m_attachmentPool = std::make_unique<vulkan::DescriptorPool>(r_device, );
 		if (pass.get_type() == Renderpass::Type::Graphics) {
-			for (auto read : pass.m_reads) {
-				auto& resource = m_renderresources.get_direct(read);
+			for (auto& [readId, readType, readView, readBinding] : pass.m_reads) {
+				auto& resource = m_renderresources.get_direct(readId);
 				if (resource.m_type == RenderResource::Type::Image) {
-					pass.m_imageReads.push_back(VK_NULL_HANDLE);
+					readView = VK_NULL_HANDLE;
 				}
 			}
-			for (auto write : pass.m_writes) {
-				auto& resource = m_renderresources.get_direct(write);
+			for (auto& [writeId, writeType, writeView, writeBinding]: pass.m_writes) {
+				auto& resource = m_renderresources.get_direct(writeId);
 				if (resource.m_type == RenderResource::Type::Image) {
-					pass.m_imageWrites.push_back(VK_NULL_HANDLE);
+					writeView = VK_NULL_HANDLE;
 				}
 			}
 			for (auto attachmentId : pass.m_attachments) {
@@ -453,74 +507,86 @@ void nyan::Rendergraph::execute()
 	});
 
 	m_renderpasses.for_each([this](Renderpass& pass) {
-		if (pass.get_type() == Renderpass::Type::Graphics) {
-			uint32_t readId = 0;
-			for (auto read : pass.m_reads) {
-				auto& resource = m_renderresources.get_direct(read);
-				if (resource.m_type == RenderResource::Type::Image) {
-					assert(resource.handle);
-					if (pass.m_imageReads[readId] != resource.handle->get_image_view()) {
-						pass.m_imageReads[readId++] = resource.handle->get_image_view();
-					}
-				}
-			}
-			uint32_t writeId = 0;
-			for (auto write : pass.m_writes) {
-				auto& resource = m_renderresources.get_direct(write);
-				if (resource.m_type == RenderResource::Type::Image) {
-					assert(resource.handle);
-					if (pass.m_imageWrites[readId] != resource.handle->get_image_view()) {
-						pass.m_imageWrites[writeId++] = resource.handle->get_image_view();
-					}
-				}
-			}
-			uint32_t attachmentId = 0;
-			for (auto attachmentRessourceId : pass.m_attachments) {
-				auto& resource = m_renderresources.get_direct(attachmentRessourceId);
-				auto& attachment = std::get<ImageAttachment>(resource.attachment);
-				if (resource.m_type == RenderResource::Type::Image) {
-					if (*resource.m_writeToIn.begin() == pass.m_id) {
-						for (size_t i = 0u; i < 4u; i++)
-							pass.m_colorAttachments[attachmentId].clearValue.color.float32[i] = attachment.clearColor[i];
-					}
-					assert(resource.handle);
-					pass.m_colorAttachments[attachmentId++].imageView = resource.handle->get_image_view();
-					uint32_t width = r_device.get_swapchain_width();
-					uint32_t height = r_device.get_swapchain_height();
-					if (attachment.size == ImageAttachment::Size::Absolute) {
-						width = static_cast<uint32_t>(attachment.width);
-						height = static_cast<uint32_t>(attachment.height);
-					}
-					else {
-						width = static_cast<uint32_t>(width * attachment.width);
-						height = static_cast<uint32_t>(height * attachment.height);
-					}
-					pass.m_renderInfo.renderArea.extent.width = Math::max(pass.m_renderInfo.renderArea.extent.width, width);
-					pass.m_renderInfo.renderArea.extent.height = Math::max(pass.m_renderInfo.renderArea.extent.height, height);
-					pass.m_renderInfo.layerCount = Math::max(pass.m_renderInfo.layerCount, resource.handle->get_image()->get_info().arrayLayers);
-				}
-			}
-			if (pass.m_depth != InvalidResourceId) {
-				auto& resource = m_renderresources.get_direct(pass.m_depth);
-				assert(resource.m_type == RenderResource::Type::Image);
+		for (auto& [readId, readType, readView, readBinding] : pass.m_reads) {
+			auto& resource = m_renderresources.get_direct(readId);
+			if (resource.m_type == RenderResource::Type::Image) {
 				assert(resource.handle);
-				auto& attachment = std::get<ImageAttachment>(resource.attachment);
-				pass.m_depthAttachment.imageView = resource.handle->get_image_view();
-				if (*resource.m_writeToIn.begin() == pass.m_id) {
-					pass.m_depthAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
+				if (readType == Renderpass::Read::Type::ImageColor) {
+					readView = resource.handle->get_image_view();
 				}
-			}
-			if (pass.m_stencil != InvalidResourceId) {
-				auto& resource = m_renderresources.get_direct(pass.m_stencil);
-				assert(pass.m_depth == InvalidResourceId || pass.m_depth == pass.m_stencil);
-				assert(resource.m_type == RenderResource::Type::Image);
-				assert(resource.handle);
-				auto& attachment = std::get<ImageAttachment>(resource.attachment);
-				if (*resource.m_writeToIn.begin() == pass.m_id) {
-					pass.m_stencilAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
+				else if (readType == Renderpass::Read::Type::ImageDepth) {
+					auto* tmp = resource.handle->get_image()->get_depth_view();
+					assert(tmp);
+					if (!tmp)
+						continue;
+					readView = tmp->get_image_view();
 				}
+				else if (readType == Renderpass::Read::Type::ImageStencil) {
+					auto* tmp = resource.handle->get_image()->get_stencil_view();
+					assert(tmp);
+					if (!tmp)
+						continue;
+					readView = tmp->get_image_view();
+				}
+
 			}
 		}
+		for (auto& [writeId, writeType, writeView, writeBinding] : pass.m_writes) {
+			auto& resource = m_renderresources.get_direct(writeId);
+			if (resource.m_type == RenderResource::Type::Image) {
+				assert(resource.handle);
+				if (!resource.handle)
+					continue;
+				writeView = resource.handle->get_image_view();
+			}
+		}
+		uint32_t attachmentId = 0;
+		for (auto attachmentRessourceId : pass.m_attachments) {
+			auto& resource = m_renderresources.get_direct(attachmentRessourceId);
+			auto& attachment = std::get<ImageAttachment>(resource.attachment);
+			if (resource.m_type == RenderResource::Type::Image) {
+				if (*resource.m_writeToIn.begin() == pass.m_id) {
+					for (size_t i = 0u; i < 4u; i++)
+						pass.m_colorAttachments[attachmentId].clearValue.color.float32[i] = attachment.clearColor[i];
+				}
+				assert(resource.handle);
+				pass.m_colorAttachments[attachmentId++].imageView = resource.handle->get_image_view();
+				uint32_t width = r_device.get_swapchain_width();
+				uint32_t height = r_device.get_swapchain_height();
+				if (attachment.size == ImageAttachment::Size::Absolute) {
+					width = static_cast<uint32_t>(attachment.width);
+					height = static_cast<uint32_t>(attachment.height);
+				}
+				else {
+					width = static_cast<uint32_t>(width * attachment.width);
+					height = static_cast<uint32_t>(height * attachment.height);
+				}
+				pass.m_renderInfo.renderArea.extent.width = Math::max(pass.m_renderInfo.renderArea.extent.width, width);
+				pass.m_renderInfo.renderArea.extent.height = Math::max(pass.m_renderInfo.renderArea.extent.height, height);
+				pass.m_renderInfo.layerCount = Math::max(pass.m_renderInfo.layerCount, resource.handle->get_image()->get_info().arrayLayers);
+			}
+		}
+		if (pass.m_depth != InvalidResourceId) {
+			auto& resource = m_renderresources.get_direct(pass.m_depth);
+			assert(resource.m_type == RenderResource::Type::Image);
+			assert(resource.handle);
+			auto& attachment = std::get<ImageAttachment>(resource.attachment);
+			pass.m_depthAttachment.imageView = resource.handle->get_image_view();
+			if (*resource.m_writeToIn.begin() == pass.m_id) {
+				pass.m_depthAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
+			}
+		}
+		if (pass.m_stencil != InvalidResourceId) {
+			auto& resource = m_renderresources.get_direct(pass.m_stencil);
+			assert(pass.m_depth == InvalidResourceId || pass.m_depth == pass.m_stencil);
+			assert(resource.m_type == RenderResource::Type::Image);
+			assert(resource.handle);
+			auto& attachment = std::get<ImageAttachment>(resource.attachment);
+			if (*resource.m_writeToIn.begin() == pass.m_id) {
+				pass.m_stencilAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
+			}
+		}
+		
 		auto barrierUpdate = [this, &pass](const std::vector<Barrier>& barriers) {
 			for (auto& barrier : barriers) {
 				assert(barrier.resourceId != InvalidResourceId);

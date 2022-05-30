@@ -22,6 +22,8 @@ layout(set = 0, binding = 0, std430) buffer Materials  {
 
 layout(set = 0, binding = 2) uniform sampler samplers[SAMPLER_COUNT];
 layout(set = 0, binding = 3) uniform texture2D textures2D[TEXTURE_COUNT];
+layout(set = 0, binding = 3) uniform itexture2D itextures2D[TEXTURE_COUNT];
+layout(set = 0, binding = 3) uniform utexture2D utextures2D[TEXTURE_COUNT];
 layout(set = 0, binding = 4, rgb10_a2) uniform image2D imagesRGB10_A2[IMAGE_COUNT];
 
 //layout(set = 0, binding = 0) buffer SSBO {} ssbos [];

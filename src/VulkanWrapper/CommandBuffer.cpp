@@ -46,6 +46,12 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 	vkCmdSetStencilTestEnable(m_vkHandle, dynamicState.stencil_test_enable);
 	vkCmdSetStencilOp(m_vkHandle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
 	vkCmdSetStencilOp(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
+	vkCmdSetStencilCompareMask(m_vkHandle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
+	vkCmdSetStencilCompareMask(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
+	vkCmdSetStencilWriteMask(m_vkHandle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
+	vkCmdSetStencilWriteMask(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
+	vkCmdSetStencilReference(m_vkHandle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
+	vkCmdSetStencilReference(m_vkHandle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
 	vkCmdSetCullMode(m_vkHandle, dynamicState.cull_mode);
 	vkCmdSetFrontFace(m_vkHandle, dynamicState.front_face);
 	vkCmdSetPrimitiveRestartEnable(m_vkHandle, dynamicState.primitive_restart_enable);

@@ -65,6 +65,30 @@ vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info
 	m_availableMip(mipTail),
 	m_mipTail(mipTail)
 {
+	if (ImageInfo::is_stencil(info.format)) {
+		m_stencilView = r_device.create_image_view(ImageViewCreateInfo{
+			.image = this,
+			.format = info.format,
+			.viewType = info.view_type(),
+			.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT,
+			.baseMipLevel = mipTail,
+			.levelCount = info.mipLevels - mipTail,
+			.baseArrayLayer = 0,
+			.layerCount = info.arrayLayers,
+			});
+	}
+	if (ImageInfo::is_depth(info.format)) {
+		m_depthView = r_device.create_image_view(ImageViewCreateInfo{
+			.image = this,
+			.format = info.format,
+			.viewType = info.view_type(),
+			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel = mipTail,
+			.levelCount = info.mipLevels - mipTail,
+			.baseArrayLayer = 0,
+			.layerCount = info.arrayLayers,
+			});
+	}
 }
 
 vulkan::Image::Image(Image&& other) noexcept :
@@ -129,6 +153,38 @@ void vulkan::Image::drop_allocations(uint32_t count)
 	m_allocations.erase(m_allocations.end() - releaseCount,m_allocations.end());
 }
 
+
+vulkan::ImageView* vulkan::Image::get_view() noexcept {
+	return &(*m_view);
+}
+const  vulkan::ImageView* vulkan::Image::get_view() const noexcept {
+	return &(*m_view);
+}
+vulkan::ImageView* vulkan::Image::get_stencil_view() noexcept {
+	if (m_stencilView)
+		return &(**m_stencilView);
+	else
+		return nullptr;
+}
+const  vulkan::ImageView* vulkan::Image::get_stencil_view() const noexcept {
+	if (m_stencilView)
+		return &(**m_stencilView);
+	else
+		return nullptr;
+}
+vulkan::ImageView* vulkan::Image::get_depth_view() noexcept {
+	if (m_depthView)
+		return &(**m_depthView);
+	else
+		return nullptr;
+}
+const  vulkan::ImageView* vulkan::Image::get_depth_view() const noexcept {
+	if (m_depthView)
+		return &(**m_depthView);
+	else
+		return nullptr;
+}
+
 vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {
 	if (mip == m_view->get_base_mip_level())
 		return nullptr;
@@ -145,4 +201,75 @@ vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {
 	createInfo.aspectMask = ImageInfo::format_to_aspect_mask(m_info.format);
 	m_view = r_device.create_image_view(createInfo);
 	return &(*m_view);
+}
+
+uint32_t vulkan::Image::get_available_mip() const noexcept {
+	return m_availableMip;
+}
+void vulkan::Image::set_available_mip(uint32_t mip) noexcept {
+	if (mip <= m_mipTail)
+		m_availableMip = mip;
+}
+bool vulkan::Image::is_sparse() const noexcept {
+	return m_info.flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
+}
+uint32_t vulkan::Image::get_mip_tail() const noexcept {
+	return m_mipTail;
+}
+uint32_t vulkan::Image::get_width(uint32_t mipLevel) const noexcept {
+	return Math::max(1u, m_info.width >> mipLevel);
+}
+uint32_t vulkan::Image::get_height(uint32_t mipLevel) const noexcept {
+	return Math::max(1u, m_info.height >> mipLevel);
+}
+uint32_t vulkan::Image::get_depth(uint32_t mipLevel) const noexcept {
+	return Math::max(1u, m_info.depth >> mipLevel);
+}
+VkImage vulkan::Image::get_handle() const noexcept {
+	return m_vkHandle;
+}
+VkImageUsageFlags vulkan::Image::get_usage() const noexcept {
+	return m_info.usage;
+}
+const vulkan::ImageInfo& vulkan::Image::get_info() const {
+	return m_info;
+}
+VkFormat vulkan::Image::get_format() const {
+	return m_info.format;
+}
+void vulkan::Image::set_optimal(bool optimal) noexcept {
+	m_optimal = optimal;
+}
+bool vulkan::Image::is_optimal() const noexcept {
+	return m_optimal;
+}
+void vulkan::Image::disown_image() noexcept {
+	m_ownsImage = false;
+}
+void vulkan::Image::set_layout(VkImageLayout format) noexcept {
+	m_info.layout = format;
+}
+void vulkan::Image::disown() noexcept {
+	disown_image();
+}
+VkPipelineStageFlags vulkan::Image::get_stage_flags() const noexcept {
+	return m_stageFlags;
+}
+VkAccessFlags vulkan::Image::get_access_flags() const noexcept {
+	return m_accessFlags;
+}
+void vulkan::Image::set_stage_flags(VkPipelineStageFlags flags)  noexcept {
+	m_stageFlags = flags;
+}
+void vulkan::Image::set_access_flags(VkAccessFlags flags) noexcept {
+	m_accessFlags = flags;
+}
+void vulkan::Image::set_single_mip_tail(bool mipTail) noexcept {
+	m_singleMipTail = mipTail;
+}
+bool vulkan::Image::is_being_resized() const noexcept {
+	return m_isBeingResized;
+}
+void vulkan::Image::set_being_resized(bool resized) noexcept {
+	m_isBeingResized = resized;
 }

@@ -209,17 +209,23 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_fail),
 			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_depth_fail),
 			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_front_compare_op),
+			.compareMask = config.dynamicState.stencil_front_compare_mask,
+			.writeMask = config.dynamicState.stencil_front_write_mask,
+			.reference = config.dynamicState.stencil_front_reference,
 		},
 		.back{
 			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_pass),
 			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_fail),
 			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_depth_fail),
 			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_back_compare_op),
+			.compareMask = config.dynamicState.stencil_back_compare_mask,
+			.writeMask = config.dynamicState.stencil_back_write_mask,
+			.reference = config.dynamicState.stencil_back_reference,
 		},
 		.minDepthBounds = 0.0f,
 		.maxDepthBounds = 1.0f,
 	};
-
+	
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments{};
 	colorBlendAttachments.reserve(config.renderingCreateInfo.colorAttachmentCount);
 	for (uint32_t i = 0; i < config.renderingCreateInfo.colorAttachmentCount; i++) {
@@ -595,6 +601,101 @@ void vulkan::PipelineBind::bind_descriptor_sets(uint32_t firstSet, const std::ve
 vulkan::GraphicsPipelineBind::GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) :
 	PipelineBind(cmd, layout, bindPoint)
 {
+}
+
+void vulkan::GraphicsPipelineBind::set_depth_bias_enabled(bool enabled)
+{
+	vkCmdSetDepthBiasEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_depth_write_enabled(bool enabled)
+{
+	vkCmdSetDepthWriteEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_depth_test_enabled(bool enabled)
+{
+	vkCmdSetDepthTestEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_depth_bounds_test_enabled(bool enabled)
+{
+	vkCmdSetDepthBoundsTestEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_depth_compare_op(VkCompareOp compareOp)
+{
+	vkCmdSetDepthCompareOp(m_cmd, compareOp);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_front_reference(uint32_t reference)
+{
+	vkCmdSetStencilReference(m_cmd, VK_STENCIL_FACE_FRONT_BIT, reference);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_back_reference(uint32_t reference)
+{
+	vkCmdSetStencilReference(m_cmd, VK_STENCIL_FACE_BACK_BIT, reference);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_front_write_mask(uint32_t mask)
+{
+	vkCmdSetStencilWriteMask(m_cmd, VK_STENCIL_FACE_FRONT_BIT, mask);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_back_write_mask(uint32_t mask)
+{
+	vkCmdSetStencilWriteMask(m_cmd, VK_STENCIL_FACE_BACK_BIT, mask);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_front_compare_mask(uint32_t mask)
+{
+	vkCmdSetStencilCompareMask(m_cmd, VK_STENCIL_FACE_FRONT_BIT, mask);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_back_compare_mask(uint32_t mask)
+{
+	vkCmdSetStencilCompareMask(m_cmd, VK_STENCIL_FACE_BACK_BIT, mask);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_test_enabled(bool enabled)
+{
+	vkCmdSetStencilTestEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_front_ops(VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp)
+{
+	vkCmdSetStencilOp(m_cmd, VK_STENCIL_FACE_FRONT_BIT, failOp, passOp, depthFailOp, compareOp);
+}
+
+void vulkan::GraphicsPipelineBind::set_stencil_back_ops(VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp)
+{
+	vkCmdSetStencilOp(m_cmd, VK_STENCIL_FACE_BACK_BIT, failOp, passOp, depthFailOp, compareOp);
+}
+
+void vulkan::GraphicsPipelineBind::set_cull_mode(VkCullModeFlags cullMode)
+{
+	vkCmdSetCullMode(m_cmd, cullMode);
+}
+
+void vulkan::GraphicsPipelineBind::set_front_face(VkFrontFace frontFace)
+{
+	vkCmdSetFrontFace(m_cmd, frontFace);
+}
+
+void vulkan::GraphicsPipelineBind::set_primitive_restart_enable(bool enabled)
+{
+	vkCmdSetPrimitiveRestartEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_rasterizer_discard_enable(bool enabled)
+{
+	vkCmdSetRasterizerDiscardEnable(m_cmd, enabled);
+}
+
+void vulkan::GraphicsPipelineBind::set_primitive_topology(VkPrimitiveTopology topology)
+{
+	vkCmdSetPrimitiveTopology(m_cmd, topology);
 }
 
 void vulkan::GraphicsPipelineBind::set_scissor(VkRect2D scissor)

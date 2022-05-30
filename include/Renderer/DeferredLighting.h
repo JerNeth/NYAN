@@ -20,6 +20,8 @@ namespace nyan {
 			uint32_t pbrSampler;
 			uint32_t depthBinding;
 			uint32_t depthSampler;
+			uint32_t stencilBinding;
+			uint32_t stencilSampler;
 		};
 	public:
 		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);

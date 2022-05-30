@@ -1,6 +1,7 @@
 #include "Renderer/DeferredLighting.h"
 #include "entt/entt.hpp"
 #include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/Sampler.h"
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),
@@ -48,8 +49,10 @@ void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.pbrBinding {r_pass.get_read_bind("g_PBR")},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.depthBinding {r_pass.get_read_bind("g_Depth")},
+		.depthBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageDepth)},
 		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.stencilBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageStencil)},
+		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 	};
 	bind.push_constants(constants);
 	bind.draw(3, 1);
@@ -87,6 +90,21 @@ void nyan::DeferredLighting::create_pipeline()
 	pipelineConfig.dynamicState.depth_write_enable = VK_FALSE;
 	pipelineConfig.dynamicState.depth_test_enable = VK_FALSE;
 	pipelineConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	//pipelineConfig.dynamicState.stencil_test_enable = VK_TRUE;
+	//pipelineConfig.dynamicState.stencil_front_reference = 0;
+	//pipelineConfig.dynamicState.stencil_front_write_mask = 0xFF;
+	//pipelineConfig.dynamicState.stencil_front_compare_mask = 0xFF;
+	//pipelineConfig.dynamicState.stencil_front_compare_op = VK_COMPARE_OP_NOT_EQUAL;
+	//pipelineConfig.dynamicState.stencil_front_fail = VK_STENCIL_OP_KEEP;
+	//pipelineConfig.dynamicState.stencil_front_pass = VK_STENCIL_OP_KEEP;
+	//pipelineConfig.dynamicState.stencil_front_depth_fail = VK_STENCIL_OP_KEEP;
+	//pipelineConfig.dynamicState.stencil_back_reference = 0;
+	//pipelineConfig.dynamicState.stencil_back_write_mask = 0xFF;
+	//pipelineConfig.dynamicState.stencil_back_compare_mask = 0xFF;
+	//pipelineConfig.dynamicState.stencil_back_compare_op = VK_COMPARE_OP_NOT_EQUAL;
+	//pipelineConfig.dynamicState.stencil_back_fail = VK_STENCIL_OP_KEEP;
+	//pipelineConfig.dynamicState.stencil_back_pass = VK_STENCIL_OP_KEEP;
+	//pipelineConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_KEEP;
 	m_deferredPipeline = r_pass.add_pipeline(pipelineConfig);
 }
 

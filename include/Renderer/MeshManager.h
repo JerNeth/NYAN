@@ -129,6 +129,7 @@ namespace nyan {
 	public:
 		SceneManager(vulkan::LogicalDevice& device);
 		void set_dirlight(const nyan::shaders::DirectionalLight& light);
+		void set_view_pos(const Math::vec3& pos);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse);
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);

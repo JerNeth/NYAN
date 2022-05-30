@@ -221,8 +221,9 @@ namespace Math {
 		}
 		inline Scalar L1_norm() const noexcept {
 			Scalar sum = Scalar(0);
+			//TODO use custom abs
 			for (size_t i = 0; i < Size; i++)
-				sum = sum + std::abs(static_cast<double>(m_data[i]));
+				sum = sum + static_cast<Scalar>(std::abs(static_cast<double>(m_data[i])));
 			return sum;
 		}
 		constexpr inline Vec operator-() const noexcept {
@@ -308,14 +309,14 @@ namespace Math {
 		constexpr friend inline Vec operator^(const Vec& lhs, const Scalar& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = pow(lhs.m_data[i], rhs);
+				result.m_data[i] = static_cast<Scalar>(pow(lhs.m_data[i], rhs));
 			return result;
 		}
 		/// Even less of a good idea than the one before
 		constexpr friend inline Vec operator^(const Vec& lhs, const Vec& rhs) noexcept {
 			Vec result;
 			for (size_t i = 0; i < Size; i++)
-				result.m_data[i] = pow(lhs.m_data[i], rhs.m_data[i]);
+				result.m_data[i] = static_cast<Scalar>(pow(lhs.m_data[i], rhs.m_data[i]));
 			return result;
 		}
 		constexpr inline Scalar dot(const Vec& rhs) const noexcept {

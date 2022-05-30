@@ -129,6 +129,7 @@ void nyan::RenderManager::update()
 		auto cameraUp = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.up));
 		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right));
 		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
+		m_sceneManager.set_view_pos(cameraPos);
 
 		nyan::shaders::DirectionalLight light;
 		light.enabled = true;

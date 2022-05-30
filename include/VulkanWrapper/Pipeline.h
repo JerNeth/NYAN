@@ -52,6 +52,12 @@ namespace vulkan {
 		VkBool32 primitive_restart_enable : 1;
 		VkBool32 rasterizer_discard_enable : 1;
 		VkPrimitiveTopology primitive_topology : TOPOLOGY_BITS;
+		uint32_t stencil_front_reference : 8;
+		uint32_t stencil_front_write_mask : 8;
+		uint32_t stencil_front_compare_mask : 8;
+		uint32_t stencil_back_reference : 8;
+		uint32_t stencil_back_write_mask : 8;
+		uint32_t stencil_back_compare_mask : 8;
 	};
 
 	struct GraphicsPipelineState {
@@ -258,6 +264,25 @@ namespace vulkan {
 	class GraphicsPipelineBind : public PipelineBind {
 	public:
 		GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		void set_depth_bias_enabled(bool enabled);
+		void set_depth_write_enabled(bool enabled);
+		void set_depth_test_enabled(bool enabled);
+		void set_depth_bounds_test_enabled(bool enabled);
+		void set_depth_compare_op(VkCompareOp compareOp);
+		void set_stencil_front_reference(uint32_t reference);
+		void set_stencil_back_reference(uint32_t reference);
+		void set_stencil_front_write_mask(uint32_t mask);
+		void set_stencil_back_write_mask(uint32_t mask);
+		void set_stencil_front_compare_mask(uint32_t mask);
+		void set_stencil_back_compare_mask(uint32_t mask);
+		void set_stencil_test_enabled(bool enabled);
+		void set_stencil_front_ops(VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp);
+		void set_stencil_back_ops(VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp, VkCompareOp compareOp);
+		void set_cull_mode(VkCullModeFlags cullMode);
+		void set_front_face(VkFrontFace frontFace);
+		void set_primitive_restart_enable(bool enabled);
+		void set_rasterizer_discard_enable(bool enabled);
+		void set_primitive_topology(VkPrimitiveTopology topology);
 		void set_scissor(VkRect2D scissor);
 		void set_viewport(VkViewport viewport);
 		void bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* buffers, const VkDeviceSize* offsets);
