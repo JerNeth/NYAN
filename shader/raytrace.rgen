@@ -5,6 +5,7 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "common.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -40,5 +41,5 @@ void main()
           tMax,           // ray max range
           0               // payload (location = 0)
      );
-    imageStore(imagesRGB10_A2[constants.imageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.0));
+    imageStore(imagesRGB10_A2[constants.imageBinding], ivec2(gl_LaunchIDEXT.xy), fromLinear(vec4(prd.hitValue, 1.0)));
 }

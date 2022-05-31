@@ -19,27 +19,12 @@ int main() {
 
 	auto& input = application.get_input();
 
-	input.set_axis_mapping(Input::Inputs::W, Input::Axis::MoveForward, 1.f);
-	input.set_axis_mapping(Input::Inputs::S, Input::Axis::MoveForward, -1.f);
-	input.set_axis_mapping(Input::Inputs::D, Input::Axis::MoveRight, 1.f);
-	input.set_axis_mapping(Input::Inputs::A, Input::Axis::MoveRight, -1.f);
-	input.set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, -1.f);
-	input.set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, 1.f);
-	input.set_axis_mapping(Input::Inputs::Right, Input::Axis::LookRight, 1.f);
-	input.set_axis_mapping(Input::Inputs::Left, Input::Axis::LookRight, -1.f);
-
 	nyan::RenderManager renderManager(device, false);
 	auto& registry = renderManager.get_registry();
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cathedral.fbx", meshes, materials);
-
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 500, 500}, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
-
+	reader.parse_meshes("shaderBall.fbx", meshes, materials);
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
@@ -54,14 +39,14 @@ int main() {
 		Transform{
 			.position{},
 			.scale{},
-			.orientation{},
+			.orientation{0, 180, 0},
 		});
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{0.f, 100.f, 500.f},
+			.position{600.f, 660.f, -1400.f},
 			.scale{},
-			.orientation{-10.f, 180.f, 0.f},
+			.orientation{18.f, -27.f, 0.f},
 		});
 	registry.emplace<PerspectiveCamera>(camera, 
 		PerspectiveCamera {
@@ -94,12 +79,6 @@ int main() {
 				.scale{},
 				.orientation{},
 			});
-		//registry.emplace<Transform>(entity,
-		//	Transform{
-		//		.position{},
-		//		.scale{},
-		//		.orientation{},
-		//	});
 		registry.emplace<Parent>(entity,
 			Parent{
 				.parent {parent},
@@ -149,7 +128,7 @@ int main() {
 	deferredLightingPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.5f, 0.1f, 0.5f, 1.f},
+			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 		});
 
 	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Graphics);

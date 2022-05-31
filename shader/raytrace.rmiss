@@ -6,6 +6,7 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "common.glsl"
 
 layout(location = 0) rayPayloadInEXT hitPayload hitValue;
 

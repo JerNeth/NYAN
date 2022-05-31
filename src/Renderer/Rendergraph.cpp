@@ -153,13 +153,13 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 		if (write.m_type == RenderResource::Type::Image) {
 			if (writeBinding != ~0u) {
 				assert(is_write(writeId));
-				assert(write.handle != VK_NULL_HANDLE);
-				if (write.handle != VK_NULL_HANDLE)
+				assert(writeView != VK_NULL_HANDLE);
+				if (writeView != VK_NULL_HANDLE)
 					r_graph.r_device.get_bindless_set().set_storage_image(writeBinding, VkDescriptorImageInfo{ .imageView = writeView, .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
 			}
 			else {
-				assert(write.handle != VK_NULL_HANDLE);
-				if (write.handle != VK_NULL_HANDLE)
+				assert(writeView != VK_NULL_HANDLE);
+				if (writeView != VK_NULL_HANDLE)
 					writeBinding = r_graph.r_device.get_bindless_set().set_storage_image(VkDescriptorImageInfo{ .imageView = writeView, .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
 			}
 		}
@@ -463,7 +463,7 @@ void nyan::Rendergraph::build()
 				};
 				if (*resource.m_writeToIn.begin() == pass.m_id) {
 					renderingAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-					renderingAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
+					renderingAttachment.clearValue.depthStencil.stencil = std::bit_cast<uint32_t>(attachment.clearColor[1]);
 				}
 				pass.m_renderingCreateInfo.stencilAttachmentFormat = attachment.format;
 				pass.m_renderInfo.pStencilAttachment = &pass.m_stencilAttachment;
@@ -571,7 +571,12 @@ void nyan::Rendergraph::execute()
 			assert(resource.m_type == RenderResource::Type::Image);
 			assert(resource.handle);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
-			pass.m_depthAttachment.imageView = resource.handle->get_image_view();
+			if (pass.m_stencil == InvalidResourceId) {
+				pass.m_depthAttachment.imageView = resource.handle->get_image()->get_depth_view()->get_image_view();
+			}
+			else {
+				pass.m_depthAttachment.imageView = resource.handle->get_image_view();
+			}
 			if (*resource.m_writeToIn.begin() == pass.m_id) {
 				pass.m_depthAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
 			}
@@ -582,6 +587,12 @@ void nyan::Rendergraph::execute()
 			assert(resource.m_type == RenderResource::Type::Image);
 			assert(resource.handle);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
+			if (pass.m_depth == InvalidResourceId) {
+				pass.m_stencilAttachment.imageView = resource.handle->get_image()->get_stencil_view()->get_image_view();
+			}
+			else {
+				pass.m_stencilAttachment.imageView = resource.handle->get_image_view();
+			}
 			if (*resource.m_writeToIn.begin() == pass.m_id) {
 				pass.m_stencilAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
 			}

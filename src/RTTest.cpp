@@ -29,19 +29,16 @@ int main() {
 	auto& device = application.get_device();
 	auto& window = application.get_window();
 
+	auto& input = application.get_input();
+
+
 	nyan::RenderManager renderManager(device, true);
 	auto& registry = renderManager.get_registry();
 
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cathedral.fbx", meshes, materials);
-
-	renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 500, 700, -1500 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 5, 5, -5 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	//renderManager.get_scene_manager().set_view_matrix(Math::Mat<float, 4, 4, true>::look_at(Math::vec3{ 100, 100, -100 }, Math::vec3{ 0,0,0 }, Math::vec3{ 0, 1, 0 }));
-	renderManager.get_scene_manager().set_proj_matrix(Math::Mat<float, 4, 4, true>::perspectiveY(0.1, 10000, 40, 16 / 9.f));
-
+	reader.parse_meshes("shaderBall.fbx", meshes, materials);
 
 	for (const auto& a : materials) {
 		if (!a.diffuseTex.empty())
@@ -50,6 +47,32 @@ int main() {
 			renderManager.get_texture_manager().request_texture(a.normalTex);
 		renderManager.get_material_manager().add_material(a);
 	}
+
+	auto parent = registry.create();
+	registry.emplace<Transform>(parent,
+		Transform{
+			.position{},
+			.scale{},
+			.orientation{0, 180, 0},
+		});
+	auto camera = registry.create();
+	registry.emplace<Transform>(camera,
+		Transform{
+			.position{600.f, 660.f, -1400.f},
+			.scale{},
+			.orientation{18.f, -27.f, 0.f},
+		});
+	registry.emplace<PerspectiveCamera>(camera,
+		PerspectiveCamera{
+			.nearPlane {.1f},
+			.farPlane {10000.f},
+			.fovX {90.f},
+			.aspect {16.f / 9.f },
+			.forward {0.f, 0.f ,1.f},
+			.up {0.f, 1.f ,0.f},
+			.right {1.f, 0.f ,0.f},
+		});
+	renderManager.set_primary_camera(camera);
 
 	for (const auto& a : meshes) {
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
@@ -71,6 +94,10 @@ int main() {
 				.position{},
 				.scale{},
 				.orientation{},
+			});
+		registry.emplace<Parent>(entity,
+			Parent{
+				.parent {parent},
 			});
 
 	}
@@ -99,7 +126,7 @@ int main() {
 	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 	//		.clearColor{0.f, 0.f, 0.f, 1.f},
 	//	});
-	deferredPass.add_swapchain_write(true);
+	deferredPass.add_swapchain_write( Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
@@ -116,6 +143,19 @@ int main() {
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
 			//imgui.update();
+			auto dtf = std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
+			auto& transform = registry.get<Transform>(camera);
+			auto& perspectiveCamera = registry.get<PerspectiveCamera>(camera);
+
+			transform.orientation.x() += dtf * (45.f) * input.get_axis(Input::Axis::LookUp);
+			transform.orientation.y() += dtf * (45.f) * input.get_axis(Input::Axis::LookRight);
+
+			auto mat = Math::mat33::rotation_matrix(transform.orientation);
+
+			transform.position += mat * perspectiveCamera.right * dtf * 100 * input.get_axis(Input::Axis::MoveRight);
+			transform.position += mat * perspectiveCamera.forward * dtf * 100 * input.get_axis(Input::Axis::MoveForward);
+
+
 		});
 	application.each_frame_end([&rendergraph]()
 		{

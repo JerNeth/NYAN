@@ -7,6 +7,8 @@
 #include "structs.h"
 #include "bindlessLayouts.glsl"
 #include "extracts.glsl"
+#include "common.glsl"
+#include "lighting.glsl"
 
 
 layout(std430, push_constant) uniform PushConstants
@@ -44,14 +46,20 @@ void main()
     vec2 uv = uvs.u[ind.x] * barycentrics.x + uvs.u[ind.y] * barycentrics.y + uvs.u[ind.z] * barycentrics.z;;
     
 	mat3 tangentFrame = mat3(tangent, bitangent, normalS);
-
-	DirectionalLight light1 = scenes[constants.sceneBinding].scene.dirLight1;
     
-    vec4 albedo = texture(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), uv);
-    vec3 normal = vec3(texture(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), uv).rg, 0);
+    Scene scene = scenes[constants.sceneBinding].scene;
+	DirectionalLight light1 = scene.dirLight1;
+    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    
+    vec4 pbr = vec4(material.metalness, material.roughness, 0, 0);
+    vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), uv, 0);
+    vec3 normal = vec3(textureLod(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), uv, 0).rg, 0);
     normal.z = 1-normal.x*normal.x - normal.y*normal.y;
     normal = tangentFrame * normal;
-	albedo.xyz *= dot(normal, light1.dir);
+    
+    vec3 diffuse;
+    vec3 specular;
+    calcDirLight(albedo.xyz, pbr.xyz, -gl_WorldRayDirectionEXT, normal, light1, specular, diffuse);
 	
-	hitValue.hitValue = albedo.xyz;
+	hitValue.hitValue = diffuse + specular;
 }

@@ -107,6 +107,7 @@ void nyan::RenderManager::update()
 			m_instanceManager.set_instance_custom_index(instanceId, meshId);
 		}
 	}
+
 	{
 		auto transformMatrix = Math::Mat<float, 4, 4, false>::identity();
 		for (auto parent = m_primaryCamera; parent != entt::null; parent = m_registry.all_of<Parent>(parent) ? m_registry.get<Parent>(parent).parent : entt::null) {
@@ -115,9 +116,9 @@ void nyan::RenderManager::update()
 				transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position) * transformMatrix;
 			}
 		}
-		
-		PerspectiveCamera perspective {};
-		
+
+		PerspectiveCamera perspective{};
+
 		if (m_primaryCamera != entt::null && m_registry.all_of<PerspectiveCamera>(m_primaryCamera)) {
 			perspective = m_registry.get<PerspectiveCamera>(m_primaryCamera);
 		}
@@ -130,6 +131,9 @@ void nyan::RenderManager::update()
 		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right));
 		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
 		m_sceneManager.set_view_pos(cameraPos);
+	}
+
+	{
 
 		nyan::shaders::DirectionalLight light;
 		light.enabled = true;
