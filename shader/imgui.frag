@@ -19,11 +19,16 @@ layout(std430, push_constant) uniform uPushConstant {
     float uTranslateY;
     int texId;
     int samplerId;
+    int customTexId;
+    int customSamplerId;
 } pc;
 layout(location = 0) in struct { vec4 Color; vec2 UV; } In;
 void main()
 {
-    
+//    if(customTexId != -1) {
+//    fColor = fromLinear(In.Color * texture(sampler2D(textures[pc.customTexId], samplers[pc.customSamplerId]), In.UV.st));
+//    } else {
     fColor = fromLinear(In.Color * texture(sampler2D(textures[pc.texId], samplers[pc.samplerId]), In.UV.st));
+    //}
     //fColor = In.Color * texture(sampler2D(textures[0], samplers[4]), In.UV.st);
 }

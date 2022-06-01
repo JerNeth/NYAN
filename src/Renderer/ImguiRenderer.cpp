@@ -41,8 +41,10 @@ namespace MM {
 	{
 		auto& t = reg.get<nyan::MaterialId>(e);
 		auto& mat = manager->get_material(t);
+		ImGui::Image(reinterpret_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
 		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
 		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
+		ImGui::ColorEdit3("F0", &mat.F0_R);
 	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
@@ -158,6 +160,8 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 		float translate[2];
 		int texId;
 		int samplerId;
+		int customTexId;
+		int customSamplerId;
 	} push {
 		.scale {
 			2.0f / static_cast<float>(draw_data->DisplaySize.x),
@@ -168,7 +172,9 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 			-1.0f - draw_data->DisplayPos.y * push.scale[1]
 		},
 		.texId {static_cast<int>(m_fontBind)},
-		.samplerId {static_cast<int>(vulkan::DefaultSampler::LinearWrap)}
+		.samplerId {static_cast<int>(vulkan::DefaultSampler::LinearWrap)},
+		//.customTexId {-1},
+		//.customSamplerId{static_cast<int>(vulkan::DefaultSampler::LinearWrap)}
 	};
 	//push.scale[0] = 2.0f / draw_data->DisplaySize.x;
 	//push.scale[1] = 2.0f / draw_data->DisplaySize.y;
@@ -236,6 +242,14 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 							.height = (uint32_t)(clip_rect.w - clip_rect.y),
 						}
 					};
+					auto tex = reinterpret_cast<int>(pcmd->TextureId) -1;
+					if (tex != -1) {
+						push.texId = tex;
+					}
+					else {
+						push.texId = static_cast<int>(m_fontBind);
+					}
+					pipelineBind.push_constants(push);
 					pipelineBind.set_scissor(scissor);
 					// Draw
 					pipelineBind.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);

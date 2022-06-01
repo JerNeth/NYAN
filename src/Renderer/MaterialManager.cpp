@@ -19,7 +19,10 @@ void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& dat
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
-		.roughness {0.05f}
+		.roughness {0.05f},
+		.F0_R {0.04},
+		.F0_G {0.04},
+		.F0_B {0.04},
 	});
 }
 
@@ -32,7 +35,10 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
-		.roughness {0.05f}
+		.roughness {0.05f},
+		.F0_R {0.04},
+		.F0_G {0.04},
+		.F0_B {0.04},
 	});
 	m_materialIndex.emplace(data.name, binding);
 	return binding;

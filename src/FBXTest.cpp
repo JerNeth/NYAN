@@ -100,10 +100,11 @@ int main() {
 			//.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 			.format{VK_FORMAT_R8G8B8A8_SRGB},
 			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.25f, 0.5f, 0.7f, 1.f},
+			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		});
 	deferredPass.add_attachment("g_Normal", nyan::ImageAttachment
 		{
+			//.format{VK_FORMAT_R8G8B8A8_UNORM},
 			.format{VK_FORMAT_R8G8B8A8_UNORM},
 			.clearColor{0.f, 0.f, 1.f, 1.f},
 		});

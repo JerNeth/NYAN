@@ -21,7 +21,7 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		.height = static_cast<float>(r_device.get_swapchain_height()),
 		.minDepth = 0,
 		.maxDepth = 1,
-		};					
+		};
 		VkRect2D scissor{
 		.offset {
 			.x = static_cast<int32_t>(0),

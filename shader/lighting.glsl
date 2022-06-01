@@ -55,10 +55,9 @@ vec3 brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float Ld
     return ((NDF * G2) * F) / max(4.0  * NdotV, 1e-4); //* NdotL Take out NdotL
 }
 
-void calcDirLight(in vec3 albedo, in vec3 pbr, in vec3 viewDir, in vec3 normal, in DirectionalLight light, out vec3 specular, out vec3 diffuse) {
+void calcDirLight(in vec3 albedo, in float metalness, float roughness, in vec3 viewDir, in vec3 normal, in vec3 F0, in DirectionalLight light, out vec3 specular, out vec3 diffuse) {
     
-    float metalness = pbr.x;
-    float alpha = pbr.y * pbr.y;
+    float alpha = roughness * roughness;
 
     float NdotL = max(dot(normal, light.dir), 0.0);
     float LdotV = dot(light.dir, viewDir);
@@ -69,7 +68,6 @@ void calcDirLight(in vec3 albedo, in vec3 pbr, in vec3 viewDir, in vec3 normal, 
     vec3 diffuseColor = (1- metalness) * albedo.xyz;
     diffuse = brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, diffuseColor, alpha) * light.intensity * light.color * NdotL;
     
-    vec3 F0 = vec3(0.04, 0.04, 0.04);
     vec3 specularColor = mix(F0 , albedo.xyz,metalness);
     specular = brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * light.color;// * NdotL already canceled out
 }

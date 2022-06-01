@@ -4,6 +4,7 @@
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
+#include "common.glsl"
 #include "extracts.glsl"
 
 layout(std430, push_constant) uniform PushConstants
@@ -35,9 +36,14 @@ void main() {
 	mat3 tangentFrame = mat3(fragTangent, fragBitangent, fragNormal);
 
     normal = normalize(tangentFrame * normal);
+    normal = pack1212(encodeOctahedronMapping(normal));
+    //normal.xy = encodeOctahedronMapping(normal);
+
     outAlbedo = albedo;
-    outNormal = vec4(normal.xyz * 0.5 + 0.5, 0);
-    outPBR = vec4(material.metalness, material.roughness, 0, 0);
+    outNormal = vec4(normal.xyz, material.roughness);
+    //outNormal = normal.xy;
+    outPBR = vec4(material.metalness, material.F0_R, material.F0_G, material.F0_B);
+    outPBR.yzw -= vec3(0.022, 0.022, 0.022);
     //outColor = vec4(0.2,0.6,0.5,1.0);
 }
 

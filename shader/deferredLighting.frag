@@ -38,14 +38,17 @@ void main() {
     if(stencil == 0) {
         discard;
     } else {
-        vec3 normal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord).xyz * 2.0 - 1.0;
+        vec4 normalTexVal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord);
         vec4 pbr = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inTexCoord);
         vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inTexCoord).x;
+        vec3 normal = decodeOctahedronMapping(unpack1212(normalTexVal.xyz));
+        //normal = decodeOctahedronMapping(normal.xy);
 
   
         float metalness = pbr.x;
-        float alpha = pbr.y * pbr.y;
+        vec3 F0 = pbr.yzw + vec3(0.022, 0.022, 0.022); //Add 0.022 for e.g. gold
+        float roughness = normalTexVal.w;
         vec4 clipSpacePos = vec4(inTexCoord * 2.0 - 1.0, depth, 1.0);
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
@@ -55,8 +58,8 @@ void main() {
         
         vec3 diffuse;
         vec3 specular;
-
-        calcDirLight(albedo.xyz, pbr.xyz, viewVec, normal, light1, specular, diffuse);
+        
+        calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, F0, light1, specular, diffuse);
         outSpecular = vec4(specular, 1);
         outDiffuse = vec4(diffuse,1);
     }
