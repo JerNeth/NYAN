@@ -22,7 +22,12 @@ int main() {
 	//Possible alternative: Real-Time Polygonal-Light Shading with Linearly Transformed Cosines +
 	//						REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS
 	//Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
-	//Alternatively: Position-free Multiple-bounce Computations for Smith Microfacet BSDFs
+	//Sony Pictures Imageworks’s Lighting Model Integration Report
+	//A Multiple-scattering Microfacet Model for Real-time Image-based Lighting
+	//https://blog.selfshadow.com/2018/06/04/multi-faceted-part-2/
+	//https://blog.selfshadow.com/2018/08/05/multi-faceted-part-3/
+	// https://google.github.io/filament/Filament.html#materialsystem/improvingthebrdfs/energylossinspecularreflectance
+	// https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
 	//https://www.shadertoy.com/view/7dffD2
 	//Physics and Math of Shading Naty Hoffman 2k Siggraph 2015
 	//Sampling the GGX Distribution of Visible Normals
