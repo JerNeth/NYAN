@@ -321,7 +321,7 @@ void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& vie
 	m_sceneData.view = view;
 	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.view.inverse(m_sceneData.invView);
-	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
 	m_dirtyScene = true;
 }
 
@@ -330,7 +330,7 @@ void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& vie
 	m_sceneData.view = view;
 	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.invView = viewInverse;
-	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
 	m_dirtyScene = true;
 }
 
@@ -339,7 +339,7 @@ void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& pro
 	m_sceneData.proj = proj;
 	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.proj.inverse(m_sceneData.invProj);
-	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
 	m_dirtyScene = true;
 }
 
@@ -348,7 +348,7 @@ void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& pro
 	m_sceneData.proj = proj;
 	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
 	m_sceneData.invProj = projInverse;
-	m_sceneData.invViewProj = m_sceneData.invProj * m_sceneData.invView;
+	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
 	m_dirtyScene = true;
 }
 

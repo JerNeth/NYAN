@@ -85,7 +85,7 @@ namespace vulkan {
 		.depth_test_enable {VK_TRUE},
 		.depth_bias_enable {VK_FALSE},
 		.depth_bounds_test_enable {VK_FALSE},
-		.depth_compare_op {VK_COMPARE_OP_GREATER_OR_EQUAL}, //Use GE because of inverse Z
+		.depth_compare_op {VK_COMPARE_OP_GREATER_OR_EQUAL}, //Use GE because of inverse Z VK_COMPARE_OP_GREATER_OR_EQUAL
 
 		.stencil_test_enable {VK_FALSE},
 		.stencil_front_fail {},

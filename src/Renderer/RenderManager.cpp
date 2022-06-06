@@ -74,6 +74,17 @@ const entt::registry& nyan::RenderManager::get_registry() const
 	return m_registry;
 }
 
+void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& materials)
+{
+	for (const auto& material : materials) {
+		if (!material.diffuseTex.empty())
+			m_textureManager.request_texture(material.diffuseTex);
+		if (!material.normalTex.empty())
+			m_textureManager.request_texture(material.normalTex);
+		m_materialManager.add_material(material);
+	}
+}
+
 void nyan::RenderManager::set_primary_camera(entt::entity entity)
 {
 	assert(m_registry.all_of<PerspectiveCamera>(entity));
@@ -122,9 +133,15 @@ void nyan::RenderManager::update()
 		if (m_primaryCamera != entt::null && m_registry.all_of<PerspectiveCamera>(m_primaryCamera)) {
 			perspective = m_registry.get<PerspectiveCamera>(m_primaryCamera);
 		}
-
-		m_sceneManager.set_proj_matrix(
-			Math::Mat<float, 4, 4, true>::perspectiveInverseDepthFovXLH(perspective.nearPlane, perspective.fovX, perspective.aspect));
+		bool useInverseDepth = true;
+		if (useInverseDepth) {
+			m_sceneManager.set_proj_matrix(
+				Math::Mat<float, 4, 4, true>::perspectiveInverseDepthFovXLH(perspective.nearPlane, perspective.fovX, perspective.aspect));
+		}
+		else {
+			m_sceneManager.set_proj_matrix(
+				Math::Mat<float, 4, 4, true>::perspectiveFovXLH(perspective.nearPlane, perspective.farPlane, perspective.fovX, perspective.aspect));
+		}
 		auto cameraPos = static_cast<Math::vec3>(transformMatrix.col(3));
 		auto cameraDir = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.forward));
 		auto cameraUp = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.up));

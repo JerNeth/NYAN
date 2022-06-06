@@ -8,6 +8,15 @@ vec4 fromLinear(vec4 linearRGB)
     return vec4(mix(higher, lower, cutoff), linearRGB.a);
 }
 
+vec4 fromSRGB(vec4 sRGB)
+{
+    bvec3 cutoff = lessThan(sRGB.rgb, vec3(0.0031308 * 12.92));
+    vec3 higher = pow(vec3(0.94786729) * (sRGB.rgb + vec3(0.055)), vec3(2.4));
+    vec3 lower = sRGB.rgb / vec3(12.92);
+
+    return vec4(mix(higher, lower, cutoff), sRGB.a);
+}
+
 vec2 encodeOctahedronMapping(vec3 n) 
 {
     n /= dot(abs(n), vec3(1));
@@ -39,4 +48,28 @@ vec2 unpack1212(vec3 val)
     float low = val888.z - high * 16;
     vec2 val1212 = val888.xy + vec2(low, high) * 256;
     return clamp(val1212 / 4095, 0, 1);
+}
+
+void orthonormalize(out vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
+    //normal = normalize(normal);
+    //tangent = normalize(tangent - dot(normal, tangent) * normal);
+    //bitangent = normalize(bitangent - dot(normal, bitangent) * normal - dot(tangent, bitangent) * tangent);
+    tangent = normalize(tangent);
+    bitangent = normalize(bitangent - dot(tangent, bitangent) * tangent);
+    normal = normalize(cross(tangent, bitangent));
+}
+
+vec3 tangentSpaceNormal(in vec2 normalMapSample,in vec3 bitangent, in vec3 tangent)
+{
+    vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
+    vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
+    vec3 tmpNormal;
+    vec3 tmpTangent = tangent;
+    vec3 tmpBitangent = bitangent; // bitangent;
+    //tmpTangent = cross(tmpBitangent, tmpNormal);
+    orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
+	//mat3 tangentFrame = mat3(tmpTangent ,tmpBitangent , tmpNormal);
+	//mat3 tangentFrame = mat3( tmpBitangent , tmpNormal,  tmpTangent );
+    //return tangentFrame * tangentNormal;
+    return tmpNormal;
 }

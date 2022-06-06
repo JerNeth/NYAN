@@ -24,15 +24,9 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("san_miguel.fbx", meshes, materials);
+	renderManager.add_materials(materials);
 
-	for (const auto& a : materials) {
-		if (!a.diffuseTex.empty())
-			renderManager.get_texture_manager().request_texture(a.diffuseTex);
-		if (!a.normalTex.empty())
-			renderManager.get_texture_manager().request_texture(a.normalTex);
-		renderManager.get_material_manager().add_material(a);
-	}
 
 	auto parent = registry.create();
 	registry.emplace<Transform>(parent,
@@ -44,10 +38,15 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 660.f, -1400.f},
+			.position{108.f, 216.f,320.f},
 			.scale{},
-			.orientation{18.f, -27.f, 0.f},
+			.orientation{31.8f, -157.f, 0.f},
 		});
+	//Transform{
+	//.position{600.f, 660.f, -1400.f},
+	//.scale{},
+	//.orientation{18.f, -27.f, 0.f},
+	//}
 	registry.emplace<PerspectiveCamera>(camera, 
 		PerspectiveCamera {
 			.nearPlane {.1f},
@@ -60,18 +59,22 @@ int main() {
 		});
 	renderManager.set_primary_camera(camera);
 	for (const auto& a : meshes) {
-		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
-		auto entity = registry.create();
-		registry.emplace <MaterialId >(entity, renderManager.get_material_manager().get_material(a.material));
-		registry.emplace<MeshID>(entity, meshId);
-		auto instance = 
-			InstanceData{
-				.transform {
-					.transformMatrix {Math::Mat<float, 3, 4, false>::identity()}
-				},
-			};
-		instance.instance.instanceCustomIndex = meshId;
 
+		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
+		auto accHandle = renderManager.get_mesh_manager().get_acceleration_structure(meshId);
+		auto entity = registry.create();
+		registry.emplace<MeshID>(entity, meshId);
+		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
+		auto instance = accHandle ?
+			InstanceData{
+				(*accHandle)->create_instance()
+		} :
+			InstanceData{
+				.transform{
+					.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+				}
+		};
+		instance.instance.instanceCustomIndex = meshId;
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
@@ -93,7 +96,7 @@ int main() {
 	deferredPass.add_depth_stencil_attachment("g_Depth", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
-			.clearColor{0.f, std::bit_cast<float>(static_cast<uint32_t>(static_cast<int8_t>(0))), 0.f, 0.f},
+			.clearColor{0.f, static_cast<float>(static_cast<uint8_t>(0)), 0.f, 0.f},
 		});
 	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
 		{

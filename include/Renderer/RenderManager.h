@@ -33,6 +33,7 @@ namespace nyan {
 		const nyan::SceneManager& get_scene_manager() const;
 		entt::registry& get_registry();
 		const entt::registry& get_registry() const;
+		void add_materials(const std::vector<nyan::MaterialData>& materials);
 		void set_primary_camera(entt::entity entity);
 		void update();
 	private:

@@ -59,7 +59,7 @@ void main() {
         vec3 diffuse;
         vec3 specular;
         
-        calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, F0, light1, specular, diffuse);
+        calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
         outSpecular = vec4(specular, 1);
         outDiffuse = vec4(diffuse,1);
     }

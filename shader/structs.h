@@ -15,6 +15,10 @@ struct Material {
 	uint normalSampler;
 	uint pbrTexId;
 	uint pbrSampler;
+	float albedo_R;
+	float albedo_G;
+	float albedo_B;
+	float albedo_A;
 	float metalness;
 	float roughness;
 	float anisotropy;

@@ -18,6 +18,9 @@ namespace Utility {
 		~FBXReader();
 		void parse_meshes(std::string fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats);
 	private:
+		void parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mesh>& retMeshes);
+		void parse_meshes(fbxsdk::FbxNode* parent, std::vector<nyan::Mesh>& retMeshes);
+
 		FbxManager* sdkManager;
 		FbxIOSettings* ios;
 	};

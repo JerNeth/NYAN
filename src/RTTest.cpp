@@ -21,13 +21,7 @@ int main() {
 	//Also read: Real Shading in Unreal Engine 4
 	//Possible alternative: Real-Time Polygonal-Light Shading with Linearly Transformed Cosines +
 	//						REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS
-	//Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
-	//Sony Pictures Imageworks’s Lighting Model Integration Report
-	//A Multiple-scattering Microfacet Model for Real-time Image-based Lighting
-	//https://blog.selfshadow.com/2018/06/04/multi-faceted-part-2/
-	//https://blog.selfshadow.com/2018/08/05/multi-faceted-part-3/
-	// https://google.github.io/filament/Filament.html#materialsystem/improvingthebrdfs/energylossinspecularreflectance
-	// https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+
 	//https://www.shadertoy.com/view/7dffD2
 	//Physics and Math of Shading Naty Hoffman 2k Siggraph 2015
 	//Sampling the GGX Distribution of Visible Normals
@@ -86,15 +80,17 @@ int main() {
 		auto entity = registry.create();
 		registry.emplace<MeshID>(entity, meshId);
 		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
-		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(accHandle ?
+		auto instance = accHandle ?
 			InstanceData{
 				(*accHandle)->create_instance()
-			} :
+		} :
 			InstanceData{
 				.transform{
 					.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
 				}
-			}));
+		}));
+		instance.instance.instanceCustomIndex = meshId;
+		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
 				.position{},

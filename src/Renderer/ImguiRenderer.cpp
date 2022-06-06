@@ -45,6 +45,7 @@ namespace MM {
 		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
 		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
 		ImGui::ColorEdit3("F0", &mat.F0_R);
+		ImGui::ColorEdit4("albedo", &mat.albedo_R);
 	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
