@@ -19,15 +19,32 @@ namespace nyan {
 	//private:
 
 	//};
+	struct Deferred {};
+	struct DeferredAlphaTest {};
+	struct Forward {};
+	struct ForwardTransparent {};
 	struct MeshInstance {
 		uint32_t meshBinding;
 		uint32_t instanceBinding;
 		uint32_t instanceId;
 		uint32_t sceneBinding;
 	};
-	class MeshRenderer{
+	class MeshRenderer {
 	public:
 		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
+	private:
+		void create_pipeline();
+
+		vulkan::LogicalDevice& r_device;
+		entt::registry& r_registry;
+		nyan::RenderManager& r_renderManager;
+		nyan::Renderpass& r_pass;
+		vulkan::PipelineId m_staticTangentPipeline;
+	};
+	class ForwardMeshRenderer {
+	public:
+		ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
 	private:
 		void create_pipeline();

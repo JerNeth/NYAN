@@ -50,25 +50,38 @@ vec2 unpack1212(vec3 val)
     return clamp(val1212 / 4095, 0, 1);
 }
 
-void orthonormalize(out vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
+//void calculateTBN(inout vec3 normal, inout vec3 tangent, inout vec3 bitangent, vec3 position, vec2 uv)
+//{
+//	normal = normalize(normal);
+//	tangent = cross(dFdy(position), normal) * dFdx(uv.x) + cross(normal, dFdx(position)) * dFdy(uv.x);
+//
+//	tangent = normalize(tangent - dot(tangent, normal) * normal);
+//	bitangent = -normalize(cross(normal, tangent));
+//}
+//
+
+void orthonormalize(inout vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
     //normal = normalize(normal);
     //tangent = normalize(tangent - dot(normal, tangent) * normal);
     //bitangent = normalize(bitangent - dot(normal, bitangent) * normal - dot(tangent, bitangent) * tangent);
+    normal = normalize(normal);
     tangent = normalize(tangent);
-    bitangent = normalize(bitangent - dot(tangent, bitangent) * tangent);
-    normal = normalize(cross(tangent, bitangent));
+    tangent = normalize(tangent - dot(tangent, normal) * normal);
+    bitangent = normalize(cross(normal , tangent));
+    // normal = normalize(cross(tangent, bitangent));
 }
 
-vec3 tangentSpaceNormal(in vec2 normalMapSample,in vec3 bitangent, in vec3 tangent)
+vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal,in vec3 bitangent, in vec3 tangent)
 {
-    vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
+    //vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
+    vec2 convertedNormalMapSample = normalMapSample * vec2(2.0) +vec2(-1.0);
     vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
-    vec3 tmpNormal;
+    vec3 tmpNormal = normal;
     vec3 tmpTangent = tangent;
     vec3 tmpBitangent = bitangent; // bitangent;
     //tmpTangent = cross(tmpBitangent, tmpNormal);
     orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
-	//mat3 tangentFrame = mat3(tmpTangent ,tmpBitangent , tmpNormal);
+	mat3 tangentFrame = mat3(tmpTangent , tmpBitangent , tmpNormal);
 	//mat3 tangentFrame = mat3( tmpBitangent , tmpNormal,  tmpTangent );
     //return tangentFrame * tangentNormal;
     return tmpNormal;

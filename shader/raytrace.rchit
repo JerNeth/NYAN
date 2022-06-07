@@ -75,9 +75,9 @@ void main()
     //normal = normalS;
     //textureGrad();
     
-    vec3 diffuse;
-    vec3 specular;
+    vec4 diffuse;
+    vec4 specular;
     calcDirLight(albedo.xyz, metalness, roughness, -gl_WorldRayDirectionEXT, normal, light1, specular, diffuse);
 	
-	hitValue.hitValue = diffuse + specular;
+	hitValue.hitValue = diffuse.xyz + specular.xyz;
 }

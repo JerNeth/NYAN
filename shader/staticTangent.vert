@@ -20,19 +20,20 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec3 inTangent;
 
 layout(location = 0) out vec2 fragTexCoord;
-layout(location = 1) out vec3 fragTangent;
-layout(location = 2) out vec3 fragBitangent;
-//layout(location = 3) out vec3 fragNormal;
-
+layout(location = 1) out vec3 fragNormal;
+//layout(location = 2) out vec3 fragTangent;
+//layout(location = 3) out vec3 fragBitangent;
+layout(location = 4) out vec3 fragWorldPos;
 
 void main() {
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
     uint meshId = instance.meshId & 0x00FFFFFF;
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
 	mat4x3 model = fetchTransformMatrix(instance);
-	gl_Position = scenes[constants.sceneBinding].scene.viewProj * vec4( model *vec4( inPosition, 1.0), 1.0);
+    fragWorldPos = model *vec4( inPosition, 1.0);
+	gl_Position = scenes[constants.sceneBinding].scene.viewProj * vec4(fragWorldPos , 1.0);
     mat3 modelS = mat3(model);
-    vec3 tangent = normalize(modelS * inTangent.xyz);
+    //vec3 tangent = normalize(modelS * inTangent.xyz);
     vec3 normal = normalize(modelS * inNormal.xyz);
     //tangent = normalize(tangent - dot(tangent, normal) * normal);
 //    Uvs uvs = Uvs(mesh.uvs);
@@ -40,7 +41,7 @@ void main() {
 //    Tangents tangents = Tangents(mesh.tangents);
 //    vec3 tangent = vec3(model * vec4(tangents.t[gl_VertexIndex].xyz, 0));
 //    vec3 normal = vec3(model * vec4(normals.n[gl_VertexIndex].xyz, 0));
-    vec3 bitangent = cross(normal.xyz, tangent.xyz);
+   // vec3 bitangent = cross(normal.xyz, tangent.xyz);
     //980 ti
     //46 Entities 57 fps    17.5ms (fetch)
     //46 Entities 57 fps    17.5 ms (attribs)
@@ -52,8 +53,8 @@ void main() {
     //fragTexCoord = uvs.u[gl_VertexIndex];
 
     fragTexCoord = inTexCoord;
-    fragTangent = tangent;
-    //fragNormal = normal;
-    fragBitangent = bitangent;
+    //fragTangent = tangent;
+    fragNormal = normal;
+    //fragBitangent = bitangent;
 }
 

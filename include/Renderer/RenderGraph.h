@@ -206,6 +206,7 @@ namespace nyan {
 		void execute();
 		RenderResource& add_ressource(const std::string& name, Attachment attachment);
 		RenderResource& get_resource(std::string_view v);
+		bool resource_exists(std::string_view v);
 		const RenderResource& get_resource(std::string_view v) const;
 		void set_swapchain(const std::string& name);
 		vulkan::LogicalDevice& get_device() const;

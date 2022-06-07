@@ -104,36 +104,34 @@ namespace vulkan {
 		.rasterizer_discard_enable {VK_FALSE},
 		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
 	};
+	constexpr BlendAttachment defaultBlendAttachment{
+		.blend_enable {VK_FALSE},
+		.src_color_blend {},
+		.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+	};
+	constexpr BlendAttachment alphaBlendAttachment{
+		.blend_enable {VK_TRUE},
+		.src_color_blend {VK_BLEND_FACTOR_SRC_ALPHA},
+		.dst_color_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+		.color_blend_op {VK_BLEND_OP_ADD},
+		.src_alpha_blend {VK_BLEND_FACTOR_SRC_ALPHA},
+		.dst_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+		.alpha_blend_op {VK_BLEND_OP_ADD},
+		.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+	};
 	constexpr GraphicsPipelineState defaultGraphicsPipelineState{
 		.polygon_mode {VK_POLYGON_MODE_FILL},
 		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
 		.logic_op_enable {VK_FALSE},
 		.patch_control_points {0},
-		.blendAttachments {
-			BlendAttachment {
-				.blend_enable {VK_FALSE},
-				.src_color_blend {},
-				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
-			}
-		}
+		.blendAttachments {defaultBlendAttachment}
 	};
 	constexpr GraphicsPipelineState alphaBlendedGraphicsPipelineState{
 		.polygon_mode {VK_POLYGON_MODE_FILL},
 		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
 		.logic_op_enable {VK_FALSE},
 		.patch_control_points {0},
-		.blendAttachments {
-			BlendAttachment {
-				.blend_enable {VK_TRUE},
-				.src_color_blend {VK_BLEND_FACTOR_SRC_ALPHA},
-				.dst_color_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
-				.color_blend_op {VK_BLEND_OP_ADD},
-				.src_alpha_blend {VK_BLEND_FACTOR_SRC_ALPHA},
-				.dst_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
-				.alpha_blend_op {VK_BLEND_OP_ADD},
-				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
-			}
-		}
+		.blendAttachments { alphaBlendAttachment }
 	};
 	// Blend Logic Pseudo Code
 	//if (blendEnable) {

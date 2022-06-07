@@ -53,14 +53,12 @@ void main() {
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
         vec4 worldSpacePos = scene.invView * viewSpacePos;
-        vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
-        vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
         
-        vec3 diffuse;
-        vec3 specular;
+        vec4 diffuse;
+        vec4 specular;
         
-        calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
-        outSpecular = vec4(specular, 1);
-        outDiffuse = vec4(diffuse,1);
+        shadeFragment(worldSpacePos.xyz, normal, scene, albedo, metalness, roughness, specular, diffuse);
+        outSpecular = vec4(specular.xyz, 1);
+        outDiffuse = vec4(diffuse.xyz,1);
     }
 }

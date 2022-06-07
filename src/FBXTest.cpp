@@ -24,7 +24,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("san_miguel.fbx", meshes, materials);
+	reader.parse_meshes("cathedral.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -58,6 +58,7 @@ int main() {
 			.right {1.f, 0.f ,0.f},
 		});
 	renderManager.set_primary_camera(camera);
+	bool first = true;
 	for (const auto& a : meshes) {
 
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
@@ -86,6 +87,8 @@ int main() {
 			Parent{
 				.parent {parent},
 			});
+		registry.emplace<Deferred>(entity);
+
 	} 
 
 
@@ -134,6 +137,10 @@ int main() {
 			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 		});
+	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Graphics);
+	forwardPass.add_depth_attachment("g_Depth");
+	forwardPass.add_attachment("SpecularLighting");
+	forwardPass.add_attachment("DiffuseLighting");
 
 	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Graphics);
 	compositePass.add_read("SpecularLighting");
@@ -148,6 +155,7 @@ int main() {
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
+	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	application.each_frame_begin([&]()
 		{

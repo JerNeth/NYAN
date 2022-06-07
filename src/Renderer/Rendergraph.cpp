@@ -31,6 +31,7 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 
 void nyan::Renderpass::add_attachment(const std::string& name)
 {
+	assert(r_graph.resource_exists(name));
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
@@ -661,6 +662,11 @@ RenderResource& nyan::Rendergraph::get_resource(std::string_view v)
 	return m_renderresources.get(std::string(v));
 }
 
+bool nyan::Rendergraph::resource_exists(std::string_view v)
+{
+	return m_renderresources.contains(std::string(v));
+}
+
 RenderResource& nyan::Rendergraph::get_resource(RenderResourceId id)
 {
 	return m_renderresources.get_direct(id);
@@ -956,9 +962,6 @@ void nyan::Rendergraph::set_up_WaR(RenderpassId read, RenderpassId write, const 
 			.dst = write,
 			.srcLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		};
-
-		if (dst.is_attachment(resource))
-		if (dst.is_write(resource))
 
 		barrier.srcAccess = VK_ACCESS_SHADER_READ_BIT;
 		if (src.get_type() == Renderpass::Type::Graphics) {

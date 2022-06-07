@@ -73,7 +73,7 @@ float brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float L
     return (NDF * G2 * 0.5); // /  4.0 * NdotV * NdotL Canceled out with G2
 }
 
-void calcDirLight(in vec3 albedo, in float metalness, float roughness, in vec3 viewDir, in vec3 normal, in DirectionalLight light, out vec3 specular, out vec3 diffuse) {
+void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec3 viewDir, in vec3 normal, in DirectionalLight light, inout vec4 specular, inout vec4 diffuse) {
     
     float alpha = roughness * roughness;
 
@@ -85,7 +85,7 @@ void calcDirLight(in vec3 albedo, in float metalness, float roughness, in vec3 v
     float LdotH = rcpLenLV * LdotV + rcpLenLV;
 
 
-    diffuse = brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
+    diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
     
     //TODO Energy Compensation for multiple Scattering
     //Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
@@ -98,5 +98,20 @@ void calcDirLight(in vec3 albedo, in float metalness, float roughness, in vec3 v
 
     vec3 specularColor = mix( vec3(0.04), albedo.xyz, metalness);
     vec3 F = F_Schlick(NdotV, specularColor);
-    specular = (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * NdotL) * F * light.color ;
+    specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * NdotL) * F * light.color ;
+}
+
+void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo, in float metalness, in float roughness, out vec4 specular, out vec4 diffuse) {
+	DirectionalLight light1 = scene.dirLight1;
+	DirectionalLight light2 = scene.dirLight2;
+    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewVec = normalize(viewPos - worldPos.xyz);
+
+    diffuse = vec4(0.0);
+    specular= vec4(0.0);
+   // calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
+
+    //specular.a = albedo.a;
+    //diffuse.a = albedo.a;
+    specular = albedo;
 }
