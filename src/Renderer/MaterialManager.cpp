@@ -14,11 +14,11 @@ void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& dat
 {
 	set(idx, nyan::shaders::Material{
 		.albedoTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "normal.png")},
-		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.albedo_R {1.0f},
 		.albedo_G {1.0f},
 		.albedo_B {1.0f},
@@ -27,6 +27,7 @@ void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& dat
 		.F0_R {0.04},
 		.F0_G {0.04},
 		.F0_B {0.04},
+		.alphaDiscard {0.1}
 	});
 }
 
@@ -34,11 +35,11 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 {
 	auto binding = add(nyan::shaders::Material{
 		.albedoTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "normal.png")},
-		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestWrap)},
+		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.albedo_R {1.0f},
 		.albedo_G {1.0f},
 		.albedo_B {1.0f},
@@ -47,6 +48,7 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 		.F0_R {0.04},
 		.F0_G {0.04},
 		.F0_B {0.04},
+		.alphaDiscard {0.1}
 	});
 	m_materialIndex.emplace(data.name, binding);
 	return binding;

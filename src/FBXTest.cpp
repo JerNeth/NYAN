@@ -38,10 +38,15 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{108.f, 216.f,320.f},
+			.position{600.f, 350.f,960.f},
 			.scale{},
-			.orientation{31.8f, -157.f, 0.f},
+			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
+	//Transform{
+	//.position{108.f, 216.f,320.f},
+	//.scale{},
+	//.orientation{31.8f, -157.f, 0.f},
+	//});
 	//Transform{
 	//.position{600.f, 660.f, -1400.f},
 	//.scale{},
@@ -87,7 +92,12 @@ int main() {
 			Parent{
 				.parent {parent},
 			});
-		registry.emplace<Deferred>(entity);
+		//registry.emplace<DeferredAlphaTest>(entity);
+		if (first) {
+			first = false;
+			registry.emplace<Deferred>(entity);
+		} else 
+			registry.emplace<DeferredAlphaTest>(entity);
 
 	} 
 
@@ -130,12 +140,14 @@ int main() {
 	deferredLightingPass.add_attachment("SpecularLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
+			//.clearColor{0.0f, 0.0f, 0.0f, 1.f},
+			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 		});
 	deferredLightingPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
+			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
+			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		});
 	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Graphics);
 	forwardPass.add_depth_attachment("g_Depth");

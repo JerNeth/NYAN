@@ -41,6 +41,7 @@ namespace nyan {
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_staticTangentPipeline;
+		vulkan::PipelineId m_staticTangentAlphaDiscardPipeline;
 	};
 	class ForwardMeshRenderer {
 	public:

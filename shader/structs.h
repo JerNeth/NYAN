@@ -26,6 +26,7 @@ struct Material {
 	float F0_R;
 	float F0_G;
 	float F0_B;
+	float alphaDiscard;
 
 };
 

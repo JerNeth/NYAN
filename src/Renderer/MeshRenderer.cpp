@@ -13,37 +13,73 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&) 
 	{
-		auto pipelineBind = cmd->bind_graphics_pipeline(m_staticTangentPipeline);
-		VkViewport viewport{
-		.x = 0,
-		.y = 0,
-		.width = static_cast<float>(r_device.get_swapchain_width()),
-		.height = static_cast<float>(r_device.get_swapchain_height()),
-		.minDepth = 0,
-		.maxDepth = 1,
-		};
-		VkRect2D scissor{
-		.offset {
-			.x = static_cast<int32_t>(0),
-			.y = static_cast<int32_t>(0),
-		},
-		.extent {
-			.width = static_cast<uint32_t>(viewport.width),
-			.height = static_cast<uint32_t>(viewport.height),
-		}
-		};
-		pipelineBind.set_scissor(scissor);
-		pipelineBind.set_viewport(viewport);
-
-		auto view = r_registry.view<const MeshID, const InstanceId, const Deferred>();
-		for (const auto& [entity, meshID, instanceId] : view.each()) {
-			nyan::MeshInstance instance{
-				.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
-				.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
-				.instanceId {instanceId},
-				.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+		{
+			auto pipelineBind = cmd->bind_graphics_pipeline(m_staticTangentPipeline);
+			VkViewport viewport{
+			.x = 0,
+			.y = 0,
+			.width = static_cast<float>(r_device.get_swapchain_width()),
+			.height = static_cast<float>(r_device.get_swapchain_height()),
+			.minDepth = 0,
+			.maxDepth = 1,
 			};
-			render(pipelineBind, meshID, instance);
+			VkRect2D scissor{
+			.offset {
+				.x = static_cast<int32_t>(0),
+				.y = static_cast<int32_t>(0),
+			},
+			.extent {
+				.width = static_cast<uint32_t>(viewport.width),
+				.height = static_cast<uint32_t>(viewport.height),
+			}
+			};
+			pipelineBind.set_scissor(scissor);
+			pipelineBind.set_viewport(viewport);
+
+			auto view = r_registry.view<const MeshID, const InstanceId, const Deferred>();
+			for (const auto& [entity, meshID, instanceId] : view.each()) {
+				nyan::MeshInstance instance{
+					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
+					.instanceId {instanceId},
+					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+				};
+				render(pipelineBind, meshID, instance);
+			}
+		}
+		{
+			auto pipelineBind = cmd->bind_graphics_pipeline(m_staticTangentAlphaDiscardPipeline);
+			VkViewport viewport{
+			.x = 0,
+			.y = 0,
+			.width = static_cast<float>(r_device.get_swapchain_width()),
+			.height = static_cast<float>(r_device.get_swapchain_height()),
+			.minDepth = 0,
+			.maxDepth = 1,
+			};
+			VkRect2D scissor{
+			.offset {
+				.x = static_cast<int32_t>(0),
+				.y = static_cast<int32_t>(0),
+			},
+			.extent {
+				.width = static_cast<uint32_t>(viewport.width),
+				.height = static_cast<uint32_t>(viewport.height),
+			}
+			};
+			pipelineBind.set_scissor(scissor);
+			pipelineBind.set_viewport(viewport);
+
+			auto view = r_registry.view<const MeshID, const InstanceId, const DeferredAlphaTest>();
+			for (const auto& [entity, meshID, instanceId] : view.each()) {
+				nyan::MeshInstance instance{
+					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
+					.instanceId {instanceId},
+					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+				};
+				render(pipelineBind, meshID, instance);
+			}
 		}
 	}, true);
 }
@@ -105,6 +141,9 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 
 	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
+
+	staticTangentConfig.shaderInstances[1] = r_renderManager.get_shader_manager().get_shader_instance_id("deferredTangentAlphaDiscard_frag");
+	m_staticTangentAlphaDiscardPipeline = r_pass.add_pipeline(staticTangentConfig);
 }
 
 nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
