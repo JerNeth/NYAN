@@ -30,15 +30,15 @@ namespace nyan {
 			Buffer
 		};
 		struct Use {
-			enum class Type : uint8_t {
+			enum class Type : uint32_t {
 				Sample,
 				Attachment,
 				ImageLoadStore,
 				Present,
 				Copy,
 				Blit
-			} type;
-			uint32_t passId;
+			} type : 8;
+			uint32_t passId : 24;
 		};
 		RenderResource() = default;
 		RenderResource(RenderResourceId id) : m_id(id){}

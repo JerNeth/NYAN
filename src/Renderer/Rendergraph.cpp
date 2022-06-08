@@ -22,6 +22,7 @@ void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type 
 
 void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment attachment)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
@@ -31,6 +32,7 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 
 void nyan::Renderpass::add_attachment(const std::string& name)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(name));
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert( m_id);
@@ -40,7 +42,7 @@ void nyan::Renderpass::add_attachment(const std::string& name)
 
 void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 {
-	assert(m_type == Renderpass::Type::Graphics);
+	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
 	swap.clearColor = clearColor;
@@ -56,6 +58,7 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 
 void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttachment attachment)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert( m_id);
 	resource.attachment = attachment;
@@ -65,6 +68,7 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttach
 
 void nyan::Renderpass::add_depth_attachment(const std::string& name)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	m_depth = resource.m_id;
@@ -72,6 +76,7 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name)
 
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
@@ -81,6 +86,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, Ima
 
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	m_depth = m_stencil = resource.m_id;
@@ -88,6 +94,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
 
 void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAttachment attachment)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
@@ -97,6 +104,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 
 void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 {
+	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	m_stencil = resource.m_id;
@@ -122,7 +130,7 @@ void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attach
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType)
 {
-	assert(m_type == Renderpass::Type::Graphics);
+	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
 	swap.clearColor = clearColor;
@@ -136,7 +144,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	m_rendersSwap = true;
 }
 
-void nyan::Renderpass::copy_into(const std::string& source, const std::string& target)
+void nyan::Renderpass::copy(const std::string& source, const std::string& target)
 {
 	auto& sourceResource = r_graph.get_resource(source);
 	auto& targetResource = r_graph.get_resource(target);
@@ -234,13 +242,13 @@ vulkan::PipelineId nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig
 
 void nyan::Renderpass::begin_rendering(vulkan::CommandBufferHandle& cmd)
 {
-	if (m_type != Renderpass::Type::Compute)
+	if (m_type == Renderpass::Type::Generic)
 		cmd->begin_rendering(m_renderInfo);
 }
 
 void nyan::Renderpass::end_rendering(vulkan::CommandBufferHandle& cmd)
 {
-	if (m_type != Renderpass::Type::Compute)
+	if (m_type == Renderpass::Type::Generic)
 		cmd->end_rendering();
 }
 
@@ -390,7 +398,7 @@ void nyan::Rendergraph::build()
 	});
 	m_renderpasses.for_each([&](Renderpass& pass) {
 		//pass.m_attachmentPool = std::make_unique<vulkan::DescriptorPool>(r_device, );
-		if (pass.get_type() == Renderpass::Type::Graphics) {
+		if (pass.get_type() == Renderpass::Type::Generic) {
 			for (auto& [readId, readType, readView, readBinding] : pass.m_reads) {
 				auto& resource = m_renderresources.get_direct(readId);
 				if (resource.m_type == RenderResource::Type::Image) {
@@ -614,10 +622,10 @@ void nyan::Rendergraph::execute()
 		barrierUpdate(pass.m_preBarriers);
 		vulkan::CommandBufferType commandBufferType = vulkan::CommandBufferType::Generic;
 		switch (pass.get_type()) {
-		case Renderpass::Type::Compute:
+		case Renderpass::Type::AsyncCompute:
 			commandBufferType = vulkan::CommandBufferType::Compute;
 			break;
-		case Renderpass::Type::Graphics:
+		case Renderpass::Type::Generic:
 			commandBufferType = vulkan::CommandBufferType::Generic;
 			break;
 		}
@@ -824,7 +832,7 @@ void nyan::Rendergraph::set_up_RaW(RenderpassId write, RenderpassId read, const 
 		if (src.is_write(resource)) {
 			barrier.srcLayout = VK_IMAGE_LAYOUT_GENERAL;
 		}
-		if (src.get_type() == Renderpass::Type::Graphics) {
+		if (src.get_type() == Renderpass::Type::Generic) {
 
 			if (src.is_attachment(resource)) {
 				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
@@ -849,7 +857,7 @@ void nyan::Rendergraph::set_up_RaW(RenderpassId write, RenderpassId read, const 
 			barrier.srcStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 		}
-		if (dst.get_type() == Renderpass::Type::Graphics) {
+		if (dst.get_type() == Renderpass::Type::Generic) {
 			barrier.dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			barrier.dstAccess = VK_ACCESS_SHADER_READ_BIT;
 			//barrier.dstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -893,7 +901,7 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 		if (dst.is_write(resource))
 			barrier.dstLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-		if (src.get_type() == Renderpass::Type::Graphics) {
+		if (src.get_type() == Renderpass::Type::Generic) {
 
 			if (src.is_attachment(resource)) {
 				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
@@ -914,7 +922,7 @@ void nyan::Rendergraph::set_up_WaW(RenderpassId src_, RenderpassId dst_, const R
 			barrier.srcStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
 		}
-		if (dst.get_type() == Renderpass::Type::Graphics) {
+		if (dst.get_type() == Renderpass::Type::Generic) {
 			if (dst.is_attachment(resource)) {
 				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
 					barrier.dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
@@ -959,13 +967,13 @@ void nyan::Rendergraph::set_up_WaR(RenderpassId read, RenderpassId write, const 
 		};
 
 		barrier.srcAccess = VK_ACCESS_SHADER_READ_BIT;
-		if (src.get_type() == Renderpass::Type::Graphics) {
+		if (src.get_type() == Renderpass::Type::Generic) {
 			barrier.srcStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
 		else {
 			barrier.srcStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 		}
-		if (dst.get_type() == Renderpass::Type::Graphics) {
+		if (dst.get_type() == Renderpass::Type::Generic) {
 			if (dst.is_attachment(resource)) {
 				if (vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
 					barrier.dstStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -1033,10 +1041,10 @@ void nyan::Rendergraph::set_up_barrier(const ImageBarrier& imageBarrier_, const 
 	barrier.imageBarrierCount = static_cast<uint16_t>(1);
 	assert(src.m_imageBarriers.size() <= USHRT_MAX);
 	barrier.imageBarrierOffset = static_cast<uint16_t>(src.m_imageBarriers.size());
-	assert((!(src.get_type() == Renderpass::Type::Compute) || (imageBarrier_.srcStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
-	assert((!(dst.get_type() == Renderpass::Type::Compute) || (imageBarrier_.dstStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
+	assert((!(src.get_type() == Renderpass::Type::AsyncCompute) || (imageBarrier_.srcStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
+	assert((!(dst.get_type() == Renderpass::Type::AsyncCompute) || (imageBarrier_.dstStage != VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)));
 	if (src.get_type() != dst.get_type() && r_device.get_graphics_family() != r_device.get_compute_family()) {
-		if (src.get_type() == Renderpass::Type::Graphics) {
+		if (src.get_type() == Renderpass::Type::Generic) {
 			imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();
 			imageBarrier.dstQueueFamilyIndex = r_device.get_compute_family();
 		}
