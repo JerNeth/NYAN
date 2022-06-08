@@ -29,12 +29,24 @@ namespace nyan {
 			Image,
 			Buffer
 		};
+		struct Use {
+			enum class Type : uint8_t {
+				Sample,
+				Attachment,
+				ImageLoadStore,
+				Present,
+				Copy,
+				Blit
+			} type;
+			uint32_t passId;
+		};
 		RenderResource() = default;
 		RenderResource(RenderResourceId id) : m_id(id){}
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
 		std::set<uint32_t> m_readIn;
 		std::set<uint32_t> m_writeToIn;
+		std::vector<Use> m_uses;
 		Attachment attachment;
 		bool storageImage = false;
 		vulkan::ImageView* handle = nullptr;
@@ -101,8 +113,9 @@ namespace nyan {
 		friend class Rendergraph;
 	public:
 		enum class Type :uint8_t{
-			Graphics,
-			Compute
+			Generic,
+			AsyncCompute,
+			Transfer
 		};
 		Renderpass(Rendergraph& graph, Type type, uint32_t id, const std::string& name);
 		Renderpass(const Renderpass&) = delete;
@@ -126,6 +139,7 @@ namespace nyan {
 			m_renderFunctions.push_back(functor);
 			m_useRendering.push_back(renderpass);
 		}
+		void copy(const std::string& source, const std::string& target);
 		uint32_t get_id() const noexcept {
 			return m_id;
 		}

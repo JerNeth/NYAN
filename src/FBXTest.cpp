@@ -92,7 +92,7 @@ int main() {
 			Parent{
 				.parent {parent},
 			});
-		//registry.emplace<DeferredAlphaTest>(entity);
+
 		if (first) {
 			first = false;
 			registry.emplace<Deferred>(entity);
@@ -105,7 +105,7 @@ int main() {
 
 	nyan::Rendergraph rendergraph{ device };
 	//OutputDebugStringW(L"My output string.\n");
-	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
+	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic);
 	deferredPass.add_depth_stencil_attachment("g_Depth", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
@@ -131,7 +131,7 @@ int main() {
 		});
 	//deferredPass.add_swapchain_attachment();
 
-	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Graphics);
+	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
 	deferredLightingPass.add_read("g_Albedo");
 	deferredLightingPass.add_read("g_Normal");
 	deferredLightingPass.add_read("g_PBR");
@@ -149,18 +149,18 @@ int main() {
 			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		});
-	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Graphics);
+	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic);
 	forwardPass.add_depth_attachment("g_Depth");
 	forwardPass.add_attachment("SpecularLighting");
 	forwardPass.add_attachment("DiffuseLighting");
 
-	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Graphics);
+	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic);
 	compositePass.add_read("SpecularLighting");
 	compositePass.add_read("DiffuseLighting");
 	compositePass.add_swapchain_attachment();
 
 
-	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
+	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 

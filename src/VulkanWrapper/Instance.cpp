@@ -164,6 +164,46 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 		m_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		m_layers.push_back("VK_LAYER_KHRONOS_validation");
 	}
+	uint32_t layerPropertyCount;
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
+	std::vector<VkLayerProperties> layerProperties(layerPropertyCount);
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, layerProperties.data());
+
+	for (auto it = m_layers.begin(); it != m_layers.end();) {
+		if (std::find_if(layerProperties.begin(), layerProperties.end(), [&it](auto& val) {return std::strcmp(*it, val.layerName) == 0; }) == layerProperties.end()) {
+			Utility::log().location().format("Instance layer not present: %s", *it);
+			it = m_layers.erase(it);
+		}
+		else
+			++it;
+	}
+	std::vector<const char*> extensions;
+
+	uint32_t propertyCount;
+	vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, nullptr);
+	std::vector<VkExtensionProperties> properties(propertyCount);
+	vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, properties.data());
+
+	for (auto it = m_extensions.begin(); it != m_extensions.end(); ++it) 
+		if (std::find_if(properties.begin(), properties.end(), [&it](auto& val) {return std::strcmp(*it, val.extensionName) == 0; }) != properties.end())
+			extensions.push_back(*it);
+
+	for (auto& layer : m_layers) {
+		uint32_t propertyCount;
+		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, nullptr);
+		std::vector<VkExtensionProperties> properties(propertyCount);
+		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, properties.data());
+
+		for (auto it = m_extensions.begin(); it != m_extensions.end();++it)
+			if (std::find_if(properties.begin(), properties.end(), [&it](auto& val) {return std::strcmp(*it, val.extensionName) == 0; }) != properties.end())
+				extensions.push_back(*it);
+	}
+
+	for (auto it = m_extensions.begin(); it != m_extensions.end(); ++it) 
+		if (std::find_if(extensions.begin(), extensions.end(), [&it](auto& val) {return std::strcmp(*it, val) == 0; }) == extensions.end())
+			Utility::log().location().format("Instance extension not present: %s", *it);
+	
+	
 	VkInstanceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pApplicationInfo = &applicationInfo,

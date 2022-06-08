@@ -136,6 +136,15 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	m_rendersSwap = true;
 }
 
+void nyan::Renderpass::copy_into(const std::string& source, const std::string& target)
+{
+	auto& sourceResource = r_graph.get_resource(source);
+	auto& targetResource = r_graph.get_resource(target);
+	targetResource.attachment = sourceResource.attachment;
+	sourceResource.m_copiedIn.insert(m_id);
+	targetResource.m_copiedIntoIn.insert(m_id);
+}
+
 void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 {
 
