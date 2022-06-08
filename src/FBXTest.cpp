@@ -97,7 +97,7 @@ int main() {
 			first = false;
 			registry.emplace<Deferred>(entity);
 		} else 
-			registry.emplace<DeferredAlphaTest>(entity);
+			registry.emplace<ForwardTransparent>(entity);
 
 	} 
 

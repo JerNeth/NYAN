@@ -228,9 +228,99 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineSt
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].image != VK_NULL_HANDLE));
-	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].image != VK_NULL_HANDLE));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers != nullptr));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].sType == VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
 	vkCmdPipelineBarrier(m_vkHandle, srcStages, dstStages, 0, barrierCount,
 		globals, bufferBarrierCounts, bufferBarriers, imageBarrierCounts, imageBarriers);
+}
+
+void vulkan::CommandBuffer::barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+{
+	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].image != VK_NULL_HANDLE));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers != nullptr));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].sType == VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
+	assert(!(barrierCount != 0) || (globals != nullptr));
+	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
+	VkDependencyInfo dependencyInfo{
+		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
+		.pNext {nullptr},
+		.dependencyFlags {dependencyFlags},
+		.memoryBarrierCount {barrierCount},
+		.pMemoryBarriers {globals},
+		.bufferMemoryBarrierCount {bufferBarrierCounts},
+		.pBufferMemoryBarriers {bufferBarriers},
+		.imageMemoryBarrierCount {imageBarrierCounts},
+		.pImageMemoryBarriers {imageBarriers}
+	};
+	vkCmdPipelineBarrier2(m_vkHandle, &dependencyInfo);
+}
+
+void vulkan::CommandBuffer::reset_event2(VkEvent event, VkPipelineStageFlags2 stages)
+{
+	vkCmdResetEvent2(m_vkHandle, event, stages);
+}
+
+void vulkan::CommandBuffer::set_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+{
+
+	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].image != VK_NULL_HANDLE));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers != nullptr));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].sType == VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
+	assert(!(barrierCount != 0) || (globals != nullptr));
+	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
+	VkDependencyInfo dependencyInfo{
+		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
+		.pNext {nullptr},
+		.dependencyFlags {dependencyFlags},
+		.memoryBarrierCount {barrierCount},
+		.pMemoryBarriers {globals},
+		.bufferMemoryBarrierCount {bufferBarrierCounts},
+		.pBufferMemoryBarriers {bufferBarriers},
+		.imageMemoryBarrierCount {imageBarrierCounts},
+		.pImageMemoryBarriers {imageBarriers}
+	};
+	vkCmdSetEvent2(m_vkHandle, event,&dependencyInfo);
+}
+
+void vulkan::CommandBuffer::wait_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+{
+	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
+	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].image != VK_NULL_HANDLE));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers != nullptr));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].sType == VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2));
+	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
+	assert(!(barrierCount != 0) || (globals != nullptr));
+	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
+	VkDependencyInfo dependencyInfo{
+		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
+		.pNext {nullptr},
+		.dependencyFlags {dependencyFlags},
+		.memoryBarrierCount {barrierCount},
+		.pMemoryBarriers {globals},
+		.bufferMemoryBarrierCount {bufferBarrierCounts},
+		.pBufferMemoryBarriers {bufferBarriers},
+		.imageMemoryBarrierCount {imageBarrierCounts},
+		.pImageMemoryBarriers {imageBarriers}
+	};
+	vkCmdWaitEvents2(m_vkHandle, 1, &event, &dependencyInfo);
+}
+
+void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo)
+{
+	assert(eventCount);
+	assert(event);
+	assert(dependencyInfo);
+	vkCmdWaitEvents2(m_vkHandle, eventCount, event, dependencyInfo);
 }
 
 void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess)

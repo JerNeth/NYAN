@@ -15,7 +15,7 @@ nyan::Renderpass::Renderpass(Rendergraph& graph, Type type, uint32_t id, const s
 void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type readType)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_readIn.insert(std::upper_bound(resource.m_readIn.begin(), resource.m_readIn.end(), m_id), m_id);
+	resource.m_readIn.insert(m_id);
 	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
 	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
 }
@@ -23,7 +23,7 @@ void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type 
 void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment attachment)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -33,7 +33,7 @@ void nyan::Renderpass::add_attachment(const std::string& name)
 {
 	assert(r_graph.resource_exists(name));
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert( m_id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
 }
@@ -46,7 +46,7 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
 	auto& resource = r_graph.get_resource("swap");
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -57,7 +57,7 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttachment attachment)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert( m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
 	m_depth = resource.m_id;
@@ -66,14 +66,14 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttach
 void nyan::Renderpass::add_depth_attachment(const std::string& name)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	m_depth = resource.m_id;
 }
 
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
 	m_depth = m_stencil = resource.m_id;
@@ -82,14 +82,14 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, Ima
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	m_depth = m_stencil = resource.m_id;
 }
 
 void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAttachment attachment)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
 	m_stencil = resource.m_id;
@@ -98,7 +98,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	m_stencil = resource.m_id;
 }
 
@@ -113,7 +113,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType)
 {
 	auto& resource = r_graph.get_resource(name);
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.storageImage = true;
 	assert(std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource](const auto& write) { return write.id == resource.m_id; }) == m_writes.cend());
@@ -128,7 +128,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
 	auto& resource = r_graph.get_resource("swap");
-	resource.m_writeToIn.insert(std::upper_bound(resource.m_writeToIn.begin(), resource.m_writeToIn.end(), m_id), m_id);
+	resource.m_writeToIn.insert(m_id);
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE });
@@ -342,7 +342,7 @@ void nyan::Rendergraph::build()
 	m_state = State::Build;
 	m_renderresources.for_each([&](RenderResource& resource) {
 		if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
-			swapchain_present_transition(resource.m_writeToIn.back());
+			swapchain_present_transition(*resource.m_writeToIn.rbegin());
 		}
 		auto followRead = resource.m_readIn.begin();
 		for (auto write = resource.m_writeToIn.begin(); write != resource.m_writeToIn.end(); write++) {
@@ -369,28 +369,14 @@ void nyan::Rendergraph::build()
 			}
 		}
 		//Layout transitions Read -> Write
-		if (!resource.m_writeToIn.empty() && resource.m_type == RenderResource::Type::Image) {
-			auto followWrite = resource.m_writeToIn.begin();
-			for (auto read = resource.m_readIn.begin(); read != resource.m_readIn.end(); read++) {
-				for (; followWrite != resource.m_writeToIn.end(); followWrite++)
-					if (*followWrite > *read)
-						break;
-				if (followWrite == resource.m_writeToIn.end())
-					break;
-
-				followRead = read;
-				while (followRead != resource.m_readIn.end() && *followRead < *followWrite)
-					read = followRead++;
-
-				set_up_WaR(*read, *followWrite, resource);
-			}
-			if (!resource.m_readIn.empty() && (*resource.m_writeToIn.begin() < *resource.m_readIn.begin())) {
+		if (!resource.m_writeToIn.empty() && !resource.m_readIn.empty()) {
+			if ((*resource.m_writeToIn.begin() < *resource.m_readIn.begin())) {
 				//Necessary roll-over last Read -> first Write
 				set_up_WaR(*resource.m_readIn.rbegin(), *resource.m_writeToIn.begin(), resource);
 			}
 		}
 		if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
-			swapchain_write_transition(resource.m_writeToIn.front());
+			swapchain_write_transition(*resource.m_writeToIn.begin());
 		}
 	});
 	m_renderpasses.for_each([&](Renderpass& pass) {

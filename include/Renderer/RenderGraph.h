@@ -33,8 +33,8 @@ namespace nyan {
 		RenderResource(RenderResourceId id) : m_id(id){}
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
-		std::vector<uint32_t> m_readIn;
-		std::vector<uint32_t> m_writeToIn;
+		std::set<uint32_t> m_readIn;
+		std::set<uint32_t> m_writeToIn;
 		Attachment attachment;
 		bool storageImage = false;
 		vulkan::ImageView* handle = nullptr;

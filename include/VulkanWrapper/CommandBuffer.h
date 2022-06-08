@@ -33,8 +33,19 @@ namespace vulkan {
 		void copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact);
 		void mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier);
 		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount,
-			const VkMemoryBarrier * globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
-			uint32_t imageBarrierCounts, const VkImageMemoryBarrier *imageBarriers);
+			const VkMemoryBarrier* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
+			uint32_t imageBarrierCounts, const VkImageMemoryBarrier* imageBarriers);
+		void barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
+		void reset_event2(VkEvent event, VkPipelineStageFlags2 stages);
+		void set_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
+		void wait_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
+		void wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo);
 		void barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess);
 		void image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout,
 			VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags,
