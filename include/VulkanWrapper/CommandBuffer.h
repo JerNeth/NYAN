@@ -28,6 +28,8 @@ namespace vulkan {
 		void blit_image(const Image& dst, const Image& src, const VkOffset3D &dstOffset, const VkOffset3D &dstExtent,
 						const VkOffset3D &srcOffset, const VkOffset3D &srcExtent, uint32_t dstLevel, uint32_t srcLevel,
 						uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter);
+		void copy_image(const Image& src, const Image& dst, VkImageLayout srcLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VkImageLayout dstLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, uint32_t mipLevel = 0);
+
 		void generate_mips(const Image& image);
 		void copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits);
 		void copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact);
