@@ -218,6 +218,7 @@ void nyan::Renderpass::copy(const std::string& source, const std::string& target
 	}
 	targetResource.m_uses[m_id].set(RenderResource::UseType::CopySource);
 	sourceResource.m_uses[m_id].set(RenderResource::UseType::CopyTarget);
+	m_copies.push_back(Copy{.src = sourceResource.m_id, .dst = targetResource.m_id});
 	//sourceResource.m_copiedIn.insert(m_id);
 	//targetResource.m_copiedIntoIn.insert(m_id);
 }
@@ -289,7 +290,11 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 void nyan::Renderpass::do_copies(vulkan::CommandBufferHandle& cmd)
 {
 	apply_copy_barriers(cmd);
-	
+	for (const auto& [srcId, dstId] : m_copies) {
+		const auto& src = r_graph.get_resource(srcId);
+		const auto& dst = r_graph.get_resource(dstId);
+		cmd->copy_image(*src.handle, *dst.handle);
+	}
 }
 
 void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBufferHandle& cmd)
@@ -1087,14 +1092,14 @@ void nyan::Rendergraph::swapchain_present_transition2(RenderpassId src_const)
 	if (usage.test(RenderResource::UseType::CopySource)) {
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-		if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	}
 	if (usage.test(RenderResource::UseType::BlitSource)) {
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	}
 	
 
@@ -1292,31 +1297,31 @@ void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, co
 	if (srcUsage.test(RenderResource::UseType::CopySource)) {
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-		if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	}
 
 	if (srcUsage.test(RenderResource::UseType::BlitSource)) {
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	}
 
 	if (srcUsage.test(RenderResource::UseType::CopyTarget)) {
 		assert(!srcUsage.test(RenderResource::UseType::BlitTarget));
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	}
 
 	if (srcUsage.test(RenderResource::UseType::BlitTarget)) {
 		assert(!srcUsage.test(RenderResource::UseType::CopyTarget));
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	}
 
 
@@ -1548,10 +1553,10 @@ void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource
 		assert(!usage.test(RenderResource::UseType::BlitTarget));
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		else
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		//else
+		//	imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 	if (usage.test(RenderResource::UseType::BlitTarget)) {
 		assert(!usage.test(RenderResource::UseType::CopyTarget));
@@ -1559,10 +1564,10 @@ void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource
 		assert(!usage.test(RenderResource::UseType::BlitSource));
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		else
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		//else
+		//	imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 	if (usage.test(RenderResource::UseType::CopySource)) {
 		assert(!usage.test(RenderResource::UseType::CopyTarget));
@@ -1570,10 +1575,10 @@ void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource
 		assert(!usage.test(RenderResource::UseType::BlitTarget));
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		else
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//else
+		//	imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 	if (usage.test(RenderResource::UseType::BlitSource)) {
 		assert(!usage.test(RenderResource::UseType::CopyTarget));
@@ -1582,10 +1587,10 @@ void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
 
-		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		else
-			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		//if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		//else
+		//	imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 
 	//We actually need an execution barrier here

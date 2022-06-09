@@ -138,6 +138,35 @@ void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const
 	}
 }
 
+void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkImageLayout srcLayout, VkImageLayout dstLayout, uint32_t mipLevel)
+{
+	VkImageCopy region{
+		.srcSubresource 
+		{
+			.aspectMask {ImageInfo::format_to_aspect_mask(src.get_format())},
+			.mipLevel {mipLevel},
+			.baseArrayLayer {0},
+			.layerCount {VK_REMAINING_ARRAY_LAYERS},
+		},
+		.srcOffset {},
+		.dstSubresource
+		{
+			.aspectMask {ImageInfo::format_to_aspect_mask(dst.get_format())},
+			.mipLevel {mipLevel},
+			.baseArrayLayer {0},
+			.layerCount {VK_REMAINING_ARRAY_LAYERS},
+		},
+		.dstOffset {},
+		.extent 
+		{
+			.width {src.get_width(mipLevel)},
+			.height {src.get_height(mipLevel)},
+			.depth {src.get_depth(mipLevel)},
+		},
+	};
+	vkCmdCopyImage(m_vkHandle, src.get_handle(), srcLayout, dst.get_handle(), dstLayout, 1, &region);
+}
+
 
 void vulkan::CommandBuffer::generate_mips(const Image& image)
 {

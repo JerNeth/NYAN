@@ -109,6 +109,10 @@ namespace nyan {
 			VkImageView view;
 			uint32_t binding = InvalidResourceId;
 		};
+		struct Copy {
+			RenderResourceId src;
+			RenderResourceId dst;
+		};
 	private:
 		friend class Rendergraph;
 	public:
@@ -181,6 +185,7 @@ namespace nyan {
 		std::vector<bool> m_useRendering;
 		bool m_rendersSwap = false;
 		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3
+		std::vector<Copy> m_copies;
 		std::vector<Read> m_reads;
 		std::vector<Write> m_writes;
 		std::vector<RenderResourceId> m_attachments;
