@@ -141,6 +141,19 @@ vulkan::ImageView* vulkan::LogicalDevice::get_swapchain_image_view(size_t idx) n
 {
 	return m_wsiState.swapchainImages[idx]->get_view();
 }
+const vulkan::Image* vulkan::LogicalDevice::get_swapchain_image() const noexcept
+{
+	return &*m_wsiState.swapchainImages[m_wsiState.index];
+}
+vulkan::Image* vulkan::LogicalDevice::get_swapchain_image() noexcept
+{
+	return m_wsiState.swapchainImages[m_wsiState.index];
+}
+vulkan::Image* vulkan::LogicalDevice::get_swapchain_image(size_t idx) noexcept
+{
+	return m_wsiState.swapchainImages[idx];
+
+}
 void vulkan::LogicalDevice::next_frame()
 {
 	end_frame();
@@ -1536,9 +1549,9 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
-vulkan::ImageView* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkSampleCountFlagBits sampleCount)
+vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkImageLayout initialLayout, VkSampleCountFlagBits sampleCount)
 {
-	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage);
+	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage, initialLayout);
 }
 
 void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)

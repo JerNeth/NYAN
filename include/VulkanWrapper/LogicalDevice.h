@@ -177,7 +177,7 @@ namespace vulkan {
 		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBufferType type);
-		ImageView* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
+		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 
 		VkSemaphore get_present_semaphore();
@@ -189,6 +189,9 @@ namespace vulkan {
 		const ImageView* get_swapchain_image_view() const noexcept;
 		ImageView* get_swapchain_image_view() noexcept;
 		ImageView* get_swapchain_image_view(size_t idx) noexcept;
+		const Image* get_swapchain_image() const noexcept;
+		Image* get_swapchain_image() noexcept;
+		Image* get_swapchain_image(size_t idx) noexcept;
 
 		void next_frame();
 		void end_frame();

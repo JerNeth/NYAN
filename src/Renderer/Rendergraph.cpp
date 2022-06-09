@@ -18,6 +18,12 @@ void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type 
 	resource.m_readIn.insert(m_id);
 	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
 	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+
+	resource.m_uses[m_id].set(RenderResource::UseType::Sample);
 }
 
 void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment attachment)
@@ -28,6 +34,11 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 	resource.attachment = attachment;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_attachment(const std::string& name)
@@ -38,6 +49,11 @@ void nyan::Renderpass::add_attachment(const std::string& name)
 	resource.m_writeToIn.insert( m_id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
@@ -54,6 +70,11 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 	m_attachments.push_back(resource.m_id);
 	r_graph.set_swapchain("swap");
 	m_rendersSwap = true;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttachment attachment)
@@ -64,6 +85,11 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttach
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
 	m_depth = resource.m_id;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_depth_attachment(const std::string& name)
@@ -72,6 +98,11 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name)
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	m_depth = resource.m_id;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment)
@@ -82,6 +113,11 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, Ima
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
 	m_depth = m_stencil = resource.m_id;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
@@ -90,6 +126,11 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	m_depth = m_stencil = resource.m_id;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 }
 
 void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAttachment attachment)
@@ -99,6 +140,11 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 	m_stencil = resource.m_id;
 }
 
@@ -107,6 +153,10 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
 	m_stencil = resource.m_id;
 }
 
@@ -123,7 +173,12 @@ void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attach
 	auto& resource = r_graph.get_resource(name);
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
-	resource.storageImage = true;
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}
+	resource.m_uses[m_id].set(RenderResource::UseType::ImageStore);
+
 	assert(std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource](const auto& write) { return write.id == resource.m_id; }) == m_writes.cend());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE});
 }
@@ -137,6 +192,12 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
 	auto& resource = r_graph.get_resource("swap");
 	resource.m_writeToIn.insert(m_id);
+
+	if (resource.m_uses.size() <= m_id) {
+		resource.m_uses.resize(m_id + 1ull);
+	}	
+	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
+
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE });
@@ -149,8 +210,16 @@ void nyan::Renderpass::copy(const std::string& source, const std::string& target
 	auto& sourceResource = r_graph.get_resource(source);
 	auto& targetResource = r_graph.get_resource(target);
 	targetResource.attachment = sourceResource.attachment;
-	sourceResource.m_copiedIn.insert(m_id);
-	targetResource.m_copiedIntoIn.insert(m_id);
+	if (targetResource.m_uses.size() <= m_id) {
+		targetResource.m_uses.resize(m_id + 1ull);
+	}
+	if (sourceResource.m_uses.size() <= m_id) {
+		sourceResource.m_uses.resize(m_id + 1ull);
+	}
+	targetResource.m_uses[m_id].set(RenderResource::UseType::CopySource);
+	sourceResource.m_uses[m_id].set(RenderResource::UseType::CopyTarget);
+	//sourceResource.m_copiedIn.insert(m_id);
+	//targetResource.m_copiedIntoIn.insert(m_id);
 }
 
 void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
@@ -169,8 +238,8 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 	for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
 		auto& write = r_graph.get_resource(writeId);
 		if (write.m_type == RenderResource::Type::Image) {
+			assert(is_write(writeId));
 			if (writeBinding != ~0u) {
-				assert(is_write(writeId));
 				assert(writeView != VK_NULL_HANDLE);
 				if (writeView != VK_NULL_HANDLE)
 					r_graph.r_device.get_bindless_set().set_storage_image(writeBinding, VkDescriptorImageInfo{ .imageView = writeView, .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
@@ -188,8 +257,8 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 	for (auto& [readId, readType, readView, readBinding] : m_reads) {
 		auto& read = r_graph.get_resource(readId);
 		if (read.m_type == RenderResource::Type::Image) {
+			assert(is_read(readId));
 			if (readBinding != ~0u) {
-				assert(is_read(readId));
 				assert(readView != VK_NULL_HANDLE);
 				if (readView != VK_NULL_HANDLE)
 					r_graph.r_device.get_bindless_set().set_sampled_image(readBinding, VkDescriptorImageInfo{ .imageView = readView, .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL });
@@ -214,6 +283,13 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 		if (m_useRendering[i])
 			end_rendering(cmd);
 	}
+	do_copies(cmd);
+}
+
+void nyan::Renderpass::do_copies(vulkan::CommandBufferHandle& cmd)
+{
+	apply_copy_barriers(cmd);
+	
 }
 
 void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBufferHandle& cmd)
@@ -223,6 +299,21 @@ void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBufferHandle& cmd)
 		cmd->barrier(barrier.src, barrier.dst, 0, nullptr, barrier.bufferBarrierCount, m_bufferBarriers.data() + barrier.bufferBarrierOffset
 			, barrier.imageBarrierCount, m_imageBarriers.data() + barrier.imageBarrierOffset);
 	}
+	if(m_bufferPostBarrierIndex != m_bufferPreBarrierIndex || m_imagePostBarrierIndex != m_imagePreBarrierIndex)
+		cmd->barrier2(0, 0, nullptr, m_bufferPostBarrierIndex - m_bufferPreBarrierIndex, m_bufferBarriers2.barriers.data() + m_bufferPreBarrierIndex,
+			m_imagePostBarrierIndex - m_imagePreBarrierIndex, m_imageBarriers2.barriers.data() + m_imagePreBarrierIndex);
+}
+
+void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBufferHandle& cmd)
+{
+	for (auto& barrier : m_copyBarriers) {
+		//std::cout << "Postbarrier (" << barrier.imageBarrierOffset << ")" << " Ressource (" << barrier.resourceId << ")\n";
+		cmd->barrier(barrier.src, barrier.dst, 0, nullptr, barrier.bufferBarrierCount, m_bufferBarriers.data() + barrier.bufferBarrierOffset
+			, barrier.imageBarrierCount, m_imageBarriers.data() + barrier.imageBarrierOffset);
+	}
+	if (m_bufferPostBarrierIndex != m_bufferPreBarrierIndex || m_imagePostBarrierIndex != m_imagePreBarrierIndex)
+		cmd->barrier2(0, 0, nullptr, m_bufferPreBarrierIndex - m_bufferCopyBarrierIndex, m_bufferBarriers2.barriers.data() + m_bufferCopyBarrierIndex,
+			m_imagePreBarrierIndex - m_imageCopyBarrierIndex, m_imageBarriers2.barriers.data() + m_imageCopyBarrierIndex);
 }
 
 void nyan::Renderpass::apply_post_barriers(vulkan::CommandBufferHandle& cmd)
@@ -232,6 +323,9 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBufferHandle& cmd)
 		cmd->barrier(barrier.src, barrier.dst, 0, nullptr, barrier.bufferBarrierCount, m_bufferBarriers.data() + barrier.bufferBarrierOffset
 			,barrier.imageBarrierCount, m_imageBarriers.data() + barrier.imageBarrierOffset);
 	}
+	if (m_bufferBarriers2.barriers.size() != m_bufferPostBarrierIndex || m_imageBarriers2.barriers.size() != m_imagePostBarrierIndex)
+		cmd->barrier2(0, 0, nullptr, m_bufferBarriers2.barriers.size() - m_bufferPostBarrierIndex, m_bufferBarriers2.barriers.data() + m_bufferPostBarrierIndex,
+			m_imageBarriers2.barriers.size() - m_imagePostBarrierIndex, m_imageBarriers2.barriers.data() + m_imagePostBarrierIndex);
 }
 
 vulkan::PipelineId nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig config)
@@ -310,10 +404,8 @@ bool nyan::Renderpass::is_write(RenderResourceId id) const
 
 bool nyan::Renderpass::is_compute_write(RenderResourceId id) const
 {
-	auto it = std::find_if(m_writes.cbegin(), m_writes.cend(), [id](const auto& write) { return write.id == id; });
-	if (it == m_writes.cend())
-		return false;
-	return it->type == Renderpass::Write::Type::Compute;
+	auto it = std::find_if(m_writes.cbegin(), m_writes.cend(), [id](const auto& write) { return write.id == id && write.type == Renderpass::Write::Type::Compute; });
+	return it != m_writes.cend();
 }
 
 bool nyan::Renderpass::is_attachment(RenderResourceId id) const
@@ -358,42 +450,80 @@ void nyan::Rendergraph::build()
 	assert(m_state == State::Setup);
 	m_state = State::Build;
 	m_renderresources.for_each([&](RenderResource& resource) {
-		if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
-			swapchain_present_transition(*resource.m_writeToIn.rbegin());
-		}
-		auto followRead = resource.m_readIn.begin();
-		for (auto write = resource.m_writeToIn.begin(); write != resource.m_writeToIn.end(); write++) {
-			
-			for (; followRead != resource.m_readIn.end(); followRead++)
-				if (*followRead > *write)
-					break;
+		if (false) {
+			if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
+				swapchain_present_transition(*resource.m_writeToIn.rbegin());
+			}
+			auto followRead = resource.m_readIn.begin();
+			for (auto write = resource.m_writeToIn.begin(); write != resource.m_writeToIn.end(); write++) {
 
-			auto followWrite = write;
-			followWrite++;
-			if (followWrite != resource.m_writeToIn.end() && followRead != resource.m_readIn.end()) {
-				if (*followRead <= *followWrite) {
-					set_up_RaW(*write, *followRead, resource);
+				for (; followRead != resource.m_readIn.end(); followRead++)
+					if (*followRead > *write)
+						break;
+
+				auto followWrite = write;
+				followWrite++;
+				if (followWrite != resource.m_writeToIn.end() && followRead != resource.m_readIn.end()) {
+					if (*followRead <= *followWrite) {
+						set_up_RaW(*write, *followRead, resource);
+					}
+					else {
+						set_up_WaW(*write, *followWrite, resource);
+					}
 				}
-				else {
+				else if (followWrite != resource.m_writeToIn.end()) {
 					set_up_WaW(*write, *followWrite, resource);
 				}
+				else if (followRead != resource.m_readIn.end()) {
+					set_up_RaW(*write, *followRead, resource);
+				}
 			}
-			else if (followWrite != resource.m_writeToIn.end()) {
-				set_up_WaW(*write, *followWrite, resource);
+			//Layout transitions Read -> Write
+			if (!resource.m_writeToIn.empty() && !resource.m_readIn.empty()) {
+				if ((*resource.m_writeToIn.begin() < *resource.m_readIn.begin())) {
+					//Necessary roll-over last Read -> first Write
+					set_up_WaR(*resource.m_readIn.rbegin(), *resource.m_writeToIn.begin(), resource);
+				}
 			}
-			else if (followRead != resource.m_readIn.end()) {
-				set_up_RaW(*write, *followRead, resource);
+			if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
+				swapchain_write_transition(*resource.m_writeToIn.begin());
 			}
-		}
-		//Layout transitions Read -> Write
-		if (!resource.m_writeToIn.empty() && !resource.m_readIn.empty()) {
-			if ((*resource.m_writeToIn.begin() < *resource.m_readIn.begin())) {
-				//Necessary roll-over last Read -> first Write
-				set_up_WaR(*resource.m_readIn.rbegin(), *resource.m_writeToIn.begin(), resource);
+
+		}else  {
+			bool first = true;
+			
+			for (size_t i = 0; i < resource.m_uses.size(); i++) {
+				const auto& srcUse = resource.m_uses[i];
+				if (srcUse.none())
+					continue;
+				if (first) {
+					first = false;
+					//CreatePreBarrier
+					set_up_first_transition(i, resource);
+				}
+				set_up_copy(i, resource);
+				size_t j = i + 1;
+				for (; j < resource.m_uses.size(); j++) {
+					const auto& dstUse = resource.m_uses[j];
+					if (!dstUse.none())
+						break;
+				}
+				if (j < resource.m_uses.size()) {
+					set_up_transition(i, j, resource);
+				}
+				i = j - 1;
 			}
-		}
-		if (resource.m_id == m_swapchainResource && !resource.m_writeToIn.empty()) {
-			swapchain_write_transition(*resource.m_writeToIn.begin());
+
+			if (resource.m_id == m_swapchainResource) {
+
+				for (int i = resource.m_uses.size() - 1; i > 0; i--) {
+					const auto& srcUse = resource.m_uses[i];
+					if (!srcUse.none()) {
+						swapchain_present_transition2(i);
+						break;
+					}
+				}
+			}
 		}
 	});
 	m_renderpasses.for_each([&](Renderpass& pass) {
@@ -497,15 +627,59 @@ void nyan::Rendergraph::execute()
 				height = static_cast<uint32_t>(height * attachment.height);
 			}
 			if (m_swapchainResource == resource.m_id) {
-				resource.handle = r_device.get_swapchain_image_view();
+				resource.handle = r_device.get_swapchain_image();
 			}
 			else {
 				VkImageUsageFlags usage = 0;
-				if (!resource.m_readIn.empty())
-					usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-				if (resource.storageImage)
-					usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-				resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage);
+				VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				bool first = true;
+				for (const auto& use : resource.m_uses) {
+					if (use.any_of(RenderResource::UseType::BlitTarget, RenderResource::UseType::CopyTarget)) {
+						usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+						}
+					}
+					if (use.test(RenderResource::UseType::Sample)) {
+						usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+							Utility::log().format("First usage of image %d is sampling, is this intended?", resource.m_id);
+						}
+					}
+					if (use.any_of(RenderResource::UseType::ImageLoad, RenderResource::UseType::ImageStore)) {
+						usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+						}
+					}
+					if (use.test(RenderResource::UseType::Attachment) && vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+						usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+						}
+					}
+					if (use.test(RenderResource::UseType::Attachment) && !vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
+						usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+						}
+					}
+					if (use.any_of(RenderResource::UseType::BlitSource, RenderResource::UseType::CopySource)) {
+						usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+						if (first) {
+							first = false;
+							initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+							Utility::log().format("First usage of image %d is as copy source, is this intended?", resource.m_id);
+						}
+					}
+				}
+				resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
 			}
 		}
 	});
@@ -516,17 +690,17 @@ void nyan::Rendergraph::execute()
 			if (resource.m_type == RenderResource::Type::Image) {
 				assert(resource.handle);
 				if (readType == Renderpass::Read::Type::ImageColor) {
-					readView = resource.handle->get_image_view();
+					readView = resource.handle->get_view()->get_image_view();
 				}
 				else if (readType == Renderpass::Read::Type::ImageDepth) {
-					auto* tmp = resource.handle->get_image()->get_depth_view();
+					auto* tmp = resource.handle->get_depth_view();
 					assert(tmp);
 					if (!tmp)
 						continue;
 					readView = tmp->get_image_view();
 				}
 				else if (readType == Renderpass::Read::Type::ImageStencil) {
-					auto* tmp = resource.handle->get_image()->get_stencil_view();
+					auto* tmp = resource.handle->get_stencil_view();
 					assert(tmp);
 					if (!tmp)
 						continue;
@@ -541,7 +715,7 @@ void nyan::Rendergraph::execute()
 				assert(resource.handle);
 				if (!resource.handle)
 					continue;
-				writeView = resource.handle->get_image_view();
+				writeView = resource.handle->get_view()->get_image_view();
 			}
 		}
 		uint32_t attachmentId = 0;
@@ -554,7 +728,7 @@ void nyan::Rendergraph::execute()
 						pass.m_colorAttachments[attachmentId].clearValue.color.float32[i] = attachment.clearColor[i];
 				}
 				assert(resource.handle);
-				pass.m_colorAttachments[attachmentId++].imageView = resource.handle->get_image_view();
+				pass.m_colorAttachments[attachmentId++].imageView = resource.handle->get_view()->get_image_view();
 				uint32_t width = r_device.get_swapchain_width();
 				uint32_t height = r_device.get_swapchain_height();
 				if (attachment.size == ImageAttachment::Size::Absolute) {
@@ -567,7 +741,7 @@ void nyan::Rendergraph::execute()
 				}
 				pass.m_renderInfo.renderArea.extent.width = Math::max(pass.m_renderInfo.renderArea.extent.width, width);
 				pass.m_renderInfo.renderArea.extent.height = Math::max(pass.m_renderInfo.renderArea.extent.height, height);
-				pass.m_renderInfo.layerCount = Math::max(pass.m_renderInfo.layerCount, resource.handle->get_image()->get_info().arrayLayers);
+				pass.m_renderInfo.layerCount = Math::max(pass.m_renderInfo.layerCount, resource.handle->get_info().arrayLayers);
 			}
 		}
 		if (pass.m_depth != InvalidResourceId) {
@@ -576,10 +750,10 @@ void nyan::Rendergraph::execute()
 			assert(resource.handle);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			if (pass.m_stencil == InvalidResourceId) {
-				pass.m_depthAttachment.imageView = resource.handle->get_image()->get_depth_view()->get_image_view();
+				pass.m_depthAttachment.imageView = resource.handle->get_depth_view()->get_image_view();
 			}
 			else {
-				pass.m_depthAttachment.imageView = resource.handle->get_image_view();
+				pass.m_depthAttachment.imageView = resource.handle->get_view()->get_image_view();
 			}
 			if (*resource.m_writeToIn.begin() == pass.m_id) {
 				pass.m_depthAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
@@ -592,10 +766,10 @@ void nyan::Rendergraph::execute()
 			assert(resource.handle);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			if (pass.m_depth == InvalidResourceId) {
-				pass.m_stencilAttachment.imageView = resource.handle->get_image()->get_stencil_view()->get_image_view();
+				pass.m_stencilAttachment.imageView = resource.handle->get_stencil_view()->get_image_view();
 			}
 			else {
-				pass.m_stencilAttachment.imageView = resource.handle->get_image_view();
+				pass.m_stencilAttachment.imageView = resource.handle->get_view()->get_image_view();
 			}
 			if (*resource.m_writeToIn.begin() == pass.m_id) {
 				pass.m_stencilAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
@@ -609,7 +783,7 @@ void nyan::Rendergraph::execute()
 				if (resource.m_type == RenderResource::Type::Image) {
 					assert(resource.handle);
 					for (size_t i = 0; i < barrier.imageBarrierCount; i++)
-						pass.m_imageBarriers[barrier.imageBarrierOffset + i].image = resource.handle->get_image()->get_handle();
+						pass.m_imageBarriers[barrier.imageBarrierOffset + i].image = resource.handle->get_handle();
 				}
 				else {
 					assert(false);
@@ -620,6 +794,17 @@ void nyan::Rendergraph::execute()
 		};
 		barrierUpdate(pass.m_postBarriers);
 		barrierUpdate(pass.m_preBarriers);
+
+		for (size_t i = 0; i < pass.m_imageBarriers2.barriers.size(); i++) {
+			auto& barrier = pass.m_imageBarriers2.barriers[i];
+			auto& image = pass.m_imageBarriers2.images[i];
+			assert(image != InvalidResourceId);
+			auto& resource = m_renderresources.get_direct(image);
+			assert(resource.m_type == RenderResource::Type::Image);
+			assert(resource.handle);
+			barrier.image = resource.handle->get_handle();
+		}
+
 		vulkan::CommandBufferType commandBufferType = vulkan::CommandBufferType::Generic;
 		switch (pass.get_type()) {
 		case Renderpass::Type::AsyncCompute:
@@ -810,6 +995,609 @@ void nyan::Rendergraph::swapchain_write_transition(RenderpassId dst_)
 	//std::cout << "\n";
 	dst.m_imageBarriers.push_back(imageBarrier);
 	dst.m_preBarriers.push_back(barrier);
+
+}
+
+void nyan::Rendergraph::swapchain_present_transition2(RenderpassId src_const)
+{
+	if (m_swapchainResource == InvalidResourceId) {
+		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", src_const);
+		assert(false);
+		return;
+	}
+	auto& src = m_renderpasses.get_direct(src_const);
+	assert(src.get_type() == Renderpass::Type::Generic);
+
+	auto& resource = m_renderresources.get_direct(m_swapchainResource);
+	assert(resource.m_uses.size() > src_const);
+	auto usage = resource.m_uses[src_const];
+
+	if (resource.m_type != RenderResource::Type::Image) {
+		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", src_const);
+		assert(false);
+		return;
+	}
+	VkImageMemoryBarrier2 imageBarrier{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+		.pNext {nullptr},
+		.srcStageMask {},
+		.srcAccessMask {},
+		.dstStageMask { VK_PIPELINE_STAGE_2_NONE },  //Use semaphore instead
+		.dstAccessMask { 0 }, //Use semaphore instead
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image {VK_NULL_HANDLE},
+		.subresourceRange {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = VK_REMAINING_MIP_LEVELS,
+			.baseArrayLayer = 0,
+			.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		}
+	};
+	if (usage.test(RenderResource::UseType::CopyTarget)) {
+		assert(!usage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::BlitTarget)) {
+		assert(!usage.test(RenderResource::UseType::CopyTarget));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::Sample)) {
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		assert(!usage.test(RenderResource::UseType::Attachment));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::Attachment)) {
+		assert(!usage.test(RenderResource::UseType::ImageLoad));
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		assert(!usage.test(RenderResource::UseType::Sample));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageLoad)) {
+		//if(src.is_compute_write(resource))
+		assert(false);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageStore)) {
+		assert(src.is_write(resource));
+		if (src.is_compute_write(resource)) {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	//Transfer should have happened now
+	if (usage.test(RenderResource::UseType::CopySource)) {
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::BlitSource)) {
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
+	
+
+	assert(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED);
+
+	//src.m_imagePostBarrierIndex++;
+	//src.m_imageCopyBarrierIndex++;
+	//src.m_imagePreBarrierIndex++;
+
+	src.m_imageBarriers2.barriers.insert(src.m_imageBarriers2.barriers.begin() + src.m_imagePostBarrierIndex, imageBarrier);
+	src.m_imageBarriers2.images.insert(src.m_imageBarriers2.images.begin() + src.m_imagePostBarrierIndex, m_swapchainResource);
+
+
+}
+
+void nyan::Rendergraph::swapchain_write_transition2(RenderpassId dst_const)
+{
+
+	if (m_swapchainResource == InvalidResourceId) {
+		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", dst_const);
+		assert(false);
+		return;
+	}
+	auto& dst = m_renderpasses.get_direct(dst_const);
+	assert(dst.get_type() == Renderpass::Type::Generic);
+
+	auto& resource = m_renderresources.get_direct(m_swapchainResource);
+	assert(resource.m_uses.size() > dst_const);
+	auto usage = resource.m_uses[dst_const];
+
+	if (resource.m_type != RenderResource::Type::Image) {
+		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", dst_const);
+		assert(false);
+		return;
+	}
+	VkImageMemoryBarrier2 imageBarrier{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+		.pNext {nullptr},
+		.srcStageMask { VK_PIPELINE_STAGE_2_NONE }, //Use semaphore instead
+		.srcAccessMask { 0 }, //Use semaphore instead
+		.dstStageMask { }, 
+		.dstAccessMask { }, 
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image {VK_NULL_HANDLE},
+		.subresourceRange {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = VK_REMAINING_MIP_LEVELS,
+			.baseArrayLayer = 0,
+			.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		}
+	};
+	if (usage.test(RenderResource::UseType::Sample)) {
+		Utility::log().format("Renderpass: %d tries to sample an undefined swapchain, this shouldn't happen", dst_const);
+		assert(false);
+	}
+	if (usage.test(RenderResource::UseType::ImageLoad)) {
+		Utility::log().format("Renderpass: %d tries to load an undefined swapchain, this shouldn't happen", dst_const);
+		assert(false);
+	}
+	if (usage.test(RenderResource::UseType::CopySource)) {
+		Utility::log().format("Renderpass: %d tries to copy an undefined swapchain, this shouldn't happen", dst_const);
+		assert(false);
+	}
+	if (usage.test(RenderResource::UseType::BlitSource)) {
+		Utility::log().format("Renderpass: %d tries to blit an undefined swapchain, this shouldn't happen", dst_const);
+		assert(false);
+	}
+	if (usage.test(RenderResource::UseType::CopyTarget)) {
+		Utility::log().format("Renderpass: %d tries to copy to a new swapchain, this isn't supported yet", dst_const);
+		assert(false);
+		assert(!usage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::BlitTarget)) {
+		Utility::log().format("Renderpass: %d tries to blit to a new swapchain, this isn't supported yet", dst_const);
+		assert(false);
+		assert(!usage.test(RenderResource::UseType::CopyTarget));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+
+	if (usage.test(RenderResource::UseType::Attachment)) {
+		assert(!usage.test(RenderResource::UseType::ImageLoad));
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		assert(!usage.test(RenderResource::UseType::Sample));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageStore)) {
+		assert(dst.is_write(resource));
+		if (dst.is_compute_write(resource)) {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+
+	assert(imageBarrier.newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
+
+	dst.m_imagePostBarrierIndex++;
+	//src.m_imageCopyPreBarrierIndex++;
+	//src.m_imageCopyPostBarrierIndex++;
+	//src.m_imagePreBarrierIndex++;
+
+	dst.m_imageBarriers2.barriers.insert(dst.m_imageBarriers2.barriers.begin() + dst.m_imagePreBarrierIndex, imageBarrier);
+	dst.m_imageBarriers2.images.insert(dst.m_imageBarriers2.images.begin() + dst.m_imagePreBarrierIndex, m_swapchainResource);
+
+
+}
+
+
+
+void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource)
+{
+	auto& src = m_renderpasses.get_direct(from);
+	auto& dst = m_renderpasses.get_direct(to);
+
+	if (resource.m_type != RenderResource::Type::Image) {
+		Utility::log().format("Renderpass ({}) -> ({}) wants to transition something which isn't an image ({}), which is not supported yet", from, to, resource.m_id);
+		assert(false);
+		return;
+	}
+	Utility::log().format("Renderpass ({}) -> ({})", src.m_name, dst.m_name);
+	auto srcUsage = resource.m_uses[from];
+	auto dstUsage = resource.m_uses[to];
+
+	auto& attachment = std::get<ImageAttachment>(resource.attachment);
+	
+	VkImageMemoryBarrier2 imageBarrier{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+		.pNext {nullptr},
+		.srcStageMask {},
+		.srcAccessMask {},
+		.dstStageMask {},  //Use semaphore instead
+		.dstAccessMask {}, //Use semaphore instead
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image {VK_NULL_HANDLE},
+		.subresourceRange {
+			.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),
+			.baseMipLevel = 0,
+			.levelCount = VK_REMAINING_MIP_LEVELS,
+			.baseArrayLayer = 0,
+			.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		}
+	};
+	if (srcUsage.test(RenderResource::UseType::Sample)) {
+		assert(!srcUsage.test(RenderResource::UseType::ImageStore));
+		assert(!srcUsage.test(RenderResource::UseType::Attachment));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+	if (srcUsage.test(RenderResource::UseType::Attachment)) {
+		assert(!srcUsage.test(RenderResource::UseType::ImageLoad));
+		assert(!srcUsage.test(RenderResource::UseType::ImageStore));
+		assert(!srcUsage.test(RenderResource::UseType::Sample));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (srcUsage.test(RenderResource::UseType::ImageLoad)) {
+		//if(src.is_compute_write(resource))
+		assert(false);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (srcUsage.test(RenderResource::UseType::ImageStore)) {
+		assert(src.is_write(resource));
+		if (src.is_compute_write(resource)) {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	if (srcUsage.test(RenderResource::UseType::CopySource)) {
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		if(imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
+
+	if (srcUsage.test(RenderResource::UseType::BlitSource)) {
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	}
+
+	if (srcUsage.test(RenderResource::UseType::CopyTarget)) {
+		assert(!srcUsage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+
+	if (srcUsage.test(RenderResource::UseType::BlitTarget)) {
+		assert(!srcUsage.test(RenderResource::UseType::CopyTarget));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	}
+
+
+	if (dstUsage.test(RenderResource::UseType::Sample)) {
+		assert(!dstUsage.test(RenderResource::UseType::ImageStore));
+		assert(!dstUsage.test(RenderResource::UseType::Attachment));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+	if (dstUsage.test(RenderResource::UseType::Attachment)) {
+		assert(!dstUsage.test(RenderResource::UseType::ImageLoad));
+		assert(!dstUsage.test(RenderResource::UseType::ImageStore));
+		assert(!dstUsage.test(RenderResource::UseType::Sample));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (dstUsage.test(RenderResource::UseType::ImageLoad)) {
+		//if(src.is_compute_write(resource))
+		assert(false);
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (dstUsage.test(RenderResource::UseType::ImageStore)) {
+		assert(src.is_write(resource));
+		if (src.is_compute_write(resource)) {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	if (src.m_type != dst.m_type && r_device.get_graphics_family() != r_device.get_compute_family()) {
+		if (src.m_type == Renderpass::Type::Generic) {
+			imageBarrier.srcQueueFamilyIndex = r_device.get_graphics_family();
+			imageBarrier.dstQueueFamilyIndex = r_device.get_compute_family();
+		}
+		else {
+			imageBarrier.srcQueueFamilyIndex = r_device.get_compute_family();
+			imageBarrier.dstQueueFamilyIndex = r_device.get_graphics_family();
+		}
+		dst.m_imagePostBarrierIndex++;
+		dst.m_imageBarriers2.barriers.insert(src.m_imageBarriers2.barriers.begin() + src.m_imagePreBarrierIndex, imageBarrier);
+		dst.m_imageBarriers2.images.insert(src.m_imageBarriers2.images.begin() + src.m_imagePreBarrierIndex, resource.m_id);
+
+	}
+
+	if (imageBarrier.oldLayout == imageBarrier.newLayout &&
+		imageBarrier.srcQueueFamilyIndex == imageBarrier.dstQueueFamilyIndex) {
+		Utility::log().format("Renderpass {} -> {}, Barrier without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
+	}
+	//src.m_imagePostBarrierIndex++;
+	//src.m_imageCopyBarrierIndex++;
+	//src.m_imagePreBarrierIndex++;
+
+	src.m_imageBarriers2.barriers.insert(src.m_imageBarriers2.barriers.begin() + src.m_imagePostBarrierIndex, imageBarrier);
+	src.m_imageBarriers2.images.insert(src.m_imageBarriers2.images.begin() + src.m_imagePostBarrierIndex, resource.m_id);
+
+}
+
+void nyan::Rendergraph::set_up_first_transition(RenderpassId dst_const, const RenderResource& resource) {
+	auto& dst = m_renderpasses.get_direct(dst_const);
+	assert(dst.get_type() == Renderpass::Type::Generic);
+
+	assert(resource.m_uses.size() > dst_const);
+	auto usage = resource.m_uses[dst_const];
+
+	if (resource.m_type != RenderResource::Type::Image) {
+		Utility::log().format("Renderpass: {} tries not supported resource transition", dst_const);
+		assert(false);
+		return;
+	}
+	auto& attachment = std::get<ImageAttachment>(resource.attachment);
+	VkImageMemoryBarrier2 imageBarrier{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+		.pNext {nullptr},
+		.srcStageMask { VK_PIPELINE_STAGE_2_NONE }, //Use semaphore instead
+		.srcAccessMask { 0 }, //Use semaphore instead
+		.dstStageMask { },
+		.dstAccessMask { },
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image {VK_NULL_HANDLE},
+		.subresourceRange {
+			.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),
+			.baseMipLevel = 0,
+			.levelCount = VK_REMAINING_MIP_LEVELS,
+			.baseArrayLayer = 0,
+			.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		}
+	};
+
+	if (usage.test(RenderResource::UseType::Sample)) {
+		assert(!usage.test(RenderResource::UseType::Attachment));
+		assert(!usage.test(RenderResource::UseType::ImageLoad)); //Technically possible, but unreasonable?
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		if (!usage.any_of(RenderResource::UseType::BlitTarget, RenderResource::UseType::CopyTarget)) {
+			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst_const);
+			assert(false);
+		}
+		//TODO: Compute Shader
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageLoad)) {
+		assert(!usage.test(RenderResource::UseType::Attachment));
+		assert(!usage.test(RenderResource::UseType::Sample));  //Technically possible, but unreasonable?
+		if (!usage.any_of(RenderResource::UseType::BlitTarget, RenderResource::UseType::CopyTarget)) {
+			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst_const);
+			assert(false);
+		}
+		assert(false);
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::Attachment)) {
+		assert(!usage.test(RenderResource::UseType::ImageLoad));
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		assert(!usage.test(RenderResource::UseType::Sample));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageStore)) {
+		assert(dst.is_write(resource));
+		if (dst.is_compute_write(resource)) {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+
+	assert(imageBarrier.newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
+
+	dst.m_imagePostBarrierIndex++;
+	//src.m_imageCopyBarrierIndex++;
+	//src.m_imagePreBarrierIndex++;
+
+	dst.m_imageBarriers2.barriers.insert(dst.m_imageBarriers2.barriers.begin() + dst.m_imagePreBarrierIndex, imageBarrier);
+	dst.m_imageBarriers2.images.insert(dst.m_imageBarriers2.images.begin() + dst.m_imagePreBarrierIndex, resource.m_id);
+
+}
+
+void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource& resource) {
+	auto& dst = m_renderpasses.get_direct(dst_const);
+	assert(dst.get_type() == Renderpass::Type::Generic);
+
+	assert(resource.m_uses.size() > dst_const);
+	auto usage = resource.m_uses[dst_const];
+
+	if (resource.m_type != RenderResource::Type::Image) {
+		Utility::log().format("Renderpass: {} tries not supported resource transition", dst_const);
+		assert(false);
+		return;
+	}
+	auto& attachment = std::get<ImageAttachment>(resource.attachment);
+	VkImageMemoryBarrier2 imageBarrier{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+		.pNext {nullptr},
+		.srcStageMask { VK_PIPELINE_STAGE_2_NONE }, //Use semaphore instead
+		.srcAccessMask { 0 }, //Use semaphore instead
+		.dstStageMask { },
+		.dstAccessMask { },
+		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.newLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image {VK_NULL_HANDLE},
+		.subresourceRange {
+			.aspectMask = vulkan::ImageInfo::format_to_aspect_mask(attachment.format),
+			.baseMipLevel = 0,
+			.levelCount = VK_REMAINING_MIP_LEVELS,
+			.baseArrayLayer = 0,
+			.layerCount = VK_REMAINING_ARRAY_LAYERS,
+		}
+	};
+
+	if (usage.test(RenderResource::UseType::Sample)) {
+		assert(!usage.test(RenderResource::UseType::Attachment));
+		assert(!usage.test(RenderResource::UseType::ImageLoad)); //Technically possible, but unreasonable?
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageLoad)) {
+		assert(!usage.test(RenderResource::UseType::Attachment));
+		assert(!usage.test(RenderResource::UseType::Sample));  //Technically possible, but unreasonable?
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::Attachment)) {
+		assert(!usage.test(RenderResource::UseType::ImageLoad));
+		assert(!usage.test(RenderResource::UseType::ImageStore));
+		assert(!usage.test(RenderResource::UseType::Sample));
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	}
+	if (usage.test(RenderResource::UseType::ImageStore)) {
+		assert(dst.is_write(resource));
+		if (dst.is_compute_write(resource)) {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+		}
+		else {
+			imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		}
+		imageBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+		imageBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	if (usage.test(RenderResource::UseType::CopyTarget)) {
+		assert(!usage.test(RenderResource::UseType::CopySource));
+		assert(!usage.test(RenderResource::UseType::BlitSource));
+		assert(!usage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		else
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::BlitTarget)) {
+		assert(!usage.test(RenderResource::UseType::CopyTarget));
+		assert(!usage.test(RenderResource::UseType::CopySource));
+		assert(!usage.test(RenderResource::UseType::BlitSource));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		else
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::CopySource)) {
+		assert(!usage.test(RenderResource::UseType::CopyTarget));
+		assert(!usage.test(RenderResource::UseType::BlitSource));
+		assert(!usage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		else
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+	if (usage.test(RenderResource::UseType::BlitSource)) {
+		assert(!usage.test(RenderResource::UseType::CopyTarget));
+		assert(!usage.test(RenderResource::UseType::CopySource));
+		assert(!usage.test(RenderResource::UseType::BlitTarget));
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+
+		if (imageBarrier.oldLayout != VK_IMAGE_LAYOUT_GENERAL)
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		else
+			imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	//We actually need an execution barrier here
+	if (imageBarrier.newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+		return;
+
+	dst.m_imagePostBarrierIndex++;
+	//src.m_imageCopyBarrierIndex++;
+	dst.m_imagePreBarrierIndex++;
+
+	dst.m_imageBarriers2.barriers.insert(dst.m_imageBarriers2.barriers.begin() + dst.m_imageCopyBarrierIndex, imageBarrier);
+	dst.m_imageBarriers2.images.insert(dst.m_imageBarriers2.images.begin() + dst.m_imageCopyBarrierIndex, resource.m_id);
 
 }
 

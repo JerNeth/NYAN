@@ -370,11 +370,11 @@ namespace vulkan {
 			info.mipLevels = 1u;
 			info.arrayLayers = 1u;
 			info.type = VK_IMAGE_TYPE_2D;
-			if (is_depth_or_stencil_format(format))
-				info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-			else
-				info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			//if (is_depth_or_stencil_format(format))
+			//	info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			//else
+			//	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			//info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			info.layout = VK_IMAGE_LAYOUT_GENERAL;
 			return info;
 		}

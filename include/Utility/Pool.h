@@ -239,6 +239,10 @@ namespace Utility {
 			assert(ptr_container);
 			return ptr_container->get_ptr(m_id);
 		}
+		operator const T* const () {
+			assert(ptr_container);
+			return ptr_container->get_ptr(m_id);
+		}
 	private:
 		void destructor() {
 			if (ptr_count != nullptr) {

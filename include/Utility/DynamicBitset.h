@@ -126,10 +126,12 @@ namespace Utility {
 	class bitset {
 		using bitType = std::conditional_t< bitSize <= 8, uint8_t, std::conditional_t < bitSize <= 16, uint16_t, std::conditional_t < bitSize <= 32, uint32_t,  uint64_t>>> ;
 		static constexpr size_t bitsPerWord = (sizeof(bitType) * 8);
+		static_assert(std::has_single_bit(bitsPerWord));
+		static constexpr size_t bitsMask = bitsPerWord - 1;
 		static constexpr size_t typeSize  = bitSize / bitsPerWord + (bitSize % bitsPerWord != 0);
 		//static_assert(std::is_convertible<T, size_t>::value);
 	public:
-		bitset() {
+		bitset() : m_data() {
 			m_data[0] = 0;
 		}
 		bitset(bitType t) {
@@ -142,8 +144,8 @@ namespace Utility {
 		bool test(T _idx) const {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
-			auto& word = m_data[idx / bitsPerWord];
-			const auto bit = 1u << idx % bitsPerWord;
+			auto& word = m_data[idx >> bitsPerWord];
+			const auto bit = 1ull << idx & bitsMask;
 			return static_cast<decltype(bit)>(word) & bit;
 		}
 		template<class Head, class... Tail>
@@ -179,8 +181,8 @@ namespace Utility {
 		bitset& set(T _idx) noexcept {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
-			auto& word = m_data[idx / bitsPerWord];
-			const auto bit = 1u << (idx % bitsPerWord);
+			auto& word = m_data[idx >> bitsPerWord];
+			const auto bit = 1ull << idx & bitsMask;
 			word |= static_cast<bitType>(bit);
 			return *this;
 		}
@@ -193,8 +195,8 @@ namespace Utility {
 		bitset& reset(T _idx) noexcept {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
-			auto& word = m_data[idx / bitsPerWord];
-			const auto bit = 1u << (idx % bitsPerWord);
+			auto& word = m_data[idx >> bitsPerWord];
+			const auto bit = 1ull << idx & bitsMask;
 			word &= ~bit;
 			return *this;
 		}
@@ -243,12 +245,12 @@ namespace Utility {
 			if constexpr (bitSize == 0)
 				return true;
 
-			constexpr bool no_padding = (bitSize % bitsPerWord == 0);
+			constexpr bool no_padding = ((bitSize & bitsMask) == 0);
 			for (size_t i = 0; i < typeSize - !no_padding; i++) {
 				if (m_data[i] != ~bitType{0u})
 					return false;
 			}
-			return no_padding || m_data[typeSize - 1] == (static_cast<bitType>(1) << (bitSize % bitsPerWord)) - 1 ;
+			return no_padding || m_data[typeSize - 1] == bitsMask;
 		}
 		bitset& flip() noexcept {
 			for (size_t i = 0; i < typeSize; i++) {

@@ -46,7 +46,7 @@ vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent)
 {
 }
-vulkan::ImageView* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage)
+vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageLayout initialLayout)
 {
 	Utility::Hasher hasher;
 	hasher(width);
@@ -56,16 +56,11 @@ vulkan::ImageView* vulkan::AttachmentAllocator::request_attachment(uint32_t widt
 	hasher(usage);
 	auto hash = hasher(samples);
 	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
-		return res->second->get_view();
+		return res->second;
 	ImageInfo info = ImageInfo::render_target(width, height, format);
 	info.usage |= usage;
-	if (ImageInfo::is_depth_or_stencil_format(format)) {
-		info.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	}
-	else {
-		info.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	}
-	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second->get_view();
+	info.layout = initialLayout;
+	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second;
 }
 
 vulkan::Allocation::Allocation(LogicalDevice& device, VmaAllocation handle)

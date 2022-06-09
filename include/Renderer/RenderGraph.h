@@ -29,16 +29,16 @@ namespace nyan {
 			Image,
 			Buffer
 		};
-		struct Use {
-			enum class Type : uint32_t {
-				Sample,
-				Attachment,
-				ImageLoadStore,
-				Present,
-				Copy,
-				Blit
-			} type : 8;
-			uint32_t passId : 24;
+		enum class UseType : uint32_t {
+			Sample,
+			ImageLoad,
+			Attachment,
+			ImageStore,
+			BlitSource,
+			BlitTarget,
+			CopySource,
+			CopyTarget,
+			Size
 		};
 		RenderResource() = default;
 		RenderResource(RenderResourceId id) : m_id(id){}
@@ -46,10 +46,10 @@ namespace nyan {
 		RenderResourceId m_id = InvalidResourceId;
 		std::set<uint32_t> m_readIn;
 		std::set<uint32_t> m_writeToIn;
-		std::vector<Use> m_uses;
+		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;
+		Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
 		Attachment attachment;
-		bool storageImage = false;
-		vulkan::ImageView* handle = nullptr;
+		vulkan::Image* handle = nullptr;
 	};
 	struct Barrier {
 		RenderResourceId resourceId = InvalidResourceId;
@@ -92,7 +92,7 @@ namespace nyan {
 			enum class Type {
 				ImageColor,
 				ImageDepth,
-				ImageStencil
+				ImageStencil,
 			};
 			RenderResourceId id;
 			Type type;
@@ -147,10 +147,12 @@ namespace nyan {
 			return m_type;
 		}
 		void execute(vulkan::CommandBufferHandle& cmd);
+		void do_copies(vulkan::CommandBufferHandle& cmd);
 		bool has_post_barriers() const noexcept {
 			return !m_bufferBarriers.empty() || !m_imageBarriers.empty();
 		}
 		void apply_pre_barriers(vulkan::CommandBufferHandle& cmd);
+		void apply_copy_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_post_barriers(vulkan::CommandBufferHandle& cmd);
 		vulkan::PipelineId add_pipeline(vulkan::GraphicsPipelineConfig config);
 		void begin_rendering(vulkan::CommandBufferHandle& cmd);
@@ -186,9 +188,29 @@ namespace nyan {
 		RenderResourceId m_stencil = InvalidResourceId;
 
 		std::vector<Barrier> m_postBarriers;
+		std::vector<Barrier> m_copyBarriers;
 		std::vector<Barrier> m_preBarriers;
 		std::vector<VkImageMemoryBarrier> m_imageBarriers;
 		std::vector<VkBufferMemoryBarrier> m_bufferBarriers;
+
+		struct ImageBarriers {
+			std::vector<RenderResourceId> images;
+			std::vector<VkImageMemoryBarrier2> barriers;
+		} m_imageBarriers2;
+
+		size_t m_imagePostBarrierIndex{ 0 };
+		size_t m_imageCopyBarrierIndex{ 0 };
+		size_t m_imagePreBarrierIndex{ 0 };
+
+		struct BufferBarriers {
+			std::vector<RenderResourceId> buffers;
+			std::vector<VkBufferMemoryBarrier2> barriers;
+		} m_bufferBarriers2;
+
+		size_t m_bufferPostBarrierIndex{ 0 };
+		size_t m_bufferCopyBarrierIndex{ 0 };
+		size_t m_bufferPreBarrierIndex{ 0 };
+
 		VkRenderingInfo m_renderInfo
 		{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -229,6 +251,11 @@ namespace nyan {
 		const RenderResource& get_resource(RenderResourceId id) const;
 		void swapchain_present_transition(RenderpassId src_const);
 		void swapchain_write_transition(RenderpassId src_const);
+		void swapchain_present_transition2(RenderpassId src_const);
+		void swapchain_write_transition2(RenderpassId src_const);
+		void set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource);
+		void set_up_first_transition(RenderpassId dst, const RenderResource& resource);
+		void set_up_copy(RenderpassId dst, const RenderResource& resource);
 		void set_up_RaW(RenderpassId write, RenderpassId read, const RenderResource& resource);
 		void set_up_WaW(RenderpassId src_, RenderpassId dst_, const RenderResource& resource);
 		void set_up_WaR(RenderpassId write, RenderpassId read, const RenderResource& resource);
