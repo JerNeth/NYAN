@@ -66,6 +66,7 @@ namespace vulkan {
 		uint32_t ray_query : 1;
 		uint32_t pipeline_library : 1;
 		uint32_t deferred_host_operations : 1;
+		uint32_t performance_query : 1;
 		uint32_t vertex_input_dynamic_state : 1;
 		uint32_t mesh_shader : 1;
 		uint32_t buffer_device_address : 1;

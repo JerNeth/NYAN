@@ -174,10 +174,10 @@ bool nyan::Application::setup_vulkan_instance()
 bool nyan::Application::setup_vulkan_device()
 {
 	try {
-		std::vector<const char*> requiredExtensions = {
+		std::vector requiredExtensions {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		};
-		std::vector<const char*> optionalExtensions = {
+		std::vector optionalExtensions {
 			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 			VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
 			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
@@ -188,6 +188,7 @@ bool nyan::Application::setup_vulkan_device()
 			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
 			VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+			VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME,
 		};
 		m_vulkanDevice = m_vulkanInstance->setup_device(requiredExtensions, optionalExtensions);
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);

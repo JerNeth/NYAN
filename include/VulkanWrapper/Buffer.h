@@ -97,6 +97,7 @@ namespace vulkan {
 		void flush(uint32_t offset = 0, uint32_t size = ~0u);
 		void invalidate(uint32_t offset = 0, uint32_t size = ~0u);
 		VkDeviceAddress get_address() const;
+		void set_debug_label(const char* label) noexcept;
 		~Buffer();
 	private:
 		LogicalDevice& r_device;

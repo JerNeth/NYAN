@@ -93,10 +93,15 @@ namespace Utility {
         EXPECT_EQ(result, result3);
     }
     TEST(Utility, bitset) {
-        enum class Test {
+        enum class Test : uint32_t{
             A,
             B,
             C,
+            D,
+            E,
+            F,
+            G,
+            H,
             Size
         };
         using enum Test;
@@ -118,6 +123,11 @@ namespace Utility {
         EXPECT_FALSE(bitset.test(B));
         EXPECT_TRUE(bitset.test(C));
 
+        EXPECT_TRUE( bitset.any_of(B, C));
+
+        bitset.set(H);
+
+        EXPECT_TRUE(bitset.test(H));
 
     }
     TEST(Utility, Pool) {
@@ -346,7 +356,7 @@ namespace Utility {
             }
             int moved = 0;
         };
-        LinkedBucketList<T> l;
+        LinkedBucketList<T, 8> l;
         T t2;
         auto id2 = l.insert(std::move(t2));
         EXPECT_EQ(l.get_ptr(id2)->moved, 1);
@@ -355,7 +365,7 @@ namespace Utility {
     }
 
     TEST(Utility, linkedBucketList) {
-        LinkedBucketList<uint32_t> l;
+        LinkedBucketList<uint32_t, 8> l;
         auto id = l.insert(0);
         EXPECT_EQ(id, 0);
         EXPECT_EQ(0, *l.get_ptr(id));
@@ -378,11 +388,11 @@ namespace Utility {
         EXPECT_EQ(6969, *l.get_ptr(id5));
         //l.print();
         int iters = 100;
-        LinkedBucketList<uint32_t> other = std::move(l);
+        LinkedBucketList<uint32_t, 8> other = std::move(l);
         
         {
             auto start = std::chrono::steady_clock::now();
-            LinkedBucketList<uint64_t> p;
+            LinkedBucketList<uint64_t, 8> p;
             for (int i = 0; i < iters; i++) {
                 p.emplace(i);
             }
@@ -392,7 +402,7 @@ namespace Utility {
         
         {
             auto start = std::chrono::steady_clock::now();
-            LinkedBucketList<uint64_t> p;
+            LinkedBucketList<uint64_t, 8> p;
             for (int i = 0; i < iters; i++) {
                 p.insert(i);
             }

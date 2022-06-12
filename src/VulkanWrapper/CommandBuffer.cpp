@@ -146,7 +146,7 @@ void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkIma
 			.aspectMask {ImageInfo::format_to_aspect_mask(src.get_format())},
 			.mipLevel {mipLevel},
 			.baseArrayLayer {0},
-			.layerCount {VK_REMAINING_ARRAY_LAYERS},
+			.layerCount {src.get_info().arrayLayers},
 		},
 		.srcOffset {},
 		.dstSubresource
@@ -154,7 +154,7 @@ void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkIma
 			.aspectMask {ImageInfo::format_to_aspect_mask(dst.get_format())},
 			.mipLevel {mipLevel},
 			.baseArrayLayer {0},
-			.layerCount {VK_REMAINING_ARRAY_LAYERS},
+			.layerCount {src.get_info().arrayLayers},
 		},
 		.dstOffset {},
 		.extent 
@@ -423,7 +423,7 @@ void vulkan::CommandBuffer::end()
 
 void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 {
-	if constexpr (debug) {
+	if constexpr (debugMarkers) {
 		if (r_device.get_supported_extensions().debug_utils) {
 			VkDebugUtilsLabelEXT label{
 				.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
@@ -459,7 +459,7 @@ void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 
 void vulkan::CommandBuffer::end_region()
 {
-	if constexpr (debug) {
+	if constexpr (debugMarkers) {
 		if (r_device.get_supported_extensions().debug_utils) {
 			vkCmdEndDebugUtilsLabelEXT(m_vkHandle);
 		}

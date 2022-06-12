@@ -5,6 +5,7 @@
 #include "Input.h"
 #include "FBXReader/FBXReader.h"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/CameraController.h"
 #include "Renderer/DeferredLighting.h"
 using namespace nyan;
 
@@ -20,11 +21,12 @@ int main() {
 	auto& input = application.get_input();
 
 	nyan::RenderManager renderManager(device, false);
+	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cathedral.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -93,11 +95,11 @@ int main() {
 				.parent {parent},
 			});
 
-		if (first) {
-			first = false;
+		//if (first) {
+		//	first = false;
 			registry.emplace<Deferred>(entity);
-		} else 
-			registry.emplace<ForwardTransparent>(entity);
+		//} else 
+		//	registry.emplace<ForwardTransparent>(entity);
 
 	} 
 
@@ -130,6 +132,8 @@ int main() {
 			.clearColor{0.f, 0.f, 0.f, 1.f},
 		});
 	//deferredPass.add_swapchain_attachment();
+	deferredPass.copy("g_Depth", "g_Depth2");
+	deferredPass.copy("g_Normal", "g_Normal2");
 
 	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
 	deferredLightingPass.add_read("g_Albedo");
@@ -149,6 +153,7 @@ int main() {
 			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		});
+
 	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic);
 	forwardPass.add_depth_attachment("g_Depth");
 	forwardPass.add_attachment("SpecularLighting");
@@ -176,19 +181,7 @@ int main() {
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
-			auto dtf = std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
-			auto& transform = registry.get<Transform>(camera);
-			auto& perspectiveCamera = registry.get<PerspectiveCamera>(camera);
-
-			transform.orientation.x() += dtf * (45.f) * input.get_axis(Input::Axis::LookUp);
-			transform.orientation.y() += dtf * (45.f) * input.get_axis(Input::Axis::LookRight);
-
-			auto mat = Math::mat33::rotation_matrix(transform.orientation);
-
-			transform.position += mat * perspectiveCamera.right * dtf * 100 * input.get_axis(Input::Axis::MoveRight);
-			transform.position += mat * perspectiveCamera.forward * dtf * 100 * input.get_axis(Input::Axis::MoveForward);
-
-
+			cameraController.update(dt);
 			//imgui.update();
 		});
 	application.each_frame_end([&rendergraph]()

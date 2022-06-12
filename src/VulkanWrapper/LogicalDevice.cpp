@@ -33,6 +33,30 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_bindlessPipelineLayout(*this, {m_bindlessPool.get_layout()})
 {
 	volkLoadDevice(device);
+	if (r_physicalDevice.get_extensions().performance_query) {
+		uint32_t counterCount{ 0 };
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_graphics.familyIndex, &counterCount, nullptr, nullptr);
+		std::vector< VkPerformanceCounterKHR> counters(counterCount);
+		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions(counterCount);
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_graphics.familyIndex, &counterCount, counters.data(), counterDecriptions.data());
+
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_compute.familyIndex, &counterCount, nullptr, nullptr);
+		std::vector< VkPerformanceCounterKHR> counters2(counterCount);
+		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions2(counterCount);
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_compute.familyIndex, &counterCount, counters2.data(), counterDecriptions2.data());
+
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_transfer.familyIndex, &counterCount, nullptr, nullptr);
+		std::vector< VkPerformanceCounterKHR> counters3(counterCount);
+		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions3(counterCount);
+		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+			r_physicalDevice, m_transfer.familyIndex, &counterCount, counters3.data(), counterDecriptions3.data());
+	}
+
 	vkGetDeviceQueue(m_device, m_graphics.familyIndex, 0, &m_graphics.queue);
 	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
 	vkGetDeviceQueue(m_device, m_transfer.familyIndex, 0, &m_transfer.queue);

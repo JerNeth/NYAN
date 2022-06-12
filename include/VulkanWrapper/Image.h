@@ -515,6 +515,7 @@ namespace vulkan {
 		uint32_t get_base_mip_level() const noexcept {
 			return m_info.baseMipLevel;
 		}
+		void set_debug_label(const char* name) noexcept;
 	private:
 		LogicalDevice& r_device;
 		VkImageView m_vkHandle;
@@ -538,6 +539,8 @@ namespace vulkan {
 		ImageView* get_depth_view() noexcept;
 		const ImageView* get_depth_view() const noexcept;
 		ImageView* change_view_mip_level(uint32_t mip);
+
+		void set_debug_label(const char* name) noexcept;
 
 		uint32_t get_available_mip() const noexcept;
 		void set_available_mip(uint32_t mip) noexcept;

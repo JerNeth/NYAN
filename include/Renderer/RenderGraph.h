@@ -44,6 +44,7 @@ namespace nyan {
 		RenderResource(RenderResourceId id) : m_id(id){}
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
+		std::string name;
 		std::set<uint32_t> m_readIn;
 		std::set<uint32_t> m_writeToIn;
 		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;

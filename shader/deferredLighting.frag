@@ -60,5 +60,7 @@ void main() {
         shadeFragment(worldSpacePos.xyz, normal, scene, albedo, metalness, roughness, specular, diffuse);
         outSpecular = vec4(specular.xyz, 1);
         outDiffuse = vec4(diffuse.xyz,1);
+        //outDiffuse = vec4(depth.xxx / (depth.xxx + 1),1);
+        //outSpecular = vec4(depth.xxx / (depth.xxx + 1),1);
     }
 }

@@ -197,35 +197,6 @@ inline constexpr Vec<Scalar, Size_y> Math::Mat<Scalar, Size_y, Size_x, column_ma
 		return ret;
 	}
 }
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-inline constexpr const Scalar& Math::Mat<Scalar, Size_y, Size_x, column_major>::operator()(const size_t col, const size_t row) const
-{
-	if constexpr (column_major) {
-		assert(Size_x * Size_y > col * Size_y + row);
-	}
-	else {
-		assert(Size_x * Size_y > row * Size_x + col);
-	}
-	//Just pass through, User responsible for bounds
-	//if (Size_x * Size_y <= index)
-	//	throw std::out_of_range("Index out of range");
-	return at(col, row);
-}
-
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-inline constexpr Scalar& Math::Mat<Scalar, Size_y, Size_x, column_major>::operator()(const size_t col, const size_t row)
-{
-	if constexpr (column_major) {
-		assert(Size_x * Size_y > col * Size_y + row);
-	}
-	else {
-		assert(Size_x * Size_y > row * Size_x + col);
-	}
-	//Just pass through, User responsible for bounds
-	//if (Size_x * Size_y <= index)
-	//	throw std::out_of_range("Index out of range");
-	return at(col, row);
-}
 
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 inline constexpr Math::Mat<Scalar, Size_y, Size_x, column_major>& Math::Mat<Scalar, Size_y, Size_x, column_major>::transposed()
@@ -653,28 +624,6 @@ Mat<Scalar, 4, 4, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>:
 	matrix.at(2, 3) = -Scalar(1);
 	matrix.at(3, 2) = -Scalar(2) * (nearPlane * farPlane) / (farPlane - nearPlane);
 	return matrix;
-}
-
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-inline constexpr Scalar& Math::Mat<Scalar, Size_y, Size_x, column_major>::at(size_t col, size_t row)
-{
-	if constexpr (column_major) {
-		return m_data[col * Size_y + row];
-	}
-	else {
-		return m_data[row * Size_x + col];
-	}
-}
-
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-inline constexpr const Scalar& Math::Mat<Scalar, Size_y, Size_x, column_major>::at(size_t col, size_t row) const
-{
-	if constexpr (column_major) {
-		return m_data[col * Size_y + row];
-	}
-	else {
-		return m_data[row * Size_x + col];
-	}
 }
 
 

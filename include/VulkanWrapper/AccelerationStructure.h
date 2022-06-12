@@ -23,6 +23,7 @@ namespace vulkan {
 		bool is_compactable() const noexcept;
 		VkAccelerationStructureInstanceKHR create_instance() const noexcept;
 		uint64_t get_reference() const noexcept;
+		void set_debug_label(const char* name) noexcept;
 	private:
 		LogicalDevice& r_device;
 		VkAccelerationStructureKHR m_handle = VK_NULL_HANDLE;

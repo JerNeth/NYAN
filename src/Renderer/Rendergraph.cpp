@@ -15,6 +15,7 @@ nyan::Renderpass::Renderpass(Rendergraph& graph, Type type, uint32_t id, const s
 void nyan::Renderpass::add_read(const std::string& name, Renderpass::Read::Type readType)
 {
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_readIn.insert(m_id);
 	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
 	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
@@ -30,6 +31,7 @@ void nyan::Renderpass::add_attachment(const std::string& name, ImageAttachment a
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
@@ -46,6 +48,7 @@ void nyan::Renderpass::add_attachment(const std::string& name)
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(name));
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert( m_id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -64,6 +67,7 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor)
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
 	auto& resource = r_graph.get_resource("swap");
+	resource.name = "swap";
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
@@ -81,6 +85,7 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name, ImageAttach
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert( m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
@@ -96,6 +101,7 @@ void nyan::Renderpass::add_depth_attachment(const std::string& name)
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	m_depth = resource.m_id;
 
@@ -109,6 +115,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name, Ima
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
@@ -124,6 +131,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const std::string& name)
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	m_depth = m_stencil = resource.m_id;
 
@@ -137,6 +145,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name, ImageAtta
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 	resource.m_type = RenderResource::Type::Image;
@@ -152,6 +161,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 {
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	if (resource.m_uses.size() <= m_id) {
 		resource.m_uses.resize(m_id + 1ull);
@@ -171,6 +181,7 @@ void nyan::Renderpass::add_stencil_attachment(const std::string& name)
 void nyan::Renderpass::add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType)
 {
 	auto& resource = r_graph.get_resource(name);
+	resource.name = name;
 	resource.m_writeToIn.insert(m_id);
 	resource.attachment = attachment;
 
@@ -191,6 +202,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	swap.clearColor = clearColor;
 	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
 	auto& resource = r_graph.get_resource("swap");
+	resource.name = "swap";
 	resource.m_writeToIn.insert(m_id);
 
 	if (resource.m_uses.size() <= m_id) {
@@ -209,6 +221,8 @@ void nyan::Renderpass::copy(const std::string& source, const std::string& target
 {
 	auto& sourceResource = r_graph.get_resource(source);
 	auto& targetResource = r_graph.get_resource(target);
+	sourceResource.name = source;
+	targetResource.name = target;
 	targetResource.attachment = sourceResource.attachment;
 	if (targetResource.m_uses.size() <= m_id) {
 		targetResource.m_uses.resize(m_id + 1ull);
@@ -216,8 +230,8 @@ void nyan::Renderpass::copy(const std::string& source, const std::string& target
 	if (sourceResource.m_uses.size() <= m_id) {
 		sourceResource.m_uses.resize(m_id + 1ull);
 	}
-	targetResource.m_uses[m_id].set(RenderResource::UseType::CopySource);
-	sourceResource.m_uses[m_id].set(RenderResource::UseType::CopyTarget);
+	targetResource.m_uses[m_id].set(RenderResource::UseType::CopyTarget);
+	sourceResource.m_uses[m_id].set(RenderResource::UseType::CopySource);
 	m_copies.push_back(Copy{.src = sourceResource.m_id, .dst = targetResource.m_id});
 	//sourceResource.m_copiedIn.insert(m_id);
 	//targetResource.m_copiedIntoIn.insert(m_id);
@@ -316,7 +330,7 @@ void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBufferHandle& cmd)
 		cmd->barrier(barrier.src, barrier.dst, 0, nullptr, barrier.bufferBarrierCount, m_bufferBarriers.data() + barrier.bufferBarrierOffset
 			, barrier.imageBarrierCount, m_imageBarriers.data() + barrier.imageBarrierOffset);
 	}
-	if (m_bufferPostBarrierIndex != m_bufferPreBarrierIndex || m_imagePostBarrierIndex != m_imagePreBarrierIndex)
+	if (m_bufferPreBarrierIndex != m_bufferCopyBarrierIndex || m_imagePreBarrierIndex != m_imageCopyBarrierIndex)
 		cmd->barrier2(0, 0, nullptr, m_bufferPreBarrierIndex - m_bufferCopyBarrierIndex, m_bufferBarriers2.barriers.data() + m_bufferCopyBarrierIndex,
 			m_imagePreBarrierIndex - m_imageCopyBarrierIndex, m_imageBarriers2.barriers.data() + m_imageCopyBarrierIndex);
 }
@@ -686,6 +700,8 @@ void nyan::Rendergraph::execute()
 				}
 				resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
 			}
+			resource.handle->set_debug_label(resource.name.c_str());
+			resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
 		}
 	});
 
@@ -696,6 +712,7 @@ void nyan::Rendergraph::execute()
 				assert(resource.handle);
 				if (readType == Renderpass::Read::Type::ImageColor) {
 					readView = resource.handle->get_view()->get_image_view();
+					
 				}
 				else if (readType == Renderpass::Read::Type::ImageDepth) {
 					auto* tmp = resource.handle->get_depth_view();
@@ -1014,6 +1031,7 @@ void nyan::Rendergraph::swapchain_present_transition2(RenderpassId src_const)
 	assert(src.get_type() == Renderpass::Type::Generic);
 
 	auto& resource = m_renderresources.get_direct(m_swapchainResource);
+	Utility::log().format("Swap Present Ressource ({}) Renderpass ({})", resource.name, src.m_name);
 	assert(resource.m_uses.size() > src_const);
 	auto usage = resource.m_uses[src_const];
 
@@ -1130,6 +1148,7 @@ void nyan::Rendergraph::swapchain_write_transition2(RenderpassId dst_const)
 	assert(resource.m_uses.size() > dst_const);
 	auto usage = resource.m_uses[dst_const];
 
+	Utility::log().format("Swap Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
 	if (resource.m_type != RenderResource::Type::Image) {
 		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", dst_const);
 		assert(false);
@@ -1222,7 +1241,7 @@ void nyan::Rendergraph::swapchain_write_transition2(RenderpassId dst_const)
 
 }
 
-
+bool debugBarriers = false;
 
 void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource)
 {
@@ -1234,7 +1253,6 @@ void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, co
 		assert(false);
 		return;
 	}
-	Utility::log().format("Renderpass ({}) -> ({})", src.m_name, dst.m_name);
 	auto srcUsage = resource.m_uses[from];
 	auto dstUsage = resource.m_uses[to];
 
@@ -1374,10 +1392,19 @@ void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, co
 
 	}
 
-	if (imageBarrier.oldLayout == imageBarrier.newLayout &&
-		imageBarrier.srcQueueFamilyIndex == imageBarrier.dstQueueFamilyIndex) {
-		Utility::log().format("Renderpass {} -> {}, Barrier without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
+	if (debugBarriers) {
+		Utility::log().format("Ressource ({}) Renderpass ({}) -> ({})", resource.name, src.m_name, dst.m_name);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 	}
+
+
+	//if (imageBarrier.oldLayout == imageBarrier.newLayout &&
+	//	imageBarrier.srcQueueFamilyIndex == imageBarrier.dstQueueFamilyIndex) {
+	//	Utility::log().format("Renderpass {} -> {}, Barrier without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
+	//}
 	//src.m_imagePostBarrierIndex++;
 	//src.m_imageCopyBarrierIndex++;
 	//src.m_imagePreBarrierIndex++;
@@ -1426,7 +1453,7 @@ void nyan::Rendergraph::set_up_first_transition(RenderpassId dst_const, const Re
 		assert(!usage.test(RenderResource::UseType::ImageLoad)); //Technically possible, but unreasonable?
 		assert(!usage.test(RenderResource::UseType::ImageStore));
 		if (!usage.any_of(RenderResource::UseType::BlitTarget, RenderResource::UseType::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst_const);
+			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		//TODO: Compute Shader
@@ -1438,7 +1465,7 @@ void nyan::Rendergraph::set_up_first_transition(RenderpassId dst_const, const Re
 		assert(!usage.test(RenderResource::UseType::Attachment));
 		assert(!usage.test(RenderResource::UseType::Sample));  //Technically possible, but unreasonable?
 		if (!usage.any_of(RenderResource::UseType::BlitTarget, RenderResource::UseType::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst_const);
+			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		assert(false);
@@ -1465,7 +1492,16 @@ void nyan::Rendergraph::set_up_first_transition(RenderpassId dst_const, const Re
 		imageBarrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 		imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
+	if (imageBarrier.newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+		return;
 
+	if (debugBarriers) {
+		Utility::log().format("Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+	}
 
 	assert(imageBarrier.newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 
@@ -1596,6 +1632,15 @@ void nyan::Rendergraph::set_up_copy(RenderpassId dst_const, const RenderResource
 	//We actually need an execution barrier here
 	if (imageBarrier.newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
 		return;
+
+
+	if (debugBarriers) {
+		Utility::log().format("Copy Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
+		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+	}
 
 	dst.m_imagePostBarrierIndex++;
 	//src.m_imageCopyBarrierIndex++;

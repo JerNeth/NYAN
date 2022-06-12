@@ -35,6 +35,7 @@ namespace nyan {
 		const entt::registry& get_registry() const;
 		void add_materials(const std::vector<nyan::MaterialData>& materials);
 		void set_primary_camera(entt::entity entity);
+		const entt::entity& get_primary_camera() const;
 		void update();
 	private:
 		vulkan::LogicalDevice& r_device;

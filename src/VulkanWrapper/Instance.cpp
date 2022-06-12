@@ -171,7 +171,7 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 
 	for (auto it = m_layers.begin(); it != m_layers.end();) {
 		if (std::find_if(layerProperties.begin(), layerProperties.end(), [&it](auto& val) {return std::strcmp(*it, val.layerName) == 0; }) == layerProperties.end()) {
-			Utility::log().location().format("Instance layer not present: %s", *it);
+			Utility::log().location().format("Instance layer not present: {}", *it);
 			it = m_layers.erase(it);
 		}
 		else
@@ -201,7 +201,7 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 
 	for (auto it = m_extensions.begin(); it != m_extensions.end(); ++it) 
 		if (std::find_if(extensions.begin(), extensions.end(), [&it](auto& val) {return std::strcmp(*it, val) == 0; }) == extensions.end())
-			Utility::log().location().format("Instance extension not present: %s", *it);
+			Utility::log().location().format("Instance extension not present: {}", *it);
 	
 	
 	VkInstanceCreateInfo createInfo{
@@ -357,11 +357,15 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 			else if (strcmp(ext.extensionName, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0) {
 				m_extensions.deferred_host_operations = 1;
 			}
+			else if (strcmp(ext.extensionName, VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME) == 0) {
+				m_extensions.performance_query = 1;
+			}
 			if(std::find(std::begin(m_usedExtensions), std::end(m_usedExtensions), extension) == std::end(m_usedExtensions))
 				m_usedExtensions.push_back(extension);
 			return true;
 		}
 	}
+	Utility::log().format("Extension not supported: {}", extension);
 	return false;
 }
 

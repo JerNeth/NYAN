@@ -145,7 +145,7 @@ namespace Utility {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
-			const auto bit = 1ull << idx & bitsMask;
+			const auto bit = 1ull << (idx & bitsMask);
 			return static_cast<decltype(bit)>(word) & bit;
 		}
 		template<class Head, class... Tail>
@@ -182,7 +182,7 @@ namespace Utility {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
-			const auto bit = 1ull << idx & bitsMask;
+			const auto bit = 1ull << (idx & bitsMask);
 			word |= static_cast<bitType>(bit);
 			return *this;
 		}
@@ -196,7 +196,7 @@ namespace Utility {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
-			const auto bit = 1ull << idx & bitsMask;
+			const auto bit = 1ull << (idx & bitsMask);
 			word &= ~bit;
 			return *this;
 		}

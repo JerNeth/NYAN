@@ -1,4 +1,5 @@
 #include "AccelerationStructure.h"
+#include "Instance.h"
 #include "LogicalDevice.h"
 #include "CommandBuffer.h"
 
@@ -82,6 +83,32 @@ uint64_t vulkan::AccelerationStructure::get_reference() const noexcept
 		.accelerationStructure = m_handle
 	};
 	return vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo);
+}
+
+void vulkan::AccelerationStructure::set_debug_label(const char* name) noexcept
+{
+	if constexpr (debugMarkers) {
+		if (r_device.get_supported_extensions().debug_utils) {
+			VkDebugUtilsObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR},
+				.objectHandle {reinterpret_cast<uint64_t>(m_handle)},
+				.pObjectName {name},
+			};
+			vkSetDebugUtilsObjectNameEXT(r_device, &label);
+		}
+		else if (r_device.get_supported_extensions().debug_marker) {
+			VkDebugMarkerObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT},
+				.object {reinterpret_cast<uint64_t>(m_handle)},
+				.pObjectName {name},
+			};
+			vkDebugMarkerSetObjectNameEXT(r_device, &label);
+		}
+	}
 }
 
 vulkan::AccelerationStructureBuilder::AccelerationStructureBuilder(LogicalDevice& device) :

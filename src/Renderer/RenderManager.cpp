@@ -91,6 +91,11 @@ void nyan::RenderManager::set_primary_camera(entt::entity entity)
 	m_primaryCamera = entity;
 }
 
+const entt::entity& nyan::RenderManager::get_primary_camera() const
+{
+	return m_primaryCamera;
+}
+
 void nyan::RenderManager::update()
 {
 	//Has to be before instance manager build and instance manager update

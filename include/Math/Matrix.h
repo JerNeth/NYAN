@@ -141,8 +141,30 @@ namespace Math {
 		constexpr inline Mat& operator/=(const Scalar& rhs);
 		constexpr inline Vec<Scalar, Size_x> row(const size_t index) const;
 		constexpr inline Vec<Scalar, Size_y> col(const size_t index) const;
-		constexpr inline const Scalar& operator()(const size_t col, const size_t  row) const;
-		constexpr inline Scalar& operator()(const size_t col, const size_t row);
+		constexpr inline const Scalar& operator()(const size_t col, const size_t  row) const {
+			if constexpr (column_major) {
+				assert(Size_x * Size_y > col * Size_y + row);
+			}
+			else {
+				assert(Size_x * Size_y > row * Size_x + col);
+			}
+			//Just pass through, User responsible for bounds
+			//if (Size_x * Size_y <= index)
+			//	throw std::out_of_range("Index out of range");
+			return at(col, row);
+		}
+		constexpr inline Scalar& operator()(const size_t col, const size_t row) {
+			if constexpr (column_major) {
+				assert(Size_x * Size_y > col * Size_y + row);
+			}
+			else {
+				assert(Size_x * Size_y > row * Size_x + col);
+			}
+			//Just pass through, User responsible for bounds
+			//if (Size_x * Size_y <= index)
+			//	throw std::out_of_range("Index out of range");
+			return at(col, row);
+		}
 		constexpr inline Mat& transposed();
 		constexpr inline Mat transpose() const;
 		constexpr inline Scalar determinante() const;
@@ -192,23 +214,41 @@ namespace Math {
 		static Mat<Scalar, 4, 4, column_major> perspectiveInverseDepthFovXLH(Scalar nearPlane, Scalar fovX, Scalar aspectRatio);
 		static Mat<Scalar, 4, 4, column_major> perspectiveXY(Scalar nearPlane, Scalar farPlane, Scalar fovX, Scalar fovY);
 
-		constexpr inline Scalar& at(size_t col, size_t row);
-		constexpr inline const Scalar& at(size_t col, size_t row) const;
+		constexpr inline Scalar& at(size_t col, size_t row) {
+			if constexpr (column_major) {
+				return m_data[col * Size_y + row];
+			}
+			else {
+				return m_data[row * Size_x + col];
+			}
+		}
+		constexpr inline const Scalar& at(size_t col, size_t row) const {
+			if constexpr (column_major) {
+				return m_data[col * Size_y + row];
+			}
+			else {
+				return m_data[row * Size_x + col];
+			}
+		}
+
+
 	private:
 		union {
 			std::array<Scalar, Size_x* Size_y> m_data;
 			std::array<Vec<Scalar, column_major ?Size_y : Size_x>, column_major ? Size_x : Size_y> m_vectors;//Columns if columnmajor, rows otherwise
 		};
 	};
-	
+
+
 	template<typename Scalar, size_t Size_x, size_t Size_y>
 	constexpr inline bool close(const Mat<Scalar, Size_x, Size_y>& lhs, const Mat<Scalar, Size_x, Size_y>& rhs, const Scalar& eps = Scalar(1e-5)) {
-		for (size_t i = 0; i < Size_x * Size_y; i++)
-			if (!close(lhs[i], rhs[i], eps))
-				return false;
+		for (size_t i = 0; i < Size_x; i++)
+			for (size_t j = 0; j < Size_y; j++)
+				if (!close(lhs(i, j), rhs(i, j), eps))
+					return false;
 		return true;
 	}
-	
+
 	template<typename Scalar, size_t rows, size_t equal, size_t cols, bool column_major>
 	constexpr inline Mat<Scalar, rows, cols, column_major> operator*(const Mat<Scalar, rows, equal, column_major>& lhs, const Mat<Scalar, equal, cols, column_major>& rhs) {
 		Mat<Scalar, rows, cols, column_major > result{};

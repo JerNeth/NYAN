@@ -14,7 +14,7 @@ set(TEST_CPP
 # ---------------------------------------------------------------------------
 enable_testing()
 
-add_executable(tester ${TEST_CPP})
+add_executable(tester ${TEST_CPP} ${MATH_SRC})
 target_link_libraries(tester ${GTEST_BOTH_LIBRARIES})
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")

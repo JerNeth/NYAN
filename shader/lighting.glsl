@@ -109,9 +109,9 @@ void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo
 
     diffuse = vec4(0.0);
     specular= vec4(0.0);
-   // calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
+    calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
 
-    //specular.a = albedo.a;
-    //diffuse.a = albedo.a;
-    specular = albedo;
+    specular.a = albedo.a;
+    diffuse.a = albedo.a;
+    //specular = albedo;
 }

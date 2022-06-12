@@ -1,4 +1,6 @@
 #include "Image.h"
+#include "Image.h"
+#include "Instance.h"
 #include "LogicalDevice.h"
 #include "Allocator.h"
 
@@ -45,6 +47,41 @@ vulkan::ImageView::~ImageView() noexcept {
     if(m_vkHandle != VK_NULL_HANDLE) {
         r_device.queue_image_view_deletion(m_vkHandle);
     }
+}
+
+void vulkan::ImageView::set_debug_label(const char* name) noexcept
+{
+	if constexpr (debugMarkers) {
+		if (r_device.get_supported_extensions().debug_utils) {
+			VkDebugUtilsObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_OBJECT_TYPE_IMAGE_VIEW},
+				.objectHandle {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.pObjectName {name},
+			};
+			vkSetDebugUtilsObjectNameEXT(r_device, &label);
+		}
+		else if (r_device.get_supported_extensions().debug_marker) {
+			//VkDebugMarkerObjectTagInfoEXT label {
+			//	.sType {},
+			//	.pNext {},
+			//	.objectType {},
+			//	.object {},
+			//	.tagName {},
+			//	.tagSize {},
+			//	.pTag {},
+			//};
+			VkDebugMarkerObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT},
+				.object {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.pObjectName {name},
+			};
+			vkDebugMarkerSetObjectNameEXT(r_device, &label);
+		}
+	}
 }
 
 vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail) :
@@ -201,6 +238,41 @@ vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {
 	createInfo.aspectMask = ImageInfo::format_to_aspect_mask(m_info.format);
 	m_view = r_device.create_image_view(createInfo);
 	return &(*m_view);
+}
+
+void vulkan::Image::set_debug_label(const char* name) noexcept
+{
+	if constexpr (debugMarkers) {
+		if (r_device.get_supported_extensions().debug_utils) {
+			VkDebugUtilsObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_OBJECT_TYPE_IMAGE},
+				.objectHandle {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.pObjectName {name},
+			};
+			vkSetDebugUtilsObjectNameEXT(r_device, &label);
+		}
+		else if (r_device.get_supported_extensions().debug_marker) {
+			//VkDebugMarkerObjectTagInfoEXT label {
+			//	.sType {},
+			//	.pNext {},
+			//	.objectType {},
+			//	.object {},
+			//	.tagName {},
+			//	.tagSize {},
+			//	.pTag {},
+			//};
+			VkDebugMarkerObjectNameInfoEXT label{
+				.sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
+				.pNext {nullptr},
+				.objectType {VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT},
+				.object {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.pObjectName {name},
+			};
+			vkDebugMarkerSetObjectNameEXT(r_device, &label);
+		}
+	}
 }
 
 uint32_t vulkan::Image::get_available_mip() const noexcept {

@@ -28,9 +28,11 @@
 
 #ifdef NDEBUG
 constexpr bool debug = false;
+constexpr bool debugMarkers = false;
 #else
 #define VMA_RECORDING_ENABLED 1
 constexpr bool debug = true;
+constexpr bool debugMarkers = true;
 #endif
 #ifdef _MSC_VER
 #pragma warning(push, 0)

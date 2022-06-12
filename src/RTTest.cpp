@@ -117,7 +117,7 @@ int main() {
 	////		.clearColor{0.f, 0.f, 0.f, 1.f},
 	////	});
 	//deferredPass.add_swapchain_attachment();
-	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
+	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic);
 	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
 	//	{
 	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
@@ -131,7 +131,7 @@ int main() {
 	deferredPass.add_swapchain_write( Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
 
 
-	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Graphics);
+	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
 	rendergraph.build();
 
