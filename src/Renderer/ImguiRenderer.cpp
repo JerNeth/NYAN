@@ -3,9 +3,13 @@
 #include "CommandBuffer.h"
 #include "Pipeline.h"
 #include "Buffer.h"
+#include "Renderer/MeshRenderer.h"
 using namespace vulkan;
 
 static nyan::MaterialManager* manager;
+
+
+
 namespace MM {
 	template <>
 	void ComponentEditorWidget<nyan::Transform>(entt::registry& reg, entt::registry::entity_type e)
@@ -44,8 +48,24 @@ namespace MM {
 		ImGui::Image(reinterpret_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
 		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
 		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
-		ImGui::ColorEdit3("F0", &mat.F0_R);
+		//ImGui::ColorEdit3("F0", &mat.F0_R);
 		ImGui::ColorEdit4("albedo", &mat.albedo_R);
+	}
+	template <>
+	void ComponentEditorWidget<nyan::Deferred>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	{
+	}
+	template <>
+	void ComponentEditorWidget<nyan::DeferredAlphaTest>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	{
+	}
+	template <>
+	void ComponentEditorWidget<nyan::Forward>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	{
+	}
+	template <>
+	void ComponentEditorWidget<nyan::ForwardTransparent>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	{
 	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
@@ -78,6 +98,10 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<Transform>("Transform");
 	m_editor.registerComponent<PerspectiveCamera>("Camera");
 	m_editor.registerComponent<MaterialId>("Material");
+	m_editor.registerComponent<Deferred>("Deferred");
+	m_editor.registerComponent<DeferredAlphaTest>("Alpha Test");
+	m_editor.registerComponent<Forward>("Forward");
+	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}

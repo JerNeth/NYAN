@@ -50,11 +50,13 @@ namespace Utility {
 				<< location.line() << ":"
 				<< location.column() << ") `"
 				<< location.function_name() << "`: ";
+			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
 		}
 		template<typename ...Args>
 		const Logger& format(std::string_view view, Args&&... args) const {
 			stream() << std::vformat(view, std::make_format_args(args...));
+			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
 		}
 	private:

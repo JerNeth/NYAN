@@ -22,10 +22,10 @@ struct Material {
 	float metalness;
 	float roughness;
 	float anisotropy;
-	float IoR;
-	float F0_R;
-	float F0_G;
-	float F0_B;
+	//float IoR;
+	//float F0_R;
+	//float F0_G;
+	//float F0_B;
 	float alphaDiscard;
 
 };

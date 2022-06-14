@@ -407,8 +407,7 @@ void nyan::Renderpass::add_wait(VkSemaphore wait, VkPipelineStageFlags stage)
 
 void nyan::Renderpass::add_signal(uint32_t passId, VkPipelineStageFlags stage)
 {
-	m_signalPassIds.push_back(passId);
-	m_signalStages.push_back(stage);
+	m_signals.push_back({ passId, stage });
 }
 
 bool nyan::Renderpass::is_read(RenderResourceId id) const
@@ -843,16 +842,15 @@ void nyan::Rendergraph::execute()
 		pass.execute(cmd);
 		pass.apply_post_barriers(cmd);
 		cmd->end_region();
-		for (size_t i{ 0 }; i < pass.m_waitSemaphores.size(); i++) {
-			r_device.add_wait_semaphores(commandBufferType, pass.m_waitSemaphores, pass.m_waitStages);
-		}
+
+		r_device.add_wait_semaphores(commandBufferType, pass.m_waitSemaphores, pass.m_waitStages);
 		pass.m_waitSemaphores.clear();
 		pass.m_waitStages.clear();
-		std::vector<VkSemaphore> signals(pass.m_signalPassIds.size(), VK_NULL_HANDLE);
+		std::vector<VkSemaphore> signals(pass.m_signals.size(), VK_NULL_HANDLE);
 		r_device.submit(cmd, static_cast<uint32_t>(signals.size()), signals.data());
-		for (size_t i{ 0 }; i < pass.m_signalPassIds.size(); i++) {
-			auto& waitPass = m_renderpasses.get_direct(pass.m_signalPassIds[i]);
-			waitPass.add_wait(signals[i], pass.m_signalStages[i]);
+		for (size_t i{ 0 }; i < pass.m_signals.size(); i++) {
+			auto& waitPass = m_renderpasses.get_direct(pass.m_signals[i].passId);
+			waitPass.add_wait(signals[i], pass.m_signals[i].stage);
 		}
 	});
 }
@@ -1389,6 +1387,7 @@ void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, co
 		dst.m_imagePostBarrierIndex++;
 		dst.m_imageBarriers2.barriers.insert(src.m_imageBarriers2.barriers.begin() + src.m_imagePreBarrierIndex, imageBarrier);
 		dst.m_imageBarriers2.images.insert(src.m_imageBarriers2.images.begin() + src.m_imagePreBarrierIndex, resource.m_id);
+		src.add_signal(to, imageBarrier.dstStageMask);
 
 	}
 

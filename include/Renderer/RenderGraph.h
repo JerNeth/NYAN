@@ -226,10 +226,13 @@ namespace nyan {
 		VkRenderingAttachmentInfo m_stencilAttachment;
 		vulkan::RenderingCreateInfo m_renderingCreateInfo;
 
+		struct Signal {
+			uint32_t passId;
+			VkPipelineStageFlags stage;
+		};
 		std::vector<VkSemaphore> m_waitSemaphores;
 		std::vector<VkPipelineStageFlags> m_waitStages;
-		std::vector<VkPipelineStageFlags> m_signalStages;
-		std::vector<uint32_t> m_signalPassIds;
+		std::vector<Signal> m_signals;
 
 	};
 	class Rendergraph {

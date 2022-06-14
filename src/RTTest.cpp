@@ -6,6 +6,7 @@
 #include <iostream>
 #include "entt/entt.hpp"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/CameraController.h"
 #include "Renderer/RenderManager.h"
 using namespace nyan;
 
@@ -33,20 +34,15 @@ int main() {
 
 
 	nyan::RenderManager renderManager(device, true);
+	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
 
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	renderManager.add_materials(materials);
 
-	for (const auto& a : materials) {
-		if (!a.diffuseTex.empty())
-			renderManager.get_texture_manager().request_texture(a.diffuseTex);
-		if (!a.normalTex.empty())
-			renderManager.get_texture_manager().request_texture(a.normalTex);
-		renderManager.get_material_manager().add_material(a);
-	}
 
 	auto parent = registry.create();
 	registry.emplace<Transform>(parent,
@@ -104,31 +100,8 @@ int main() {
 
 	}
 	nyan::Rendergraph rendergraph{ device };
-	//OutputDebugStringW(L"My output string.\n");
-	//auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Graphics);
-	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
-	//		.clearColor{1.f, 0.f, 0.f, 0.f},
-	//	});
-	////deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
-	////	{
-	////		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-	////		.clearColor{0.f, 0.f, 0.f, 1.f},
-	////	});
-	//deferredPass.add_swapchain_attachment();
-	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic);
-	//deferredPass.add_depth_attachment("Deferred-Depth", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_D24_UNORM_S8_UINT},
-	//		.clearColor{1.f, 0.f, 0.f, 0.f},
-	//	});
-	//deferredPass.add_attachment("ColorBuffer", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-	//		.clearColor{0.f, 0.f, 0.f, 1.f},
-	//	});
-	deferredPass.add_swapchain_write( Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
+	auto& rtPass = rendergraph.add_pass("RT-Pass", nyan::Renderpass::Type::Generic);
+	rtPass.add_swapchain_write( Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
@@ -136,7 +109,7 @@ int main() {
 	rendergraph.build();
 
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
-	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, deferredPass);
+	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, rtPass);
 	application.each_frame_begin([&]()
 		{
 			renderManager.update();
@@ -144,20 +117,8 @@ int main() {
 		});
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
+			cameraController.update(dt);
 			//imgui.update();
-			auto dtf = std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
-			auto& transform = registry.get<Transform>(camera);
-			auto& perspectiveCamera = registry.get<PerspectiveCamera>(camera);
-
-			transform.orientation.x() += dtf * (45.f) * input.get_axis(Input::Axis::LookUp);
-			transform.orientation.y() += dtf * (45.f) * input.get_axis(Input::Axis::LookRight);
-
-			auto mat = Math::mat33::rotation_matrix(transform.orientation);
-
-			transform.position += mat * perspectiveCamera.right * dtf * 100 * input.get_axis(Input::Axis::MoveRight);
-			transform.position += mat * perspectiveCamera.forward * dtf * 100 * input.get_axis(Input::Axis::MoveForward);
-
-
 		});
 	application.each_frame_end([&rendergraph]()
 		{

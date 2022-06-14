@@ -23,6 +23,7 @@ namespace nyan {
 	struct DeferredAlphaTest {};
 	struct Forward {};
 	struct ForwardTransparent {};
+	struct RayTraced {};
 	struct MeshInstance {
 		uint32_t meshBinding;
 		uint32_t instanceBinding;

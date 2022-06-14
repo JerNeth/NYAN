@@ -50,7 +50,7 @@ void main() {
     outAlbedo = albedo;
     outNormal = vec4(normal.xyz, material.roughness);
     //outNormal = normal.xy;
-    outPBR = vec4(material.metalness, material.F0_R, material.F0_G, material.F0_B);
+    outPBR = vec4(material.metalness, 0, 0, 0);
     outPBR.yzw -= vec3(0.022, 0.022, 0.022);
     //outColor = vec4(0.2,0.6,0.5,1.0);
 }

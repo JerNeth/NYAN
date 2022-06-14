@@ -53,7 +53,7 @@ void main() {
         
     shadeFragment(fragWorldPos, normal, scene, albedo, metalness, roughness, specular, diffuse);
     outSpecular = vec4(specular.xyz, albedo.w);
-    outDiffuse == vec4( diffuse.xyz, albedo.w);
+    outDiffuse = vec4( diffuse.xyz, albedo.w);
     //normal.xy = encodeOctahedronMapping(normal);
 //
 //    outAlbedo = albedo;

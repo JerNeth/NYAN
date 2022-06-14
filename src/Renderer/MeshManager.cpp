@@ -160,8 +160,9 @@ nyan::InstanceManager::InstanceManager(vulkan::LogicalDevice& device, bool build
 	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
 		| VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		| VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR),
-	m_builder(std::make_unique<AccelerationStructureBuilder>(r_device)),
-	m_buildAccs(buildAccelerationStructures)
+	m_builder(buildAccelerationStructures?std::make_unique<AccelerationStructureBuilder>(r_device): nullptr),
+	m_buildAccs(buildAccelerationStructures),
+	m_tlasBind(r_device.get_bindless_set().reserve_acceleration_structure())
 {
 }
 
@@ -206,11 +207,9 @@ InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
+		assert(m_builder);
 		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->buffer->get_address());
-		if (m_tlasBind)
-			r_device.get_bindless_set().set_acceleration_structure(*m_tlasBind, *(*m_tlas));
-		else
-			m_tlasBind = r_device.get_bindless_set().set_acceleration_structure(*(*m_tlas));
+		r_device.get_bindless_set().set_acceleration_structure(m_tlasBind, *(*m_tlas));
 	}
 }
 

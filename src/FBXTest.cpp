@@ -26,7 +26,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -65,7 +65,6 @@ int main() {
 			.right {1.f, 0.f ,0.f},
 		});
 	renderManager.set_primary_camera(camera);
-	bool first = true;
 	for (const auto& a : meshes) {
 
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
@@ -94,19 +93,14 @@ int main() {
 			Parent{
 				.parent {parent},
 			});
-
-		//if (first) {
-		//	first = false;
-			registry.emplace<Deferred>(entity);
-		//} else 
-		//	registry.emplace<ForwardTransparent>(entity);
+		registry.emplace<std::string>(entity, a.name);
+		registry.emplace<Deferred>(entity);
 
 	} 
 
 
 
 	nyan::Rendergraph rendergraph{ device };
-	//OutputDebugStringW(L"My output string.\n");
 	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic);
 	deferredPass.add_depth_stencil_attachment("g_Depth", nyan::ImageAttachment
 		{
@@ -132,8 +126,8 @@ int main() {
 			.clearColor{0.f, 0.f, 0.f, 1.f},
 		});
 	//deferredPass.add_swapchain_attachment();
-	deferredPass.copy("g_Depth", "g_Depth2");
-	deferredPass.copy("g_Normal", "g_Normal2");
+	//deferredPass.copy("g_Depth", "g_Depth2");
+	//deferredPass.copy("g_Normal", "g_Normal2");
 
 	auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
 	deferredLightingPass.add_read("g_Albedo");

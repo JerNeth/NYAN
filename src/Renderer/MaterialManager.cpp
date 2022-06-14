@@ -24,10 +24,10 @@ void nyan::MaterialManager::set_material(MaterialId idx, const MaterialData& dat
 		.albedo_B {1.0f},
 		.albedo_A {1.0f},
 		.roughness {0.05f},
-		.F0_R {0.04},
-		.F0_G {0.04},
-		.F0_B {0.04},
-		.alphaDiscard {0.1}
+		//.F0_R {0.04},
+		//.F0_G {0.04},
+		//.F0_B {0.04},
+		.alphaDiscard {0.5}
 	});
 }
 
@@ -45,10 +45,10 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 		.albedo_B {1.0f},
 		.albedo_A {1.0f},
 		.roughness {0.05f},
-		.F0_R {0.04},
-		.F0_G {0.04},
-		.F0_B {0.04},
-		.alphaDiscard {0.1}
+		//.F0_R {0.04},
+		//.F0_G {0.04},
+		//.F0_B {0.04},
+		.alphaDiscard {0.5}
 	});
 	m_materialIndex.emplace(data.name, binding);
 	return binding;

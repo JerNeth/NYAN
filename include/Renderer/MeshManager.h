@@ -122,7 +122,7 @@ namespace nyan {
 		std::unique_ptr<vulkan::AccelerationStructureBuilder> m_builder;
 		bool m_buildAccs;
 		std::optional<vulkan::AccelerationStructureHandle> m_tlas;
-		std::optional<uint32_t> m_tlasBind;
+		uint32_t m_tlasBind;
 	};
 
 	class SceneManager {

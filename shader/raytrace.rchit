@@ -67,7 +67,7 @@ void main()
     
     float metalness = material.metalness;
     float roughness = material.roughness;
-    vec3 F0 = vec3(material.F0_R, material.F0_G, material.F0_B);
+   // vec3 F0 = vec3(material.F0_R, material.F0_G, material.F0_B);
     vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), uv, 0);
     albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
     //vec3 normal = vec3(textureLod(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), uv, 0).rg* 2.0 - 1.0, 0);
