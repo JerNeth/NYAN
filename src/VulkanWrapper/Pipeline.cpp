@@ -508,6 +508,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 	{
 		.sType { VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR },
 		.pNext { nullptr },
+		.flags {},
 		.stageCount { static_cast<uint32_t>(stageCreateInfos.size()) },
 		.pStages { stageCreateInfos.data() },
 		.groupCount { static_cast<uint32_t>(groupCreateInfos.size()) },

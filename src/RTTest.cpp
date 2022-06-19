@@ -40,7 +40,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -52,11 +52,17 @@ int main() {
 			.orientation{0, 180, 0},
 		});
 	auto camera = registry.create();
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{600.f, 660.f, -1400.f},
+	//		.scale{},
+	//		.orientation{18.f, -27.f, 0.f},
+	//	});
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 660.f, -1400.f},
+			.position{600.f, 350.f,960.f},
 			.scale{},
-			.orientation{18.f, -27.f, 0.f},
+			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
 	registry.emplace<PerspectiveCamera>(camera,
 		PerspectiveCamera{
@@ -84,7 +90,7 @@ int main() {
 				.transform{
 					.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
 				}
-		}));
+		};
 		instance.instance.instanceCustomIndex = meshId;
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,

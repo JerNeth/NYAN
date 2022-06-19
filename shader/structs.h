@@ -1,11 +1,11 @@
 struct Mesh {
 	uint materialBinding;
 	uint materialId;
-	Indices indicesAddress;
-	Positions positionsAddress;
-	Uvs uvsAddress;
-	Normals normalsAddress;
-	Tangents tangentsAddress;
+	uint64_t indicesAddress;
+	uint64_t positionsAddress;
+	uint64_t uvsAddress;
+	uint64_t normalsAddress;
+	uint64_t tangentsAddress;
 };
 
 struct Material {

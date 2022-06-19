@@ -37,11 +37,13 @@ void main() {
     vec3 normal = normalize(modelS * inNormal.xyz);
     //tangent = normalize(tangent - dot(tangent, normal) * normal);
 //    Uvs uvs = Uvs(mesh.uvs);
-//    Normals normals = Normals(mesh.normals);
+   // Normals normals = Normals(mesh.normalsAddress);
+    //NormalsHalf normals = NormalsHalf(mesh.normalsAddress);
 //    Tangents tangents = Tangents(mesh.tangents);
 //    vec3 tangent = vec3(model * vec4(tangents.t[gl_VertexIndex].xyz, 0));
-//    vec3 normal = vec3(model * vec4(normals.n[gl_VertexIndex].xyz, 0));
-   // vec3 bitangent = cross(normal.xyz, tangent.xyz);
+   // vec3 normal = normalize(modelS * normals.n[gl_VertexIndex].xyz);
+    //vec3 normal = normalize(modelS *getNormal(mesh.normalsAddress, gl_VertexIndex));
+    //vec3 bitangent = cross(normal.xyz, tangent.xyz);
     //980 ti
     //46 Entities 57 fps    17.5ms (fetch)
     //46 Entities 57 fps    17.5 ms (attribs)

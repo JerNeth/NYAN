@@ -25,6 +25,8 @@ layout(set = 0, binding = 3) uniform texture2D textures2D[TEXTURE_COUNT];
 layout(set = 0, binding = 3) uniform itexture2D itextures2D[TEXTURE_COUNT];
 layout(set = 0, binding = 3) uniform utexture2D utextures2D[TEXTURE_COUNT];
 layout(set = 0, binding = 4, rgb10_a2) uniform image2D imagesRGB10_A2[IMAGE_COUNT];
+layout(set = 0, binding = 4, r11f_g11f_b10f) uniform image2D imagesR11G11B10F[IMAGE_COUNT];
+layout(set = 0, binding = 4, rgba16f) uniform image2D imagesRGBA16F[IMAGE_COUNT];
 
 //layout(set = 0, binding = 0) buffer SSBO {} ssbos [];
 //layout(set = 0, binding = 1) uniform ubos[];

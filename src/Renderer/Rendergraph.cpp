@@ -208,7 +208,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	if (resource.m_uses.size() <= m_id) {
 		resource.m_uses.resize(m_id + 1ull);
 	}	
-	resource.m_uses[m_id].set(RenderResource::UseType::Attachment);
+	resource.m_uses[m_id].set(RenderResource::UseType::ImageStore);
 
 	resource.attachment = swap;
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());

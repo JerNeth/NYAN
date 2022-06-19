@@ -14,7 +14,6 @@ int main() {
 	nyan::Application application(name);
 	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
 
-
 	auto& device = application.get_device();
 	auto& window = application.get_window();
 
@@ -26,7 +25,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 

@@ -7,7 +7,7 @@
 namespace vulkan {
 	class ShaderManager {
 	public:
-		ShaderManager(LogicalDevice& device, const std::filesystem::path& shaderDirectory = std::filesystem::current_path());
+		ShaderManager(LogicalDevice& device, const std::filesystem::path& shaderDirectory = (std::filesystem::current_path() / "shaders"));
 		//template<typename ...Args>
 		//Program* request_program(Args&&... args) {
 		//	ShaderLayout layout{};

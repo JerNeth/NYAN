@@ -266,7 +266,7 @@ nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::regist
 
 void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
 {
-	auto writeBind = r_pass.get_write_bind(0);
+	auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
 	assert(writeBind != InvalidResourceId);
 	PushConstants constants{
 		.imageBinding {writeBind}, //0

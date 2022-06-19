@@ -60,6 +60,7 @@ vec2 unpack1212(vec3 val)
 //}
 //
 
+
 void orthonormalize(inout vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
     //normal = normalize(normal);
     //tangent = normalize(tangent - dot(normal, tangent) * normal);
@@ -73,16 +74,16 @@ void orthonormalize(inout vec3 normal,inout vec3 tangent, inout vec3 bitangent) 
 
 vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal,in vec3 bitangent, in vec3 tangent)
 {
-    //vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
-    vec2 convertedNormalMapSample = normalMapSample * vec2(2.0) +vec2(-1.0);
-    vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
-    vec3 tmpNormal = normal;
-    vec3 tmpTangent = tangent;
-    vec3 tmpBitangent = bitangent; // bitangent;
-    //tmpTangent = cross(tmpBitangent, tmpNormal);
-    orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
-	mat3 tangentFrame = mat3(tmpTangent , tmpBitangent , tmpNormal);
-	//mat3 tangentFrame = mat3( tmpBitangent , tmpNormal,  tmpTangent );
-    //return tangentFrame * tangentNormal;
-    return tmpNormal;
+    //Currently disabled because it produces bogus
+//    vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
+//    vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
+//    vec3 tmpNormal = normal;
+//    vec3 tmpTangent = tangent;
+//    vec3 tmpBitangent = bitangent;
+//    orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
+//	mat3 tangentFrame = mat3(tmpTangent , tmpBitangent , tmpNormal);
+//    return tangentFrame * tangentNormal;
+
+
+    return normalize(normal);
 }
