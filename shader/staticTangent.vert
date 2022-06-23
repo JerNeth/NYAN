@@ -29,9 +29,11 @@ void main() {
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
     uint meshId = instance.meshId & 0x00FFFFFF;
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
+    Scene scene = scenes[constants.sceneBinding].scene;
 	mat4x3 model = fetchTransformMatrix(instance);
-    fragWorldPos = model *vec4( inPosition, 1.0);
-	gl_Position = scenes[constants.sceneBinding].scene.viewProj * vec4(fragWorldPos , 1.0);
+    model[3] -= vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    fragWorldPos = model * vec4( inPosition, 1.0);
+	gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
     mat3 modelS = mat3(model);
     //vec3 tangent = normalize(modelS * inTangent.xyz);
     vec3 normal = normalize(modelS * inNormal.xyz);

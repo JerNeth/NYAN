@@ -3,14 +3,14 @@ vec3 F_sphericalGaussian(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * exp2((-5.55473 * cosTheta -  6.98316) * cosTheta);
 }
 
-float intPow5(float v) {
+float pow5(float v) {
     float tmp = v *v;
     tmp = tmp * tmp;
     return tmp * v;
 }
 
 vec3 F_Schlick(float cosTheta, vec3 F0) {
-    return  mix(F0 , vec3(1.0), intPow5(1.0-cosTheta));
+    return  mix(F0 , vec3(1.0), pow5(1.0-cosTheta));
 }
 vec3 schlickLazanyi(float cosTheta, vec3 F0, vec3 a, float alpha) {
  return F_Schlick(cosTheta, F0) -
@@ -56,6 +56,21 @@ vec3 brdf_hammon_diffuse(float NdotL, float NdotV,float NdotH, float VdotL, floa
 
     return diffuseColor.xyz * (single + diffuseColor.xyz * multi);
 }
+
+//[Stephen McAuley, 2018] "A Journey Through Implementing BRDFs & Area Lights
+// Who adapted "Material Advances in Call of Duty: WWII"
+float multi_scattering_diffuse_brdf(float NdotL, float NdotV, float NdotH, float LdotH, float alpha) {
+    float g = min(1.0, max(0.0, 0.18455 * log(2.0/ ((alpha * alpha)) - 1.0 )));
+
+    float f0 = LdotH + pow5(1.0f - LdotH);
+    float f1 = (1.0 - 0.75 * pow5(1.0 - NdotL)) * (1.0 - 0.75 * pow5(1.0 - NdotV));
+    float t = min(1.0, max(0.0, 2.2 * g - 0.5));
+    float fd = f0 + (f1 - f0) * t;
+    float fb = ((34.5 * g - 59.0) * g + 24.5) * LdotH * exp2(-max(73.2 * g - 21.2, 8.9) * sqrt(NdotH));
+    
+    return fd + fb;
+}
+
 vec3 brdf_lambert(vec3 diffuseColor)
 {
     float single = 1 / 3.1415926;
@@ -85,8 +100,9 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
     float LdotH = rcpLenLV * LdotV + rcpLenLV;
 
 
-    diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
-    
+    //diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
+   
+    diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- metalness) * light.intensity * albedo.xyz * NdotL) * light.color ; 
     //TODO Energy Compensation for multiple Scattering
     //Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
 	//Sony Pictures Imageworks’s Lighting Model Integration Report
@@ -95,6 +111,7 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
 	//https://blog.selfshadow.com/2018/08/05/multi-faceted-part-3/
 	// https://google.github.io/filament/Filament.html#materialsystem/improvingthebrdfs/energylossinspecularreflectance
 	// https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+    //Fdez-Agüera, A Multiple-Scattering Microfacet Model for Real-Time Image Based Lighting.
 
     vec3 specularColor = mix( vec3(0.04), albedo.xyz, metalness);
     vec3 F = F_Schlick(NdotV, specularColor);

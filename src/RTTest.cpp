@@ -15,6 +15,9 @@ int main() {
 	nyan::Application application(name);
 	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
 	//See also: "Real-Time Samurai Cinema: Lighting, Atmosphere, and Tonemapping in Ghost of Tsushima"
+	//Also: HDR in Call of Duty, High Dynamic color grading and dsiplay in Frostbite
+	//Also: https://gdcvault.com/play/1024253/High-Dynamic-Range-Color-Grading
+	//Also: An Overview of the Diablo II: Resurructed Renderer
 
 	//TODO: PBR, use GGX + Smith
 	//See also: Hammon earl, PBR Diffuse Lighting for GGX + Smith Microsurfaces
@@ -26,6 +29,8 @@ int main() {
 	//https://www.shadertoy.com/view/7dffD2
 	//Physics and Math of Shading Naty Hoffman 2k Siggraph 2015
 	//Sampling the GGX Distribution of Visible Normals
+
+	//See Surfel GI for possible moving average estimator (Stachowiak 2018)
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();
