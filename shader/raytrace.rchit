@@ -19,8 +19,10 @@ layout(std430, push_constant) uniform PushConstants
     uint meshBinding;
 	vec4 col;
 } constants;
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
 layout(location = 0) rayPayloadInEXT hitPayload hitValue;
+layout(location = 1) rayPayloadInEXT float shadowed;
 hitAttributeEXT vec3 attribs;
 
 
@@ -73,7 +75,8 @@ void main()
     
 	DirectionalLight light1 = scene.dirLight1;
     vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
-    
+    vec3 viewVec = normalize(viewPos - worldPos.xyz);
+
     float metalness = material.metalness;
     float roughness = material.roughness;
     vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), uv, 0);
@@ -100,7 +103,7 @@ void main()
                 0,              // sbtRecordOffset
                 0,              // sbtRecordStride
                 1,              // missIndex
-                worldSpacePos.xyz,     // ray origin
+                worldPos.xyz,     // ray origin
                 tMin,           // ray min range
                 light1.dir,  // ray direction
                 tMax,           // ray max range

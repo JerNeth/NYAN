@@ -117,10 +117,10 @@ int main() {
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
-	rendergraph.build();
 
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, rtPass);
+	rendergraph.build();
 	application.each_frame_begin([&]()
 		{
 			renderManager.update();

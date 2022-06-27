@@ -345,7 +345,7 @@ void nyan::ImguiRenderer::set_up_pipeline(vulkan::ShaderManager& shaderManager, 
 	config.dynamicState.depth_write_enable = VK_FALSE;
 	config.dynamicState.depth_test_enable = VK_FALSE;
 	config.dynamicState.cull_mode = VK_CULL_MODE_NONE;
-	m_pipeline = pass.add_pipeline(config);
+	pass.add_pipeline(config, &m_pipeline);
 }
 
 void nyan::ImguiRenderer::set_up_font()

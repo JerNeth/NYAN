@@ -298,8 +298,12 @@ vulkan::RaytracingPipelineConfig nyan::RTMeshRenderer::generate_config()
 			{
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rmiss")},
 			},
+			vulkan::Group
+			{
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
+			},
 		},
-		.recursionDepth {1},
+		.recursionDepth {2},
 		.pipelineLayout = r_device.get_bindless_pipeline_layout()
 	};
 }

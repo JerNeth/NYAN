@@ -25,7 +25,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -160,13 +160,15 @@ int main() {
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
-	rendergraph.build();
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+
+	rendergraph.build();
+
 	application.each_frame_begin([&]()
 		{
 			renderManager.update();
