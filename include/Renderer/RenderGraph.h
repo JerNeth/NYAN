@@ -38,6 +38,7 @@ namespace nyan {
 			BlitTarget,
 			CopySource,
 			CopyTarget,
+			Clear,
 			Size
 		};
 		RenderResource() = default;
@@ -45,7 +46,6 @@ namespace nyan {
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
 		std::string name;
-		std::set<uint32_t> m_readIn;
 		std::set<uint32_t> m_writeToIn;
 		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;
 		Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
@@ -128,17 +128,17 @@ namespace nyan {
 		Renderpass& operator=(const Renderpass&) = delete;
 		Renderpass& operator=(Renderpass&&) = default;
 		void add_read(const std::string& name, Renderpass::Read::Type readType = Read::Type::ImageColor);
-		void add_attachment(const std::string& name, ImageAttachment attachment);
-		void add_attachment(const std::string& name);
-		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.48f, 0.66f, 0.35f, 1.f});
-		void add_depth_attachment(const std::string& name, ImageAttachment attachment);
-		void add_depth_attachment(const std::string& name);
-		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment);
-		void add_depth_stencil_attachment(const std::string& name);
-		void add_stencil_attachment(const std::string& name, ImageAttachment attachment);
-		void add_stencil_attachment(const std::string& name);
-		void add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics);
-		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f }, Renderpass::Write::Type writeType = Write::Type::Graphics);
+		void add_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
+		void add_attachment(const std::string& name, bool clear = false);
+		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.48f, 0.66f, 0.35f, 1.f}, bool clear = false);
+		void add_depth_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
+		void add_depth_attachment(const std::string& name, bool clear = false);
+		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
+		void add_depth_stencil_attachment(const std::string& name, bool clear = false);
+		void add_stencil_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
+		void add_stencil_attachment(const std::string& name, bool clear = false);
+		void add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
+		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f }, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
 		//void add_read_dependency(const std::string& name, bool storageImage = false);
 		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&, Renderpass&) > & functor, bool renderpass) {
 			m_renderFunctions.push_back(functor);
