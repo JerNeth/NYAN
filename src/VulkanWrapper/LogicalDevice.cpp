@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include <stdexcept>
 
+#include "Utility/Exceptions.h"
+
 #include "Shader.h"
 #include "Instance.h"
 #include "Sampler.h"
@@ -349,7 +351,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 			throw std::runtime_error("VK: could not submit to Queue, out of device memory");
 		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not submit to Queue, device lost");
+			throw Utility::DeviceLostException("VK: could not submit to Queue, device lost");
 		}
 		else {
 			Utility::log_error().location().format("VK: error %d while submitting queue", static_cast<int>(result));

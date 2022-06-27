@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "Shader.h"
 #include "DescriptorSet.h"
+#include "Utility/Exceptions.h"
 
 vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets) :
 	r_device(device)
@@ -349,6 +350,11 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR),
 	m_initialDynamicState()
 {
+	const auto& rtFeatures = parent.get_physical_device().get_ray_tracing_pipeline_features();
+	if (!rtFeatures.rayTracingPipeline) {
+		Utility::log().location().message("Requested ray tracing pipeline on not supported hardware");
+		throw Utility::FeatureNotSupportedException{"Requested ray tracing pipeline on not supported hardware"};
+	}
 	const auto& rtProperties = parent.get_physical_device().get_ray_tracing_pipeline_properties();
 
 

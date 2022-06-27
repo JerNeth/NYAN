@@ -1,6 +1,7 @@
 #include "Instance.h"
 #include <stdexcept>
 
+#include "Utility/Exceptions.h"
 #include "LogicalDevice.h"
 
 
@@ -419,7 +420,7 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_de
 			throw std::runtime_error("VK: could not create device, feature not present");
 		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not create device, device lost");
+			throw Utility::DeviceLostException("VK: could not create device, device lost");
 		}
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create device, out of host memory");

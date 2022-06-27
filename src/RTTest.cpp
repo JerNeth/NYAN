@@ -17,7 +17,7 @@ int main() {
 	//See also: "Real-Time Samurai Cinema: Lighting, Atmosphere, and Tonemapping in Ghost of Tsushima"
 	//Also: HDR in Call of Duty, High Dynamic color grading and dsiplay in Frostbite
 	//Also: https://gdcvault.com/play/1024253/High-Dynamic-Range-Color-Grading
-	//Also: An Overview of the Diablo II: Resurructed Renderer
+	//Also: An Overview of the Diablo II: Resurrected Renderer
 
 	//TODO: PBR, use GGX + Smith
 	//See also: Hammon earl, PBR Diffuse Lighting for GGX + Smith Microsurfaces

@@ -347,10 +347,9 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBufferHandle& cmd)
 			m_imageBarriers2.barriers.size() - m_imagePostBarrierIndex, m_imageBarriers2.barriers.data() + m_imagePostBarrierIndex);
 }
 
-vulkan::PipelineId nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig config)
+void nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id)
 {
-	config.renderingCreateInfo = m_renderingCreateInfo;
-	return r_graph.get_device().get_pipeline_storage().add_pipeline(config);
+	m_queuedPipelineBuilds.emplace_back(config, id);
 }
 
 void nyan::Renderpass::begin_rendering(vulkan::CommandBufferHandle& cmd)
@@ -434,6 +433,14 @@ bool nyan::Renderpass::is_attachment(RenderResourceId id) const
 bool nyan::Renderpass::is_write(const RenderResource& resource) const
 {
 	return is_write(resource.m_id);
+}
+
+void nyan::Renderpass::build()
+{
+	for (auto& [config, id] : m_queuedPipelineBuilds) {
+		config.renderingCreateInfo = m_renderingCreateInfo;
+		*id = r_graph.get_device().get_pipeline_storage().add_pipeline(config);
+	}
 }
 
 bool nyan::Renderpass::is_compute_write(const RenderResource& resource) const

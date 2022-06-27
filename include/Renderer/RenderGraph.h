@@ -159,7 +159,7 @@ namespace nyan {
 		void apply_pre_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_copy_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_post_barriers(vulkan::CommandBufferHandle& cmd);
-		vulkan::PipelineId add_pipeline(vulkan::GraphicsPipelineConfig config);
+		void add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id);
 		void begin_rendering(vulkan::CommandBufferHandle& cmd);
 		void end_rendering(vulkan::CommandBufferHandle& cmd);
 		uint32_t get_write_bind(uint32_t idx);
@@ -168,6 +168,7 @@ namespace nyan {
 		uint32_t get_read_bind(std::string_view v, Read::Type type = Read::Type::ImageColor);
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
 		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
+		void build();
 	private:
 		bool is_read(RenderResourceId id) const;
 		bool is_write(RenderResourceId id) const;
@@ -198,6 +199,14 @@ namespace nyan {
 		std::vector<Barrier> m_preBarriers;
 		std::vector<VkImageMemoryBarrier> m_imageBarriers;
 		std::vector<VkBufferMemoryBarrier> m_bufferBarriers;
+		
+		struct PipelineBuild 
+		{
+			vulkan::GraphicsPipelineConfig config;
+			vulkan::PipelineId* id;
+		};
+
+		std::vector< PipelineBuild> m_queuedPipelineBuilds;
 
 		struct ImageBarriers {
 			std::vector<RenderResourceId> images;

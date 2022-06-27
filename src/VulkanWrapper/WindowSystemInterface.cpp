@@ -1,4 +1,7 @@
 #include "WindowSystemInterface.h"
+
+#include "Utility/Exceptions.h"
+
 #include "LogicalDevice.h"
 #include "Instance.h"
 
@@ -59,7 +62,7 @@ void vulkan::WindowSystemInterface::begin_frame()
 				throw std::runtime_error("VK: could not acquire next image, out of device memory");
 			}
 			if (result == VK_ERROR_DEVICE_LOST) {
-				throw std::runtime_error("VK: could not acquire next image, device lost");
+				throw Utility::DeviceLostException("VK: could not acquire next image, device lost");
 			}
 			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 				update_swapchain();
@@ -109,7 +112,7 @@ void vulkan::WindowSystemInterface::end_frame()
 			throw std::runtime_error("VK: could not present, out of device memory");
 		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not present, device lost");
+			throw Utility::DeviceLostException("VK: could not present, device lost");
 		}
 		if (result == VK_ERROR_SURFACE_LOST_KHR) {
 			throw std::runtime_error("VK: could not present, surface lost");
@@ -236,7 +239,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 			throw std::runtime_error("VK: could not create swapchain, surface lost");
 		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw std::runtime_error("VK: could not create swapchain, device lost");
+			throw Utility::DeviceLostException("VK: could not create swapchain, device lost");
 		}
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not create swapchain, out of host memory");

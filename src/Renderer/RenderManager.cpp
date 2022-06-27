@@ -7,10 +7,13 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 	m_shaderManager(r_device),
 	m_textureManager(r_device),
 	m_materialManager(r_device, m_textureManager),
-	m_meshManager(r_device, m_materialManager, useRaytracing),
-	m_instanceManager(r_device, useRaytracing),
+	m_meshManager(r_device, m_materialManager,
+		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure? useRaytracing : false),
+	m_instanceManager(r_device,
+		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
 	m_sceneManager(r_device),
-	m_useRayTracing(useRaytracing),
+	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
+		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
 	m_primaryCamera(entt::null)
 {
 }

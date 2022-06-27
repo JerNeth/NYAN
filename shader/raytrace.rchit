@@ -82,10 +82,35 @@ void main()
     vec3 normal = tangentSpaceNormal(normalSample, normalVertex, bitangentVertex, tangentVertex);
 
     
-    vec4 diffuse = vec4(0);
-    vec4 specular = vec4(0);
-    calcDirLight(albedo.xyz, metalness, roughness, -gl_WorldRayDirectionEXT, normal, light1, specular, diffuse);
+    vec4 diffuse = vec4(0.0);
+    vec4 specular= vec4(0.0);
+    float NdotL = max(dot(normal, light1.dir), 0.0);
+    if(NdotL > 0) {
+            
+
+        specular.a = albedo.a;
+        diffuse.a = albedo.a;
+        uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
+        float tMin     = 0.01;
+        float tMax     = 10000.0;
+        shadowed = 0.0;
+        traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
+                rayFlags,       // rayFlags
+                0xFF,           // cullMask
+                0,              // sbtRecordOffset
+                0,              // sbtRecordStride
+                1,              // missIndex
+                worldSpacePos.xyz,     // ray origin
+                tMin,           // ray min range
+                light1.dir,  // ray direction
+                tMax,           // ray max range
+                1               // payload (location = 0)
+        );
+        if(shadowed > 0)
+            calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
+        specular.rgb *= shadowed;
+        diffuse.rgb *= shadowed;
+    }
 	
 	hitValue.hitValue = diffuse.xyz + specular.xyz;
-	hitValue.hitValue = normal;
 }

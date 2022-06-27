@@ -55,6 +55,20 @@ namespace Utility {
 			}
 			throw std::runtime_error("How?");
 		}
+		//size_t reserve() {
+		//	size_t i;
+		//	for (i = 0; i < bucketSize; i++) {
+		//		if (!occupancy.test(i)) {
+		//			occupancy.set(i);
+		//			return zero_id + i;
+		//		}
+		//	}
+		//	throw std::runtime_error("How?");
+		//}
+		//template<class... Args>
+		//void emplace_reserved(size_t i, Args&&... args) {
+		//	new(reinterpret_cast<T*>(m_storage.data()) + i) T(std::forward<Args>(args)...);
+		//}
 		template<class... Args>
 		size_t emplace(Args&&... args) {
 			size_t i;
@@ -222,7 +236,7 @@ namespace Utility {
 		void destroy() {
 			head.reset(nullptr);
 		}
-		size_t insert(const T& t) {
+		[[nodiscard]] size_t insert(const T& t) {
 			if (!head) {
 				head = std::make_unique< Bucket>(0);
 			}
@@ -232,7 +246,7 @@ namespace Utility {
 			}
 			return current->insert(t);
 		}
-		size_t insert(T&& t) {
+		[[nodiscard]] size_t insert(T&& t) {
 			if (!head) {
 				head = std::make_unique< Bucket>(0);
 			}
@@ -242,6 +256,30 @@ namespace Utility {
 			}
 			return current->insert(std::move(t));
 		}
+		//[[nodiscard]] size_t reserve() {
+		//	if (!head) {
+		//		head = std::make_unique< Bucket>(0);
+		//	}
+		//	Bucket* current = head.get();
+		//	while (current->full()) {
+		//		current = current->get_next();
+		//	}
+		//	return current->emplace(std::forward<Args>(args)...);
+		//}
+		//template<class... Args>
+		//[[nodiscard]] size_t emplace_reserved_intrusive(size_t id, Args&&... args) {
+		//	if (!head) {
+		//		head = std::make_unique< Bucket>(0);
+		//	}
+		//	Bucket* current = head.get();
+		//	while (id >= (current->zero_id + bucketSize)) {
+		//		current = current->get_next_non_filling();
+		//		if (current == nullptr)
+		//			return;
+		//	}
+		//	current->remove(id);
+		//	return current->emplace(std::forward<Args>(args)...);
+		//}
 		template<class... Args>
 		[[nodiscard]] size_t emplace_intrusive(Args&&... args) {
 			if (!head) {

@@ -140,10 +140,10 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.stencil_back_pass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 
-	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
+	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
 
 	staticTangentConfig.shaderInstances[1] = r_renderManager.get_shader_manager().get_shader_instance_id("deferredTangentAlphaDiscard_frag");
-	m_staticTangentAlphaDiscardPipeline = r_pass.add_pipeline(staticTangentConfig);
+	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentAlphaDiscardPipeline);
 }
 
 nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
@@ -243,7 +243,7 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
 	staticTangentConfig.dynamicState.stencil_test_enable = VK_FALSE;
 
-	m_staticTangentPipeline = r_pass.add_pipeline(staticTangentConfig);
+	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
 }
 
 

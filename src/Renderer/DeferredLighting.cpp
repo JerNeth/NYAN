@@ -2,6 +2,7 @@
 #include "entt/entt.hpp"
 #include "VulkanWrapper/CommandBuffer.h"
 #include "VulkanWrapper/Sampler.h"
+#include <future>
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),
@@ -105,7 +106,7 @@ void nyan::DeferredLighting::create_pipeline()
 	//pipelineConfig.dynamicState.stencil_back_fail = VK_STENCIL_OP_KEEP;
 	//pipelineConfig.dynamicState.stencil_back_pass = VK_STENCIL_OP_KEEP;
 	//pipelineConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_KEEP;
-	m_deferredPipeline = r_pass.add_pipeline(pipelineConfig);
+	r_pass.add_pipeline(pipelineConfig, &m_deferredPipeline);
 }
 
 nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
@@ -158,7 +159,7 @@ vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_conf
 		.rgenGroups {
 			vulkan::Group
 			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rgen")},
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_deferred_rgen")},
 			},
 		},
 		.missGroups {
@@ -181,7 +182,9 @@ vulkan::BufferHandle nyan::DeferredRayShadowsLighting::create_sbt(const vulkan::
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(m_rtPipeline);
 
+
 	const auto& rtProperties = r_device.get_physical_device().get_ray_tracing_pipeline_properties();
+
 	auto handleSize{ rtProperties.shaderGroupHandleSize };
 	auto groupCount{ rayConfig.rgenGroups.size() + rayConfig.hitGroups.size() + rayConfig.missGroups.size() + rayConfig.callableGroups.size() };
 	std::vector<std::byte> handleData(handleSize * groupCount);
@@ -335,5 +338,5 @@ void nyan::LightComposite::create_pipeline()
 	pipelineConfig.dynamicState.depth_write_enable = VK_FALSE;
 	pipelineConfig.dynamicState.depth_test_enable = VK_FALSE;
 	pipelineConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
-	m_compositePipeline = r_pass.add_pipeline(pipelineConfig);
+	r_pass.add_pipeline(pipelineConfig, &m_compositePipeline);
 }
