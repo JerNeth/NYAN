@@ -34,6 +34,7 @@ void vulkan::Buffer::invalidate(uint32_t offset, uint32_t size)
 }
 VkDeviceAddress vulkan::Buffer::get_address() const
 {
+	assert(m_vkHandle != VK_NULL_HANDLE);
 	assert(m_info.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	VkBufferDeviceAddressInfo info
 	{

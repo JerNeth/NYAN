@@ -378,6 +378,7 @@ namespace Utility {
         //constexpr int i = sizeof(ListBucket<uint32_t, 16>);
         auto id3 = l.emplace_intrusive(696969);
         auto id4 = l.emplace_intrusive(6969699);
+
         //l.print();
         EXPECT_EQ(696969, *l.get_ptr(id3));
         EXPECT_EQ(6969699, *l.get_ptr(id4));
@@ -389,7 +390,17 @@ namespace Utility {
         //l.print();
         int iters = 100;
         LinkedBucketList<uint32_t, 8> other = std::move(l);
-        
+
+        auto handle69 = other.emplace(69);
+        EXPECT_EQ(*handle69, 69);
+        auto handle6969 = other.emplace(6969);
+        EXPECT_EQ(*handle6969, 6969);
+        auto handle420 = other.emplace(420);
+        EXPECT_EQ(*handle420, 420);
+        {
+            auto handle69 = other.emplace(69);
+            EXPECT_EQ(*handle69, 69);
+        }
         {
             auto start = std::chrono::steady_clock::now();
             LinkedBucketList<uint64_t, 8> p;

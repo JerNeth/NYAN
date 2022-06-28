@@ -54,7 +54,7 @@ void main() {
     //67 Entities 17 ms (32 bits)
     //67 Entities 18 ms (16 bits)
     //1.1 / 900
-    //fragTexCoord = uvs.u[gl_VertexIndex];
+    //fragTexCoord = get_uv(mesh.uvsAddress, gl_VertexIndex);
 
     fragTexCoord = inTexCoord;
     //fragTangent = tangent;

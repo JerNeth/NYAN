@@ -58,8 +58,6 @@ vec2 unpack1212(vec3 val)
 //	tangent = normalize(tangent - dot(tangent, normal) * normal);
 //	bitangent = -normalize(cross(normal, tangent));
 //}
-//
-
 
 void orthonormalize(inout vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
     //normal = normalize(normal);

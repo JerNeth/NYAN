@@ -196,13 +196,8 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 			.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 			.offset = 0,
 			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
-
-	VkBufferDeviceAddressInfo bufferInfo{
-		.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-		.pNext = nullptr,
-		.buffer = (* m_scratch)->get_handle()
-	};
-	auto scratchAddress = vkGetBufferDeviceAddress(r_device, &bufferInfo);
+	
+	auto scratchAddress = (*m_scratch)->get_address();
 	VkQueryPool queryPool{ VK_NULL_HANDLE };
 	if (compactionCount) {
 		assert(compactionCount == m_pendingBuilds.size() && "No mixing of compacted/uncompacted AS in one batch allowed");

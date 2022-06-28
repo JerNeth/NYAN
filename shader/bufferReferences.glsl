@@ -64,6 +64,6 @@ vec3 get_tangent(uint64_t tangentsAddress, uint idx) {
 
 vec2 get_uv(uint64_t uvsAddress, uint idx) {
 	UvsHalf uvHalf = UvsHalf(uvsAddress);
-	uint low = uvHalf.u[idx / 2];
+	uint low = uvHalf.u[idx];
 	return unpackHalf2x16(low).xy;
 }

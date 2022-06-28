@@ -101,7 +101,7 @@ namespace vulkan {
 		~Buffer();
 	private:
 		LogicalDevice& r_device;
-		VkBuffer m_vkHandle;
+		VkBuffer m_vkHandle{ VK_NULL_HANDLE };
 		VmaAllocation m_allocation;
 		BufferInfo m_info;
 		void* maped = nullptr;
