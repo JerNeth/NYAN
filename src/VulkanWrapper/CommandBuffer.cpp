@@ -385,6 +385,23 @@ void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldL
 	vkCmdPipelineBarrier(m_vkHandle, srcStages, dstStages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
+void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout layout, const VkClearColorValue* clearColor)
+{
+	VkImageSubresourceRange range{
+		.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+		.baseMipLevel {0},
+		.levelCount {VK_REMAINING_MIP_LEVELS},
+		.baseArrayLayer {0},
+		.layerCount {VK_REMAINING_ARRAY_LAYERS},
+	};
+	vkCmdClearColorImage(m_vkHandle, image.get_handle(), layout, clearColor, 1, &range);
+}
+
+void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor)
+{
+	assert(false);
+}
+
 bool vulkan::CommandBuffer::swapchain_touched() const noexcept
 {
 	return m_swapchainTouched;

@@ -178,14 +178,14 @@ int main() {
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
-	rendergraph.build();
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass);
-	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+	rendergraph.build();
 	application.each_frame_begin([&]()
 		{
 			renderManager.update();

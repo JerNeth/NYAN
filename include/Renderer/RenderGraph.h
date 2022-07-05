@@ -4,6 +4,7 @@
 #include "VkWrapper.h"
 #include <variant>
 #include <set>
+#include "entt/core/hashed_string.hpp"
 namespace nyan {
 
 	struct ImageAttachment {
@@ -45,8 +46,7 @@ namespace nyan {
 		RenderResource(RenderResourceId id) : m_id(id){}
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
-		std::string name;
-		std::set<uint32_t> m_writeToIn;
+		entt::hashed_string name;
 		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;
 		Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
 		Attachment attachment;
@@ -122,29 +122,30 @@ namespace nyan {
 			AsyncCompute,
 			Transfer
 		};
-		Renderpass(Rendergraph& graph, Type type, uint32_t id, const std::string& name);
+		Renderpass(Rendergraph& graph, Type type, uint32_t id, const entt::hashed_string& name);
 		Renderpass(const Renderpass&) = delete;
 		Renderpass(Renderpass&&) = default;
 		Renderpass& operator=(const Renderpass&) = delete;
 		Renderpass& operator=(Renderpass&&) = default;
-		void add_read(const std::string& name, Renderpass::Read::Type readType = Read::Type::ImageColor);
-		void add_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
-		void add_attachment(const std::string& name, bool clear = false);
-		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{0.48f, 0.66f, 0.35f, 1.f}, bool clear = false);
-		void add_depth_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
-		void add_depth_attachment(const std::string& name, bool clear = false);
-		void add_depth_stencil_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
-		void add_depth_stencil_attachment(const std::string& name, bool clear = false);
-		void add_stencil_attachment(const std::string& name, ImageAttachment attachment, bool clear = false);
-		void add_stencil_attachment(const std::string& name, bool clear = false);
-		void add_write(const std::string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
-		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{ 0.48f, 0.66f, 0.35f, 1.f }, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
-		//void add_read_dependency(const std::string& name, bool storageImage = false);
+
+		void add_read(const entt::hashed_string& name, Renderpass::Read::Type readType = Read::Type::ImageColor);
+		void add_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear = false);
+		void add_attachment(const entt::hashed_string& name, bool clear = false);
+		void add_swapchain_attachment(Math::vec4 clearColor = Math::vec4{}, bool clear = false);
+		void add_depth_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear = false);
+		void add_depth_attachment(const entt::hashed_string& name, bool clear = false);
+		void add_depth_stencil_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear = false);
+		void add_depth_stencil_attachment(const entt::hashed_string& name, bool clear = false);
+		void add_stencil_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear = false);
+		void add_stencil_attachment(const entt::hashed_string& name, bool clear = false);
+		void add_write(const entt::hashed_string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
+		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{}, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
+			//void add_read_dependency(const std::string& name, bool storageImage = false);
 		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&, Renderpass&) > & functor, bool renderpass) {
 			m_renderFunctions.push_back(functor);
 			m_useRendering.push_back(renderpass);
 		}
-		void copy(const std::string& source, const std::string& target);
+		void copy(const entt::hashed_string& source, const entt::hashed_string& target);
 		uint32_t get_id() const noexcept {
 			return m_id;
 		}
@@ -164,8 +165,8 @@ namespace nyan {
 		void end_rendering(vulkan::CommandBufferHandle& cmd);
 		uint32_t get_write_bind(uint32_t idx);
 		uint32_t get_read_bind(uint32_t idx);
-		uint32_t get_write_bind(std::string_view v, Write::Type type = Write::Type::Graphics);
-		uint32_t get_read_bind(std::string_view v, Read::Type type = Read::Type::ImageColor);
+		uint32_t get_write_bind(const entt::hashed_string& name, Write::Type type = Write::Type::Graphics);
+		uint32_t get_read_bind(const entt::hashed_string& name, Read::Type type = Read::Type::ImageColor);
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
 		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
 		void build();
@@ -180,7 +181,7 @@ namespace nyan {
 
 
 		Rendergraph& r_graph;
-		std::string m_name;
+		entt::hashed_string m_name;
 		Type m_type;
 		uint32_t m_id;
 		std::vector<std::function<void(vulkan::CommandBufferHandle&, Renderpass&)>> m_renderFunctions;
@@ -254,36 +255,29 @@ namespace nyan {
 		};
 	public:
 		Rendergraph(vulkan::LogicalDevice& device);
-		Renderpass& add_pass(const std::string& name, Renderpass::Type type);
-		Renderpass& get_pass(const std::string& name);
+		Renderpass& add_pass(const entt::hashed_string& name, Renderpass::Type type);
+		Renderpass& get_pass(const entt::hashed_string& name);
 		void build();
 		void execute();
-		RenderResource& add_ressource(const std::string& name, Attachment attachment);
-		RenderResource& get_resource(std::string_view v);
-		bool resource_exists(std::string_view v);
-		const RenderResource& get_resource(std::string_view v) const;
-		void set_swapchain(const std::string& name);
+		RenderResource& add_ressource(const entt::hashed_string& name, Attachment attachment);
+		RenderResource& get_resource(const entt::hashed_string& name);
+		bool resource_exists(const entt::hashed_string& name);
+		const RenderResource& get_resource(const entt::hashed_string& name) const;
+		void set_swapchain(const entt::hashed_string& name);
 		vulkan::LogicalDevice& get_device() const;
 	private:
 		RenderResource& get_resource(RenderResourceId id);
 		const RenderResource& get_resource(RenderResourceId id) const;
 		void swapchain_present_transition(RenderpassId src_const);
-		void swapchain_write_transition(RenderpassId src_const);
-		void swapchain_present_transition2(RenderpassId src_const);
-		void swapchain_write_transition2(RenderpassId src_const);
 		void set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource);
 		void set_up_first_transition(RenderpassId dst, const RenderResource& resource);
 		void set_up_copy(RenderpassId dst, const RenderResource& resource);
-		void set_up_RaW(RenderpassId write, RenderpassId read, const RenderResource& resource);
-		void set_up_WaW(RenderpassId src_, RenderpassId dst_, const RenderResource& resource);
-		void set_up_WaR(RenderpassId write, RenderpassId read, const RenderResource& resource);
-		void set_up_barrier(const ImageBarrier& imageBarrier, const RenderResource& resource);
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;
 		std::vector<Renderpass*> m_submissionOrder;
-		Utility::NonInvalidatingMap<std::string, Renderpass> m_renderpasses;
-		Utility::NonInvalidatingMap<std::string, RenderResource> m_renderresources;
+		Utility::NonInvalidatingMap<entt::hashed_string::hash_type, Renderpass> m_renderpasses;
+		Utility::NonInvalidatingMap<entt::hashed_string::hash_type, RenderResource> m_renderresources;
 		RenderResourceId m_swapchainResource = InvalidResourceId;
 		RenderpassId m_renderpassCount = 0;
 		RenderResourceId m_resourceCount = 0;

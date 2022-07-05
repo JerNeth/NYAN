@@ -148,6 +148,28 @@ namespace Utility {
 			const auto bit = 1ull << (idx & bitsMask);
 			return static_cast<decltype(bit)>(word) & bit;
 		}
+		bool only(T _idx) const {
+			const size_t idx = static_cast<size_t>(_idx);
+			assert(idx < bitSize);
+			if constexpr (typeSize > 1) {
+				for (size_t i = 0; i < (idx >> bitsPerWord); i++) {
+					if (m_data[i] != 0)
+						return false;
+				}
+			}
+			auto& word = m_data[idx >> bitsPerWord];
+			const auto bit = 1ull << (idx & bitsMask);
+			if (static_cast<decltype(bit)>(word) != bit)
+				return false;
+
+			if constexpr (typeSize > 1) {
+				for (size_t i = (idx >> bitsPerWord) + 1; i < typeSize; i++) {
+					if (m_data[i] != 0)
+						return false;
+				}
+			}
+			return true;
+		}
 		template<class Head, class... Tail>
 		using are_same = std::conjunction<std::is_same<Head, Tail>...>;
 		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
@@ -211,14 +233,14 @@ namespace Utility {
 			return ret;
 		}
 		unsigned long long to_ullong() const {
-			if constexpr (bitSize == 0)
+			if constexpr (typeSize == 0)
 				return 0;
 			else {
 				return m_data[0];
 			}
 		}
 		unsigned long to_ulong() const {
-			if constexpr (bitSize == 0)
+			if constexpr (typeSize == 0)
 				return 0;
 			else {
 				return m_data[0];

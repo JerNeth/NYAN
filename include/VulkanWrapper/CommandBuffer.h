@@ -52,6 +52,8 @@ namespace vulkan {
 		void image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout,
 			VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags,
 			VkPipelineStageFlags dstStages,VkAccessFlags dstAccessFlags);
+		void clear_color_image(const Image& image, VkImageLayout layout, const VkClearColorValue* clearColor);
+		void clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
 		VkCommandBuffer get_handle() const noexcept;
