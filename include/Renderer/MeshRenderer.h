@@ -34,6 +34,7 @@ namespace nyan {
 	public:
 		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
+		
 	private:
 		void create_pipeline();
 
