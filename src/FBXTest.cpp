@@ -154,7 +154,7 @@ int main() {
 	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic);
 	compositePass.add_read("SpecularLighting");
 	compositePass.add_read("DiffuseLighting");
-	compositePass.add_swapchain_attachment();
+	compositePass.add_swapchain_attachment(Math::vec4{}, true);
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);

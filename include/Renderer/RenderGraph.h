@@ -48,7 +48,7 @@ namespace nyan {
 		RenderResourceId m_id = InvalidResourceId;
 		entt::hashed_string name;
 		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;
-		Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
+		//Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
 		Attachment attachment;
 		vulkan::Image* handle = nullptr;
 	};

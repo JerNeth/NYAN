@@ -5,6 +5,7 @@
 #include "Input.h"
 #include "FBXReader/FBXReader.h"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/DDGIRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/DeferredLighting.h"
 using namespace nyan;
@@ -25,7 +26,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall2.fbx", meshes, materials);
+	reader.parse_meshes("shaderBall.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -105,25 +106,25 @@ int main() {
 		{
 			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
 			.clearColor{0.f, static_cast<float>(static_cast<uint8_t>(0)), 0.f, 0.f},
-		});
+		}, true);
 	deferredPass.add_attachment("g_Albedo", nyan::ImageAttachment
 		{
 			//.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 			.format{VK_FORMAT_R8G8B8A8_SRGB},
 			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-		});
+		}, true);
 	deferredPass.add_attachment("g_Normal", nyan::ImageAttachment
 		{
 			//.format{VK_FORMAT_R8G8B8A8_UNORM},
 			.format{VK_FORMAT_R8G8B8A8_UNORM},
 			.clearColor{0.f, 0.f, 1.f, 1.f},
-		});
+		}, true);
 	deferredPass.add_attachment("g_PBR", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_R8G8B8A8_UNORM},
 			.clearColor{0.f, 0.f, 0.f, 1.f},
-		});
+		}, true);
 	//deferredPass.add_swapchain_attachment();
 	//deferredPass.copy("g_Depth", "g_Depth2");
 	//deferredPass.copy("g_Normal", "g_Normal2");
@@ -146,6 +147,19 @@ int main() {
 	//		//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 	//		.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 	//	});
+
+	auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
+	ddgiPass.add_write("DDGI_Irradiance", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			.clearColor{0.f, 0.f, 0.f, 0.f},
+		}, nyan::Renderpass::Write::Type::Compute);
+	ddgiPass.add_write("DDGI_Depth", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+			.clearColor{0.f, 0.f, 0.f, 0.f},
+		}, nyan::Renderpass::Write::Type::Compute);
+
 	auto& deferredRTPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
 	deferredRTPass.add_read("g_Albedo");
 	deferredRTPass.add_read("g_Normal");
@@ -165,6 +179,7 @@ int main() {
 			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		}, nyan::Renderpass::Write::Type::Compute);
 
+
 	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic);
 	forwardPass.add_depth_attachment("g_Depth");
 	forwardPass.add_attachment("SpecularLighting");
@@ -173,7 +188,7 @@ int main() {
 	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic);
 	compositePass.add_read("SpecularLighting");
 	compositePass.add_read("DiffuseLighting");
-	compositePass.add_swapchain_attachment();
+	compositePass.add_swapchain_attachment(Math::vec4{}, true);
 
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
@@ -181,6 +196,7 @@ int main() {
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
+	nyan::DDGIRenderer ddgiRenderer(device);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);

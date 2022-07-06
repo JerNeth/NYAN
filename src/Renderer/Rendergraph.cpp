@@ -488,7 +488,15 @@ void nyan::Rendergraph::build()
 			if (first) {
 				first = false;
 				//CreatePreBarrier
-				set_up_first_transition(i, resource);
+				size_t lastUse = i;
+				for (size_t j = i; j < resource.m_uses.size(); j++) {
+					if (!resource.m_uses[j].none())
+						lastUse = j;
+				}
+				if (srcUse.test(RenderResource::UseType::Clear))
+					set_up_first_transition(i, resource);
+				else
+					set_up_transition(lastUse, i, resource);
 			}
 			set_up_copy(i, resource);
 			size_t j = i + 1;
@@ -623,7 +631,10 @@ void nyan::Rendergraph::execute()
 				VkImageUsageFlags usage = 0;
 				VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 				bool first = true;
+				Utility::bitset<static_cast<size_t>(RenderResource::UseType::Size), RenderResource::UseType> totalUses;
+				
 				for (const auto& use : resource.m_uses) {
+					totalUses |= use;
 					//TODO add transfer dst for clear depth stencil
 					//if (use.test(RenderResource::UseType::Clear) 
 					//	&& vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)
@@ -675,7 +686,8 @@ void nyan::Rendergraph::execute()
 						}
 					}
 				}
-				resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
+				if(!totalUses.none())
+					resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
 			}
 			resource.handle->set_debug_label(resource.name.data());
 			resource.handle->get_view()->set_debug_label((std::string(resource.name.data()) + "_view").c_str());
@@ -1128,9 +1140,9 @@ void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, co
 		setBarrierDestination(VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT, VK_IMAGE_LAYOUT_GENERAL);
 	}
 	if (dstUsage.test(RenderResource::UseType::ImageStore)) {
-		assert(src.is_write(resource));
+		assert(dst.is_write(resource));
 		auto stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		if (src.is_compute_write(resource)) {
+		if (dst.is_compute_write(resource)) {
 			stage = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 		}
 		setBarrierDestination(stage, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL);
@@ -1265,8 +1277,6 @@ void nyan::Rendergraph::set_up_first_transition(RenderpassId dst_const, const Re
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 	}
-
-	assert(imageBarrier.newLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 
 	dst.m_imagePostBarrierIndex++;
 	//src.m_imageCopyBarrierIndex++;
