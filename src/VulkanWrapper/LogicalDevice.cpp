@@ -738,6 +738,65 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 	}
 	return { buffer, blits };
 }
+
+void validate_image_create_info(const vulkan::LogicalDevice& device, const VkImageCreateInfo& createInfo, std::source_location location = std::source_location::current()) {
+	assert(createInfo.extent.width > 0);
+	assert(createInfo.extent.height > 0);
+	assert(createInfo.extent.depth > 0);
+	assert(createInfo.arrayLayers > 0);
+	assert(createInfo.mipLevels > 0);
+
+	if (createInfo.tiling == VK_IMAGE_TILING_LINEAR) {
+		assert(createInfo.mipLevels == 1);
+		assert(createInfo.arrayLayers == 1);
+		assert(createInfo.samples & VK_SAMPLE_COUNT_1_BIT);
+		assert(!(createInfo.usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)));
+	}
+
+	if (createInfo.imageType == VK_IMAGE_TYPE_1D) {
+		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension1D)
+			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension1D);
+		if (createInfo.extent.height != 1)
+			Utility::log_error().location(location).format("Requested image height \"{}\" doesn't match 1D Image type",
+				createInfo.extent.height);
+		if (createInfo.extent.depth != 1)
+			Utility::log_error().location(location).format("Requested image depth \"{}\" doesn't match 1D Image type",
+				createInfo.extent.depth);
+		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension1D);
+		assert(createInfo.extent.height == 1);
+		assert(createInfo.extent.depth == 1);
+	}
+	if (createInfo.imageType == VK_IMAGE_TYPE_2D) {
+		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension2D)
+			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension2D);
+		if (createInfo.extent.height > device.get_physical_device_properties().limits.maxImageDimension2D)
+			Utility::log_error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.height, device.get_physical_device_properties().limits.maxImageDimension2D);
+		if (createInfo.extent.depth != 1)
+			Utility::log_error().location(location).format("Requested image depth \"{}\" doesn't match 2D Image type",
+				createInfo.extent.depth);
+		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension2D);
+		assert(createInfo.extent.height <= device.get_physical_device_properties().limits.maxImageDimension2D);
+		assert(createInfo.extent.depth == 1);
+	}
+	if (createInfo.imageType == VK_IMAGE_TYPE_3D) {
+		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension3D)
+			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension3D);
+		if (createInfo.extent.height > device.get_physical_device_properties().limits.maxImageDimension3D)
+			Utility::log_error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.height, device.get_physical_device_properties().limits.maxImageDimension3D);
+		if (createInfo.extent.depth > device.get_physical_device_properties().limits.maxImageDimension3D)
+			Utility::log_error().location(location).format("Requested image depth \"{}\" exceeds device limits \"{}\"",
+				createInfo.extent.depth, device.get_physical_device_properties().limits.maxImageDimension3D);
+		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension3D);
+		assert(createInfo.extent.height <= device.get_physical_device_properties().limits.maxImageDimension3D);
+		assert(createInfo.extent.depth <= device.get_physical_device_properties().limits.maxImageDimension3D);
+		assert(createInfo.arrayLayers == 1);
+	}
+}
 vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, VkImageUsageFlags usage)
 {
 
@@ -764,6 +823,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	};
 
+	validate_image_create_info(*this, createInfo);
 	
 	if (info.concurrent_queue()) {
 		createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -830,7 +890,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 		.pQueueFamilyIndices = queueFamilyIndices.data(),
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	};
-	assert(createInfo.mipLevels);
+	validate_image_create_info(*this, createInfo);
+
 	if (info.concurrent_queue()) {
 		createInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
 		if (info.createFlags.any_of(ImageInfo::Flags::ConcurrentGraphics, ImageInfo::Flags::ConcurrentAsyncGraphics))
@@ -1575,9 +1636,9 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
 
-vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkImageLayout initialLayout, VkSampleCountFlagBits sampleCount)
+vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkImageLayout initialLayout, VkSampleCountFlagBits sampleCount, uint32_t arrayLayers)
 {
-	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage, initialLayout);
+	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage, initialLayout, arrayLayers);
 }
 
 void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)

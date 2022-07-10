@@ -46,7 +46,7 @@ vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent)
 {
 }
-vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageLayout initialLayout)
+vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers)
 {
 	Utility::Hasher hasher;
 	hasher(width);
@@ -54,10 +54,11 @@ vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, u
 	hasher(format);
 	hasher(index);
 	hasher(usage);
+	hasher(arrayLayers);
 	auto hash = hasher(samples);
 	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
 		return res->second;
-	ImageInfo info = ImageInfo::render_target(width, height, format);
+	ImageInfo info = ImageInfo::render_target(width, height, format, arrayLayers);
 	info.usage |= usage;
 	info.layout = initialLayout;
 	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second;

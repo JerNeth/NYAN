@@ -12,6 +12,7 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 	m_instanceManager(r_device,
 		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
 	m_sceneManager(r_device),
+	m_ddgiManager(r_device),
 	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
 		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
 	m_primaryCamera(entt::null)
@@ -65,6 +66,16 @@ nyan::SceneManager& nyan::RenderManager::get_scene_manager()
 const nyan::SceneManager& nyan::RenderManager::get_scene_manager() const
 {
 	return m_sceneManager;
+}
+
+nyan::DDGIManager& nyan::RenderManager::get_ddgi_manager()
+{
+	return m_ddgiManager;
+}
+
+const nyan::DDGIManager& nyan::RenderManager::get_ddgi_manager() const
+{
+	return m_ddgiManager;
 }
 
 entt::registry& nyan::RenderManager::get_registry()

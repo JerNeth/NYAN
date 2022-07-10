@@ -23,8 +23,10 @@ int main() {
 	//See also: Hammon earl, PBR Diffuse Lighting for GGX + Smith Microsurfaces
 	//Also consider [Belcour et al.] (Bringing an Accurate Fresnel to Real-Time Rendering: a Preintegrable Decomposition) for Fresnel term 
 	//Also read: Real Shading in Unreal Engine 4
-	//Possible alternative: Real-Time Polygonal-Light Shading with Linearly Transformed Cosines +
-	//						REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS
+
+	//For area lights read: Real-Time Polygonal-Light Shading with Linearly Transformed Cosines +
+	//						REAL-TIME RAY TRACING OF CORRECT* SOFT SHADOWS +
+	//						https://bastian.urbach.one/rtswplusd/
 
 	//https://www.shadertoy.com/view/7dffD2
 	//Physics and Math of Shading Naty Hoffman 2k Siggraph 2015
@@ -58,7 +60,7 @@ int main() {
 		});
 	auto camera = registry.create();
 	//registry.emplace<Transform>(camera,
-	//	Transform{
+	//	Transform{	
 	//		.position{600.f, 660.f, -1400.f},
 	//		.scale{},
 	//		.orientation{18.f, -27.f, 0.f},

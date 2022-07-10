@@ -85,7 +85,7 @@ namespace vulkan {
 		void clear() noexcept {
 			m_attachmentIds.clear();
 		}
-		Image* request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL);
+		Image* request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, uint32_t arrayLayers = 1);
 	private:
 		LogicalDevice& r_device;
 		std::unordered_map<Utility::HashValue, ImageHandle> m_attachmentIds;

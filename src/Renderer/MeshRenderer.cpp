@@ -310,10 +310,7 @@ vulkan::RaytracingPipelineConfig nyan::RTMeshRenderer::generate_config()
 
 vulkan::PipelineId nyan::RTMeshRenderer::create_pipeline(const vulkan::RaytracingPipelineConfig& rayConfig)
 {
-
-
 	return r_device.get_pipeline_storage().add_pipeline(rayConfig);
-
 }
 
 vulkan::BufferHandle nyan::RTMeshRenderer::create_sbt(const vulkan::RaytracingPipelineConfig& rayConfig)

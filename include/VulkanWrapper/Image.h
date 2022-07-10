@@ -361,14 +361,14 @@ namespace vulkan {
 
 			return info;
 		}
-		static ImageInfo render_target(uint32_t width, uint32_t height, VkFormat format) {
+		static ImageInfo render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t arrayLayers = 1u) {
 			ImageInfo info;
 			info.width = width;
 			info.height = height;
 			info.depth = 1u;
 			info.format = format;
 			info.mipLevels = 1u;
-			info.arrayLayers = 1u;
+			info.arrayLayers = arrayLayers;
 			info.type = VK_IMAGE_TYPE_2D;
 			//if (is_depth_or_stencil_format(format))
 			//	info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;

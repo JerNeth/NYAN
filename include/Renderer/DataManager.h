@@ -44,6 +44,9 @@ namespace nyan {
 		uint32_t get_binding() const {
 			return m_slot->binding;
 		}
+		size_t slot_count() const {
+			return m_slot->data.size();
+		}
 	protected:
 		uint32_t add(const T& t) {
 			auto idx = m_slot->data.size();

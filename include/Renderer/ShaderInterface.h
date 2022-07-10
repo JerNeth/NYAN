@@ -14,6 +14,9 @@
 #define ivec4 Math::ivec4
 #define ivec3 Math::ivec3
 #define ivec2 Math::ivec2
+#define uvec4 Math::uvec4
+#define uvec3 Math::uvec3
+#define uvec2 Math::uvec2
 #define vec4 Math::vec4
 #define vec3 Math::vec3
 #define vec2 Math::vec2
@@ -50,6 +53,9 @@ namespace nyan {
 #undef ivec4
 #undef ivec3
 #undef ivec2
+#undef uvec4
+#undef uvec3
+#undef uvec2
 #undef vec4
 #undef vec3
 #undef vec2

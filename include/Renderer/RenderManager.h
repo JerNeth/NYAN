@@ -7,6 +7,7 @@
 #include "MeshManager.h"
 #include "RenderGraph.h"
 #include "MaterialManager.h"
+#include "DDGIRenderer.h"
 #include "TextureManager.h"
 #include "Camera.h"
 #include "entt/entt.hpp"
@@ -31,6 +32,8 @@ namespace nyan {
 		const nyan::InstanceManager& get_instance_manager() const;
 		nyan::SceneManager& get_scene_manager();
 		const nyan::SceneManager& get_scene_manager() const;
+		nyan::DDGIManager& get_ddgi_manager();
+		const nyan::DDGIManager& get_ddgi_manager() const;
 		entt::registry& get_registry();
 		const entt::registry& get_registry() const;
 		void add_materials(const std::vector<nyan::MaterialData>& materials);
@@ -47,6 +50,7 @@ namespace nyan {
 		nyan::MeshManager m_meshManager;
 		nyan::InstanceManager m_instanceManager;
 		nyan::SceneManager m_sceneManager;
+		nyan::DDGIManager m_ddgiManager;
 
 		bool m_useRayTracing;
 		entt::entity m_primaryCamera;

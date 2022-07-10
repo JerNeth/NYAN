@@ -177,7 +177,7 @@ namespace vulkan {
 		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBufferType type);
-		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT);
+		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT, uint32_t arrayLayers = 1);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 
 		VkSemaphore get_present_semaphore();

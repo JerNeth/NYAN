@@ -68,3 +68,46 @@ struct Instance {
 	uint pad2;
 	uint pad3;
 };
+
+struct DDGIVolume {
+	//Assuming Grid
+	float spacingX;
+	float spacingY;
+	float spacingZ;
+
+	float inverseSpacingX;
+	float inverseSpacingY;
+	float inverseSpacingZ;
+
+	float gridOriginX;
+	float gridOriginY;
+	float gridOriginZ;
+
+	uint probeCountX;
+	uint probeCountY;
+	uint probeCountZ;
+
+	uint raysPerProbe;
+
+	//Probe size in px 
+	uint irradianceProbeSize;
+	uint depthProbeSize;
+
+	int irradianceTextureSizeX;
+	int irradianceTextureSizeY;
+	float inverseIrradianceTextureSizeX;
+	float inverseIrradianceTextureSizeY;
+	uint irradianceTextureBinding;
+	uint irradianceTextureSampler;
+	uint irradianceImageBinding;
+
+	int depthTextureSizeX;
+	int depthTextureSizeY;
+	float inverseDepthTextureSizeX;
+	float inverseDepthTextureSizeY;
+	uint depthTextureBinding;
+	uint depthTextureSampler;
+	uint depthImageBinding;
+
+	float shadowBias;
+};
