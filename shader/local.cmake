@@ -1,9 +1,11 @@
  cmake_minimum_required(VERSION 3.14)
  
-file(GLOB SHADER_H CONFIGURE_DEPENDS 
+file(GLOB_RECURSE SHADER_H CONFIGURE_DEPENDS 
 	${PROJECT_SOURCE_DIR}/shader/*.glsl
     ${PROJECT_SOURCE_DIR}/shader/*.h
 )
+
+list(FILTER SHADER_H EXCLUDE REGEX ".*\\tmp\\.*")
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
     set(DEPENDENCIES "")
@@ -25,7 +27,7 @@ function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 endfunction()
 
 
-file(GLOB SHADER_SRC CONFIGURE_DEPENDS 
+file(GLOB_RECURSE SHADER_SRC CONFIGURE_DEPENDS 
 	${PROJECT_SOURCE_DIR}/shader/*.vert
     ${PROJECT_SOURCE_DIR}/shader/*.frag
     ${PROJECT_SOURCE_DIR}/shader/*.comp
@@ -41,6 +43,8 @@ file(GLOB SHADER_SRC CONFIGURE_DEPENDS
     ${PROJECT_SOURCE_DIR}/shader/*.tese
     ${PROJECT_SOURCE_DIR}/shader/*.tesc
 )
+list(FILTER SHADER_SRC EXCLUDE REGEX ".*\\tmp\\.*")
+
 set(SHADERS "")
 foreach(shader ${SHADER_SRC})
     get_filename_component(shader_name ${shader} NAME_WE)

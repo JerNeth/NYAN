@@ -3,12 +3,14 @@
 #define RDDDGIRENDERER_H
 
 #include "VkWrapper.h"
+#include "VulkanForwards.h"
+#include "DataManager.h"
 #include "RenderGraph.h"
-#include "RenderManager.h"
 #include "ShaderInterface.h"
 #include "entt/fwd.hpp"
 
 namespace nyan {
+	class RenderManager;
 	class DDGIManager : public DataManager<nyan::shaders::DDGIVolume> 
 	{
 	public:
@@ -17,8 +19,8 @@ namespace nyan {
 		void set_spacing(uint32_t id, const Math::vec3& spacing);
 		void set_origin(uint32_t id, const Math::vec3& origin);
 		void set_probe_count(uint32_t id, const Math::uvec3& probeCount);
-		void set_irradiance_probe_size(uint32_t id, float probeSize);
-		void set_depth_probe_size(uint32_t id, float probeSize);
+		void set_irradiance_probe_size(uint32_t id, uint32_t probeSize);
+		void set_depth_probe_size(uint32_t id, uint32_t probeSize);
 		void set_rays_per_probe(uint32_t id, uint32_t rayCount);
 		void set_depth_bias(uint32_t id, float depthBias);
 		const nyan::shaders::DDGIVolume& get(uint32_t id) const;
@@ -40,21 +42,14 @@ namespace nyan {
 	public:
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 	private:
-		void render_volume(vulkan::RaytracingPipelineBind& bind, uint32_t volumeId);
-		vulkan::RaytracingPipelineConfig generate_config();
-		vulkan::PipelineId create_pipeline(const vulkan::RaytracingPipelineConfig& rayConfig);
-		vulkan::BufferHandle create_sbt(const vulkan::RaytracingPipelineConfig& rayConfig);
+		void render_volume(vulkan::ComputePipelineBind& bind, uint32_t volumeId);
+		vulkan::PipelineId create_pipeline();
 
 		vulkan::LogicalDevice& r_device;
 		entt::registry& r_registry;
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
-		vulkan::PipelineId m_rtPipeline;
-		vulkan::BufferHandle m_sbt;
-		VkStridedDeviceAddressRegionKHR m_rgenRegion;
-		VkStridedDeviceAddressRegionKHR m_hitRegion;
-		VkStridedDeviceAddressRegionKHR m_missRegion;
-		VkStridedDeviceAddressRegionKHR m_callableRegion;
+		vulkan::PipelineId m_renderDDGIPipeline;
 	};
 }
 

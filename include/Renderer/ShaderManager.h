@@ -32,6 +32,7 @@ namespace vulkan {
 		//	return &program;
 		//}
 		ShaderId get_shader_id(const std::string& name) const noexcept;
+		ShaderId add_work_group_size_shader_instance(const std::string& name, uint32_t x, uint32_t y, uint32_t z) const noexcept;
 		ShaderId get_shader_instance_id(const std::string& name) const noexcept;
 
 	private:

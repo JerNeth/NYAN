@@ -332,6 +332,9 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 	m_layout(config.pipelineLayout),
 	m_type(VK_PIPELINE_BIND_POINT_COMPUTE)
 {
+
+	assert(m_layout != VK_NULL_HANDLE);
+	assert(config.shaderInstance != invalidShaderId);
 	VkComputePipelineCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 		.pNext = nullptr,
@@ -341,6 +344,19 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = -1
 	};
+	//Validate VUID-VkComputePipelineCreateInfo-flags-xxxxx
+	assert(!(createInfo.flags & (VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | 
+		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR | 
+		VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR |
+		VK_PIPELINE_CREATE_RAY_TRACING_ALLOW_MOTION_BIT_NV |
+		VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV)));
+	assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
+
 	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
 
 }

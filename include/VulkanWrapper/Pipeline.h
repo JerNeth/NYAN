@@ -163,8 +163,8 @@ namespace vulkan {
 		VkPipelineLayout pipelineLayout;
 	};
 	struct ComputePipelineConfig {
-		ShaderId shaderInstance;
-		VkPipelineLayout pipelineLayout;
+		ShaderId shaderInstance { invalidShaderId };
+		VkPipelineLayout pipelineLayout{ VK_NULL_HANDLE };
 	};
 	struct Group {
 		ShaderId generalShader { invalidShaderId };

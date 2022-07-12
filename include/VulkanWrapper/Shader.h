@@ -146,6 +146,9 @@ namespace vulkan {
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
 		VkShaderModule get_module();
+		uint32_t get_work_group_id_X() const;
+		uint32_t get_work_group_id_Y() const;
+		uint32_t get_work_group_id_Z() const;
 	private:
 		void create_module(const std::vector<uint32_t>& shaderCode);
 
@@ -154,26 +157,33 @@ namespace vulkan {
 		ShaderStage m_stage;
 		//ShaderLayout m_layout;
 		Utility::HashValue m_hashValue;
+		uint32_t m_workGroupXId = ~0u;
+		uint32_t m_workGroupYId = ~0u;
+		uint32_t m_workGroupZId = ~0u;
 		
 	}; 
 	class ShaderInstance {
 	public:
 		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage);
+		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage,
+			uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ,
+			uint32_t workGroupSizeXId = ~0, uint32_t workGroupSizeYId = ~0, uint32_t workGroupSizeZId = ~0);
 		VkPipelineShaderStageCreateInfo get_stage_info() const;
 		VkShaderStageFlagBits get_stage() const;
 	private:
 		VkShaderModule m_module;
 		std::vector< VkSpecializationMapEntry> m_specialization;
+		std::vector<std::byte> m_dataStorage;
 		std::string m_entryPoint;
 		VkSpecializationInfo m_specializationInfo;
 		VkShaderStageFlagBits m_stage;
-		std::vector<std::byte> m_dataStorage;
 	};
 	class ShaderStorage {
 	public:
 		ShaderStorage(LogicalDevice& device);
 
 		ShaderId add_instance(ShaderId shaderId);
+		ShaderId add_instance(ShaderId shaderId, uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ);
 		ShaderId add_shader(const std::vector<uint32_t>& shaderCode);
 		Shader* get_shader(ShaderId shaderId);
 		ShaderInstance* get_instance(ShaderId instanceId);
