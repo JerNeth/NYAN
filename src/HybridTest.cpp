@@ -149,16 +149,7 @@ int main() {
 	//	});
 
 	auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
-	ddgiPass.add_write("DDGI_Irradiance", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.f, 0.f, 0.f, 0.f},
-		}, nyan::Renderpass::Write::Type::Compute);
-	ddgiPass.add_write("DDGI_Depth", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			.clearColor{0.f, 0.f, 0.f, 0.f},
-		}, nyan::Renderpass::Write::Type::Compute);
+
 
 	auto& deferredRTPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
 	deferredRTPass.add_read("g_Albedo");
@@ -193,6 +184,7 @@ int main() {
 
 	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
 	imguiPass.add_swapchain_attachment();
+
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);

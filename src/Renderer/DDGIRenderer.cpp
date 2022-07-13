@@ -126,6 +126,20 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	r_pass(pass),
 	m_renderDDGIPipeline(create_pipeline())
 {
+	auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	//For now limit adding ddgi volumes after building render graph until render graph modification or rebuild possible
+	ddgiManager.add_ddgi_volume(nyan::shaders::DDGIVolume{});
+	pass.add_write("DDGI_Irradiance", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			.clearColor{0.f, 0.f, 0.f, 0.f},
+		}, nyan::Renderpass::Write::Type::Compute);
+
+	pass.add_write("DDGI_Depth", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+			.clearColor{0.f, 0.f, 0.f, 0.f},
+		}, nyan::Renderpass::Write::Type::Compute);
 
 	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
 		{
@@ -136,20 +150,21 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 
 void nyan::DDGIRenderer::render_volume(vulkan::ComputePipelineBind& bind, uint32_t volumeId)
 {
-	const auto& ddgi_manager = r_renderManager.get_ddgi_manager();
+	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	//auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
 	//assert(writeBind != InvalidResourceId);
 	PushConstants constants{
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
 		.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
-		.ddgiBinding {ddgi_manager.get_binding()},
-		.ddgiCount {static_cast<uint32_t>(ddgi_manager.slot_count())},
+		.ddgiBinding {ddgiManager.get_binding()},
+		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 		.ddgiIndex {volumeId},
 		//.col {},
 		//.col2 {}
 	};
-	const auto& volume = ddgi_manager.get(volumeId);
+	const auto& volume = ddgiManager.get(volumeId);
+
 	bind.push_constants(constants);
 	bind.dispatch(1, 1, 1);
 	//bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);

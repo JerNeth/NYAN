@@ -40,17 +40,17 @@ void main()
 
 	// Initializes a ray query object but does not start traversal
 	rayQueryEXT rayQuery;
-	rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
+	//rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
 
 	// Start traversal: return false if traversal is complete
-	while(rayQueryProceedEXT(rayQuery))
-	{
-	}
+	//while(rayQueryProceedEXT(rayQuery))
+	//{
+	//}
 
 	// Returns type of committed (true) intersection
-	if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
+	//if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
 	{
 	  // Got an intersection == Shadow
-	  o_color *= 0.1;
+	 // o_color *= 0.1;
 	}
 }
