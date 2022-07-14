@@ -12,7 +12,7 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 	m_instanceManager(r_device,
 		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
 	m_sceneManager(r_device),
-	m_ddgiManager(r_device),
+	m_ddgiManager(r_device, m_registry),
 	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
 		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
 	m_primaryCamera(entt::null)
@@ -112,6 +112,7 @@ const entt::entity& nyan::RenderManager::get_primary_camera() const
 
 void nyan::RenderManager::update()
 {
+	//Skeletal animations have to be before the mesh manager build
 	//Has to be before instance manager build and instance manager update
 	m_meshManager.build();
 	auto view = m_registry.view<const MeshID, const InstanceId>();
@@ -178,6 +179,10 @@ void nyan::RenderManager::update()
 		light.dir = Math::vec3{0.577, 0.577, 0.577};
 		m_sceneManager.set_dirlight(light);
 	}
+	//Order doesn't matter
+	m_ddgiManager.upload();
+
+	//Order maybe matters (I forgot)
 	m_meshManager.upload();
 	m_materialManager.upload();
 	m_sceneManager.upload();

@@ -14,6 +14,7 @@ nyan::Renderpass::Renderpass(Rendergraph& graph, Type type, uint32_t id, const e
 
 void nyan::Renderpass::add_read(const entt::hashed_string& name, Renderpass::Read::Type readType)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
 	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
@@ -28,6 +29,7 @@ void nyan::Renderpass::add_read(const entt::hashed_string& name, Renderpass::Rea
 
 void nyan::Renderpass::add_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -44,6 +46,7 @@ void nyan::Renderpass::add_attachment(const entt::hashed_string& name, ImageAtta
 
 void nyan::Renderpass::add_attachment(const entt::hashed_string& name, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(name));
 	auto& resource = r_graph.get_resource(name);
@@ -60,6 +63,7 @@ void nyan::Renderpass::add_attachment(const entt::hashed_string& name, bool clea
 
 void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
@@ -82,6 +86,7 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 
 void nyan::Renderpass::add_depth_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -98,6 +103,7 @@ void nyan::Renderpass::add_depth_attachment(const entt::hashed_string& name, Ima
 
 void nyan::Renderpass::add_depth_attachment(const entt::hashed_string& name, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -113,6 +119,7 @@ void nyan::Renderpass::add_depth_attachment(const entt::hashed_string& name, boo
 
 void nyan::Renderpass::add_depth_stencil_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -129,6 +136,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const entt::hashed_string& n
 
 void nyan::Renderpass::add_depth_stencil_attachment(const entt::hashed_string& name, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -143,6 +151,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(const entt::hashed_string& n
 
 void nyan::Renderpass::add_stencil_attachment(const entt::hashed_string& name, ImageAttachment attachment, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -160,6 +169,7 @@ void nyan::Renderpass::add_stencil_attachment(const entt::hashed_string& name, I
 
 void nyan::Renderpass::add_stencil_attachment(const entt::hashed_string& name, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
@@ -181,6 +191,7 @@ void nyan::Renderpass::add_stencil_attachment(const entt::hashed_string& name, b
 
 void nyan::Renderpass::add_write(const entt::hashed_string& name, ImageAttachment attachment, Renderpass::Write::Type writeType, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	auto& resource = r_graph.get_resource(name);
 	resource.name = name;
 	resource.attachment = attachment;
@@ -197,6 +208,7 @@ void nyan::Renderpass::add_write(const entt::hashed_string& name, ImageAttachmen
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType, bool clear)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
 	nyan::ImageAttachment swap;
@@ -221,6 +233,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 
 void nyan::Renderpass::copy(const entt::hashed_string& source, const entt::hashed_string& target)
 {
+	assert(r_graph.m_state == Rendergraph::State::Build);
 	auto& sourceResource = r_graph.get_resource(source);
 	auto& targetResource = r_graph.get_resource(target);
 	sourceResource.name = source;
