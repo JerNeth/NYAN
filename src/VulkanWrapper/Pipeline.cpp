@@ -369,7 +369,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 	const auto& rtFeatures = parent.get_physical_device().get_ray_tracing_pipeline_features();
 	if (!rtFeatures.rayTracingPipeline) {
 		Utility::log().location().message("Requested ray tracing pipeline on not supported hardware");
-		throw Utility::FeatureNotSupportedException{"Requested ray tracing pipeline on not supported hardware"};
+		throw Utility::FeatureNotSupportedException{};
 	}
 	const auto& rtProperties = parent.get_physical_device().get_ray_tracing_pipeline_properties();
 

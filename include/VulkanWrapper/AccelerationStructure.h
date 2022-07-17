@@ -29,6 +29,7 @@ namespace vulkan {
 		VkAccelerationStructureKHR m_handle = VK_NULL_HANDLE;
 		BufferHandle m_buffer;
 		VkAccelerationStructureCreateInfoKHR m_info;
+		uint64_t m_reference;
 		bool m_isCompactable = false;
 	};
 	class AccelerationStructureBuilder {

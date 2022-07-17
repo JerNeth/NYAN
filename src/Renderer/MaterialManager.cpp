@@ -35,11 +35,11 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 {
 	auto binding = add(nyan::shaders::Material{
 		.albedoTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "normal.png")},
-		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.pbrTexId {r_textureManager.get_texture_idx(data.diffuseTex, "white.png")},
-		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.albedo_R {1.0f},
 		.albedo_G {1.0f},
 		.albedo_B {1.0f},

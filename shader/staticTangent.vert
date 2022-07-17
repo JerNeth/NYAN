@@ -21,8 +21,8 @@ layout(location = 3) in vec3 inTangent;
 
 layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec3 fragNormal;
-//layout(location = 2) out vec3 fragTangent;
-//layout(location = 3) out vec3 fragBitangent;
+layout(location = 2) out vec3 fragTangent;
+layout(location = 3) out vec3 fragBitangent;
 layout(location = 4) out vec3 fragWorldPos;
 
 void main() {
@@ -35,7 +35,7 @@ void main() {
     fragWorldPos = model * vec4( inPosition, 1.0);
 	gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
     mat3 modelS = mat3(model);
-    //vec3 tangent = normalize(modelS * inTangent.xyz);
+    vec3 tangent = normalize(modelS * inTangent.xyz);
     vec3 normal = normalize(modelS * inNormal.xyz);
     //tangent = normalize(tangent - dot(tangent, normal) * normal);
 //    Uvs uvs = Uvs(mesh.uvs);
@@ -43,9 +43,9 @@ void main() {
     //NormalsHalf normals = NormalsHalf(mesh.normalsAddress);
 //    Tangents tangents = Tangents(mesh.tangents);
 //    vec3 tangent = vec3(model * vec4(tangents.t[gl_VertexIndex].xyz, 0));
-   // vec3 normal = normalize(modelS * normals.n[gl_VertexIndex].xyz);
+    //vec3 normal = normalize(modelS * normals.n[gl_VertexIndex].xyz);
     //vec3 normal = normalize(modelS *getNormal(mesh.normalsAddress, gl_VertexIndex));
-    //vec3 bitangent = cross(normal.xyz, tangent.xyz);
+    vec3 bitangent = cross(normal.xyz, tangent.xyz);
     //980 ti
     //46 Entities 57 fps    17.5ms (fetch)
     //46 Entities 57 fps    17.5 ms (attribs)
@@ -57,8 +57,8 @@ void main() {
     //fragTexCoord = get_uv(mesh.uvsAddress, gl_VertexIndex);
 
     fragTexCoord = inTexCoord;
-    //fragTangent = tangent;
+    fragTangent = tangent;
     fragNormal = normal;
-    //fragBitangent = bitangent;
+    fragBitangent = bitangent;
 }
 

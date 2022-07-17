@@ -47,7 +47,7 @@ int main() {
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("shaderBall.fbx", meshes, materials);
+	reader.parse_meshes("SunTemple.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 

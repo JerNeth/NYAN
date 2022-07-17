@@ -155,16 +155,18 @@ void nyan::DDGIManager::update_spacing(nyan::shaders::DDGIVolume& volume)
 
 void nyan::DDGIManager::update_depth_texture(nyan::shaders::DDGIVolume& volume)
 {
-	volume.depthTextureSizeX = volume.probeCountX * volume.depthProbeSize;
-	volume.depthTextureSizeY = volume.probeCountY * volume.probeCountY * volume.depthProbeSize;
+	//Add 1 pixel sample border
+	volume.depthTextureSizeX = volume.probeCountX * (2 + volume.depthProbeSize);
+	volume.depthTextureSizeY = volume.probeCountY * volume.probeCountY * (2 + volume.depthProbeSize);
 	volume.inverseDepthTextureSizeX = 1.0f / volume.depthTextureSizeX;
 	volume.inverseDepthTextureSizeY = 1.0f / volume.depthTextureSizeY;
 }
 
 void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& volume)
 {
-	volume.irradianceTextureSizeX = volume.probeCountX * volume.irradianceProbeSize;
-	volume.irradianceTextureSizeY = volume.probeCountY * volume.probeCountY * volume.irradianceProbeSize;
+	//Add 1 pixel sample border
+	volume.irradianceTextureSizeX = volume.probeCountX * (2 + volume.irradianceProbeSize);
+	volume.irradianceTextureSizeY = volume.probeCountY * volume.probeCountY * (2 + volume.irradianceProbeSize);
 	volume.inverseIrradianceTextureSizeX = 1.0f / volume.irradianceTextureSizeX;
 	volume.inverseIrradianceTextureSizeY = 1.0f / volume.irradianceTextureSizeY;
 }

@@ -1,16 +1,17 @@
 #include "Utility/ImageReader.h"
+#include "Utility/Exceptions.h"
 #include "stb_image.h"
 #include "VkWrapper.h"
 
 std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::read_image_file(const std::filesystem::path& filename)
 {
 	if (!std::filesystem::exists(filename))
-		throw std::runtime_error("File does not exist " +filename.string());
+		throw Utility::FileNotFoundException(std::format("File does not exist: \"{}\"", filename.string()));
 	if (filename.extension().compare(".png") &&
 		filename.extension().compare(".jpg") &&
 		filename.extension().compare(".hdr") &&
 		filename.extension().compare(".tga"))
-		throw std::runtime_error("Not supported file extension " + filename.extension().string());
+		throw Utility::FileTypeNotSupportedException("Not supported file extension " + filename.extension().string());
 	int width, height, channels;
 	vulkan::InitialImageData data 
 	{

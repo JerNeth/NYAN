@@ -22,10 +22,14 @@ uint32_t nyan::TextureManager::get_texture_idx(const std::string& name, const st
 {
 	if (const auto& res = m_textureIndex.find(name); res != m_textureIndex.end())
 		return res->second;
+
 	Utility::log().format("Couldn't load \"{}\" using \"{}\" instead", name, defaultTex);
+
 	if (const auto& res = m_textureIndex.find(defaultTex); res != m_textureIndex.end())
 		return res->second;
+
 	Utility::log().format("Couldn't load \"{}\"", defaultTex);
+
 	return 0;
 }
 void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMip)

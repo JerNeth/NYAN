@@ -1,4 +1,5 @@
 #include "Renderer/RenderManager.h"
+#include "Utility/Exceptions.h"
 #include "LogicalDevice.h"
 #include "AccelerationStructure.h"
 
@@ -90,11 +91,24 @@ const entt::registry& nyan::RenderManager::get_registry() const
 
 void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& materials)
 {
-	for (const auto& material : materials) {
-		if (!material.diffuseTex.empty())
-			m_textureManager.request_texture(material.diffuseTex);
-		if (!material.normalTex.empty())
-			m_textureManager.request_texture(material.normalTex);
+	auto materialCopy = materials;
+	for (auto& material : materialCopy) {
+		try {
+			if (!material.diffuseTex.empty())
+				m_textureManager.request_texture(material.diffuseTex);
+		}
+		catch (Utility::FileNotFoundException e) {
+			Utility::log_error().message(e.what());
+			material.diffuseTex = "";
+		}
+		try {
+			if (!material.normalTex.empty())
+				m_textureManager.request_texture(material.normalTex);
+		}
+		catch (Utility::FileNotFoundException e) {
+			Utility::log_error().message(e.what());
+			material.normalTex = "";
+		}
 		m_materialManager.add_material(material);
 	}
 }

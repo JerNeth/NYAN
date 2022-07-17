@@ -327,7 +327,10 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::filesystem
 	}
 	else {
 		ret.depth = header.depth;
-		assert(ret.depth);
+		if (!ret.depth) {
+			ret.depth = 1;
+			Utility::log().format("{} has no depth defined", filename.string());
+		}
 		ret.mipLevels = header.mipMapCount;
 		assert(ret.mipLevels);
 		if (ret.depth != 1)

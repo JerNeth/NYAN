@@ -10,13 +10,21 @@ vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAc
 	m_buffer(buffer),
 	m_info(info)
 {
+
+	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{
+		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+		.pNext = nullptr,
+		.accelerationStructure = m_handle
+	};
+	m_reference = vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo);
 }
 
 vulkan::AccelerationStructure::AccelerationStructure(AccelerationStructure&& other) :
 	r_device(other.r_device),
 	m_handle(other.m_handle),
 	m_buffer(std::move(other.m_buffer)),
-	m_info(std::move(other.m_info))
+	m_info(std::move(other.m_info)),
+	m_reference(other.m_reference)
 {
 	if (this != &other) {
 		other.m_handle = VK_NULL_HANDLE;
@@ -28,6 +36,7 @@ vulkan::AccelerationStructure& vulkan::AccelerationStructure::operator=(Accelera
 	if (this != &other && &r_device == &other.r_device) {
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_buffer, other.m_buffer);
+		std::swap(m_reference, other.m_reference);
 		std::swap(m_info, other.m_info);
 	}
 	return *this;
@@ -38,6 +47,7 @@ vulkan::AccelerationStructure::~AccelerationStructure()
 	if (m_handle) {
 		r_device.queue_acceleration_structure_deletion(m_handle);
 		m_handle = VK_NULL_HANDLE;
+		m_reference = 0;
 	}
 }
 
@@ -70,19 +80,15 @@ VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instanc
 		.mask = 0xFFu,
 		.instanceShaderBindingTableRecordOffset = 0,
 		.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
-		.accelerationStructureReference = get_reference()
+		.accelerationStructureReference = m_reference
 	};
 	return instance;
 }
 
 uint64_t vulkan::AccelerationStructure::get_reference() const noexcept
 {
-	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{
-		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
-		.pNext = nullptr,
-		.accelerationStructure = m_handle
-	};
-	return vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo);
+	assert(m_reference);
+	return m_reference;
 }
 
 void vulkan::AccelerationStructure::set_debug_label(const char* name) noexcept
