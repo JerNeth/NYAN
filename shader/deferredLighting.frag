@@ -41,6 +41,7 @@ void main() {
         vec4 normalTexVal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inTexCoord);
         vec4 pbr = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inTexCoord);
         vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
+        //albedo = vec4(1, 1, 1, 1);
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inTexCoord).x;
         vec3 normal = decodeOctahedronMapping(unpack1212(normalTexVal.xyz));
         //normal = decodeOctahedronMapping(normal.xy);
@@ -53,14 +54,21 @@ void main() {
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
         vec4 worldSpacePos = scene.invView * viewSpacePos;
-        
+        vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+        vec3 viewDir = worldSpacePos.xyz - viewPos;
+        if(dot(normal, viewDir) >= 0) {
+            normal = -normal;
+        }
+
         vec4 diffuse;
         vec4 specular;
         
         shadeFragment(worldSpacePos.xyz, normal, scene, albedo, metalness, roughness, specular, diffuse);
-        outSpecular = vec4(specular.xyz, 1);
-        outDiffuse = vec4(diffuse.xyz,1);
-        //outDiffuse = vec4(normal.xyz,1);
+        //outSpecular = vec4(specular.xyz, 1);
+        //outDiffuse = vec4(diffuse.xyz,1);
+        outSpecular = vec4(normal.xyz,1);
+        //outSpecular = vec4( (pow(1 - depth, 128)).xxx ,1);
+        //outSpecular = albedo;
 
         //outDiffuse = vec4(depth.xxx / (depth.xxx + 1),1);
         //outSpecular = vec4(depth.xxx / (depth.xxx + 1),1);

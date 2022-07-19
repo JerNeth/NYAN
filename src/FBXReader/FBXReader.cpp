@@ -38,6 +38,7 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	auto binormals = mesh->GetElementBinormal(0);
 	auto materials = mesh->GetElementMaterial(0);
 
+	
 	//ret.name = 
 	//std::cout << node->GetName() << ' ';
 	//std::cout << mesh->GetName() << ' ';
@@ -46,6 +47,7 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	auto& materialArray = materials->FbxGeometryElementMaterial::ParentClass::GetDirectArray();
 	for (int i = 0; i < materialArray.GetCount(); i++) {
 		fbxsdk::FbxSurfaceMaterial* mat = materialArray.GetAt(i);
+
 		retMeshes.push_back(nyan::Mesh
 			{
 				.name { node->GetName() + std::string(mat->GetName()) },
@@ -80,10 +82,13 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 			else if (normals->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
 				idx = vertexCounter;
 			}
-			if (normals->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
-				idx = normals->GetIndexArray()[idx];
+			else {
+				assert(false);
 			}
-			auto normal = normals->GetDirectArray()[idx];
+			if (normals->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
+				idx = normals->GetIndexArray().GetAt(idx);
+			}
+			auto normal = normals->GetDirectArray().GetAt(idx);
 
 			if (uvs->GetMappingMode() == FbxGeometryElement::eByControlPoint) {
 				idx = ctrlPointIndex;
@@ -91,21 +96,29 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 			else if (uvs->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
 				idx = vertexCounter;
 			}
+			else {
+				assert(false);
+			}
 			if (uvs->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
-				idx = uvs->GetIndexArray()[idx];
+				idx = uvs->GetIndexArray().GetAt(idx);
 			}
-			auto uv = uvs->GetDirectArray()[idx];
+			auto uv = uvs->GetDirectArray().GetAt(idx);
 
-			if (tangents->GetMappingMode() == FbxGeometryElement::eByControlPoint) {
-				idx = ctrlPointIndex;
+			if (tangents) {
+				if (tangents->GetMappingMode() == FbxGeometryElement::eByControlPoint) {
+					idx = ctrlPointIndex;
+				}
+				else if (tangents->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
+					idx = vertexCounter;
+				}
+				else {
+					assert(false);
+				}
+				if (tangents->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
+					idx = tangents->GetIndexArray().GetAt(idx);
+				}
 			}
-			else if (tangents->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
-				idx = vertexCounter;
-			}
-			if (tangents->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
-				idx = tangents->GetIndexArray()[idx];
-			}
-			auto tangent = tangents->GetDirectArray()[idx];
+			auto tangent = tangents->GetDirectArray().GetAt(idx);
 
 			if (binormals->GetMappingMode() == FbxGeometryElement::eByControlPoint) {
 				idx = ctrlPointIndex;
@@ -113,17 +126,20 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 			else if (binormals->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
 				idx = vertexCounter;
 			}
-			if (binormals->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
-				idx = binormals->GetIndexArray()[idx];
+			else {
+				assert(false);
 			}
-			auto binormal = binormals->GetDirectArray()[idx];
+			if (binormals->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
+				idx = binormals->GetIndexArray().GetAt(idx);
+			}
+			auto binormal = binormals->GetDirectArray().GetAt(idx);
 
-			//float tangentSign = 1;
+			float tangentSign = 1;
 
-			//auto tmp = Math::vec3(normal.mData[0], normal.mData[1], normal.mData[2]).cross(Math::vec3(tangent.mData[0], tangent.mData[1], tangent.mData[2]));
-			//auto dot = tmp.dot(Math::vec3(binormal.mData[0], binormal.mData[1], binormal.mData[2]));
-			//if (dot > 0)
-			//	tangentSign = -1;
+			auto tmp = Math::vec3(normal.mData[0], normal.mData[1], normal.mData[2]).cross(Math::vec3(tangent.mData[0], tangent.mData[1], tangent.mData[2]));
+			auto dot = tmp.dot(Math::vec3(binormal.mData[0], binormal.mData[1], binormal.mData[2]));
+			if (dot < 0)
+				tangentSign = -1;
 
 			retVal.positions.push_back(decltype(retVal.positions)::value_type{
 					static_cast<float>(ctrlPoint.mData[0]),
@@ -139,7 +155,7 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 					static_cast<float>(tangent.mData[0]),
 					static_cast<float>(tangent.mData[1]),
 					static_cast<float>(tangent.mData[2]),
-		//			static_cast<float>(tangentSign)
+					static_cast<float>(tangentSign)
 				});
 			retVal.uvs.push_back(decltype(retVal.uvs)::value_type{
 					static_cast<float>(uv.mData[0]),
@@ -180,10 +196,20 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 	for (int matIdx = 0; matIdx < scene->GetMaterialCount(); matIdx++) {
 		fbxsdk::FbxSurfaceMaterial* mat = scene->GetMaterial(matIdx);
 		//std::cout<< mat->GetName() << ' ';
+
+		std::vector<std::string> props;
+		for (int i = 0; i < mat->GetSrcPropertyCount(); ++i) {
+			auto prop = mat->GetSrcProperty(i);
+			props.push_back(prop.GetNameAsCStr());
+		}
+		for (int i = 0; i < mat->GetDstPropertyCount(); ++i) {
+			auto prop = mat->GetDstProperty(i);
+			props.push_back(prop.GetNameAsCStr());
+		}
+
 		auto s = mat->ShadingModel.Get();
 		if (s == "Phong") {
 			auto phong = reinterpret_cast<fbxsdk::FbxSurfacePhong*>(mat);
-			
 			nyan::MaterialData material
 			{
 				.name { mat->GetName() },
@@ -191,7 +217,9 @@ void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mes
 				.diffuseColor { Math::vec3{phong->Diffuse.Get()[0], phong->Diffuse.Get()[1], phong->Diffuse.Get()[2]} },
 				.ambientFactor { static_cast<float>(phong->AmbientFactor.Get()) },
 				.diffuseFactor { static_cast<float>(phong->DiffuseFactor.Get()) },
-				.shininessFacor { static_cast<float>(phong->Shininess.Get()) },
+				.shininessFactor { static_cast<float>(phong->Shininess.Get()) },
+				.transparendyFactor { static_cast<float>(phong->TransparencyFactor.Get()) },
+
 			};
 			for (int i = 0; i < phong->Diffuse.GetSrcObjectCount(); i++) {
 				auto* obj = phong->Diffuse.GetSrcObject(i);

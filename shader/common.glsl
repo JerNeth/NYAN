@@ -85,3 +85,36 @@ vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal,in vec3 bitangen
 
     return normalize(normal);
 }
+
+
+vec3 computeTangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec4 tangent)
+{
+    //Currently disabled because it produces bogus
+    vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
+    vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
+    vec3 tmpNormal = normalize(normal);
+    vec3 tmpTangent = normalize(tangent.xyz);
+//    vec3 a = abs(tmpNormal);
+//    uint uyx = (a.x - a.y) < 0? 1 : 0;
+//    uint uzx = (a.x - a.z) < 0? 1 : 0;
+//    uint uzy = (a.y - a.z) < 0? 1 : 0;
+//    uint xm = uyx & uzx;
+//    uint ym = (1 ^xm) & uzy;
+//    uint zm = 1 ^ ( xm | ym);
+//    vec3 tmpTangent = normalize(cross(tmpNormal, vec3(xm, ym, zm)));
+
+    float NdotT = dot(tmpTangent, tmpNormal);
+    bool nonParallel = abs(NdotT) < 0.9999f;
+    bool nonZero = dot(tmpTangent, tmpTangent) > 0.f;
+    bool valid = nonZero && nonParallel && false;
+    if(valid) {
+        tmpTangent = normalize(tmpTangent - tmpNormal * NdotT);
+        vec3 tmpBitangent = cross(tmpNormal, tmpTangent) * tangent.w;
+        return normalize(tmpTangent * tangentNormal.x + tmpBitangent * tangentNormal.y + tmpNormal * tangentNormal.z);
+        //mat3 tangentFrame = mat3(tmpTangent, tmpBitangent, tmpNormal);
+        //return normalize(tangentNormal * transpose(tangentFrame ));
+    }
+    else {
+        return tmpNormal;
+    }
+}

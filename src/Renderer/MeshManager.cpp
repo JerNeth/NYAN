@@ -1,6 +1,7 @@
 #include "Renderer/MeshManager.h"
 #include "VulkanWrapper/Buffer.h"
 #include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/CommandBuffer.h"
 
 using namespace vulkan;
 using namespace nyan;
@@ -369,5 +370,19 @@ void nyan::SceneManager::upload()
 		std::memcpy(map, &m_sceneData, size);
 		m_buffer->flush(0, static_cast<uint32_t>(size));
 		m_dirtyScene = false;
+		auto cmd = r_device.request_command_buffer(vulkan::CommandBufferType::Generic);
+		VkBufferMemoryBarrier2 barrier
+		{
+			.sType { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2},
+			.srcStageMask {VK_PIPELINE_STAGE_2_HOST_BIT},
+			.srcAccessMask {VK_ACCESS_2_HOST_WRITE_BIT},
+			.dstStageMask {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
+			.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT},
+			.buffer {m_buffer->get_handle()},
+			.offset {0},
+			.size {size}
+		};
+		cmd->barrier2(0, 0, nullptr, 1, &barrier, 0, nullptr);
+		r_device.submit(cmd);
 	}
 }

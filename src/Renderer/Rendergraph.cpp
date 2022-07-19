@@ -1035,7 +1035,7 @@ void nyan::Rendergraph::swapchain_present_transition(RenderpassId src_const)
 
 }
 
-bool debugBarriers = false;
+bool debugBarriers = true;
 
 void nyan::Rendergraph::set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource)
 {

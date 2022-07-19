@@ -13,7 +13,8 @@ namespace nyan {
 		Math::vec3 diffuseColor;
 		float ambientFactor;
 		float diffuseFactor;
-		float shininessFacor;
+		float shininessFactor;
+		float transparendyFactor;
 	};
 }
 

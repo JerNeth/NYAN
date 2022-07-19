@@ -17,12 +17,11 @@ layout(std430, push_constant) uniform PushConstants
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inTangent;
+layout(location = 3) in vec4 inTangent;
 
 layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec3 fragNormal;
-layout(location = 2) out vec3 fragTangent;
-layout(location = 3) out vec3 fragBitangent;
+layout(location = 2) out vec4 fragTangent;
 layout(location = 4) out vec3 fragWorldPos;
 
 void main() {
@@ -45,7 +44,7 @@ void main() {
 //    vec3 tangent = vec3(model * vec4(tangents.t[gl_VertexIndex].xyz, 0));
     //vec3 normal = normalize(modelS * normals.n[gl_VertexIndex].xyz);
     //vec3 normal = normalize(modelS *getNormal(mesh.normalsAddress, gl_VertexIndex));
-    vec3 bitangent = cross(normal.xyz, tangent.xyz);
+    //vec3 bitangent = cross(normal.xyz, tangent.xyz) * inTangent.w;
     //980 ti
     //46 Entities 57 fps    17.5ms (fetch)
     //46 Entities 57 fps    17.5 ms (attribs)
@@ -57,8 +56,8 @@ void main() {
     //fragTexCoord = get_uv(mesh.uvsAddress, gl_VertexIndex);
 
     fragTexCoord = inTexCoord;
-    fragTangent = tangent;
+    fragTangent = vec4(tangent, inTangent.w);
     fragNormal = normal;
-    fragBitangent = bitangent;
+    //fragBitangent = bitangent;
 }
 
