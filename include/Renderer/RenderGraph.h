@@ -52,41 +52,11 @@ namespace nyan {
 		Attachment attachment;
 		vulkan::Image* handle = nullptr;
 	};
-	struct Barrier {
-		RenderResourceId resourceId = InvalidResourceId;
-		VkPipelineStageFlags src = 0;
-		VkPipelineStageFlags dst = 0;
-		uint16_t bufferBarrierCount = 0;
-		uint16_t bufferBarrierOffset = 0;
-		uint16_t imageBarrierCount = 0;
-		uint16_t imageBarrierOffset = 0;
-	};
-	
+		
 	class Rendergraph;
 	using RenderpassId = uint32_t;
 	constexpr RenderpassId invalidRenderpassId = UINT32_MAX;
-	struct ImageBarrier {
-		RenderpassId src = invalidRenderpassId;
-		RenderpassId dst = invalidRenderpassId;
-		//uint32_t srcFamily = VK_QUEUE_FAMILY_IGNORED;
-		//uint32_t dstFamily = VK_QUEUE_FAMILY_IGNORED;
-		VkPipelineStageFlags srcStage = 0;
-		VkPipelineStageFlags dstStage = 0;
-		VkAccessFlags srcAccess = 0;
-		VkAccessFlags dstAccess = 0;
-		VkImageLayout srcLayout = static_cast<VkImageLayout>(0);
-		VkImageLayout dstLayout = static_cast<VkImageLayout>(0);
-	};
-	struct BufferBarrier {
-		RenderpassId src = invalidRenderpassId;
-		RenderpassId dst = invalidRenderpassId;
-		//uint32_t srcFamily = VK_QUEUE_FAMILY_IGNORED;
-		//uint32_t dstFamily = VK_QUEUE_FAMILY_IGNORED;
-		VkPipelineStageFlags srcStage = 0;
-		VkPipelineStageFlags dstStage = 0;
-		VkAccessFlags srcAccess = 0;
-		VkAccessFlags dstAccess = 0;
-	};
+
 	class Renderpass {
 	public:
 		struct Read {
@@ -154,9 +124,6 @@ namespace nyan {
 		}
 		void execute(vulkan::CommandBufferHandle& cmd);
 		void do_copies(vulkan::CommandBufferHandle& cmd);
-		bool has_post_barriers() const noexcept {
-			return !m_bufferBarriers.empty() || !m_imageBarriers.empty();
-		}
 		void apply_pre_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_copy_barriers(vulkan::CommandBufferHandle& cmd);
 		void apply_post_barriers(vulkan::CommandBufferHandle& cmd);
@@ -167,8 +134,8 @@ namespace nyan {
 		uint32_t get_read_bind(uint32_t idx);
 		uint32_t get_write_bind(const entt::hashed_string& name, Write::Type type = Write::Type::Graphics);
 		uint32_t get_read_bind(const entt::hashed_string& name, Read::Type type = Read::Type::ImageColor);
-		void add_wait(VkSemaphore wait, VkPipelineStageFlags stage);
-		void add_signal(uint32_t passId, VkPipelineStageFlags stage);
+		void add_wait(VkSemaphore wait, VkPipelineStageFlags2 stage);
+		void add_signal(uint32_t passId, VkPipelineStageFlags2 stage);
 		void build();
 	private:
 		bool is_read(RenderResourceId id) const;
@@ -194,12 +161,6 @@ namespace nyan {
 		std::vector<RenderResourceId> m_attachments;
 		RenderResourceId m_depth = InvalidResourceId;
 		RenderResourceId m_stencil = InvalidResourceId;
-
-		std::vector<Barrier> m_postBarriers;
-		std::vector<Barrier> m_copyBarriers;
-		std::vector<Barrier> m_preBarriers;
-		std::vector<VkImageMemoryBarrier> m_imageBarriers;
-		std::vector<VkBufferMemoryBarrier> m_bufferBarriers;
 		
 		struct PipelineBuild 
 		{
@@ -238,10 +199,9 @@ namespace nyan {
 
 		struct Signal {
 			uint32_t passId;
-			VkPipelineStageFlags stage;
+			VkPipelineStageFlags2 stage;
 		};
-		std::vector<VkSemaphore> m_waitSemaphores;
-		std::vector<VkPipelineStageFlags> m_waitStages;
+		std::vector<VkSemaphoreSubmitInfo> m_waitInfos;
 		std::vector<Signal> m_signals;
 
 	};

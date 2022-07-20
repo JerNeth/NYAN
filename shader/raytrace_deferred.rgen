@@ -60,7 +60,9 @@ void main()
         
         vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
         vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
-    
+        if(dot(normal, viewVec) < 0) {
+            normal = -normal;
+        }
         float NdotL = max(dot(normal, light1.dir), 0.0);
         if(NdotL > 0) {
             

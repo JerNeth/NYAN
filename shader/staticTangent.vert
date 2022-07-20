@@ -30,12 +30,13 @@ void main() {
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
     Scene scene = scenes[constants.sceneBinding].scene;
 	mat4x3 model = fetchTransformMatrix(instance);
+    //Cancel out translations before other transformations
+    mat3 modelS = mat3(model);
     model[3] -= vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
     fragWorldPos = model * vec4( inPosition, 1.0);
 	gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
-    mat3 modelS = mat3(model);
-    vec3 tangent = normalize(modelS * inTangent.xyz);
-    vec3 normal = normalize(modelS * inNormal.xyz);
+    vec3 tangent =  inTangent.xyz * modelS;
+    vec3 normal = modelS *  inNormal.xyz;
     //tangent = normalize(tangent - dot(tangent, normal) * normal);
 //    Uvs uvs = Uvs(mesh.uvs);
    // Normals normals = Normals(mesh.normalsAddress);
@@ -57,6 +58,7 @@ void main() {
 
     fragTexCoord = inTexCoord;
     fragTangent = vec4(tangent, inTangent.w);
+    //fragTangent = inTangent;
     fragNormal = normal;
     //fragBitangent = bitangent;
 }

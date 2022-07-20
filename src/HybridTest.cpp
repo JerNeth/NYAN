@@ -94,7 +94,7 @@ int main() {
 				.parent {parent},
 			});
 		registry.emplace<std::string>(entity, a.name);
-		registry.emplace<Deferred>(entity);
+		registry.emplace<Forward>(entity);
 
 	}
 
@@ -147,7 +147,6 @@ int main() {
 	//		//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 	//		.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 	//	});
-
 	auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
 
 

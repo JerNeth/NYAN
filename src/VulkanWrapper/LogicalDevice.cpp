@@ -252,55 +252,69 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 		return;
 	}
 	//Split commands into pre and post swapchain commands
-	std::array<VkSubmitInfo, 2> submitInfos{};
+	std::array<VkSubmitInfo2, 2> submitInfos{};
 	uint32_t submitCounts = 0;
-	std::vector<VkCommandBuffer> commands;
-	std::array<std::vector<VkSemaphore>, 2> waitSemaphores;
-	std::array<std::vector<VkFlags>, 2> waitStages;
-	std::array<std::vector<VkSemaphore>, 2> signalSemaphores;
-	for (uint32_t i = 0; i < queue.waitSemaphores.size(); i++) {
-		waitStages[0].push_back(queue.waitStages[i]);
-		waitSemaphores[0].push_back(queue.waitSemaphores[i]);
-		frame().recycle_semaphore(queue.waitSemaphores[i]);
+	std::vector<VkCommandBufferSubmitInfo> commandInfos;
+	std::array<std::vector<VkSemaphoreSubmitInfo>, 2> waitInfos;
+	std::array<std::vector<VkSemaphoreSubmitInfo>, 2> signalInfos;
+	for (uint32_t i = 0; i < queue.waitInfos.size(); i++) {
+		waitInfos[0].push_back(queue.waitInfos[i]);
+		frame().recycle_semaphore(queue.waitInfos[i].semaphore);
 	}
-	queue.waitStages.clear();
-	queue.waitSemaphores.clear();
-	commands.reserve(submissions.size());
+	queue.waitInfos.clear();
+	commandInfos.reserve(submissions.size());
 	uint32_t firstSubmissionCount = 0;
 	bool swapchainTouched = false;
 	for (auto& submission : submissions) {
 		if (submission->swapchain_touched() && (firstSubmissionCount == 0) && !m_wsiState.swapchain_touched) {
-			if (!commands.empty()) {
-				VkSubmitInfo submitInfo{
-					.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-					.commandBufferCount = static_cast<uint32_t>(commands.size()),
-					.pCommandBuffers = commands.data(),
+			if (!commandInfos.empty()) {
+				submitInfos[submitCounts++] = VkSubmitInfo2 {
+					.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+					.commandBufferInfoCount = static_cast<uint32_t>(commandInfos.size()),
+					.pCommandBufferInfos = commandInfos.data(),
 				};
-				submitInfos[submitCounts++] = submitInfo;
 			}
-			firstSubmissionCount = static_cast<uint32_t>(commands.size());
+			firstSubmissionCount = static_cast<uint32_t>(commandInfos.size());
 			swapchainTouched = true;
 		}
-		commands.push_back(submission->get_handle());
+		commandInfos.push_back( VkCommandBufferSubmitInfo{ 
+			.sType {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO},
+			.pNext { nullptr },
+			.commandBuffer { submission->get_handle() },
+			.deviceMask {0}
+			});
 	}
-	if (!commands.empty()) {
-		VkSubmitInfo submitInfo{
-			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			.commandBufferCount = static_cast<uint32_t>(commands.size()) - firstSubmissionCount,
-			.pCommandBuffers = &commands[firstSubmissionCount],
+	if (!commandInfos.empty()) {
+		submitInfos[submitCounts++] = VkSubmitInfo2 {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+			.commandBufferInfoCount = static_cast<uint32_t>(commandInfos.size()) - firstSubmissionCount,
+			.pCommandBufferInfos = &commandInfos[firstSubmissionCount],
 		};
-		submitInfos[submitCounts++] = submitInfo;
 		if (swapchainTouched) {
 			auto& aquire = m_wsiState.aquireSemaphores[m_wsiState.index];
 			auto& present = m_wsiState.presentSemaphores[m_wsiState.index];
 			if (aquire != VK_NULL_HANDLE) {
-				waitSemaphores[submitCounts - 1ull].push_back(aquire);
-				waitStages[submitCounts - 1ull].push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+				waitInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
+					{
+						.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
+						.pNext { nullptr },
+						.semaphore { aquire },
+						.stageMask { VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT},
+						.deviceIndex { 0 }
+					});
 			}
 			if (present != VK_NULL_HANDLE)
 				frame().recycle_semaphore(present);
 			present = request_semaphore();
-			signalSemaphores[submitCounts - 1ull].push_back(present);
+			signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
+				.pNext { nullptr },
+				.semaphore { present },
+				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT},
+				.deviceIndex { 0 }
+			});
 			m_wsiState.swapchain_touched = true;
 		}
 	}
@@ -309,17 +323,23 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 	for (uint32_t i = 0; i < semaphoreCount; i++) {
 		VkSemaphore sem = request_semaphore();
 		assert(submitCounts < 3);
-		signalSemaphores[submitCounts - 1ull].push_back(sem);
+		signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
+				.pNext { nullptr },
+				.semaphore { sem },
+				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT},
+				.deviceIndex { 0 }
+			});
 		assert(semaphores[i] == VK_NULL_HANDLE);
 		semaphores[i] = sem;
 	}
 	for (uint32_t i = 0; i < submitCounts; i++) {
-		submitInfos[i].waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores[i].size());
-		submitInfos[i].pWaitSemaphores = waitSemaphores[i].data();
-		submitInfos[i].pWaitDstStageMask = waitStages[i].data(); 
+		submitInfos[i].waitSemaphoreInfoCount = static_cast<uint32_t>(waitInfos[i].size());
+		submitInfos[i].pWaitSemaphoreInfos = waitInfos[i].data();
 
-		submitInfos[i].signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores[i].size());
-		submitInfos[i].pSignalSemaphores = signalSemaphores[i].data();
+		submitInfos[i].signalSemaphoreInfoCount = static_cast<uint32_t>(signalInfos[i].size());
+		submitInfos[i].pSignalSemaphoreInfos = signalInfos[i].data();
 
 	}
 #ifdef DEBUGSUBMISSIONS
@@ -343,7 +363,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 	}
 #endif //  0
 	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
-	if (auto result = vkQueueSubmit(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
+	if (auto result = vkQueueSubmit2(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			throw std::runtime_error("VK: could not submit to Queue, out of host memory");
 		}
@@ -401,24 +421,29 @@ void vulkan::LogicalDevice::queue_allocation_deletion(VmaAllocation allocation) 
 	frame().queue_allocation_deletion(allocation);
 }
 
-void vulkan::LogicalDevice::add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush)
+void vulkan::LogicalDevice::add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value, bool flush)
 {
 	assert(stages != 0);
 	if (flush)
 		submit_queue(type, nullptr);
 	auto& queue = get_queue(type);
-	queue.waitSemaphores.push_back(semaphore);
-	queue.waitStages.push_back(stages);
+	queue.waitInfos.push_back(VkSemaphoreSubmitInfo
+		{ 
+			.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
+			.pNext { nullptr },
+			.semaphore { semaphore },
+			.stageMask { stages },
+			.deviceIndex { 0 }
+		});
 	queue.needsFence = true;
 }
 
-void vulkan::LogicalDevice::add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush)
+void vulkan::LogicalDevice::add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush)
 {
 	if (flush)
 		submit_queue(type, nullptr);
 	auto& queue = get_queue(type);
-	queue.waitSemaphores.insert(queue.waitSemaphores.end(), semaphores.begin(), semaphores.end());
-	queue.waitStages.insert(queue.waitStages.end(), stages.begin(), stages.end());
+	queue.waitInfos.insert(queue.waitInfos.end(), submitInfos.begin(), submitInfos.end());
 	queue.needsFence = true;
 }
 
@@ -426,34 +451,39 @@ void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fe
 {
 	auto& queue = get_queue(type);
 	
-	std::vector<VkSemaphore> signalSemaphores;
-	std::vector<VkSemaphore> waitSemaphores;
-	auto waitStages = queue.waitStages;
-	queue.waitStages.clear();
-	for (auto semaphore : queue.waitSemaphores) {
-		frame().recycle_semaphore(semaphore);
-		waitSemaphores.push_back(semaphore);
+	std::vector<VkSemaphoreSubmitInfo> signalInfos;
+	auto waitInfos = queue.waitInfos;
+	for (const auto& waitInfo  : queue.waitInfos) {
+		frame().recycle_semaphore(waitInfo.semaphore);
 	}
-	queue.waitSemaphores.clear();
+	queue.waitInfos.clear();
 	for (uint32_t i = 0; i < semaphoreCount; i++) {
 		auto semaphore = m_semaphoreManager.request_semaphore();
 		assert(semaphores[i] == VK_NULL_HANDLE);
 		semaphores[i] = semaphore;
-		signalSemaphores.push_back(semaphore);
+		signalInfos.push_back(VkSemaphoreSubmitInfo
+			{
+				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
+				.pNext { nullptr },
+				.semaphore { semaphore },
+				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT },
+				.deviceIndex { 0 }
+			});
 	}
 
 	if (fence)
 		*fence = m_fenceManager.request_fence();
 	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
-	VkSubmitInfo submitInfo{
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()),
-		.pWaitSemaphores = waitSemaphores.data(),
-		.pWaitDstStageMask = waitStages.data(),
-		.signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.size()),
-		.pSignalSemaphores = signalSemaphores.data()
+	VkSubmitInfo2  submitInfo{
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+		.waitSemaphoreInfoCount = static_cast<uint32_t>(waitInfos.size()),
+		.pWaitSemaphoreInfos = waitInfos.data(),
+		.commandBufferInfoCount {0},
+		.pCommandBufferInfos { nullptr },
+		.signalSemaphoreInfoCount = static_cast<uint32_t>(signalInfos.size()),
+		.pSignalSemaphoreInfos = signalInfos.data()
 	};
-	vkQueueSubmit(queue.queue, 1, &submitInfo, localFence);
+	vkQueueSubmit2(queue.queue, 1, &submitInfo, localFence);
 }
 
 void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush)
@@ -549,18 +579,15 @@ void vulkan::LogicalDevice::wait_no_lock() noexcept
 
 void vulkan::LogicalDevice::clear_semaphores() noexcept
 {
-	for (auto& sem : m_graphics.waitSemaphores)
-		vkDestroySemaphore(m_device, sem, m_allocator);
-	for (auto& sem : m_compute.waitSemaphores)
-		vkDestroySemaphore(m_device, sem, m_allocator);
-	for (auto& sem : m_transfer.waitSemaphores)
-		vkDestroySemaphore(m_device, sem, m_allocator);
-	m_graphics.waitSemaphores.clear();
-	m_compute.waitSemaphores.clear();
-	m_transfer.waitSemaphores.clear();
-	m_graphics.waitStages.clear();
-	m_compute.waitStages.clear();
-	m_transfer.waitStages.clear();
+	for (auto& waitInfo : m_graphics.waitInfos)
+		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+	for (auto& waitInfo : m_compute.waitInfos)
+		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+	for (auto& waitInfo : m_transfer.waitInfos)
+		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+	m_graphics.waitInfos.clear();
+	m_compute.waitInfos.clear();
+	m_transfer.waitInfos.clear();
 
 }
 

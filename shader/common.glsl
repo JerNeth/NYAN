@@ -110,9 +110,9 @@ vec3 computeTangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec4 
     if(valid) {
         tmpTangent = normalize(tmpTangent - tmpNormal * NdotT);
         vec3 tmpBitangent = cross(tmpNormal, tmpTangent) * tangent.w;
-        return normalize(tmpTangent * tangentNormal.x + tmpBitangent * tangentNormal.y + tmpNormal * tangentNormal.z);
-        //mat3 tangentFrame = mat3(tmpTangent, tmpBitangent, tmpNormal);
-        //return normalize(tangentNormal * transpose(tangentFrame ));
+        //return normalize(tmpTangent * tangentNormal.x + tmpBitangent * tangentNormal.y + tmpNormal * tangentNormal.z);
+        mat3 tangentFrame = mat3(tmpTangent, tmpBitangent, tmpNormal);
+        return normalize( tangentNormal *tangentFrame );
     }
     else {
         return tmpNormal;

@@ -79,8 +79,9 @@ namespace vulkan {
 			Queue() = default;
 			Queue(uint32_t family) : familyIndex(family) {}
 			operator VkQueue() const noexcept { return queue; }
-			std::vector<VkSemaphore> waitSemaphores;
-			std::vector<VkPipelineStageFlags> waitStages;
+			//std::vector<VkSemaphore> waitSemaphores;
+			//std::vector<VkPipelineStageFlags> waitStages;
+			std::vector<VkSemaphoreSubmitInfo> waitInfos;
 			bool needsFence = false;
 			bool supportsSparse = false;
 
@@ -205,8 +206,10 @@ namespace vulkan {
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
 		void queue_buffer_deletion(VkBuffer buffer) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
-		void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
-		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
+		//void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
+		//void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
+		void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0, bool flush = false);
+		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
 		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
 		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);

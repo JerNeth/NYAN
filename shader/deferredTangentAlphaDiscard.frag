@@ -19,7 +19,7 @@ layout(std430, push_constant) uniform PushConstants
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec4 fragTangent;
-layout(location = 4) in  vec3 fragWorldPos; //currently unused
+layout(location = 4) in vec3 fragWorldPos; //currently unused
 
 layout(location = 0) out vec4 outAlbedo;
 layout(location = 1) out vec4 outNormal;
@@ -45,6 +45,7 @@ void main() {
 //    calculateTBN(tmpTangent, tmpBitangent, tmpNormal, position, fragTexCoord);
 //    vec3 normal = tangentSpaceNormal(normalSample, tmpNormal, tmpBitangent, tmpTangent);
     normal = pack1212(encodeOctahedronMapping(normalize(normal)));
+    //vec3 normal = normalize(fragTangent.xyz);
     //vec3 normal = pack1212(encodeOctahedronMapping(normalize(fragNormal)));
     //normal.xy = encodeOctahedronMapping(normal);
 
