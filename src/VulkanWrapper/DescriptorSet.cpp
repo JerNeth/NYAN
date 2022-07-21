@@ -2,6 +2,8 @@
 #include "LogicalDevice.h"
 #include "Instance.h"
 
+#include "Utility/Exceptions.h"
+
 vulkan::DescriptorSet::DescriptorSet(DescriptorPool& pool, VkDescriptorSet vkHandle) :
 	r_pool(pool),
 	m_vkHandle(vkHandle)
@@ -582,17 +584,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 	};
 
 	if (auto result = vkCreateDescriptorSetLayout(r_device.get_device(), &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
-		Utility::log_error().location().message(std::to_string((int)result));
-
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorSetLayout, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 
 	VkDescriptorPoolCreateInfo poolCreateInfo{
@@ -604,20 +596,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		.pPoolSizes = poolSizes.data(),
 	};
 	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_pool); result != VK_SUCCESS) {
-		Utility::log_error().location().message(std::to_string((int)result));
-
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorPool, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create DescriptorPool, out of device memory");
-		}
-		if (result == VK_ERROR_FRAGMENTATION_EXT) {
-			throw std::runtime_error("VK: could not create DescriptorPool, fragmentation error");
-		}
-		else {
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 
 }
@@ -648,9 +627,7 @@ vulkan::DescriptorSet vulkan::DescriptorPool::allocate_set()
 		.pSetLayouts = &m_layout
 	};
 	if (auto result = vkAllocateDescriptorSets(r_device.get_device(), &allocateInfo, &set); result != VK_SUCCESS) {
-		Utility::log_error().location().message(std::to_string((int)result));
-
-		throw std::runtime_error("VK: error");
+		throw Utility::VulkanException(result);
 	}
 	return { *this, set };
 }

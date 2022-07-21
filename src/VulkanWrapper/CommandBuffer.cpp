@@ -7,6 +7,7 @@
 #include "Image.h"
 #include "Buffer.h"
 #include "AccelerationStructure.h"
+#include "Utility/Exceptions.h"
 
 vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type, uint32_t threadIdx) :
 	r_device(parent),
@@ -400,6 +401,14 @@ void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout 
 void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor)
 {
 	assert(false);
+	VkImageSubresourceRange range{
+		.aspectMask {vulkan::ImageInfo::format_to_aspect_mask(image.get_format())},
+		.baseMipLevel {0},
+		.levelCount {VK_REMAINING_MIP_LEVELS},
+		.baseArrayLayer {0},
+		.layerCount {VK_REMAINING_ARRAY_LAYERS},
+	};
+	vkCmdClearDepthStencilImage(m_vkHandle, image.get_handle(), layout, clearColor, 1, &range);
 }
 
 bool vulkan::CommandBuffer::swapchain_touched() const noexcept
@@ -425,16 +434,7 @@ vulkan::CommandBuffer::operator VkCommandBuffer() const noexcept
 void vulkan::CommandBuffer::end()
 {
 	if (auto result = vkEndCommandBuffer(m_vkHandle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not end command buffer, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not end command buffer, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while ending command buffer", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 

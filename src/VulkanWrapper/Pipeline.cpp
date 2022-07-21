@@ -22,16 +22,7 @@ vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vecto
 	};
 
 	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
-		Utility::log_error().location().message(std::to_string((int)result));
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create pipeline layout, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create pipeline layout, out of device memory");
-		}
-		else {
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 vulkan::PipelineLayout2::~PipelineLayout2()
@@ -76,12 +67,7 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& p
 		.pInitialData = data.data(),
 	};
 	if (auto result = vkCreatePipelineCache(r_parent.get_device(), &createInfo, r_parent.get_allocator(), &m_handle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("PipelineCache: Out of memory");
-		}
-		else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("PipelineCache: Out of device memory");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 
@@ -310,20 +296,8 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 	};
 
 	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
-		result != VK_SUCCESS) {
-		Utility::log_error().location().message(std::to_string((int)result));
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create graphics pipeline, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create graphics pipeline, out of device memory");
-		}
-		if (result == VK_ERROR_INVALID_SHADER_NV) {
-			throw std::runtime_error("VK: could not create graphics pipeline, invalid shader nv");
-		}
-		else {
-			throw std::runtime_error("VK: error");
-		}
+		result != VK_SUCCESS || result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+		throw Utility::VulkanException(result);
 	}
 }
 

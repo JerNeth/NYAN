@@ -15,6 +15,7 @@
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+#include "Utility/Exceptions.h"
 
 vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
 	m_parent(parent)
@@ -226,19 +227,7 @@ void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 		.pCode = shaderCode.data(),
 	};
 	if (auto result = vkCreateShaderModule(m_parent.get_device(), &createInfo, m_parent.get_allocator(), &m_module); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create shader module, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create shader module, out of device memory");
-		}
-		if (result == VK_ERROR_INVALID_SHADER_NV) {
-			throw std::runtime_error("VK: could not create shader module, invalid shader NV");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating Shader Module", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 	
 }

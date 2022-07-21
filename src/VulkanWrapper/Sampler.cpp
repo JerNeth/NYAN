@@ -1,5 +1,6 @@
 #include "Sampler.h"
 #include "LogicalDevice.h"
+#include "Utility/Exceptions.h"
 
 vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSamplerCreateInfo& createInfo):
 	r_device(device),
@@ -7,7 +8,7 @@ vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSamplerCreateInf
 {
 
 	if (auto result = vkCreateSampler(r_device.get_device(), &m_createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
-		throw std::runtime_error("Could not create sampler");
+		throw Utility::VulkanException(result);
 	}
 }
 vulkan::Sampler::~Sampler() noexcept{

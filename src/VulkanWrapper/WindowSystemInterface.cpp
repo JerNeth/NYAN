@@ -55,27 +55,11 @@ void vulkan::WindowSystemInterface::begin_frame()
 	do {
 		auto semaphore = r_device.request_semaphore();
 		if (result = vkAcquireNextImageKHR(r_device.get_device(), m_vkHandle, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_swapchainImageIndex); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not acquire next image, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not acquire next image, out of device memory");
-			}
-			if (result == VK_ERROR_DEVICE_LOST) {
-				throw Utility::DeviceLostException("VK: could not acquire next image, device lost");
-			}
 			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 				update_swapchain();
 			}
-			if (result == VK_ERROR_SURFACE_LOST_KHR) {
-				throw std::runtime_error("VK: could not acquire next image, surface lost");
-			}
-			if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
-				throw std::runtime_error("VK: could not acquire next image, fullscreen exclusive mode lost");
-			}
 			else if (result != VK_NOT_READY) {
-				Utility::log_error().location().format("VK: error %d while aquiring swapchain Images", static_cast<int>(result));
-				throw std::runtime_error("VK: error");
+				throw Utility::VulkanException(result);
 			}
 		}
 		else {
@@ -105,27 +89,11 @@ void vulkan::WindowSystemInterface::end_frame()
 	};
 
 	if (auto result = vkQueuePresentKHR(r_device.get_graphics_queue(), &presentInfo); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not present, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not present, out of device memory");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw Utility::DeviceLostException("VK: could not present, device lost");
-		}
-		if (result == VK_ERROR_SURFACE_LOST_KHR) {
-			throw std::runtime_error("VK: could not present, surface lost");
-		}
-		if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
-			throw std::runtime_error("VK: could not present, fullscreen exclusive mode lost");
-		}
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			destroy_swapchain();
 		}
 		else {
-			Utility::log_error().location().format("VK: error %d while presenting queue", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
+			throw Utility::VulkanException(result);
 		}
 	}
 }
@@ -229,28 +197,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.oldSwapchain = old,
 	};
 	if (auto result = vkCreateSwapchainKHR(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, native window in use");
-		}
-		if (result == VK_ERROR_INITIALIZATION_FAILED) {
-			throw std::runtime_error("VK: could not create swapchain, initialization failed");
-		}
-		if (result == VK_ERROR_SURFACE_LOST_KHR) {
-			throw std::runtime_error("VK: could not create swapchain, surface lost");
-		}
-		if (result == VK_ERROR_DEVICE_LOST) {
-			throw Utility::DeviceLostException("VK: could not create swapchain, device lost");
-		}
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create swapchain, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating swapchain", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 
 	if (old != VK_NULL_HANDLE) {
@@ -258,29 +205,11 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	}
 	uint32_t imageCount {0};
 	if (auto result = vkGetSwapchainImagesKHR(r_device.get_device(), m_vkHandle, &imageCount, nullptr); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not get swapchain image count, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not get swapchain image count, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while getting swapchain image count", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 	m_swapchainImages.resize(imageCount);
 	if (auto result = vkGetSwapchainImagesKHR(r_device.get_device(), m_vkHandle, &imageCount, m_swapchainImages.data()); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not get swapchain images, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not get swapchain images, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while getting swapchain images", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 	return true;
 }

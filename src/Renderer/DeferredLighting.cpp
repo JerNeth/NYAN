@@ -2,6 +2,7 @@
 #include "entt/entt.hpp"
 #include "VulkanWrapper/CommandBuffer.h"
 #include "VulkanWrapper/Sampler.h"
+#include "Utility/Exceptions.h"
 #include <future>
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
@@ -188,10 +189,10 @@ vulkan::BufferHandle nyan::DeferredRayShadowsLighting::create_sbt(const vulkan::
 	auto handleSize{ rtProperties.shaderGroupHandleSize };
 	auto groupCount{ rayConfig.rgenGroups.size() + rayConfig.hitGroups.size() + rayConfig.missGroups.size() + rayConfig.callableGroups.size() };
 	std::vector<std::byte> handleData(handleSize * groupCount);
-	auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data());
-	assert(result == VK_SUCCESS);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Couldn't create SBT");
+	if (auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data()); result != VK_SUCCESS) {
+		assert(false);
+		throw Utility::VulkanException(result);
+	}
 	auto handleStride = Utility::align_up(handleSize, rtProperties.shaderGroupHandleAlignment);
 	uint32_t rgenCount{ static_cast<uint32_t>(rayConfig.rgenGroups.size()) };
 	uint32_t hitCount{ static_cast<uint32_t>(rayConfig.hitGroups.size()) };

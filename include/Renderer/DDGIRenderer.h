@@ -23,7 +23,7 @@ namespace nyan {
 			uint32_t raysPerProbe{ 128 };
 			uint32_t irradianceProbeSize{ 8 };
 			uint32_t depthProbeSize{ 16 };
-			float depthBias{ 1e-2 };
+			float depthBias{ 1e-2f };
 		private:
 			entt::hashed_string irradianceTexName;
 			entt::hashed_string depthTexName;

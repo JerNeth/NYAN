@@ -21,5 +21,6 @@ target_include_directories(imgui SYSTEM PUBLIC
   ${imgui_SOURCE_DIR}
 )
 #target_compile_definitions(imgui PRIVATE IMGUI_DISABLE_OBSOLETE_KEYIO)
+target_compile_definitions(imgui PUBLIC ImTextureID=ImU32)
 #message(${imgui_SOURCE_DIR})
 #message(${IMGUI_SRC})

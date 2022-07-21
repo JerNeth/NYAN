@@ -1,8 +1,8 @@
 #include "Image.h"
-#include "Image.h"
 #include "Instance.h"
 #include "LogicalDevice.h"
 #include "Allocator.h"
+#include "Utility/Exceptions.h"
 
 vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& info) :
 	r_device(parent),
@@ -23,16 +23,7 @@ vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& i
 			}
 	};
 	if (auto result = vkCreateImageView(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create image view, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create image view, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating ImageView", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 

@@ -1,8 +1,8 @@
 #include "Manager.h"
 
-#include <stdexcept>
-
 #include "LogicalDevice.h"
+
+#include "Utility/Exceptions.h"
 
 vulkan::FenceManager::~FenceManager() noexcept {
 	for (auto fence : m_fences) {
@@ -56,7 +56,7 @@ void vulkan::FenceManager::reset_fence(VkFence fence) {
 		vkResetFences(r_device.get_device(), 1, &fence_);
 	}
 	else {
-		throw std::runtime_error("Couldn't reset fence");
+		throw Utility::VulkanException(status);
 	}
 }
 vulkan::SemaphoreManager::~SemaphoreManager() noexcept
@@ -75,16 +75,7 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 			.flags = 0
 		};
 		if (auto result = vkCreateSemaphore(r_device.get_device(), &semaphoreCreateInfo, r_device.get_allocator(), &semaphore); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not create Semaphore, out of device memory");
-			}
-			else {
-				Utility::log_error().location().format("VK: error %d while creating semaphore", static_cast<int>(result));
-				throw std::runtime_error("VK: error");
-			}
+			throw Utility::VulkanException(result);
 		}
 		return semaphore;
 	}

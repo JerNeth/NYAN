@@ -45,7 +45,7 @@ namespace MM {
 	{
 		auto& t = reg.get<nyan::MaterialId>(e);
 		auto& mat = manager->get_material(t);
-		ImGui::Image(reinterpret_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+		ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
 		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
 		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
@@ -267,7 +267,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle
 							.height = (uint32_t)(clip_rect.w - clip_rect.y),
 						}
 					};
-					auto tex = reinterpret_cast<int>(pcmd->TextureId) -1;
+					auto tex = static_cast<int>(pcmd->TextureId) -1;
 					if (tex != -1) {
 						push.texId = tex;
 					}

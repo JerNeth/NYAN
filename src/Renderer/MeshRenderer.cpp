@@ -3,6 +3,7 @@
 #include "CommandBuffer.h"
 #include "Buffer.h"
 #include "Pipeline.h"
+#include "Utility/Exceptions.h"
 
 nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),
@@ -322,10 +323,10 @@ vulkan::BufferHandle nyan::RTMeshRenderer::create_sbt(const vulkan::RaytracingPi
 	auto handleSize{ rtProperties.shaderGroupHandleSize };
 	auto groupCount{ rayConfig.rgenGroups.size() + rayConfig.hitGroups.size() + rayConfig.missGroups.size() + rayConfig.callableGroups.size() };
 	std::vector<std::byte> handleData(handleSize * groupCount);
-	auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data());
-	assert(result == VK_SUCCESS);
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Couldn't create SBT");
+	if (auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data()); result != VK_SUCCESS) {
+		assert(false);
+		throw Utility::VulkanException(result);
+	}
 	auto handleStride = Utility::align_up(handleSize, rtProperties.shaderGroupHandleAlignment);
 	uint32_t rgenCount{ static_cast<uint32_t>(rayConfig.rgenGroups.size()) };
 	uint32_t hitCount{ static_cast<uint32_t>(rayConfig.hitGroups.size()) };

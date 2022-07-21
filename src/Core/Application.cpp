@@ -1,6 +1,5 @@
-#include "..\..\include\Core\Application.h"
-#include "..\..\include\Core\Application.h"
 #include "Application.h"
+#include "Utility/Exceptions.h"
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
@@ -164,8 +163,8 @@ bool nyan::Application::setup_vulkan_instance()
 		instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 		m_vulkanInstance = std::make_unique<vulkan::Instance>(instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
 	}
-	catch (const std::runtime_error& error) {
-		std::cerr << error.what() << std::endl;
+	catch (const Utility::VulkanException& error) {
+		Utility::log_error(error.what());
 		return false;
 	}
 	return true;
@@ -194,8 +193,8 @@ bool nyan::Application::setup_vulkan_device()
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);
 		m_vulkanDevice->create_pipeline_cache("pipeline.cache");
 	}
-	catch (const std::runtime_error& error) {
-		std::cerr << error.what() << std::endl;
+	catch (const Utility::VulkanException& error) {
+		Utility::log_error(error.what());
 		return false;
 	}
 	return true;
@@ -210,8 +209,8 @@ bool nyan::Application::setup_vulkan_surface()
 		m_vulkanInstance->setup_x11_surface(m_window->get_x11_window(),m_window->get_x11_display());
 		#endif
 	}
-	catch (const std::runtime_error& error) {
-		std::cerr << error.what() << std::endl;
+	catch (const Utility::VulkanException& error) {
+		Utility::log_error(error.what());
 		return false;
 	}
 	return true;

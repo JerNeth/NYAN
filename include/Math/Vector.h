@@ -114,7 +114,7 @@ namespace Math {
 			result += std::to_string(m_data[Size - 1]) + ")";
 			return result;
 		}
-		constexpr friend inline bool close(const Vec& lhs, const Vec& rhs, const Scalar& eps = static_cast<Scalar>(1e-5)) noexcept {
+		constexpr friend inline bool close(const Vec& lhs, const Vec& rhs, const Scalar& eps = static_cast<Scalar>(1e-5f)) noexcept {
 			for (size_t i = 0; i < Size; i++)
 				if (!close(lhs.m_data[i], rhs.m_data[i], eps))
 					return false;

@@ -1,5 +1,7 @@
 #include "CommandPool.h"
 #include "LogicalDevice.h"
+#include "Utility/Exceptions.h"
+
 vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyIndex) :
 	r_device(parent)
 {
@@ -9,16 +11,7 @@ vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyInde
 			.queueFamilyIndex = queueFamilyIndex,
 	};
 	if (auto result = vkCreateCommandPool(r_device.get_device(), &commandPoolCreateInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create command pool, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create command pool, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating command pool", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 
@@ -55,16 +48,7 @@ VkCommandBuffer vulkan::CommandPool::request_command_buffer()
 			.commandBufferCount = 1,
 		}; 
 		if (auto result = vkAllocateCommandBuffers(r_device.get_device(), &commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not allocate command buffers, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not allocate command buffers, out of device memory");
-			}
-			else {
-				Utility::log_error().location().format("VK: error %d while allocating command buffers", static_cast<int>(result));
-				throw std::runtime_error("VK: error");
-			}
+			throw Utility::VulkanException(result);
 		}
 		m_primaryBuffers.push_back(buffer);
 		//std::cout << "Requested (Create) Cmd Buffer: " << m_primaryBuffers[m_primaryBufferIdx] << "\n";
@@ -87,16 +71,7 @@ VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 			.commandBufferCount = 1,
 		};
 		if (auto result = vkAllocateCommandBuffers(r_device.get_device(), &commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
-			if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-				throw std::runtime_error("VK: could not allocate command buffers, out of host memory");
-			}
-			if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-				throw std::runtime_error("VK: could not allocate command buffers, out of device memory");
-			}
-			else {
-				Utility::log_error().location().format("VK: error %d while allocating secondary command buffers", static_cast<int>(result));
-				throw std::runtime_error("VK: error");
-			}
+			throw Utility::VulkanException(result);
 		}
 		m_secondaryBuffers.push_back(buffer);
 		m_secondaryBufferIdx++;

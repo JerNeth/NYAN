@@ -364,18 +364,12 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 #endif //  0
 	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
 	if (auto result = vkQueueSubmit2(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not submit to Queue, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not submit to Queue, out of device memory");
-		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw Utility::DeviceLostException("VK: could not submit to Queue, device lost");
+			throw Utility::DeviceLostException("Could not submit to Queue");
 		}
 		else {
 			Utility::log_error().location().format("VK: error %d while submitting queue", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
+			throw Utility::VulkanException(result);
 		}
 	}
 	submissions.clear();
@@ -432,6 +426,7 @@ void vulkan::LogicalDevice::add_wait_semaphore(CommandBufferType type, VkSemapho
 			.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 			.pNext { nullptr },
 			.semaphore { semaphore },
+			.value {value},
 			.stageMask { stages },
 			.deviceIndex { 0 }
 		});
@@ -871,16 +866,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
 	};
 	if (auto result = vmaCreateImage(get_vma_allocator()->get_handle(), &createInfo, &allocInfo, &image, &allocation, nullptr); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could create image, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could create image, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating Image", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 	auto tmp = info;
 	tmp.mipLevels = createInfo.mipLevels;
@@ -934,8 +920,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 	}
 	VkImage image = VK_NULL_HANDLE;
 	if (auto result = vkCreateImage(m_device, &createInfo, m_allocator, &image); result != VK_SUCCESS) {
-		Utility::log_error().location().format("VK: error %d while creating sparse image", static_cast<int>(result));
-		throw std::runtime_error("VK: error");
+		throw Utility::VulkanException(result);
 	}
 
 	VmaAllocationCreateInfo allocCreateInfo{
@@ -1507,7 +1492,7 @@ void vulkan::LogicalDevice::create_vma_allocator()
 
 	VmaAllocator allocator;
 	if (auto result = vmaCreateAllocator(&allocatorInfo, &allocator); result != VK_SUCCESS) {
-		throw std::runtime_error("VMA: could not create allocator");
+		throw Utility::VulkanException(result);
 	}
 	m_vmaAllocator = std::make_unique<Allocator>(allocator);
 }
@@ -1887,10 +1872,10 @@ void vulkan::LogicalDevice::FrameResource::begin()
 		fences.reserve(waitForFences.size());
 		for (auto &fence : waitForFences)
 			fences.push_back(fence);
-		auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX);
-		assert(result != VK_ERROR_DEVICE_LOST);
-		if (result != VK_SUCCESS) {
-			throw std::runtime_error("Couldn't wait for fence");
+		
+		if (auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX); result != VK_SUCCESS || result != VK_TIMEOUT) {
+			assert(false);
+			throw Utility::VulkanException(result);
 		}
 #ifdef DEBUGSUBMISSIONS
 		std::cout << "Frame(" << std::to_string(r_device.m_currentFrame) << ")\n\t FencesWait: ";

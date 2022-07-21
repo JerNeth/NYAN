@@ -9,7 +9,7 @@
 {
 	
 	(void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
-	fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
+	Utility::log_error().format("[vulkan] Debug report from ObjectType: {}\nMessage:{}\n\n", static_cast<int>(objectType), pMessage);
 	return VK_FALSE;
 }
 
@@ -75,16 +75,7 @@ void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 		.hwnd = hwnd,
 	};
 	if (auto result = vkCreateWin32SurfaceKHR(m_instance, &createInfo, m_allocator, &m_surface); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create win32 surface, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create win32 surface, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating Win32 Surface", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 #else
@@ -95,16 +86,7 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 		.window = window,
 	};
 	if (auto result = vkCreateXlibSurfaceKHR(m_instance, &createInfo, m_allocator, &m_surface); result != VK_SUCCESS) {
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create Xlib surface, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create Xlib surface, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating xlib surface", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 }
 #endif
@@ -180,14 +162,16 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 	}
 	std::vector<const char*> extensions;
 
-	uint32_t propertyCount;
-	vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, nullptr);
-	std::vector<VkExtensionProperties> properties(propertyCount);
-	vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, properties.data());
+	{
+		uint32_t propertyCount;
+		vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, nullptr);
+		std::vector<VkExtensionProperties> properties(propertyCount);
+		vkEnumerateInstanceExtensionProperties(NULL, &propertyCount, properties.data());
 
-	for (auto it = m_extensions.begin(); it != m_extensions.end(); ++it) 
-		if (std::find_if(properties.begin(), properties.end(), [&it](auto& val) {return std::strcmp(*it, val.extensionName) == 0; }) != properties.end())
-			extensions.push_back(*it);
+		for (auto it = m_extensions.begin(); it != m_extensions.end(); ++it)
+			if (std::find_if(properties.begin(), properties.end(), [&it](auto& val) {return std::strcmp(*it, val.extensionName) == 0; }) != properties.end())
+				extensions.push_back(*it);
+	}
 
 	for (auto& layer : m_layers) {
 		uint32_t propertyCount;
@@ -214,35 +198,11 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 		.ppEnabledExtensionNames = m_extensions.data()
 	};
 	if (auto result = vkCreateInstance(&createInfo, m_allocator, &m_instance)) {
-		if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
-			throw std::runtime_error("VK: could not create instance, missing extension");
-		}
-		if (result == VK_ERROR_INITIALIZATION_FAILED) {
-			throw std::runtime_error("VK: could not create instance, initialization failed");
-		}
-		if (result == VK_ERROR_LAYER_NOT_PRESENT) {
-			throw std::runtime_error("VK: could not create instance, layer not present");
-		}
-		if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
-			throw std::runtime_error("VK: could not create instance, incompatible driver");
-		}
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create instance, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create instance, out of device memory");
-		}
-		else {
-			Utility::log_error().location().format("VK: error %d while creating Instance", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
-		}
+		throw Utility::VulkanException(result);
 	}
 	volkLoadInstance(m_instance);
 	if constexpr (debug) {
-		//auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkCreateDebugReportCallbackEXT");
-		if (vkCreateDebugReportCallbackEXT == NULL) {
-			throw std::runtime_error("VK: could not find debug report callback ext");
-		}
+		assert(vkCreateDebugReportCallbackEXT);
 		VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
 			.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
@@ -250,8 +210,7 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 			.pUserData = nullptr
 		};
 		if (auto result = vkCreateDebugReportCallbackEXT(m_instance, &debugReportCallbackCreateInfo, m_allocator, &m_debugReport); result != VK_SUCCESS) {
-			Utility::log_error().location().format("VK: error %d while creating debug report callback", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
+			throw Utility::VulkanException(result);
 		}
 	}
 }
@@ -410,30 +369,11 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_de
 	};
 	VkDevice logicalDevice;
 	if (auto result = vkCreateDevice(m_vkHandle, &createInfo, nullptr, &logicalDevice); result != VK_SUCCESS) {
-		if (result == VK_ERROR_TOO_MANY_OBJECTS) {
-			throw std::runtime_error("VK: could not create device, too many objects");
-		}
-		if (result == VK_ERROR_INITIALIZATION_FAILED) {
-			throw std::runtime_error("VK: could not create device, initialization failed");
-		}
-		if (result == VK_ERROR_FEATURE_NOT_PRESENT) {
-			throw std::runtime_error("VK: could not create device, feature not present");
-		}
 		if (result == VK_ERROR_DEVICE_LOST) {
-			throw Utility::DeviceLostException("VK: could not create device, device lost");
-		}
-		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			throw std::runtime_error("VK: could not create device, out of host memory");
-		}
-		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			throw std::runtime_error("VK: could not create device, out of device memory");
-		}
-		if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
-			throw std::runtime_error("VK: could not create device, extension not present");
+			throw Utility::DeviceLostException("Could not create device");
 		}
 		else {
-			Utility::log_error().location().format("VK: error %d while creating Logical Device", static_cast<int>(result));
-			throw std::runtime_error("VK: error");
+			throw Utility::VulkanException(result);
 		}
 	}
 	return std::make_unique<LogicalDevice>(instance,*this, logicalDevice, m_genericQueueFamily, m_computeQueueFamily, m_transferQueueFamily);
