@@ -5,11 +5,145 @@
 #include "LogicalDevice.h"
 
 
-[[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+[[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugReportFlagsEXT flags,
+	[[maybe_unused]] VkDebugReportObjectTypeEXT objectType, [[maybe_unused]] uint64_t object, [[maybe_unused]] size_t location,
+	[[maybe_unused]] int32_t messageCode, [[maybe_unused]] const char* pLayerPrefix, [[maybe_unused]] const char* pMessage,[[maybe_unused]] void* pUserData)
 {
-	
-	(void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
-	Utility::log_error().format("[vulkan] Debug report from ObjectType: {}\nMessage:{}\n\n", static_cast<int>(objectType), pMessage);
+	Utility::Logger logger;
+	if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
+		logger.message("[Information] ");
+	else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
+		logger.message("[Warning] ");
+	else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
+		logger.message("[Performance-Warning] ");
+	else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+		logger = Utility::log_error();
+		logger.message("[Error] ");
+	}
+	else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)
+		logger.message("[Debug] ");
+	logger.message("\n[");
+	switch (objectType) {
+		case VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT:
+			logger.message("Unknown object");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
+			logger.message("Instance");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
+			logger.message("Physical device");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
+			logger.message("Logical device");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
+			logger.message("Queue");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
+			logger.message("Semaphore");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
+			logger.message("Command buffer");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
+			logger.message("Fence");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
+			logger.message("Device Memory");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
+			logger.message("Buffer");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
+			logger.message("Image");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
+			logger.message("Event");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
+			logger.message("Query pool");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
+			logger.message("Buffer view");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
+			logger.message("Image view");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
+			logger.message("Shader module");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
+			logger.message("Pipeline cache");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
+			logger.message("Pipeline layout");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
+			logger.message("Render pass");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
+			logger.message("Pipeline");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
+			logger.message("Descritpor set layout");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
+			logger.message("Sampler");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
+			logger.message("Descriptor pool");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
+			logger.message("Descriptor set");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
+			logger.message("Framebuffer");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
+			logger.message("Command pool");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
+			logger.message("Surface KHR");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
+			logger.message("Swapchain KHR");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT:
+			logger.message("Debug report callback");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT:
+			logger.message("Display KHR");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT:
+			logger.message("Display mode KHR");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT:
+			logger.message("Validation cache EXT");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT:
+			logger.message("Sampler YCBCR conversion");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT:
+			logger.message("Descriptor update template");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_CU_MODULE_NVX_EXT:
+			logger.message("Cu module NVX");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_CU_FUNCTION_NVX_EXT:
+			logger.message("Cu function NVX");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT:
+			logger.message("Acceleration structure KHR");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT:
+			logger.message("Acceleration structure NV");
+			break;
+		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA_EXT:
+			logger.message("Buffer collection fuchsia");
+			break;
+	}
+	logger.message("]");
+	Utility::log_error().format("({:#x}):\n{}n", object, pMessage);
 	return VK_FALSE;
 }
 

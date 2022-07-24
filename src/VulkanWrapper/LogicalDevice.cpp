@@ -1873,7 +1873,7 @@ void vulkan::LogicalDevice::FrameResource::begin()
 		for (auto &fence : waitForFences)
 			fences.push_back(fence);
 		
-		if (auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX); result != VK_SUCCESS || result != VK_TIMEOUT) {
+		if (auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX); result != VK_SUCCESS && result != VK_TIMEOUT) {
 			assert(false);
 			throw Utility::VulkanException(result);
 		}

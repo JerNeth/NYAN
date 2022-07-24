@@ -296,7 +296,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 	};
 
 	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
-		result != VK_SUCCESS || result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
 		throw Utility::VulkanException(result);
 	}
 }
