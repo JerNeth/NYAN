@@ -152,6 +152,7 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 	};
 	bind.push_constants(constants);
 	bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
+
 }
 
 vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_config()

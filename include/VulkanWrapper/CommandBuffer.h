@@ -34,12 +34,12 @@ namespace vulkan {
 		void copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits);
 		void copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact);
 		void mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier);
-		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount,
-			const VkMemoryBarrier* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
-			uint32_t imageBarrierCounts, const VkImageMemoryBarrier* imageBarriers);
-		void barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
-			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
-			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
+		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount = 0,
+			const VkMemoryBarrier* globals = nullptr, uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier* bufferBarriers = nullptr,
+			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier* imageBarriers = nullptr);
+		void barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
+			uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier2* bufferBarriers = nullptr,
+			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr);
 		void reset_event2(VkEvent event, VkPipelineStageFlags2 stages);
 		void set_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
 			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,

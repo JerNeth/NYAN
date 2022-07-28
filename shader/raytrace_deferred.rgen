@@ -73,7 +73,7 @@ void main()
             specular.a = albedo.a;
             diffuse.a = albedo.a;
             uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
-            float tMin     = 0.01;
+            float tMin     = 0.5 * (1.0 - NdotL);
             float tMax     = 10000.0;
             shadowed = 0.0;
             traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
@@ -94,7 +94,7 @@ void main()
             specularAccum += specular* shadowed;
         }
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
-        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
+        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum + diffuseAccum);
     } else {
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0));
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0.2, 0.3, 0.6, 1.0));

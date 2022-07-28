@@ -29,6 +29,7 @@ namespace nyan {
 		uint32_t instanceBinding;
 		uint32_t instanceId;
 		uint32_t sceneBinding;
+		uint32_t accBinding;
 	};
 	class MeshRenderer {
 	public:

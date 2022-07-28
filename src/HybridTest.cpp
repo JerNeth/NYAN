@@ -147,7 +147,7 @@ int main() {
 	//		//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 	//		.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 	//	});
-	auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
+	//auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
 
 
 	auto& deferredRTPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
@@ -187,7 +187,7 @@ int main() {
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
-	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
+	//nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);

@@ -26,6 +26,7 @@ namespace Utility {
 		Logger& operator=(const Logger& other) {
 			m_type = other.m_type;
 			m_newLine = other.m_newLine;
+			return *this;
 		}
 		Logger& operator=(Logger&& other){
 			if (this != &other) {
@@ -33,6 +34,7 @@ namespace Utility {
 				m_newLine = other.m_newLine;
 				other.m_newLine = false;
 			}
+			return *this;
 		}
 		~Logger() {
 			if (!m_newLine)

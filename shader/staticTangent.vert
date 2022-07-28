@@ -32,9 +32,10 @@ void main() {
 	mat4x3 model = fetchTransformMatrix(instance);
     //Cancel out translations before other transformations
     mat3 modelS = mat3(model);
-    model[3] -= vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    //model[3] -= vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+	//gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
     fragWorldPos = model * vec4( inPosition, 1.0);
-	gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
+	gl_Position = scene.proj * scene.view * vec4(fragWorldPos, 1.0);
     vec3 tangent =  inTangent.xyz * modelS;
     vec3 normal = modelS *  inNormal.xyz;
     //tangent = normalize(tangent - dot(tangent, normal) * normal);

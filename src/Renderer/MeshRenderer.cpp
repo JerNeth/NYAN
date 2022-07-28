@@ -186,6 +186,7 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
 					.instanceId {instanceId},
 					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+					.accBinding { *r_renderManager.get_instance_manager().get_tlas_bind()}
 				};
 				render(pipelineBind, meshID, instance);
 			}
@@ -197,6 +198,7 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
 					.instanceId {instanceId},
 					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+					.accBinding { *r_renderManager.get_instance_manager().get_tlas_bind()}
 				};
 				render(pipelineBind, meshID, instance);
 			}
