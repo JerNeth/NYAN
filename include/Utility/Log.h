@@ -20,7 +20,7 @@ namespace Utility {
 		constexpr Logger(const Logger& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
 
 		}
-		constexpr Logger(Logger&& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
+		constexpr Logger(Logger&& other) noexcept : m_type(other.m_type), m_newLine(other.m_newLine) {
 			other.m_newLine = false;
 		}
 		Logger& operator=(const Logger& other) {
@@ -28,7 +28,7 @@ namespace Utility {
 			m_newLine = other.m_newLine;
 			return *this;
 		}
-		Logger& operator=(Logger&& other){
+		Logger& operator=(Logger&& other) noexcept {
 			if (this != &other) {
 				m_type = other.m_type;
 				m_newLine = other.m_newLine;
