@@ -94,7 +94,7 @@ int main() {
 				.parent {parent},
 			});
 		registry.emplace<std::string>(entity, a.name);
-		registry.emplace<DeferredAlphaTest>(entity);
+		registry.emplace<Forward>(entity);
 
 	}
 

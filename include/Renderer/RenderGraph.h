@@ -111,7 +111,7 @@ namespace nyan {
 		void add_write(const entt::hashed_string& name, ImageAttachment attachment, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
 		void add_swapchain_write(Math::vec4 clearColor = Math::vec4{}, Renderpass::Write::Type writeType = Write::Type::Graphics, bool clear = false);
 			//void add_read_dependency(const std::string& name, bool storageImage = false);
-		void add_renderfunction(const std::function<void(vulkan::CommandBufferHandle&, Renderpass&) > & functor, bool renderpass) {
+		void add_renderfunction(const std::function<void(vulkan::CommandBuffer&, Renderpass&) > & functor, bool renderpass) {
 			m_renderFunctions.push_back(functor);
 			m_useRendering.push_back(renderpass);
 		}
@@ -122,14 +122,14 @@ namespace nyan {
 		Type get_type() const noexcept {
 			return m_type;
 		}
-		void execute(vulkan::CommandBufferHandle& cmd);
-		void do_copies(vulkan::CommandBufferHandle& cmd);
-		void apply_pre_barriers(vulkan::CommandBufferHandle& cmd);
-		void apply_copy_barriers(vulkan::CommandBufferHandle& cmd);
-		void apply_post_barriers(vulkan::CommandBufferHandle& cmd);
+		void execute(vulkan::CommandBuffer& cmd);
+		void do_copies(vulkan::CommandBuffer& cmd);
+		void apply_pre_barriers(vulkan::CommandBuffer& cmd);
+		void apply_copy_barriers(vulkan::CommandBuffer& cmd);
+		void apply_post_barriers(vulkan::CommandBuffer& cmd);
 		void add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id);
-		void begin_rendering(vulkan::CommandBufferHandle& cmd);
-		void end_rendering(vulkan::CommandBufferHandle& cmd);
+		void begin_rendering(vulkan::CommandBuffer& cmd);
+		void end_rendering(vulkan::CommandBuffer& cmd);
 		uint32_t get_write_bind(uint32_t idx);
 		uint32_t get_read_bind(uint32_t idx);
 		uint32_t get_write_bind(const entt::hashed_string& name, Write::Type type = Write::Type::Graphics);
@@ -151,7 +151,7 @@ namespace nyan {
 		entt::hashed_string m_name;
 		Type m_type;
 		uint32_t m_id;
-		std::vector<std::function<void(vulkan::CommandBufferHandle&, Renderpass&)>> m_renderFunctions;
+		std::vector<std::function<void(vulkan::CommandBuffer&, Renderpass&)>> m_renderFunctions;
 		std::vector<bool> m_useRendering;
 		bool m_rendersSwap = false;
 		//Order Renderpass ressources as Reads first, then writes, i.e. [R] 1, [R] 5, [W] 2, [W] 3

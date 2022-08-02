@@ -277,6 +277,18 @@ void vulkan::CommandBuffer::barrier2(VkDependencyFlags dependencyFlags, uint32_t
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
 	assert(!(barrierCount != 0) || (globals != nullptr));
 	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
+	//for (auto a = 0; a < imageBarrierCounts; ++a)
+	//	assert(!(imageBarriers[a].dstStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < imageBarrierCounts; ++a)
+	//	assert(!(imageBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < bufferBarrierCounts; ++a)
+	//	assert(!(bufferBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < bufferBarrierCounts; ++a)
+	//	assert(!(bufferBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < barrierCount; ++a)
+	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < barrierCount; ++a)
+	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
 	VkDependencyInfo dependencyInfo{
 		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
 		.pNext {nullptr},
@@ -331,6 +343,18 @@ void vulkan::CommandBuffer::wait_event2(VkEvent event, VkDependencyFlags depende
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
 	assert(!(barrierCount != 0) || (globals != nullptr));
 	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
+	//for (auto a = 0; a < imageBarrierCounts; ++a)
+	//	assert(!(imageBarriers[a].dstStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < imageBarrierCounts; ++a)
+	//	assert(!(imageBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < bufferBarrierCounts; ++a)
+	//	assert(!(bufferBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < bufferBarrierCounts; ++a)
+	//	assert(!(bufferBarriers[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < barrierCount; ++a)
+	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+	//for (auto a = 0; a < barrierCount; ++a)
+	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
 	VkDependencyInfo dependencyInfo{
 		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
 		.pNext {nullptr},

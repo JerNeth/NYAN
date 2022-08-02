@@ -157,11 +157,34 @@ bool nyan::Application::setup_vulkan_instance()
 {
 	try {
 		auto instanceExtensions = m_glfwLibrary->get_required_extensions();
+
+		if constexpr (debug) {
+			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
 		instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
 		instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
 		instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
 		instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
-		m_vulkanInstance = std::make_unique<vulkan::Instance>(instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
+		vulkan::Instance::Validation validation{
+			.enabled {debug},
+			.createCallback {debug},
+			.gpuAssisted { false },
+			.gpuAssistedReserveBindingSlot { false },
+			.bestPractices { false },
+			.debugPrintf { false },
+			.synchronizationValidation { false },
+			.disableAll { false },
+			.disableShaders { false },
+			.disableThreadSafety { false },
+			.disableAPIParameters { false },
+			.disableObjectLifetimes { false },
+			.disableCoreChecks { false },
+			.disableUniqueHandles { false },
+			.disableShaderValidationCache { false },
+
+		};
+		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
 	}
 	catch (const Utility::VulkanException& error) {
 		Utility::log_error(error.what());
@@ -185,8 +208,8 @@ bool nyan::Application::setup_vulkan_device()
 			VK_KHR_RAY_QUERY_EXTENSION_NAME,
 			VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
 			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-			VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+			//VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, 1.2 Core
+			//VK_KHR_MAINTENANCE_4_EXTENSION_NAME, 1.3 Core
 			VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME,
 		};
 		m_vulkanDevice = m_vulkanInstance->setup_device(requiredExtensions, optionalExtensions);

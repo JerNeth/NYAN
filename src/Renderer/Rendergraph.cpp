@@ -252,7 +252,7 @@ void nyan::Renderpass::copy(const entt::hashed_string& source, const entt::hashe
 	//targetResource.m_copiedIntoIn.insert(m_id);
 }
 
-void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::execute(vulkan::CommandBuffer& cmd)
 {
 
 	//for (auto readId : m_reads) {
@@ -304,7 +304,7 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 		}
 	}
 	if (m_rendersSwap)
-		cmd->touch_swapchain();
+		cmd.touch_swapchain();
 	for (size_t i{ 0 }; i < m_renderFunctions.size(); i++) {
 		const auto &renderFunction = m_renderFunctions[i];
 		if (m_useRendering[i])
@@ -316,34 +316,34 @@ void nyan::Renderpass::execute(vulkan::CommandBufferHandle& cmd)
 	do_copies(cmd);
 }
 
-void nyan::Renderpass::do_copies(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::do_copies(vulkan::CommandBuffer& cmd)
 {
 	apply_copy_barriers(cmd);
 	for (const auto& [srcId, dstId] : m_copies) {
 		const auto& src = r_graph.get_resource(srcId);
 		const auto& dst = r_graph.get_resource(dstId);
-		cmd->copy_image(*src.handle, *dst.handle);
+		cmd.copy_image(*src.handle, *dst.handle);
 	}
 }
 
-void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBuffer& cmd)
 {
 	if(m_bufferPostBarrierIndex != m_bufferPreBarrierIndex || m_imagePostBarrierIndex != m_imagePreBarrierIndex)
-		cmd->barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferPostBarrierIndex - m_bufferPreBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferPreBarrierIndex,
+		cmd.barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferPostBarrierIndex - m_bufferPreBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferPreBarrierIndex,
 			static_cast<uint32_t>(m_imagePostBarrierIndex - m_imagePreBarrierIndex), m_imageBarriers2.barriers.data() + m_imagePreBarrierIndex);
 }
 
-void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBuffer& cmd)
 {
 	if (m_bufferPreBarrierIndex != m_bufferCopyBarrierIndex || m_imagePreBarrierIndex != m_imageCopyBarrierIndex)
-		cmd->barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferPreBarrierIndex - m_bufferCopyBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferCopyBarrierIndex,
+		cmd.barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferPreBarrierIndex - m_bufferCopyBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferCopyBarrierIndex,
 			static_cast<uint32_t>(m_imagePreBarrierIndex - m_imageCopyBarrierIndex), m_imageBarriers2.barriers.data() + m_imageCopyBarrierIndex);
 }
 
-void nyan::Renderpass::apply_post_barriers(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 {
 	if (m_bufferBarriers2.barriers.size() != m_bufferPostBarrierIndex || m_imageBarriers2.barriers.size() != m_imagePostBarrierIndex)
-		cmd->barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferBarriers2.barriers.size() - m_bufferPostBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferPostBarrierIndex,
+		cmd.barrier2(0, 0, nullptr, static_cast<uint32_t>(m_bufferBarriers2.barriers.size() - m_bufferPostBarrierIndex), m_bufferBarriers2.barriers.data() + m_bufferPostBarrierIndex,
 			static_cast<uint32_t>(m_imageBarriers2.barriers.size() - m_imagePostBarrierIndex), m_imageBarriers2.barriers.data() + m_imagePostBarrierIndex);
 }
 
@@ -352,16 +352,16 @@ void nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig config, vulka
 	m_queuedPipelineBuilds.emplace_back(config, id);
 }
 
-void nyan::Renderpass::begin_rendering(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::begin_rendering(vulkan::CommandBuffer& cmd)
 {
 	if (m_type == Renderpass::Type::Generic)
-		cmd->begin_rendering(m_renderInfo);
+		cmd.begin_rendering(m_renderInfo);
 }
 
-void nyan::Renderpass::end_rendering(vulkan::CommandBufferHandle& cmd)
+void nyan::Renderpass::end_rendering(vulkan::CommandBuffer& cmd)
 {
 	if (m_type == Renderpass::Type::Generic)
-		cmd->end_rendering();
+		cmd.end_rendering();
 }
 
 uint32_t nyan::Renderpass::get_write_bind(uint32_t idx)
@@ -811,8 +811,9 @@ void nyan::Rendergraph::execute()
 			break;
 		}
 		//std::cout << "Execute pass: "<< pass.get_id() << "\n";
-		auto cmd = r_device.request_command_buffer(commandBufferType);
-		cmd->begin_region(pass.m_name.data());
+		auto cmdHandle = r_device.request_command_buffer(commandBufferType);
+		auto& cmd = *cmdHandle;
+		cmd.begin_region(pass.m_name.data());
 		pass.apply_pre_barriers(cmd);
 		for (auto [id, type, view, binding] : pass.m_writes) {
 			auto& resource = m_renderresources.get_direct(id);
@@ -827,18 +828,18 @@ void nyan::Rendergraph::execute()
 							attachment.clearColor.w()
 						}
 					};
-					cmd->clear_color_image(*resource.handle, VK_IMAGE_LAYOUT_GENERAL, &clearValue);
+					cmd.clear_color_image(*resource.handle, VK_IMAGE_LAYOUT_GENERAL, &clearValue);
 				}
 			}
 		}
 		pass.execute(cmd);
 		pass.apply_post_barriers(cmd);
-		cmd->end_region();
+		cmd.end_region();
 
 		r_device.add_wait_semaphores(commandBufferType, pass.m_waitInfos);
 		pass.m_waitInfos.clear();
 		std::vector<VkSemaphore> signals(pass.m_signals.size(), VK_NULL_HANDLE);
-		r_device.submit(cmd, static_cast<uint32_t>(signals.size()), signals.data());
+		r_device.submit_flush(cmdHandle, static_cast<uint32_t>(signals.size()), signals.data());
 		for (size_t i{ 0 }; i < pass.m_signals.size(); i++) {
 			auto& waitPass = m_renderpasses.get_direct(pass.m_signals[i].passId);
 			waitPass.add_wait(signals[i], pass.m_signals[i].stage);

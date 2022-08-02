@@ -12,9 +12,9 @@ nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::re
 	r_pass(pass)
 {
 	create_pipeline();
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd->bind_graphics_pipeline(m_deferredPipeline);
+			auto pipelineBind = cmd.bind_graphics_pipeline(m_deferredPipeline);
 			VkViewport viewport{
 			.x = 0,
 			.y = 0,
@@ -118,9 +118,9 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 	m_rtPipeline(create_pipeline(generate_config())),
 	m_sbt(create_sbt(generate_config()))
 {
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd->bind_raytracing_pipeline(m_rtPipeline);
+			auto pipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
 
 			render(pipelineBind);
 
@@ -282,9 +282,9 @@ nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::regist
 	r_pass(pass)
 {
 	create_pipeline();
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd->bind_graphics_pipeline(m_compositePipeline);
+			auto pipelineBind = cmd.bind_graphics_pipeline(m_compositePipeline);
 			VkViewport viewport{
 			.x = 0,
 			.y = 0,

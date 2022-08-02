@@ -31,6 +31,7 @@ find_package(spirv-cross-core)
 
 # SPIRV-Cross
 if(NOT spirv-cross-core_FOUND)
+    message("spriv-cross-core not found fetching from repo")
     include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 endif()
 

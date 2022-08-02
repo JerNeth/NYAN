@@ -7,7 +7,26 @@
 namespace vulkan {
 	class Instance {
 	public:
-		Instance(const char** extensions, uint32_t extensionCount, std::string applicationName = "", std::string engineName = "");
+		struct Validation {
+			uint32_t enabled : 1;
+			uint32_t createCallback : 1;
+			uint32_t gpuAssisted : 1;
+			uint32_t gpuAssistedReserveBindingSlot : 1;
+			uint32_t bestPractices : 1;
+			uint32_t debugPrintf : 1;
+			uint32_t synchronizationValidation : 1;
+			uint32_t disableAll : 1;
+			uint32_t disableShaders : 1;
+			uint32_t disableThreadSafety : 1;
+			uint32_t disableAPIParameters : 1;
+			uint32_t disableObjectLifetimes : 1;
+			uint32_t disableCoreChecks : 1;
+			uint32_t disableUniqueHandles : 1;
+			uint32_t disableShaderValidationCache : 1;
+
+		};
+
+		Instance(const Validation& validation, const char** extensions, uint32_t extensionCount, std::string applicationName = "", std::string engineName = "");
 		~Instance() noexcept;
 		Instance(Instance&) = delete;
 		Instance& operator=(Instance&) = delete;
@@ -40,9 +59,9 @@ namespace vulkan {
 		size_t m_bestDevice = 0;
 		std::vector<PhysicalDevice> m_physicalDevices;
 		VkAllocationCallbacks* m_allocator = NULL;
-		VkDebugReportCallbackEXT m_debugReport;
+		VkDebugReportCallbackEXT m_debugReport {VK_NULL_HANDLE};
 
-
+		Validation m_validation;
 		std::vector<const char*> m_layers;
 		std::vector<const char*> m_extensions;
 		std::string m_applicationName;
@@ -93,6 +112,7 @@ namespace vulkan {
 		const VkPhysicalDeviceVulkan13Features& get_vulkan13_features() const noexcept;
 		const VkPhysicalDeviceAccelerationStructureFeaturesKHR& get_acceleration_structure_features() const noexcept;
 		const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& get_ray_tracing_pipeline_features() const noexcept;
+		const VkPhysicalDeviceRayQueryFeaturesKHR& get_ray_query_features() const noexcept;
 		const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT& get_vertex_input_dynamic_state_features() const noexcept;
 		const VkPhysicalDeviceMeshShaderFeaturesNV& get_mesh_shader_features() const noexcept;
 
@@ -127,6 +147,7 @@ namespace vulkan {
 		VkPhysicalDeviceVulkan13Features  m_13Features{};
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures{};
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_rayTracingPipelineFeatures{};
+		VkPhysicalDeviceRayQueryFeaturesKHR m_rayQueryFeatures{};
 		VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT m_vertexInputDynamicStateFeatures{};
 		VkPhysicalDeviceMeshShaderFeaturesNV m_meshShaderFeatures{};
 

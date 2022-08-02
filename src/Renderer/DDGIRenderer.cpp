@@ -196,9 +196,9 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		}, nyan::Renderpass::Write::Type::Compute);
 
 
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&)
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd->bind_compute_pipeline(m_renderDDGIPipeline);
+			auto pipelineBind = cmd.bind_compute_pipeline(m_renderDDGIPipeline);
 			for (uint32_t i = 0; i < r_renderManager.get_ddgi_manager().slot_count(); ++i) {
 				render_volume(pipelineBind, i);
 			}
@@ -244,7 +244,7 @@ nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::regist
 	m_enabled(true)
 {
 	create_pipeline();
-	r_pass.add_renderfunction([](vulkan::CommandBufferHandle& cmd, nyan::Renderpass&) 
+	r_pass.add_renderfunction([](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 
 		}, true);

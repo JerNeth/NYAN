@@ -147,9 +147,11 @@
 	return VK_FALSE;
 }
 
-vulkan::Instance::Instance(const char** extensions, uint32_t extensionCount, std::string applicationName, std::string engineName)
-	: m_applicationName(applicationName),
-	m_engineName(engineName) 
+vulkan::Instance::Instance(const Validation& validation, const char** extensions, uint32_t extensionCount, std::string applicationName, std::string engineName)
+	:
+	m_validation(validation),
+	m_applicationName(applicationName),
+	m_engineName(engineName)
 {
 	volkInitialize();
 	m_extensions.assign(extensions, extensions + extensionCount);
@@ -158,10 +160,8 @@ vulkan::Instance::Instance(const char** extensions, uint32_t extensionCount, std
 }
 
 vulkan::Instance::~Instance() {
-	if constexpr (debug) {
-		//auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(m_instance, "vkDestroyDebugReportCallbackEXT");
+	if (m_debugReport != VK_NULL_HANDLE)
 		vkDestroyDebugReportCallbackEXT(m_instance, m_debugReport, m_allocator);
-	}
 	vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
 	vkDestroyInstance(m_instance, m_allocator);
 
@@ -276,11 +276,9 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 				.apiVersion = VK_API_VERSION_1_3
 	};
 
-	if constexpr (debug) {
-		m_extensions.push_back("VK_EXT_debug_report");
-		m_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	if(m_validation.enabled)
 		m_layers.push_back("VK_LAYER_KHRONOS_validation");
-	}
+
 	uint32_t layerPropertyCount;
 	vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
 	std::vector<VkLayerProperties> layerProperties(layerPropertyCount);
@@ -322,20 +320,65 @@ void vulkan::Instance::create_instance(uint32_t applicationVersion, uint32_t eng
 		if (std::find_if(extensions.begin(), extensions.end(), [&it](auto& val) {return std::strcmp(*it, val) == 0; }) == extensions.end())
 			Utility::log().location().format("Instance extension not present: {}", *it);
 	
-	
+	std::array<VkValidationFeatureEnableEXT, 5> validationFeatureEnables;
+	std::array<VkValidationFeatureDisableEXT, 8> validationFeatureDisables;
+
+	VkValidationFeaturesEXT validationFeatures{
+		.sType {VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT},
+		.pNext {nullptr},
+		.enabledValidationFeatureCount { 0 },
+		.pEnabledValidationFeatures { validationFeatureEnables.data() },
+		.disabledValidationFeatureCount { 0 },
+		.pDisabledValidationFeatures {validationFeatureDisables.data()}
+	};
+	{
+		if (m_validation.gpuAssisted)
+			validationFeatureEnables[validationFeatures.enabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT;
+		if (m_validation.gpuAssistedReserveBindingSlot)
+			validationFeatureEnables[validationFeatures.enabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT;
+		if (m_validation.bestPractices)
+			validationFeatureEnables[validationFeatures.enabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT;
+		if (m_validation.debugPrintf)
+			validationFeatureEnables[validationFeatures.enabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT;
+		if (m_validation.synchronizationValidation)
+			validationFeatureEnables[validationFeatures.enabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
+	}
+
+	{
+		if (m_validation.disableAll)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_ALL_EXT;
+		if (m_validation.disableShaders)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_SHADERS_EXT;
+		if (m_validation.disableThreadSafety)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_THREAD_SAFETY_EXT;
+		if (m_validation.disableAPIParameters)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_API_PARAMETERS_EXT;
+		if (m_validation.disableObjectLifetimes)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_OBJECT_LIFETIMES_EXT;
+		if (m_validation.disableCoreChecks)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_CORE_CHECKS_EXT;
+		if (m_validation.disableUniqueHandles)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_UNIQUE_HANDLES_EXT;
+		if (m_validation.disableShaderValidationCache)
+			validationFeatureDisables[validationFeatures.disabledValidationFeatureCount++] = VK_VALIDATION_FEATURE_DISABLE_SHADER_VALIDATION_CACHE_EXT;
+	}
 	VkInstanceCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pNext {nullptr},
 		.pApplicationInfo = &applicationInfo,
 		.enabledLayerCount = static_cast<uint32_t>(m_layers.size()),
 		.ppEnabledLayerNames = m_layers.data(),
 		.enabledExtensionCount = static_cast<uint32_t>(m_extensions.size()),
 		.ppEnabledExtensionNames = m_extensions.data()
 	};
+	if (m_validation.enabled)
+		createInfo.pNext = &validationFeatures;
 	if (auto result = vkCreateInstance(&createInfo, m_allocator, &m_instance)) {
 		throw Utility::VulkanException(result);
 	}
 	volkLoadInstance(m_instance);
-	if constexpr (debug) {
+	if (m_validation.createCallback) {
+		assert(m_validation.enabled);
 		assert(vkCreateDebugReportCallbackEXT);
 		VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
@@ -420,6 +463,11 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 				m_features.pNext = &m_rayTracingPipelineFeatures;
 				m_extensions.ray_tracing_pipeline = m_rayTracingPipelineFeatures.rayTracingPipeline;
 			}
+			else if (strcmp(ext.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0) {
+				m_rayQueryFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_rayQueryFeatures;
+				m_extensions.ray_query = m_rayQueryFeatures.rayQuery;
+			}
 			else if (strcmp(ext.extensionName, VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
 				m_vertexInputDynamicStateFeatures.pNext = m_features.pNext;
 				m_features.pNext = &m_vertexInputDynamicStateFeatures;
@@ -441,9 +489,6 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
 				m_extensions.debug_utils = 1;
-			}
-			else if (strcmp(ext.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0) {
-				m_extensions.ray_query = 1;
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME) == 0) {
 				m_extensions.pipeline_library = 1;
@@ -568,6 +613,11 @@ const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& vulkan::PhysicalDevice::get
 	return m_rayTracingPipelineFeatures;
 }
 
+const VkPhysicalDeviceRayQueryFeaturesKHR& vulkan::PhysicalDevice::get_ray_query_features() const noexcept
+{
+	return m_rayQueryFeatures;
+}
+
 const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT& vulkan::PhysicalDevice::get_vertex_input_dynamic_state_features() const noexcept
 {
 	return m_vertexInputDynamicStateFeatures;
@@ -675,7 +725,10 @@ void vulkan::PhysicalDevice::init_features() noexcept
 	m_accelerationStructureFeatures.pNext = &m_rayTracingPipelineFeatures;
 
 	m_rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-	m_rayTracingPipelineFeatures.pNext = &m_vertexInputDynamicStateFeatures;
+	m_rayTracingPipelineFeatures.pNext = &m_rayQueryFeatures;
+
+	m_rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+	m_rayQueryFeatures.pNext = &m_vertexInputDynamicStateFeatures;
 
 	m_vertexInputDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
 	m_vertexInputDynamicStateFeatures.pNext = &m_meshShaderFeatures;

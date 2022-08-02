@@ -84,7 +84,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 	set_up_pipeline(renderManager.get_shader_manager(), pass);
 	set_up_font();
-	pass.add_renderfunction([this](vulkan::CommandBufferHandle & cmd, nyan::Renderpass &)
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass &)
 	{
 		ImGui::Render();
 		ImDrawData* drawData = ImGui::GetDrawData();
@@ -168,9 +168,9 @@ void nyan::ImguiRenderer::end_frame()
 
 }
 
-void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBufferHandle& cmd)
+void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 {
-	auto pipelineBind = cmd->bind_graphics_pipeline(m_pipeline);
+	auto pipelineBind = cmd.bind_graphics_pipeline(m_pipeline);
 	int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
 	int fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 	pipelineBind.bind_index_buffer((*m_dataBuffer)->get_handle() , m_bufferOffsets[3], sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);

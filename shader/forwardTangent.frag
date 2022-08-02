@@ -37,6 +37,7 @@ void main() {
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
     vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
     albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+
     vec2 normalSample = texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg;
    // vec3 normal = tangentSpaceNormal(normalSample,fragNormal, fragBitangent, fragTangent);
     Scene scene = scenes[constants.sceneBinding].scene;
@@ -53,24 +54,30 @@ void main() {
     float metalness = material.metalness;
     vec4 diffuse;
     vec4 specular;
-    
-    //rayQueryEXT rq;
 
-    //rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, fragWorldPos.xyz, 0.01, scene.dirLight1.dir, 10000);
+    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewVec = normalize(viewPos - fragWorldPos.xyz);
+    if(dot(normal, viewVec) < 0) {
+        normal = -normal;
+    }
+    
+    rayQueryEXT rq;
+
+    rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, fragWorldPos.xyz, 0.01, scene.dirLight1.dir, 10000);
 
     // Traverse the acceleration structure and store information about the first intersection (if any)
-   // rayQueryProceedEXT(rq);
+    rayQueryProceedEXT(rq);
 
-    //if (rayQueryGetIntersectionTypeEXT(rq, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
+    if (rayQueryGetIntersectionTypeEXT(rq, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
         // Not in shadow
         shadeFragment(fragWorldPos, normal, scene, albedo, metalness, roughness, specular, diffuse);
         outSpecular = vec4(specular.xyz, albedo.w);
         outDiffuse = vec4( diffuse.xyz, albedo.w);
-//    }
-//    else {
-//        outSpecular = vec4(0, 0,0 , albedo.w);
-//        outDiffuse = vec4(0, 0,0 , albedo.w);
-//    }
+    }
+    else {
+        outSpecular = vec4(0, 0,0 , albedo.w);
+        outDiffuse = vec4(0, 0,0 , albedo.w);
+    }
     //normal.xy = encodeOctahedronMapping(normal);
 //
 //    outAlbedo = albedo;

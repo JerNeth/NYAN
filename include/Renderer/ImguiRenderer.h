@@ -22,7 +22,7 @@ namespace nyan {
 		void next_frame();
 		void end_frame();
 	private:
-		void create_cmds(ImDrawData* draw_data, vulkan::CommandBufferHandle& cmd);
+		void create_cmds(ImDrawData* draw_data, vulkan::CommandBuffer& cmd);
 		void prep_buffer(ImDrawData* draw_data);
 		void set_up_pipeline(vulkan::ShaderManager& shaderManager, nyan::Renderpass& pass);
 		void set_up_font();
