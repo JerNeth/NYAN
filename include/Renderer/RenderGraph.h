@@ -122,11 +122,20 @@ namespace nyan {
 		Type get_type() const noexcept {
 			return m_type;
 		}
+		void do_binds();
 		void execute(vulkan::CommandBuffer& cmd);
 		void do_copies(vulkan::CommandBuffer& cmd);
 		void apply_pre_barriers(vulkan::CommandBuffer& cmd);
 		void apply_copy_barriers(vulkan::CommandBuffer& cmd);
 		void apply_post_barriers(vulkan::CommandBuffer& cmd);
+		void add_pre_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
+		void add_copy_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
+		void add_post_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
+		void add_pre_barrier(VkMemoryBarrier2 barrier);
+		void add_copy_barrier(VkMemoryBarrier2 barrier);
+		void add_post_barrier(VkMemoryBarrier2 barrier);
+
+
 		void add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id);
 		void begin_rendering(vulkan::CommandBuffer& cmd);
 		void end_rendering(vulkan::CommandBuffer& cmd);
@@ -170,14 +179,14 @@ namespace nyan {
 
 		std::vector< PipelineBuild> m_queuedPipelineBuilds;
 
-		struct ImageBarriers {
-			std::vector<RenderResourceId> images;
-			std::vector<VkImageMemoryBarrier2> barriers;
-		} m_imageBarriers2;
 
-		size_t m_imagePostBarrierIndex{ 0 };
-		size_t m_imageCopyBarrierIndex{ 0 };
-		size_t m_imagePreBarrierIndex{ 0 };
+		struct GlobalBarriers {
+			std::vector<VkMemoryBarrier2> barriers;
+		} m_globalBarriers2;
+
+		size_t m_globalPostBarrierIndex{ 0 };
+		size_t m_globalCopyBarrierIndex{ 0 };
+		size_t m_globalPreBarrierIndex{ 0 };
 
 		struct BufferBarriers {
 			std::vector<RenderResourceId> buffers;
@@ -187,6 +196,16 @@ namespace nyan {
 		size_t m_bufferPostBarrierIndex{ 0 };
 		size_t m_bufferCopyBarrierIndex{ 0 };
 		size_t m_bufferPreBarrierIndex{ 0 };
+
+		struct ImageBarriers {
+			std::vector<RenderResourceId> images;
+			std::vector<VkImageMemoryBarrier2> barriers;
+		} m_imageBarriers2;
+
+		size_t m_imagePostBarrierIndex{ 0 };
+		size_t m_imageCopyBarrierIndex{ 0 };
+		size_t m_imagePreBarrierIndex{ 0 };
+
 
 		VkRenderingInfo m_renderInfo
 		{

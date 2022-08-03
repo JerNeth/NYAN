@@ -60,9 +60,9 @@ void main()
         
         vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
         vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
-        if(dot(normal, viewVec) < 0) {
-            normal = -normal;
-        }
+//        if(dot(normal, viewVec) < 0) {
+//            normal = -normal;
+//        }
         float NdotL = max(dot(normal, light1.dir), 0.0);
         if(NdotL > 0) {
             
@@ -73,25 +73,32 @@ void main()
             specular.a = albedo.a;
             diffuse.a = albedo.a;
             uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
-            float tMin     = 0.5 * (1.0 - NdotL);
+            float tMin     = 0.5; //0.5 * (1.0 - NdotL);
             float tMax     = 10000.0;
+            float shadowAccum = 0.0;
+            int numShadowRays = 1;
+            //vec3 perpL = 0.005 * normalize(vec3(light1.dir.y + light1.dir.z, light1.dir.z - light1.dir.x, -light1.dir.x - light1.dir.y)); //Hairy ball theorem: not guaranteed to always work
+            //vec3 perpR = 0.005 * normalize(cross(light1.dir, perpL));
+            vec3 shadowRayDir;
+            
+            shadowRayDir = normalize(light1.dir);
             shadowed = 0.0;
             traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-                  rayFlags,       // rayFlags
-                  0xFF,           // cullMask
-                  0,              // sbtRecordOffset
-                  0,              // sbtRecordStride
-                  0,              // missIndex
-                  worldSpacePos.xyz,     // ray origin
-                  tMin,           // ray min range
-                  light1.dir,  // ray direction
-                  tMax,           // ray max range
-                  1               // payload (location = 0)
+                    rayFlags,       // rayFlags
+                    0xFF,           // cullMask
+                    0,              // sbtRecordOffset
+                    0,              // sbtRecordStride
+                    0,              // missIndex
+                    worldSpacePos.xyz,     // ray origin
+                    tMin,           // ray min range
+                    shadowRayDir,  // ray direction
+                    tMax,           // ray max range
+                    1               // payload (location = 0)
             );
-            
+            shadowAccum += shadowed / numShadowRays;
 
-            diffuseAccum += diffuse* shadowed;
-            specularAccum += specular* shadowed;
+            diffuseAccum += diffuse* shadowAccum;
+            specularAccum += specular* shadowAccum;
         }
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum + diffuseAccum);

@@ -35,7 +35,12 @@ void main() {
     albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
     vec2 normalSample = texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg;
     vec3 normal = computeTangentSpaceNormal(normalSample,fragNormal, fragTangent);
-
+    Scene scene = scenes[constants.sceneBinding].scene;
+    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewVec = normalize(viewPos - fragWorldPos.xyz);
+    if(dot(normal, viewVec) < 0) {
+        normal = -normal;
+    }
 //    vec3 position = gl_FragCoord.xyz / gl_FragCoord.w;
 //    vec3 tmpNormal = fragNormal;
 //    vec3 tmpBitangent;

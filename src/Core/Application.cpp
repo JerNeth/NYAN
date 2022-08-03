@@ -162,10 +162,10 @@ bool nyan::Application::setup_vulkan_instance()
 			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
-		instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
-		instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
-		instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
-		instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 		vulkan::Instance::Validation validation{
 			.enabled {debug},
 			.createCallback {debug},

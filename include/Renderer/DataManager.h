@@ -37,6 +37,7 @@ namespace nyan {
 			auto* map = m_slot->buffer->map_data();
 			std::memcpy(map, m_slot->data.data(), size);
 			m_slot->buffer->flush(0, static_cast<uint32_t>(size));
+			m_slot->buffer->invalidate(0, static_cast<uint32_t>(size));
 			m_slot->dirty = false;
 
 		}

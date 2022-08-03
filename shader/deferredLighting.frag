@@ -55,12 +55,12 @@ void main() {
         vec4 worldSpacePos = scene.invView * viewSpacePos;
         vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
         vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
-        if(dot(normal, viewVec) >= 0) {
-            normal = -normal;
-        }
-
-        vec4 diffuse;
-        vec4 specular;
+//        if(dot(normal, viewVec) <= 0) {
+//            normal = -normal;
+//        }
+        
+        vec4 diffuse = vec4(0.0);
+        vec4 specular= vec4(0.0);
         
         shadeFragment(worldSpacePos.xyz, normal, scene, albedo, metalness, roughness, specular, diffuse);
         outSpecular = vec4(specular.xyz, 1);

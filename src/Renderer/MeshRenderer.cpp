@@ -91,6 +91,7 @@ void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, cons
 	pipelineBind.bind_index_buffer(mesh.indexBuffer, mesh.indexOffset,  VK_INDEX_TYPE_UINT32);
 	pipelineBind.bind_vertex_buffers(0u, mesh.vertexBuffers.size(), mesh.vertexBuffers.data(), mesh.vertexOffsets.data());
 
+
 	pipelineBind.push_constants(instance);
 	pipelineBind.draw_indexed(mesh.indexCount, 1, mesh.firstIndex, mesh.vertexOffset, mesh.firstInstance);
 }

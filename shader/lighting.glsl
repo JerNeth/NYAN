@@ -71,11 +71,11 @@ float multi_scattering_diffuse_brdf(float NdotL, float NdotV, float NdotH, float
     return fd + fb;
 }
 
-vec3 brdf_lambert(vec3 diffuseColor)
+float brdf_lambert()
 {
     float single = 1 / 3.1415926;
 
-    return  diffuseColor.xyz * single;
+    return  single;
 }
 
 float brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float LdotH, vec3 specularColor, float alpha) {
@@ -103,6 +103,7 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
     //diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
    
     diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- metalness) * light.intensity * albedo.xyz * NdotL) * light.color ; 
+    //diffuse.xyz += brdf_lambert()*( (1- metalness) * light.intensity * albedo.xyz * NdotL) * light.color;
     //TODO Energy Compensation for multiple Scattering
     //Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
 	//Sony Pictures Imageworks’s Lighting Model Integration Report
