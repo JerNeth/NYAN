@@ -128,12 +128,12 @@ namespace nyan {
 		void apply_pre_barriers(vulkan::CommandBuffer& cmd);
 		void apply_copy_barriers(vulkan::CommandBuffer& cmd);
 		void apply_post_barriers(vulkan::CommandBuffer& cmd);
-		void add_pre_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
-		void add_copy_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
-		void add_post_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image);
-		void add_pre_barrier(VkMemoryBarrier2 barrier);
-		void add_copy_barrier(VkMemoryBarrier2 barrier);
-		void add_post_barrier(VkMemoryBarrier2 barrier);
+		void add_pre_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image);
+		void add_copy_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image);
+		void add_post_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image);
+		void add_pre_barrier(const VkMemoryBarrier2& barrier);
+		void add_copy_barrier(const VkMemoryBarrier2& barrier);
+		void add_post_barrier(const VkMemoryBarrier2& barrier);
 
 
 		void add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id);
@@ -260,6 +260,7 @@ namespace nyan {
 		RenderResourceId m_swapchainResource = InvalidResourceId;
 		RenderpassId m_renderpassCount = 0;
 		RenderResourceId m_resourceCount = 0;
+		//RenderpassId m_lastPass { invalidRenderpassId };
 	};
 }
 

@@ -3,24 +3,25 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
+#include "..\..\shader\descriptors.h"
 #include "Shader.h"
 #include <Util>
 #include <numeric>
 #include <format>
 namespace vulkan {
-	constexpr uint32_t storageBufferBinding = 0;
-	constexpr uint32_t uniformBufferBinding = 1;
-	constexpr uint32_t samplerBinding = 2;
-	constexpr uint32_t sampledImageBinding = 3;
-	constexpr uint32_t storageImageBinding = 4;
-	constexpr uint32_t accelerationStructureBinding = 5;
+	static constexpr uint32_t storageBufferBinding = STORAGE_BUFFER_BINDING;
+	static constexpr uint32_t uniformBufferBinding = UNIFORM_BUFFER_BINDING;
+	static constexpr uint32_t samplerBinding = SAMPLER_BINDING;
+	static constexpr uint32_t sampledImageBinding = SAMPLED_IMAGE_BINDING;
+	static constexpr uint32_t storageImageBinding = STORAGE_IMAGE_BINDING;
+	static constexpr uint32_t accelerationStructureBinding = ACCELERATION_STRUCTURE_BINDING;
 	struct DescriptorCreateInfo {
-		uint32_t storage_buffer_count = 1 * 1024;
-		uint32_t uniform_buffer_count = 15;
-		uint32_t sampler_count = 256;
-		uint32_t sampled_image_count = 8 * 1024;
-		uint32_t storage_image_count = 8 * 1024;
-		uint32_t acceleration_structure_count = 256;
+		uint32_t storage_buffer_count = SSBO_COUNT;
+		uint32_t uniform_buffer_count = UBO_COUNT;
+		uint32_t sampler_count = SAMPLER_COUNT;
+		uint32_t sampled_image_count = TEXTURE_COUNT;
+		uint32_t storage_image_count = IMAGE_COUNT;
+		uint32_t acceleration_structure_count = ACC_COUNT;
 	};
 	class DescriptorSet {
 	public:

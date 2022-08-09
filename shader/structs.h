@@ -1,3 +1,6 @@
+#ifndef STRUCTS_H
+#define STRUCTS_H
+
 struct Mesh {
 	uint materialBinding;
 	uint materialId;
@@ -111,3 +114,5 @@ struct DDGIVolume {
 
 	float shadowBias;
 };
+
+#endif

@@ -363,13 +363,13 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 			static_cast<uint32_t>(m_imageBarriers2.barriers.size() - m_imagePostBarrierIndex), m_imageBarriers2.barriers.data() + m_imagePostBarrierIndex);
 }
 
-void nyan::Renderpass::add_pre_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image)
+void nyan::Renderpass::add_pre_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image)
 {
 	m_imagePostBarrierIndex++;
 	m_imageBarriers2.barriers.insert(m_imageBarriers2.barriers.begin() + m_imagePreBarrierIndex, barrier);
 	m_imageBarriers2.images.insert(m_imageBarriers2.images.begin() + m_imagePreBarrierIndex, image);
 }
-void nyan::Renderpass::add_copy_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image)
+void nyan::Renderpass::add_copy_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image)
 {
 
 	m_imagePreBarrierIndex++;
@@ -377,25 +377,25 @@ void nyan::Renderpass::add_copy_barrier(VkImageMemoryBarrier2 barrier, RenderRes
 	m_imageBarriers2.barriers.insert(m_imageBarriers2.barriers.begin() + m_imageCopyBarrierIndex, barrier);
 	m_imageBarriers2.images.insert(m_imageBarriers2.images.begin() + m_imageCopyBarrierIndex, image);
 }
-void nyan::Renderpass::add_post_barrier(VkImageMemoryBarrier2 barrier, RenderResourceId image)
+void nyan::Renderpass::add_post_barrier(const VkImageMemoryBarrier2& barrier, RenderResourceId image)
 {
 	m_imageBarriers2.barriers.insert(m_imageBarriers2.barriers.begin() + m_imagePostBarrierIndex, barrier);
 	m_imageBarriers2.images.insert(m_imageBarriers2.images.begin() + m_imagePostBarrierIndex, image);
 }
 
-void nyan::Renderpass::add_pre_barrier(VkMemoryBarrier2 barrier)
+void nyan::Renderpass::add_pre_barrier(const VkMemoryBarrier2& barrier)
 {
 	m_globalPostBarrierIndex++;
 	m_globalBarriers2.barriers.insert(m_globalBarriers2.barriers.begin() + m_globalPreBarrierIndex, barrier);
 }
-void nyan::Renderpass::add_copy_barrier(VkMemoryBarrier2 barrier)
+void nyan::Renderpass::add_copy_barrier(const VkMemoryBarrier2& barrier)
 {
 
 	m_globalPreBarrierIndex++;
 	m_globalPostBarrierIndex++;
 	m_globalBarriers2.barriers.insert(m_globalBarriers2.barriers.begin() + m_globalCopyBarrierIndex, barrier);
 }
-void nyan::Renderpass::add_post_barrier(VkMemoryBarrier2 barrier)
+void nyan::Renderpass::add_post_barrier(const VkMemoryBarrier2& barrier)
 {
 	m_globalBarriers2.barriers.insert(m_globalBarriers2.barriers.begin() + m_globalPostBarrierIndex, barrier);
 }
@@ -668,7 +668,17 @@ void nyan::Rendergraph::build()
 			}
 		}
 		pass.build();
+		//m_lastPass = pass.m_id;
 		});
+	//if (m_lastPass != invalidRenderpassId) {
+	//	auto& lastPass = m_renderpasses.get_direct(static_cast<size_t>(m_lastPass));
+	//	lastPass.add_post_barrier(
+	//	VkMemoryBarrier2{ 
+	//			.sType{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2},
+	//		.srcStageMask {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
+	//		.dstStageMask {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT} 
+	//		});
+	//}
 	assert(m_state == State::Build);
 	m_state = State::Execute;
 }
@@ -912,7 +922,7 @@ void nyan::Rendergraph::execute()
 			waitPass.add_wait(signals[i], pass.m_signals[i].stage);
 		}
 	});
-	r_device.wait_idle(); //Brute force synchronization due to unsolved synchronization issues somewhere else
+	r_device.wait_idle(); //Synchronization issues, guessing view matrix gets updated while frame in flight
 }
 
 RenderResource& nyan::Rendergraph::add_ressource(const entt::hashed_string& name, Attachment attachment)
