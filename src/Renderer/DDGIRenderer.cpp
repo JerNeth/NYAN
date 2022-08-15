@@ -1,3 +1,4 @@
+#include "DDGIRenderer.h"
 #include "..\..\include\Renderer\DDGIRenderer.h"
 #include "Renderer/DDGIRenderer.h"
 #include "Renderer/RenderManager.h"
@@ -176,7 +177,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	r_registry(registry),
 	r_renderManager(renderManager),
 	r_pass(pass),
-	m_renderDDGIPipeline(create_pipeline())
+	m_renderDDGIPipeline(create_pipeline()),
+	m_rtPipeline(generate_config())
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	//For now limit adding ddgi volumes to not allow adding any after render graph build
@@ -234,6 +236,37 @@ vulkan::PipelineId nyan::DDGIRenderer::create_pipeline()
 		.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 	};
 	return r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+}
+
+vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
+{
+
+	return vulkan::RaytracingPipelineConfig{
+		.rgenGroups {
+			vulkan::Group
+			{
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rgen")},
+			},
+		},
+		.hitGroups {
+			vulkan::Group
+			{
+				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rchit")},
+			},
+		},
+		.missGroups {
+			vulkan::Group
+			{
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rmiss")},
+			},
+			vulkan::Group
+			{
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
+			},
+		},
+		.recursionDepth {2},
+		.pipelineLayout = r_device.get_bindless_pipeline_layout()
+	};
 }
 
 nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :

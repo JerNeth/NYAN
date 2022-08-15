@@ -66,12 +66,14 @@ namespace nyan {
 	private:
 		void render_volume(vulkan::ComputePipelineBind& bind, uint32_t volumeId);
 		vulkan::PipelineId create_pipeline();
+		vulkan::RaytracingPipelineConfig generate_config();
 
 		vulkan::LogicalDevice& r_device;
 		entt::registry& r_registry;
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_renderDDGIPipeline;
+		vulkan::RTPipeline m_rtPipeline;
 		bool m_visualize;
 	};
 

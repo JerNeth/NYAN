@@ -307,6 +307,8 @@ namespace vulkan {
 		void trace_rays(const VkStridedDeviceAddressRegionKHR* raygenSBT, const VkStridedDeviceAddressRegionKHR* missSBT,
 			const VkStridedDeviceAddressRegionKHR* hitSBT, const VkStridedDeviceAddressRegionKHR* callableSBT,
 			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
+		void trace_rays(const RTPipeline& pipeline,
+			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
 	private:
 	};
 

@@ -112,6 +112,7 @@ add_executable(FBXTest ${FBXTest_SRC})
 add_executable(RTTest ${RTTest_SRC})
 add_executable(GLTFTest ${GLTFTest_SRC})
 add_executable(HybridTest ${HybridTest_SRC})
+add_executable(DDGITest ${DDGITest_SRC})
 
 #set_target_properties(FBXTest PROPERTIES 
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
@@ -127,6 +128,7 @@ target_link_libraries(FBXTest Engine FBXReader)
 target_link_libraries(GLTFTest Engine tinygltf)
 target_link_libraries(RTTest Engine FBXReader)
 target_link_libraries(HybridTest Engine FBXReader)
+target_link_libraries(DDGITest Engine FBXReader)
 
 #target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 

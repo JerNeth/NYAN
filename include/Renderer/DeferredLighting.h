@@ -5,6 +5,7 @@
 #include "VkWrapper.h"
 #include "RenderGraph.h"
 #include "RenderManager.h"
+#include "RayTracePipeline.h"
 #include "entt/fwd.hpp"
 
 namespace nyan {
@@ -58,18 +59,11 @@ namespace nyan {
 		void render(vulkan::RaytracingPipelineBind& bind);
 	private:
 		vulkan::RaytracingPipelineConfig generate_config();
-		vulkan::PipelineId create_pipeline(const vulkan::RaytracingPipelineConfig& rayConfig);
-		vulkan::BufferHandle create_sbt(const vulkan::RaytracingPipelineConfig& rayConfig);
 		vulkan::LogicalDevice& r_device;
 		entt::registry& r_registry;
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
-		vulkan::PipelineId m_rtPipeline;
-		vulkan::BufferHandle m_sbt;
-		VkStridedDeviceAddressRegionKHR m_rgenRegion;
-		VkStridedDeviceAddressRegionKHR m_hitRegion;
-		VkStridedDeviceAddressRegionKHR m_missRegion;
-		VkStridedDeviceAddressRegionKHR m_callableRegion;
+		vulkan::RTPipeline m_pipeline;
 	};
 
 	class LightComposite {

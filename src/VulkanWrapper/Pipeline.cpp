@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "Shader.h"
 #include "DescriptorSet.h"
+#include "RayTracePipeline.h"
 #include "Utility/Exceptions.h"
 
 vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets) :
@@ -750,4 +751,15 @@ void vulkan::RaytracingPipelineBind::trace_rays(const VkStridedDeviceAddressRegi
 	assert(hitSBT);
 	assert(callableSBT);
 	vkCmdTraceRaysKHR(m_cmd, raygenSBT, missSBT, hitSBT, callableSBT, width, height, depth);
+}
+
+void vulkan::RaytracingPipelineBind::trace_rays(const vulkan::RTPipeline& pipeline, uint32_t width, uint32_t height, uint32_t depth)
+{
+	assert(pipeline.rgen_region());
+	assert(pipeline.miss_region());
+	assert(pipeline.hit_region());
+	assert(pipeline.callable_region());
+	vkCmdTraceRaysKHR(m_cmd, pipeline.rgen_region(),
+		pipeline.miss_region(), pipeline.hit_region(),
+		pipeline.callable_region(), width, height, depth);
 }

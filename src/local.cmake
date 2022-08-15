@@ -42,3 +42,5 @@ set(GLTFTest_SRC "${PROJECT_SOURCE_DIR}/src/GLTFTest.cpp"
 )
 set(HybridTest_SRC "${PROJECT_SOURCE_DIR}/src/HybridTest.cpp"
 )
+set(DDGITest_SRC "${PROJECT_SOURCE_DIR}/src/DDGITest.cpp"
+)

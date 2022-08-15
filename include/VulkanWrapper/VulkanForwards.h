@@ -67,6 +67,7 @@ namespace vulkan {
 	class GraphicsPipelineBind;
 	class ComputePipelineBind;
 	class RaytracingPipelineBind;
+	class RTPipeline;
 	struct ResourceBinding;
 
 	class Shader;
