@@ -125,7 +125,7 @@ namespace nyan {
 		uint32_t m_tlasBind;
 	};
 
-	class SceneManager {
+	class SceneManager : public DataManager<nyan::shaders::Scene>{
 	public:
 		SceneManager(vulkan::LogicalDevice& device);
 		void set_dirlight(const nyan::shaders::DirectionalLight& light);
@@ -134,15 +134,15 @@ namespace nyan {
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse);
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj);
 		void set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj, const Math::Mat<float, 4, 4, true>& projInverse);
-		uint32_t get_binding() const;
+		//uint32_t get_binding() const;
 		void update();
-		void upload();
+		//bool upload(vulkan::CommandBuffer& cmd);
 	private:
-		vulkan::LogicalDevice& r_device;
-		vulkan::BufferHandle m_buffer;
-		uint32_t m_bind;
-		nyan::shaders::Scene m_sceneData;
-		bool m_dirtyScene;
+		//vulkan::LogicalDevice& r_device;
+		//vulkan::BufferHandle m_buffer;
+		//uint32_t m_bind;
+		//nyan::shaders::Scene m_sceneData;
+		//bool m_dirtyScene;
 	};
 }
 

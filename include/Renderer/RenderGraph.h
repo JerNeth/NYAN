@@ -30,7 +30,7 @@ namespace nyan {
 			Image,
 			Buffer
 		};
-		enum class UseType : uint32_t {
+		enum class ImageUse : uint32_t {
 			Sample,
 			ImageLoad,
 			Attachment,
@@ -47,8 +47,8 @@ namespace nyan {
 		Type m_type = Type::Image;
 		RenderResourceId m_id = InvalidResourceId;
 		entt::hashed_string name;
-		std::vector<Utility::bitset<static_cast<size_t>(UseType::Size), UseType>> m_uses;
-		//Utility::bitset<static_cast<size_t>(UseType::Size), UseType> totalUses;
+		std::vector<Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse>> m_uses;
+		//Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse> totalUses;
 		Attachment attachment;
 		vulkan::Image* handle = nullptr;
 	};
@@ -122,7 +122,7 @@ namespace nyan {
 		Type get_type() const noexcept {
 			return m_type;
 		}
-		void do_binds();
+		void update();
 		void execute(vulkan::CommandBuffer& cmd);
 		void do_copies(vulkan::CommandBuffer& cmd);
 		void apply_pre_barriers(vulkan::CommandBuffer& cmd);
@@ -147,6 +147,12 @@ namespace nyan {
 		void add_signal(uint32_t passId, VkPipelineStageFlags2 stage);
 		void build();
 	private:
+		void build_rendering_info();
+		void build_pipelines();
+		void update_binds();
+		void update_image_barriers();
+		void update_rendering_info();
+		void update_views();
 		bool is_read(RenderResourceId id) const;
 		bool is_write(RenderResourceId id) const;
 		bool is_compute_write(RenderResourceId id) const;
@@ -251,6 +257,8 @@ namespace nyan {
 		void set_up_transition(RenderpassId from, RenderpassId to, const RenderResource& resource);
 		void set_up_first_transition(RenderpassId dst, const RenderResource& resource);
 		void set_up_copy(RenderpassId dst, const RenderResource& resource);
+		void update_render_resource(RenderResource& resource);
+		void update_render_resource_image(RenderResource& resource);
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;
@@ -260,6 +268,9 @@ namespace nyan {
 		RenderResourceId m_swapchainResource = InvalidResourceId;
 		RenderpassId m_renderpassCount = 0;
 		RenderResourceId m_resourceCount = 0;
+		RenderpassId m_lastCompute = invalidRenderpassId;
+		RenderpassId m_lastGeneric = invalidRenderpassId;
+
 		//RenderpassId m_lastPass { invalidRenderpassId };
 	};
 }

@@ -1,6 +1,7 @@
 #include "Renderer/RenderManager.h"
 #include "Utility/Exceptions.h"
 #include "LogicalDevice.h"
+#include "CommandBuffer.h"
 #include "AccelerationStructure.h"
 
 nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing) :
@@ -193,13 +194,23 @@ void nyan::RenderManager::update()
 		light.dir = Math::vec3{0.577, 0.577, 0.577};
 		m_sceneManager.set_dirlight(light);
 	}
+	bool needsSemaphore = false;
 	//Order doesn't matter
-	m_ddgiManager.upload();
+	m_ddgiManager.update();
+	auto transferCmdHandle = r_device.request_command_buffer(vulkan::CommandBufferType::Transfer);
+	vulkan::CommandBuffer& transferCmd = transferCmdHandle;
+	needsSemaphore |= m_ddgiManager.upload(transferCmd);
 
 	//Order maybe matters (I forgot)
-	m_meshManager.upload();
-	m_materialManager.upload();
-	m_sceneManager.upload();
-	m_instanceManager.upload();
+	needsSemaphore |= m_meshManager.upload(transferCmd);
+	needsSemaphore |= m_materialManager.upload(transferCmd);
+	needsSemaphore |= m_sceneManager.upload(transferCmd);
+	needsSemaphore |= m_instanceManager.upload(transferCmd);
+	VkSemaphore semaphore;
+	r_device.submit(transferCmdHandle, needsSemaphore, &semaphore);
+	if (needsSemaphore) {
+		r_device.add_wait_semaphore(vulkan::CommandBufferType::Compute, semaphore, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+	}
+
 	m_instanceManager.build();
 }

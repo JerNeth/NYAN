@@ -55,7 +55,7 @@ namespace vulkan {
 		size_t stride {0};
 	};
 
-	constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
+	static constexpr size_t MAX_FRAMES_IN_FLIGHT = 2;
 
 	struct InitialImageData {
 		const void* data = nullptr;

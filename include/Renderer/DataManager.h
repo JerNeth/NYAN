@@ -11,7 +11,8 @@ namespace nyan {
 		struct Slot {
 			uint32_t binding;
 			std::vector<T> data;
-			vulkan::BufferHandle buffer;
+			vulkan::BufferHandle deviceBuffer;
+			vulkan::BufferHandle stagingBuffer;
 			uint32_t slotCapacity;
 			bool dirty;
 		};
@@ -20,27 +21,20 @@ namespace nyan {
 			r_device(device),
 			m_usage(usage)
 		{
-			auto buffer = create_buffer(initialSize);
-			m_slot = std::make_unique<Slot>(Slot{ bind_buffer(buffer), {}, buffer, initialSize, true });
+			auto stagingBuffer = create_buffer(initialSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+			auto deviceBuffer = create_buffer(initialSize, m_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+			m_slot = std::make_unique<Slot>(Slot{
+				.binding{ bind_buffer(deviceBuffer) },
+				.data{},
+				.deviceBuffer{deviceBuffer},
+				.stagingBuffer{stagingBuffer},
+				.slotCapacity{initialSize},
+				.dirty{true }
+			});
 			m_slot->data.reserve(initialSize);
 		}
 
-		void upload() {
-			if (!m_slot->dirty)
-				return;
-			if (m_slot->slotCapacity < m_slot->data.size()) {
-				m_slot->buffer = create_buffer(m_slot->data.capacity());
-				rebind_buffer(m_slot->buffer);
-				m_slot->slotCapacity = static_cast<uint32_t>(m_slot->data.capacity());
-			}
-			auto size = sizeof(T) * m_slot->data.size();
-			auto* map = m_slot->buffer->map_data();
-			std::memcpy(map, m_slot->data.data(), size);
-			m_slot->buffer->flush(0, static_cast<uint32_t>(size));
-			m_slot->buffer->invalidate(0, static_cast<uint32_t>(size));
-			m_slot->dirty = false;
-
-		}
+		bool upload(vulkan::CommandBuffer& cmd);
 
 		uint32_t get_binding() const {
 			return m_slot->binding;
@@ -71,7 +65,7 @@ namespace nyan {
 		}
 		uint32_t bind_buffer(vulkan::BufferHandle& buffer);
 		void rebind_buffer(vulkan::BufferHandle& buffer);
-		vulkan::BufferHandle create_buffer(size_t size);
+		vulkan::BufferHandle create_buffer(size_t size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		vulkan::LogicalDevice& r_device;
 		VkBufferUsageFlags m_usage;

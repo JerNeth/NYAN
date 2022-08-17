@@ -1,5 +1,3 @@
-#include "DDGIRenderer.h"
-#include "..\..\include\Renderer\DDGIRenderer.h"
 #include "Renderer/DDGIRenderer.h"
 #include "Renderer/RenderManager.h"
 #include "VulkanWrapper/Buffer.h"
@@ -178,7 +176,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	r_renderManager(renderManager),
 	r_pass(pass),
 	m_renderDDGIPipeline(create_pipeline()),
-	m_rtPipeline(generate_config())
+	m_rtPipeline(device, generate_config())
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	//For now limit adding ddgi volumes to not allow adding any after render graph build

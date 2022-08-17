@@ -157,15 +157,6 @@ bool nyan::Application::setup_vulkan_instance()
 {
 	try {
 		auto instanceExtensions = m_glfwLibrary->get_required_extensions();
-
-		if constexpr (debug) {
-			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-		}
-		//instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 		vulkan::Instance::Validation validation{
 			.enabled {debug},
 			.createCallback {debug},
@@ -184,6 +175,15 @@ bool nyan::Application::setup_vulkan_instance()
 			.disableShaderValidationCache { false },
 
 		};
+		if (validation.enabled) {
+			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+		//instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
+		//instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+
 		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
 	}
 	catch (const Utility::VulkanException& error) {

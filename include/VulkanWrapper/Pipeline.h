@@ -144,7 +144,7 @@ namespace vulkan {
 
 	//finalColor = finalColor & colorWriteMask;
 	struct RenderingCreateInfo {
-		uint32_t colorAttachmentCount;
+		uint32_t colorAttachmentCount{ 0 };
 		uint32_t viewMask = 0;
 		std::array<VkFormat, MAX_ATTACHMENTS> colorAttachmentFormats{ VK_FORMAT_UNDEFINED };
 		VkFormat depthAttachmentFormat = VK_FORMAT_UNDEFINED;

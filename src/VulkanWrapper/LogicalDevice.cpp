@@ -312,7 +312,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 				.pNext { nullptr },
 				.semaphore { present },
-				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT},
+				.stageMask { VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
 				.deviceIndex { 0 }
 			});
 			m_wsiState.swapchain_touched = true;

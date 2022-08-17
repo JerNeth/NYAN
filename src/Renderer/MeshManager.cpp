@@ -209,7 +209,7 @@ void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
 		assert(m_builder);
-		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->buffer->get_address());
+		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->deviceBuffer->get_address());
 		r_device.get_bindless_set().set_acceleration_structure(m_tlasBind, *(*m_tlas));
 	}
 }
@@ -295,94 +295,59 @@ std::optional<uint32_t> nyan::InstanceManager::get_tlas_bind()
 //}
 
 nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
-	r_device(device),
-	m_buffer(r_device.create_buffer(vulkan::BufferInfo{ .size {sizeof(m_sceneData)},.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT} ,.offset {0}, .memoryUsage {VMA_MEMORY_USAGE_CPU_TO_GPU} }, {})),
-	m_bind(r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{.buffer = m_buffer->get_handle(), .range = m_buffer->get_size()})),
-	m_dirtyScene(true)
+	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 1)
 {
-
+	add({});
 }
 
 void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& light)
 {
-	m_sceneData.dirLight1 = light;
-	m_dirtyScene = true;
+	get(0).dirLight1 = light;
 }
 
 void nyan::SceneManager::set_view_pos(const Math::vec3& pos)
 {
-	m_sceneData.viewerPosX = pos[0];
-	m_sceneData.viewerPosY = pos[1];
-	m_sceneData.viewerPosZ = pos[2];
+	get(0).viewerPosX = pos[0];
+	get(0).viewerPosY = pos[1];
+	get(0).viewerPosZ = pos[2];
 }
 
 void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view)
 {
-	m_sceneData.view = view;
-	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
-	m_sceneData.view.inverse(m_sceneData.invView);
-	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
-	m_dirtyScene = true;
+	auto& sceneData = get(0);
+	sceneData.view = view;
+	sceneData.viewProj = sceneData.proj * sceneData.view;
+	sceneData.view.inverse(sceneData.invView);
+	sceneData.invViewProj = sceneData.invView * sceneData.invProj;
 }
 
 void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse)
 {
-	m_sceneData.view = view;
-	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
-	m_sceneData.invView = viewInverse;
-	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
-	m_dirtyScene = true;
+	auto& sceneData = get(0);
+	sceneData.view = view;
+	sceneData.viewProj = sceneData.proj * sceneData.view;
+	sceneData.invView = viewInverse;
+	sceneData.invViewProj = sceneData.invView * sceneData.invProj;
 }
 
 void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj)
 {
-	m_sceneData.proj = proj;
-	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
-	m_sceneData.proj.inverse(m_sceneData.invProj);
-	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
-	m_dirtyScene = true;
+	auto& sceneData = get(0);
+	sceneData.proj = proj;
+	sceneData.viewProj = sceneData.proj * sceneData.view;
+	sceneData.proj.inverse(sceneData.invProj);
+	sceneData.invViewProj = sceneData.invView * sceneData.invProj;
 }
 
 void nyan::SceneManager::set_proj_matrix(const Math::Mat<float, 4, 4, true>& proj, const Math::Mat<float, 4, 4, true>& projInverse)
 {
-	m_sceneData.proj = proj;
-	m_sceneData.viewProj = m_sceneData.proj * m_sceneData.view;
-	m_sceneData.invProj = projInverse;
-	m_sceneData.invViewProj = m_sceneData.invView * m_sceneData.invProj;
-	m_dirtyScene = true;
-}
-
-uint32_t nyan::SceneManager::get_binding() const
-{
-	return m_bind;
+	auto& sceneData = get(0);
+	sceneData.proj = proj;
+	sceneData.viewProj = sceneData.proj * sceneData.view;
+	sceneData.invProj = projInverse;
+	sceneData.invViewProj = sceneData.invView * sceneData.invProj;
 }
 
 void nyan::SceneManager::update()
 {
-}
-
-void nyan::SceneManager::upload()
-{
-
-	if (m_dirtyScene) {
-		auto size = sizeof(m_sceneData);
-		auto* map = m_buffer->map_data();
-		std::memcpy(map, &m_sceneData, size);
-		m_buffer->flush(0, static_cast<uint32_t>(size));
-		m_dirtyScene = false;
-		auto cmd = r_device.request_command_buffer(vulkan::CommandBufferType::Generic);
-		VkBufferMemoryBarrier2 barrier
-		{
-			.sType { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2},
-			.srcStageMask {VK_PIPELINE_STAGE_2_HOST_BIT},
-			.srcAccessMask {VK_ACCESS_2_HOST_WRITE_BIT},
-			.dstStageMask {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
-			.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT},
-			.buffer {m_buffer->get_handle()},
-			.offset {0},
-			.size {size}
-		};
-		cmd->barrier2(0, 0, nullptr, 1, &barrier, 0, nullptr);
-		r_device.submit(cmd);
-	}
 }

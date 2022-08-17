@@ -7,6 +7,7 @@
 #include "DataManager.h"
 #include "RenderGraph.h"
 #include "ShaderInterface.h"
+#include "RayTracePipeline.h"
 #include "entt/fwd.hpp"
 
 namespace nyan {
