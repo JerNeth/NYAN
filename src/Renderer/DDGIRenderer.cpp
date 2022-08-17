@@ -183,17 +183,25 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	//This holds until render graph refactor in regards to modification or rebuild is done
 	//Also limit to one ddgi volume for now
 	ddgiManager.add_ddgi_volume(nyan::DDGIManager::DDGIVolumeParameters{});
-	pass.add_write("DDGI_Irradiance", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.f, 0.f, 0.f, 0.f},
-		}, nyan::Renderpass::Write::Type::Compute);
+	//pass.add_write("DDGI_Rays", nyan::ImageAttachment
+	//		{
+	//			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+	//			.size {ImageAttachment::Size::Absolute},
+	//			.width { 2048},
+	//			.height { 2048},
+	//			.clearColor{0.f, 0.f, 0.f, 0.f},
+	//		}, nyan::Renderpass::Write::Type::Compute);
+	//pass.add_write("DDGI_Irradiance", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+	//		.clearColor{0.f, 0.f, 0.f, 0.f},
+	//	}, nyan::Renderpass::Write::Type::Compute);
 
-	pass.add_write("DDGI_Depth", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			.clearColor{0.f, 0.f, 0.f, 0.f},
-		}, nyan::Renderpass::Write::Type::Compute);
+	//pass.add_write("DDGI_Depth", nyan::ImageAttachment
+	//	{
+	//		.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+	//		.clearColor{0.f, 0.f, 0.f, 0.f},
+	//	}, nyan::Renderpass::Write::Type::Compute);
 
 
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
