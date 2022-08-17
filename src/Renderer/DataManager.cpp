@@ -16,11 +16,13 @@ bool nyan::DataManager<T>::upload(vulkan::CommandBuffer& cmd)
 		m_slot->slotCapacity = static_cast<uint32_t>(m_slot->data.capacity());
 	}
 	auto size = sizeof(T) * m_slot->data.size();
-	auto* map = m_slot->stagingBuffer->map_data();
-	std::memcpy(map, m_slot->data.data(), size);
-	m_slot->stagingBuffer->flush(0, static_cast<uint32_t>(size));
-	m_slot->stagingBuffer->invalidate(0, static_cast<uint32_t>(size));
-	cmd.copy_buffer(m_slot->deviceBuffer, m_slot->stagingBuffer, 0, 0, size);
+	if (size) {
+		auto* map = m_slot->stagingBuffer->map_data();
+		std::memcpy(map, m_slot->data.data(), size);
+		m_slot->stagingBuffer->flush(0, static_cast<uint32_t>(size));
+		m_slot->stagingBuffer->invalidate(0, static_cast<uint32_t>(size));
+		cmd.copy_buffer(m_slot->deviceBuffer, m_slot->stagingBuffer, 0, 0, size);
+	}
 	m_slot->dirty = false;
 	return true;
 }

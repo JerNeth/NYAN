@@ -196,7 +196,7 @@ namespace vulkan {
 
 		void next_frame();
 		void end_frame();
-		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr);
+		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr);
 		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
 		void queue_image_deletion(VkImage image) noexcept;
 		void queue_image_view_deletion(VkImageView imageView) noexcept;
@@ -210,10 +210,10 @@ namespace vulkan {
 		//void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
 		void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0, bool flush = false);
 		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
-		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore);
+		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore, uint64_t* semaphoreValues = nullptr);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
-		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
-		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr);
+		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
+		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;
 		void add_fence_callback(VkFence fence, std::function<void(void)> callback);

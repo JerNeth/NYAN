@@ -491,7 +491,7 @@ void nyan::Renderpass::build_rendering_info()
 			m_depthAttachment = renderingAttachment;
 		}
 		if (m_stencil != InvalidResourceId) {
-			assert(pass.m_depth == InvalidResourceId || pass.m_depth == pass.m_stencil);
+			assert(m_depth == InvalidResourceId || m_depth == m_stencil);
 			auto& resource = r_graph.m_renderresources.get_direct(m_stencil);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			assert(resource.m_type == RenderResource::Type::Image);

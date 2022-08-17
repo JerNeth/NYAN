@@ -99,14 +99,12 @@ vulkan::LogicalDevice::~LogicalDevice()
 	//OPTICK_SHUTDOWN();
 
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
-		if (aquire != VK_NULL_HANDLE) {
+		if (aquire != VK_NULL_HANDLE)
 			vkDestroySemaphore(get_device(), aquire, get_allocator());
-		}
 	}
 	for (auto& present : m_wsiState.presentSemaphores) {
-		if (present != VK_NULL_HANDLE) {
+		if (present != VK_NULL_HANDLE) 
 			vkDestroySemaphore(get_device(), present, get_allocator());
-		}
 	}
 }
 
@@ -127,13 +125,13 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 	info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	info.isSwapchainImage = true;
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
-		if (aquire == VK_NULL_HANDLE) {
+		if (aquire != VK_NULL_HANDLE) {
 			m_semaphoreManager.recycle_semaphore(aquire);
 		}
 		aquire = VK_NULL_HANDLE;
 	}
 	for (auto& present : m_wsiState.presentSemaphores) {
-		if (present == VK_NULL_HANDLE) {
+		if (present != VK_NULL_HANDLE) {
 			m_semaphoreManager.recycle_semaphore(present);
 		}
 		present = VK_NULL_HANDLE;
@@ -242,7 +240,7 @@ void vulkan::LogicalDevice::end_frame()
 	}
 }
 
-void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
+void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores, uint64_t* semaphoreValues)
 {
 	auto& queue = get_queue(type);
 	auto& submissions = get_current_submissions(type);
@@ -259,9 +257,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 	std::array<std::vector<VkSemaphoreSubmitInfo>, 2> signalInfos;
 	for (uint32_t i = 0; i < queue.waitInfos.size(); i++) {
 		waitInfos[0].push_back(queue.waitInfos[i]);
-		frame().recycle_semaphore(queue.waitInfos[i].semaphore);
 	}
-	queue.waitInfos.clear();
 	commandInfos.reserve(submissions.size());
 	uint32_t firstSubmissionCount = 0;
 	bool swapchainTouched = false;
@@ -300,18 +296,21 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 						.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 						.pNext { nullptr },
 						.semaphore { aquire },
+						.value {0},
 						.stageMask { VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT},
 						.deviceIndex { 0 }
 					});
 			}
-			if (present != VK_NULL_HANDLE)
-				frame().recycle_semaphore(present);
+			auto tmp = present;
 			present = request_semaphore();
+			if (tmp != VK_NULL_HANDLE)
+				frame().recycle_semaphore(tmp);
 			signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 				.pNext { nullptr },
 				.semaphore { present },
+				.value {0},
 				.stageMask { VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
 				.deviceIndex { 0 }
 			});
@@ -321,18 +320,19 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 	if (fence)
 		*fence = m_fenceManager.request_fence();
 	for (uint32_t i = 0; i < semaphoreCount; i++) {
-		VkSemaphore sem = request_semaphore();
-		assert(submitCounts < 3);
+		assert(semaphores);
+		assert(semaphores[i] == VK_NULL_HANDLE || semaphoreValues[i]);
+		if(semaphores[i] == VK_NULL_HANDLE)
+			semaphores[i] = request_semaphore();
 		signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 				.pNext { nullptr },
-				.semaphore { sem },
+				.semaphore { semaphores[i] },
+				.value {semaphoreValues ? semaphoreValues[i] : 0 },
 				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT},
 				.deviceIndex { 0 }
 			});
-		assert(semaphores[i] == VK_NULL_HANDLE);
-		semaphores[i] = sem;
 	}
 	for (uint32_t i = 0; i < submitCounts; i++) {
 		submitInfos[i].waitSemaphoreInfoCount = static_cast<uint32_t>(waitInfos[i].size());
@@ -373,6 +373,13 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 		}
 	}
 	submissions.clear();
+
+	for (uint32_t i = 0; i < queue.waitInfos.size(); i++) {
+		if (!queue.waitInfos[i].value)
+			frame().recycle_semaphore(queue.waitInfos[i].semaphore);
+	}
+	queue.waitInfos.clear();
+	//Can possibly recycle semaphores now
 }
 
 void vulkan::LogicalDevice::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
@@ -442,29 +449,32 @@ void vulkan::LogicalDevice::add_wait_semaphores(CommandBufferType type, const st
 	queue.needsFence = true;
 }
 
-void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores)
+void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores, uint64_t* semaphoreValues)
 {
 	auto& queue = get_queue(type);
 	
 	std::vector<VkSemaphoreSubmitInfo> signalInfos;
 	auto waitInfos = queue.waitInfos;
-	for (const auto& waitInfo  : queue.waitInfos) {
-		frame().recycle_semaphore(waitInfo.semaphore);
-	}
-	queue.waitInfos.clear();
 	for (uint32_t i = 0; i < semaphoreCount; i++) {
-		auto semaphore = m_semaphoreManager.request_semaphore();
-		assert(semaphores[i] == VK_NULL_HANDLE);
-		semaphores[i] = semaphore;
+		assert(semaphores);
+		assert(semaphores[i] == VK_NULL_HANDLE || semaphoreValues[i]);
+		if(!semaphores[i])
+			semaphores[i] = m_semaphoreManager.request_semaphore();
 		signalInfos.push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
 				.pNext { nullptr },
-				.semaphore { semaphore },
+				.semaphore { semaphores[i] },
+				.value { semaphoreValues ? semaphoreValues[i] : 0},
 				.stageMask { VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT },
 				.deviceIndex { 0 }
 			});
 	}
+
+	for (const auto& waitInfo : queue.waitInfos)
+		if (!waitInfo.value)
+			frame().recycle_semaphore(waitInfo.semaphore);
+	queue.waitInfos.clear();
 
 	if (fence)
 		*fence = m_fenceManager.request_fence();
@@ -504,7 +514,7 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 			if (computeStages != 0) {
 				VkSemaphore sem = VK_NULL_HANDLE;;
 				submit(cmd, 1, &sem);
-				add_wait_semaphore(CommandBufferType::Compute, sem, computeStages, flush);
+				add_wait_semaphore(CommandBufferType::Compute, sem, computeStages, 0, flush);
 			}
 			else {
 				submit(cmd);
@@ -517,18 +527,18 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 			if (graphicStages != 0 && computeStages) {
 				std::array<VkSemaphore, 2> semaphores{};
 				submit(cmd, 2, semaphores.data());
-				add_wait_semaphore(CommandBufferType::Generic, semaphores[0], graphicStages, flush);
-				add_wait_semaphore(CommandBufferType::Compute, semaphores[1], computeStages, flush);
+				add_wait_semaphore(CommandBufferType::Generic, semaphores[0], graphicStages, 0, flush);
+				add_wait_semaphore(CommandBufferType::Compute, semaphores[1], computeStages, 0, flush);
 			}
 			else if (graphicStages != 0) {
 				VkSemaphore semaphore = VK_NULL_HANDLE;
 				submit(cmd, 1, &semaphore);
-				add_wait_semaphore(CommandBufferType::Generic, semaphore, graphicStages, flush);
+				add_wait_semaphore(CommandBufferType::Generic, semaphore, graphicStages, 0, flush);
 			}
 			else if (computeStages != 0) {
 				VkSemaphore semaphore = VK_NULL_HANDLE;
 				submit(cmd, 1, &semaphore);
-				add_wait_semaphore(CommandBufferType::Compute, semaphore, computeStages, flush);
+				add_wait_semaphore(CommandBufferType::Compute, semaphore, computeStages, 0, flush);
 			}
 			else {
 				submit(cmd);
@@ -537,24 +547,24 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 	}
 }
 
-void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence)
+void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence, uint64_t* semaphoreValues)
 {
 	auto type = cmd->get_type();
 	auto& submissions = get_current_submissions(type);
 	cmd->end();
 	submissions.push_back(cmd);
 	if (semaphoreCount || fence) {
-		submit_queue(type, fence, semaphoreCount, semaphores);
+		submit_queue(type, fence, semaphoreCount, semaphores, semaphoreValues);
 	}
 }
 
-void vulkan::LogicalDevice::submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence)
+void vulkan::LogicalDevice::submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence, uint64_t* semaphoreValues)
 {
 	auto type = cmd->get_type();
 	auto& submissions = get_current_submissions(type);
 	cmd->end();
 	submissions.push_back(cmd);
-	submit_queue(type, fence, semaphoreCount, semaphores);
+	submit_queue(type, fence, semaphoreCount, semaphores, semaphoreValues);
 }
 
 void vulkan::LogicalDevice::wait_no_lock() noexcept
@@ -575,11 +585,17 @@ void vulkan::LogicalDevice::wait_no_lock() noexcept
 void vulkan::LogicalDevice::clear_semaphores() noexcept
 {
 	for (auto& waitInfo : m_graphics.waitInfos)
-		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		if (!waitInfo.value)
+			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		
 	for (auto& waitInfo : m_compute.waitInfos)
-		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		if (!waitInfo.value) 
+			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		
 	for (auto& waitInfo : m_transfer.waitInfos)
-		vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		if (!waitInfo.value) 
+			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		
 	m_graphics.waitInfos.clear();
 	m_compute.waitInfos.clear();
 	m_transfer.waitInfos.clear();
@@ -1005,8 +1021,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 			};
 			bindInfo.pSignalSemaphores = semaphores.data();
 			bindInfo.signalSemaphoreCount = 2;
-			add_wait_semaphore(CommandBufferType::Generic, semaphores[0], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, true);
-			add_wait_semaphore(CommandBufferType::Transfer, semaphores[1], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, true);
+			add_wait_semaphore(CommandBufferType::Generic, semaphores[0], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, true);
+			add_wait_semaphore(CommandBufferType::Transfer, semaphores[1], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, true);
 #ifdef DEBUGSUBMISSIONS
 			std::cout << "Submitted Sparse\n";
 			std::cout << "\tWaits:";
@@ -1111,7 +1127,7 @@ void vulkan::LogicalDevice::update_image_with_buffer(const ImageInfo& info, Imag
 		}
 		VkSemaphore sem = VK_NULL_HANDLE;
 		submit(transferCmd, 1, &sem);
-		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages, true);
+		add_wait_semaphore(graphicsCmd->get_type(), sem, dstStages, 0, true);
 	}
 	if (info.generate_mips()) {
 		graphicsCmd->mip_barrier(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1861,7 +1877,8 @@ void vulkan::LogicalDevice::FrameResource::wait_for_fence(FenceHandle&& fence) n
 
 void vulkan::LogicalDevice::FrameResource::delete_signal_semaphores() noexcept
 {
-	deletedSemaphores.insert(deletedSemaphores.end(), signalSemaphores.cbegin(), signalSemaphores.cend());
+	recycledSemaphores.insert(recycledSemaphores.end(), signalSemaphores.cbegin(), signalSemaphores.cend());
+	//deletedSemaphores.insert(deletedSemaphores.end(), signalSemaphores.cbegin(), signalSemaphores.cend());
 	signalSemaphores.clear();
 }
 
@@ -1968,20 +1985,19 @@ void vulkan::LogicalDevice::FrameResource::reset_command_pools()
 
 void vulkan::LogicalDevice::FrameResource::delete_resources()
 {
-	for (auto fb : deletedFramebuffer) {
+	for (auto fb : deletedFramebuffer)
 		vkDestroyFramebuffer(r_device.get_device(), fb, r_device.get_allocator());
-	}
+
 	deletedFramebuffer.clear();
 
-	for (auto semaphore : deletedSemaphores) {
+	for (auto semaphore : deletedSemaphores)
 		vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
-	}
+
 	deletedSemaphores.clear();
 
-	for (auto semaphore : recycledSemaphores) {
-		//vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
+	for (auto semaphore : recycledSemaphores) 
 		r_device.m_semaphoreManager.recycle_semaphore(semaphore);
-	}
+	
 	recycledSemaphores.clear();
 
 	for (auto buffer : deletedBuffer) {

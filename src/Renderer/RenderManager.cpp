@@ -206,7 +206,7 @@ void nyan::RenderManager::update()
 	needsSemaphore |= m_materialManager.upload(transferCmd);
 	needsSemaphore |= m_sceneManager.upload(transferCmd);
 	needsSemaphore |= m_instanceManager.upload(transferCmd);
-	VkSemaphore semaphore;
+	VkSemaphore semaphore{ VK_NULL_HANDLE };
 	r_device.submit(transferCmdHandle, needsSemaphore, &semaphore);
 	if (needsSemaphore) {
 		r_device.add_wait_semaphore(vulkan::CommandBufferType::Compute, semaphore, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);

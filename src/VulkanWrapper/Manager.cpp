@@ -61,9 +61,8 @@ void vulkan::FenceManager::reset_fence(VkFence fence) {
 }
 vulkan::SemaphoreManager::~SemaphoreManager() noexcept
 {
-	for (auto semaphore : m_semaphores) {
+	for (auto semaphore : m_semaphores)
 		vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
-	}
 }
 
 VkSemaphore vulkan::SemaphoreManager::request_semaphore()
