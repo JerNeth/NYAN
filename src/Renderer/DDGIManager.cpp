@@ -134,7 +134,8 @@ void nyan::DDGIManager::update()
 		update_spacing(deviceVolume);
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
-
+		//TODO	update texture References must be done after rendergraph "update"
+		//		update/setup texture read/writes must be done before rendergraph "update"
 	}
 }
 

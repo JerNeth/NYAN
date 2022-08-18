@@ -58,7 +58,7 @@ namespace nyan {
 		Type m_type = Type::Image;
 		Id m_id{};
 		std::string name;
-		std::vector<Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse>> m_uses;
+		std::vector<Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse>> uses;
 		//Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse> totalUses;
 		Attachment attachment;
 		vulkan::Image* handle = nullptr;
@@ -128,7 +128,11 @@ namespace nyan {
 			m_renderFunctions.push_back(functor);
 			m_useRendering.push_back(renderpass);
 		}
-		void copy(RenderResource::Id source, RenderResource::Id target);
+		//void remove_read(RenderResource::Id id, Renderpass::Read::Type readType);
+		//void remove_write(RenderResource::Id id, Renderpass::Write::Type writeType);
+		//void remove_swapchain_write(Renderpass::Write::Type writeType);
+		void copy(RenderResource::Id source, RenderResource::Id target); 
+
 		Renderpass::Id get_id() const noexcept {
 			return m_id;
 		}
@@ -159,6 +163,8 @@ namespace nyan {
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags2 stage);
 		void add_signal(Renderpass::Id passId, VkPipelineStageFlags2 stage);
 		void build();
+		void clear_dependencies();
+		void clear_resource_references(RenderResource::Id id);
 	private:
 		void build_rendering_info();
 		void build_pipelines();
@@ -199,31 +205,57 @@ namespace nyan {
 		std::vector< PipelineBuild> m_queuedPipelineBuilds;
 
 
-		struct GlobalBarriers {
-			std::vector<VkMemoryBarrier2> barriers;
-		} m_globalBarriers2;
+		struct Signal {
+			Renderpass::Id passId;
+			VkPipelineStageFlags2 stage;
+		};
+		std::vector<VkSemaphoreSubmitInfo> m_waitInfos{};
+		std::vector<Signal> m_signals{};
 
-		size_t m_globalPostBarrierIndex{ 0 };
-		size_t m_globalCopyBarrierIndex{ 0 };
-		size_t m_globalPreBarrierIndex{ 0 };
+		struct GlobalBarriers {
+			std::vector<VkMemoryBarrier2> barriers{};
+			size_t postIndex{ 0 };
+			size_t copyIndex{ 0 };
+			size_t preIndex{ 0 };
+			void clear() {
+				barriers.clear();
+				postIndex = 0;
+				copyIndex = 0;
+				preIndex = 0;
+			}
+		} m_globalBarriers2{};
+
 
 		struct BufferBarriers {
-			std::vector<RenderResource::Id> buffers;
-			std::vector<VkBufferMemoryBarrier2> barriers;
-		} m_bufferBarriers2;
-
-		size_t m_bufferPostBarrierIndex{ 0 };
-		size_t m_bufferCopyBarrierIndex{ 0 };
-		size_t m_bufferPreBarrierIndex{ 0 };
+			std::vector<RenderResource::Id> buffers{};
+			std::vector<VkBufferMemoryBarrier2> barriers{};
+			size_t postIndex{ 0 };
+			size_t copyIndex{ 0 };
+			size_t preIndex{ 0 };
+			void clear() {
+				buffers.clear();
+				barriers.clear();
+				postIndex = 0;
+				copyIndex = 0;
+				preIndex = 0;
+			}
+		} m_bufferBarriers2{};
 
 		struct ImageBarriers {
-			std::vector<RenderResource::Id> images;
-			std::vector<VkImageMemoryBarrier2> barriers;
-		} m_imageBarriers2;
+			std::vector<RenderResource::Id> images{};
+			std::vector<VkImageMemoryBarrier2> barriers{};
+			size_t postIndex{ 0 };
+			size_t copyIndex{ 0 };
+			size_t preIndex{ 0 };
+			void clear() {
+				images.clear();
+				barriers.clear();
+				postIndex = 0;
+				copyIndex = 0;
+				preIndex = 0;
+			}
+		} m_imageBarriers2{};
 
-		size_t m_imagePostBarrierIndex{ 0 };
-		size_t m_imageCopyBarrierIndex{ 0 };
-		size_t m_imagePreBarrierIndex{ 0 };
 
 
 		VkRenderingInfo m_renderInfo
@@ -235,12 +267,6 @@ namespace nyan {
 		VkRenderingAttachmentInfo m_stencilAttachment{};
 		vulkan::RenderingCreateInfo m_renderingCreateInfo{};
 
-		struct Signal {
-			Renderpass::Id passId;
-			VkPipelineStageFlags2 stage;
-		};
-		std::vector<VkSemaphoreSubmitInfo> m_waitInfos{};
-		std::vector<Signal> m_signals{};
 
 	};
 	static constexpr Renderpass::Id InvalidRenderpassId{ std::numeric_limits<uint32_t>::max() };
@@ -282,6 +308,7 @@ namespace nyan {
 	private:
 		enum class State : uint8_t{
 			Setup,
+			Dirty,
 			Build,
 			Execute
 		};
@@ -298,8 +325,8 @@ namespace nyan {
 		RenderResource::Id add_ressource(Attachment attachment);
 		const RenderResource& get_resource(RenderResource::Id id) const;
 		RenderResource& get_resource(RenderResource::Id id);
+		void remove_resource(RenderResource::Id id);
 		bool resource_exists(RenderResource::Id id);
-		vulkan::LogicalDevice& get_device() const;
 	private:
 		void swapchain_present_transition(Renderpass::Id src_const);
 		void set_up_transition(Renderpass::Id from, Renderpass::Id to, const RenderResource& resource);
@@ -307,6 +334,9 @@ namespace nyan {
 		void set_up_copy(Renderpass::Id dst, const RenderResource& resource);
 		void update_render_resource(RenderResource& resource);
 		void update_render_resource_image(RenderResource& resource);
+		void setup_render_resource_barriers(RenderResource& resource);
+		void clear_dependencies();
+		void remove_queued_resources();
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;
@@ -320,6 +350,7 @@ namespace nyan {
 		RenderResource::Id::Type m_resourceCount{ 0 };
 		Renderpass::Id m_lastCompute {};
 		Renderpass::Id m_lastGeneric {};
+		std::vector<RenderResource::Id> m_queuedResourceDeletion {};
 
 		//RenderpassId m_lastPass { invalidRenderpassId };
 	};

@@ -213,6 +213,7 @@ int main() {
 		});
 	application.each_frame_end([&rendergraph, &device]()
 		{
+			//Could split an update out
 			rendergraph.execute();
 			//device.wait_idle(); //Brute forcing synchronization, currently 2 Frames in flight and I think the view matrix update gets mangled into the frame
 			//					//Potential solution, use staging buffer for rendermanager updates and synchronize via semaphores and barriers

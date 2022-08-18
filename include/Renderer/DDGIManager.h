@@ -5,6 +5,7 @@
 #include "VkWrapper.h"
 #include "VulkanForwards.h"
 #include "DataManager.h"
+#include "Rendergraph.h"
 #include "ShaderInterface.h"
 #include "entt/fwd.hpp"
 
@@ -37,6 +38,8 @@ namespace nyan {
 		void set_depth_bias(uint32_t id, float depthBias);
 		const nyan::shaders::DDGIVolume& get(uint32_t id) const;
 		void update();
+		void add_read(Renderpass& pass);
+		void add_write(Renderpass& pass, uint32_t volume);
 	private:
 		void update_spacing(nyan::shaders::DDGIVolume& volume);
 		void update_depth_texture(nyan::shaders::DDGIVolume& volume);
