@@ -138,7 +138,7 @@ int main() {
 		});
 
 
-	auto& deferredPass = rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic);
+	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
 	deferredPass.add_depth_stencil_attachment(g_Depth, true);
 	deferredPass.add_attachment(g_Albedo, true);
 	deferredPass.add_attachment(g_Normal, true);
@@ -178,27 +178,27 @@ int main() {
 	deferredRTPass.add_write(DiffuseLighting, nyan::Renderpass::Write::Type::Compute);
 
 
-	auto& forwardPass = rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic);
+	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
 	forwardPass.add_depth_attachment(g_Depth);
 	forwardPass.add_attachment(SpecularLighting);
 	forwardPass.add_attachment(DiffuseLighting);
 
-	auto& compositePass = rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic);
+	auto& compositePass = rendergraph.get_pass(rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic));
 	compositePass.add_read(SpecularLighting);
 	compositePass.add_read(DiffuseLighting);
 	compositePass.add_swapchain_attachment(Math::vec4{}, true);
 
 
-	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
+	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
 	imguiPass.add_swapchain_attachment();
 
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	//nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
-	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass);
+	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, g_Albedo, g_Normal, g_PBR, g_Depth, g_Depth, DiffuseLighting, SpecularLighting);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
-	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass);
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, DiffuseLighting, SpecularLighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
 	application.each_frame_begin([&]()

@@ -2,15 +2,14 @@
 #ifndef RDDEFERREDLIGHTING_H
 #define RDDEFERREDLIGHTING_H
 
-#include "VkWrapper.h"
-#include "RenderGraph.h"
-#include "RenderManager.h"
+
+#include "Renderer.h"
 #include "RayTracePipeline.h"
-#include "entt/fwd.hpp"
+#include "RenderGraph.h"
 
 namespace nyan {
 
-	class DeferredLighting {
+	class DeferredLighting : Renderer {
 		struct PushConstants {
 			uint32_t sceneBinding;
 			uint32_t albedoBinding;
@@ -25,19 +24,23 @@ namespace nyan {
 			uint32_t stencilSampler;
 		};
 	public:
-		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
+			nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
+			nyan::RenderResource::Id stencilRead);
 		void render(vulkan::GraphicsPipelineBind& bind);
 	private:
 		void create_pipeline();
 
-		vulkan::LogicalDevice& r_device;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_deferredPipeline;
+
+		nyan::RenderResource::Id m_albedoRead;
+		nyan::RenderResource::Id m_normalRead;
+		nyan::RenderResource::Id m_pbrRead;
+		nyan::RenderResource::Id m_depthRead;
+		nyan::RenderResource::Id m_stencilRead;
 	};
 
-	class DeferredRayShadowsLighting {
+	class DeferredRayShadowsLighting : Renderer {
 		struct PushConstants {
 			uint32_t accBinding;
 			uint32_t sceneBinding;
@@ -55,18 +58,26 @@ namespace nyan {
 			uint32_t specularImageBinding;
 		};
 	public:
-		DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
+			nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
+			nyan::RenderResource::Id stencilRead, nyan::RenderResource::Id diffuseWrite, nyan::RenderResource::Id specularWrite);
 		void render(vulkan::RaytracingPipelineBind& bind);
 	private:
 		vulkan::RaytracingPipelineConfig generate_config();
-		vulkan::LogicalDevice& r_device;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
+
 		vulkan::RTPipeline m_pipeline;
+
+		nyan::RenderResource::Id m_albedoRead;
+		nyan::RenderResource::Id m_normalRead;
+		nyan::RenderResource::Id m_pbrRead;
+		nyan::RenderResource::Id m_depthRead;
+		nyan::RenderResource::Id m_stencilRead;
+
+		nyan::RenderResource::Id m_diffuseWrite;
+		nyan::RenderResource::Id m_specularWrite;
 	};
 
-	class LightComposite {
+	class LightComposite : Renderer{
 		struct PushConstants {
 			uint32_t specularBinding;
 			uint32_t specularSampler;
@@ -74,16 +85,16 @@ namespace nyan {
 			uint32_t diffuseSampler;
 		};
 	public:
-		LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass
+			, nyan::RenderResource::Id diffuseRead, nyan::RenderResource::Id specularRead);
 		void render(vulkan::GraphicsPipelineBind& bind);
 	private:
 		void create_pipeline();
 
-		vulkan::LogicalDevice& r_device;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_compositePipeline;
+
+		nyan::RenderResource::Id m_diffuseRead;
+		nyan::RenderResource::Id m_specularRead;
 	};
 }
 #endif !RDDEFERREDLIGHTING_H

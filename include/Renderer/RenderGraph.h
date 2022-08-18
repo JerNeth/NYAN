@@ -54,9 +54,9 @@ namespace nyan {
 			Size
 		};
 		RenderResource() = default;
-		RenderResource(Id id) : m_id(id){}
+		RenderResource(Id id) : m_id(id) {}
 		Type m_type = Type::Image;
-		Id m_id {};
+		Id m_id{};
 		std::string name;
 		std::vector<Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse>> m_uses;
 		//Utility::bitset<static_cast<size_t>(ImageUse::Size), ImageUse> totalUses;
@@ -64,9 +64,8 @@ namespace nyan {
 		vulkan::Image* handle = nullptr;
 	};
 	static constexpr RenderResource::Id InvalidResourceId{ std::numeric_limits<uint32_t>::max() };
-		
 
-
+	class Rendergraph;
 	class Renderpass {
 	private:
 		friend class Rendergraph;
@@ -158,7 +157,7 @@ namespace nyan {
 		uint32_t get_write_bind(RenderResource::Id id, Write::Type type = Write::Type::Graphics);
 		uint32_t get_read_bind(RenderResource::Id id, Read::Type type = Read::Type::ImageColor);
 		void add_wait(VkSemaphore wait, VkPipelineStageFlags2 stage);
-		void add_signal(uint32_t passId, VkPipelineStageFlags2 stage);
+		void add_signal(Renderpass::Id passId, VkPipelineStageFlags2 stage);
 		void build();
 	private:
 		void build_rendering_info();
@@ -177,7 +176,7 @@ namespace nyan {
 
 
 		Rendergraph& r_graph;
-		entt::hashed_string m_name;
+		std::string m_name;
 		Type m_type;
 		Renderpass::Id m_id;
 		std::vector<std::function<void(vulkan::CommandBuffer&, Renderpass&)>> m_renderFunctions;
@@ -237,7 +236,7 @@ namespace nyan {
 		vulkan::RenderingCreateInfo m_renderingCreateInfo{};
 
 		struct Signal {
-			uint32_t passId;
+			Renderpass::Id passId;
 			VkPipelineStageFlags2 stage;
 		};
 		std::vector<VkSemaphoreSubmitInfo> m_waitInfos{};
@@ -245,6 +244,38 @@ namespace nyan {
 
 	};
 	static constexpr Renderpass::Id InvalidRenderpassId{ std::numeric_limits<uint32_t>::max() };
+
+}
+
+template <> struct ::std::hash< nyan::RenderResource::Id>
+{
+	size_t operator()(const nyan::RenderResource::Id& id) const
+	{
+		return id.id;
+	}
+};
+template <> struct ::std::hash< nyan::Renderpass::Id>
+{
+	size_t operator()(const nyan::Renderpass::Id& id) const
+	{
+		return id.id;
+	}
+};
+template <> struct ::std::equal_to< nyan::RenderResource::Id>
+{
+	size_t operator()(const nyan::RenderResource::Id& lhs, const nyan::RenderResource::Id& rhs) const
+	{
+		return lhs.id == rhs.id;
+	}
+};
+template <> struct ::std::equal_to< nyan::Renderpass::Id>
+{
+	size_t operator()(const nyan::Renderpass::Id& lhs, const nyan::Renderpass::Id& rhs) const
+	{
+		return lhs.id == rhs.id;
+	}
+};
+namespace nyan {
 
 	class Rendergraph {
 		friend class Renderpass;
@@ -257,7 +288,7 @@ namespace nyan {
 	public:
 		Rendergraph(vulkan::LogicalDevice& device);
 		Renderpass::Id add_pass(const std::string& name, Renderpass::Type type);
-		Renderpass& get_pass(const entt::hashed_string& name);
+		Renderpass& get_pass(Renderpass::Id id);
 		void build();
 		void execute();
 		//RenderResource& add_ressource(const entt::hashed_string& name, Attachment attachment);
@@ -293,5 +324,4 @@ namespace nyan {
 		//RenderpassId m_lastPass { invalidRenderpassId };
 	};
 }
-
 #endif !RDRENDERGRAPH_H

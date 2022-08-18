@@ -1,4 +1,6 @@
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/RenderGraph.h"
+#include "Renderer/RenderManager.h"
 #include "entt/entt.hpp"
 #include "CommandBuffer.h"
 #include "Buffer.h"
@@ -6,10 +8,7 @@
 #include "Utility/Exceptions.h"
 
 nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass)
+	Renderer(device, registry, renderManager, pass)
 {
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
@@ -37,14 +36,15 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 			pipelineBind.set_scissor(scissor);
 			pipelineBind.set_viewport(viewport);
 
+			PushConstants instance{
+				.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+				.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
+				.instanceId {0},
+				.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+			};
 			auto view = r_registry.view<const MeshID, const InstanceId, const Deferred>();
 			for (const auto& [entity, meshID, instanceId] : view.each()) {
-				nyan::MeshInstance instance{
-					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
-					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
-					.instanceId {instanceId},
-					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
-				};
+				instance.instanceId = instanceId;
 				render(pipelineBind, meshID, instance);
 			}
 		}
@@ -71,21 +71,22 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 			pipelineBind.set_scissor(scissor);
 			pipelineBind.set_viewport(viewport);
 
+			PushConstants instance{
+				.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+				.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
+				.instanceId {0},
+				.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+			};
 			auto view = r_registry.view<const MeshID, const InstanceId, const DeferredAlphaTest>();
 			for (const auto& [entity, meshID, instanceId] : view.each()) {
-				nyan::MeshInstance instance{
-					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
-					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
-					.instanceId {instanceId},
-					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
-				};
+				instance.instanceId = instanceId;
 				render(pipelineBind, meshID, instance);
 			}
 		}
 	}, true);
 }
 
-void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, const MeshID& meshId, const MeshInstance& instance)
+void nyan::MeshRenderer::render(vulkan::GraphicsPipelineBind& pipelineBind, const MeshID& meshId, const PushConstants& instance)
 {
 	auto& mesh = r_renderManager.get_mesh_manager().get_static_tangent_mesh(meshId);
 	pipelineBind.bind_index_buffer(mesh.indexBuffer, mesh.indexOffset,  VK_INDEX_TYPE_UINT32);
@@ -149,10 +150,7 @@ void nyan::MeshRenderer::create_pipeline()
 }
 
 nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass)
+	Renderer(device, registry, renderManager, pass)
 {
 
 	create_pipeline();
@@ -179,7 +177,7 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 			};
 			pipelineBind.set_scissor(scissor);
 			pipelineBind.set_viewport(viewport);				
-			nyan::MeshInstance instance{
+			PushConstants instance{
 					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
 					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
 					//.instanceId {instanceId},
@@ -200,7 +198,7 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 		}, true);
 }
 
-void nyan::ForwardMeshRenderer::render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance)
+void nyan::ForwardMeshRenderer::render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const PushConstants& instance)
 {
 	auto& mesh = r_renderManager.get_mesh_manager().get_static_tangent_mesh(meshId);
 	bind.bind_index_buffer(mesh.indexBuffer, mesh.indexOffset, VK_INDEX_TYPE_UINT32);
@@ -245,12 +243,10 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 }
 
 
-nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
+nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, nyan::RenderResource::Id rendertarget) :
+	Renderer(device, registry, renderManager, pass),
 	m_pipeline(device, generate_config()),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass)
+	m_rendertarget(rendertarget)
 {
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
@@ -263,7 +259,7 @@ nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::regist
 
 void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
 {
-	auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
+	auto writeBind = r_pass.get_write_bind(m_rendertarget, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBind != InvalidResourceId);
 	PushConstants constants{
 		.imageBinding {writeBind}, //0

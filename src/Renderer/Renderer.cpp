@@ -1,6 +1,9 @@
 #include "Renderer/Renderer.h"
-using namespace vulkan;
-using namespace nyan;
+#include "Renderer/RenderGraph.h"
+#include "Renderer/RenderManager.h"
+#include "entt/entt.hpp"
+
+
 //
 //void nyan::RenderQueue::clear()
 //{
@@ -114,3 +117,11 @@ using namespace nyan;
 //void nyan::VulkanRenderer::end_frame()
 //{
 //}
+
+nyan::Renderer::Renderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
+	r_device(device),
+	r_registry(registry),
+	r_renderManager(renderManager),
+	r_pass(pass)
+{
+}

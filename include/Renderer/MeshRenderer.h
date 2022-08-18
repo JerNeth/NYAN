@@ -2,11 +2,9 @@
 #ifndef RDMESHRENDERER_H
 #define RDMESHRENDERER_H
 
-#include "VkWrapper.h"
-#include "RenderGraph.h"
-#include "RenderManager.h"
+#include "Renderer.h"
 #include "RayTracePipeline.h"
-#include "entt/fwd.hpp"
+#include "RenderManager.h"
 
 namespace nyan {
 	
@@ -25,42 +23,42 @@ namespace nyan {
 	struct Forward {};
 	struct ForwardTransparent {};
 	struct RayTraced {};
-	struct MeshInstance {
-		uint32_t meshBinding;
-		uint32_t instanceBinding;
-		uint32_t instanceId;
-		uint32_t sceneBinding;
-		uint32_t accBinding;
-	};
-	class MeshRenderer {
+	class MeshRenderer : Renderer {
+	private:
+		struct PushConstants {
+			uint32_t meshBinding;
+			uint32_t instanceBinding;
+			uint32_t instanceId;
+			uint32_t sceneBinding;
+		};
 	public:
 		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
-		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
+		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const PushConstants& instance);
 		
 	private:
 		void create_pipeline();
 
-		vulkan::LogicalDevice& r_device;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_staticTangentPipeline;
 		vulkan::PipelineId m_staticTangentAlphaDiscardPipeline;
 	};
-	class ForwardMeshRenderer {
+	class ForwardMeshRenderer : Renderer {
+	private:
+		struct PushConstants {
+			uint32_t meshBinding;
+			uint32_t instanceBinding;
+			uint32_t instanceId;
+			uint32_t sceneBinding;
+			uint32_t accBinding;
+		};
 	public:
 		ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
-		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const MeshInstance& instance);
+		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const PushConstants& instance);
 	private:
 		void create_pipeline();
 
-		vulkan::LogicalDevice& r_device;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
 		vulkan::PipelineId m_staticTangentPipeline;
 	};
-	class RTMeshRenderer {
+	class RTMeshRenderer : Renderer {
 
 		struct PushConstants
 		{
@@ -72,15 +70,13 @@ namespace nyan {
 			Math::vec4 col2{ 0.4f, 0.6f, 0.8f, 1.f };
 		};
 	public:
-		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, nyan::RenderResource::Id rendertarget);
 		void render(vulkan::RaytracingPipelineBind& bind);
 	private:
 		vulkan::RaytracingPipelineConfig generate_config();
-		vulkan::LogicalDevice& r_device;
+
 		vulkan::RTPipeline m_pipeline;
-		entt::registry& r_registry;
-		nyan::RenderManager& r_renderManager;
-		nyan::Renderpass& r_pass;
+		nyan::RenderResource::Id m_rendertarget;
 	};
 }
 

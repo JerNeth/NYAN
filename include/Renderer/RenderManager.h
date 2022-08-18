@@ -7,7 +7,7 @@
 #include "MeshManager.h"
 #include "RenderGraph.h"
 #include "MaterialManager.h"
-#include "DDGIRenderer.h"
+#include "DDGIManager.h"
 #include "TextureManager.h"
 #include "Camera.h"
 #include "entt/entt.hpp"
@@ -44,7 +44,6 @@ namespace nyan {
 		vulkan::LogicalDevice& r_device;
 		entt::registry m_registry;
 		vulkan::ShaderManager m_shaderManager;
-		//TODO possibly chunk textures and queue upload
 		nyan::TextureManager m_textureManager;
 		nyan::MaterialManager m_materialManager;
 		nyan::MeshManager m_meshManager;

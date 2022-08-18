@@ -30,7 +30,7 @@ void nyan::Renderpass::add_attachment(RenderResource::Id id, bool clear)
 {
 	assert(r_graph.m_state == Rendergraph::State::Setup);
 	assert(m_type == Renderpass::Type::Generic);
-	assert(r_graph.resource_exists(name));
+	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -47,9 +47,13 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 	assert(r_graph.m_state == Rendergraph::State::Setup);
 	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
-	nyan::ImageAttachment swap;
-	swap.clearColor = clearColor;
-	swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
+
+	if (r_graph.m_swapchainResource == InvalidResourceId) {
+		nyan::ImageAttachment swap;
+		swap.clearColor = clearColor;
+		swap.format = r_graph.get_device().get_swapchain_image_view()->get_format();
+		r_graph.m_swapchainResource = r_graph.add_ressource(swap);
+	}
 	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -299,6 +303,7 @@ uint32_t nyan::Renderpass::get_read_bind(uint32_t idx)
 }
 uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type type)
 {
+	assert(id != InvalidResourceId);
 	const auto& resource = r_graph.get_resource(id);
 	auto res = std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource, type](const auto& write) { return resource.m_id == write.id && type == write.type; });
 	assert(res != m_writes.cend());
@@ -310,6 +315,7 @@ uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type typ
 
 uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
 {
+	assert(id != InvalidResourceId);
 	const auto& resource = r_graph.get_resource(id);
 	auto res = std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, type](const auto& read) { return resource.m_id == read.id && type == read.type; });
 	assert(res != m_reads.cend());
@@ -331,7 +337,7 @@ void nyan::Renderpass::add_wait(VkSemaphore wait, VkPipelineStageFlags2 stage)
 		});
 }
 
-void nyan::Renderpass::add_signal(uint32_t passId, VkPipelineStageFlags2 stage)
+void nyan::Renderpass::add_signal(Renderpass::Id passId, VkPipelineStageFlags2 stage)
 {
 	m_signals.push_back({ passId, stage });
 }
@@ -351,19 +357,19 @@ void nyan::Renderpass::build_rendering_info()
 		m_renderingCreateInfo.colorAttachmentCount = 0;
 		m_renderInfo.colorAttachmentCount = 0;
 		for (auto& [readId, readType, readView, readBinding] : m_reads) {
-			auto& resource = r_graph.m_renderresources.get_direct(readId);
+			auto& resource = r_graph.m_renderresources.get(readId);
 			if (resource.m_type == RenderResource::Type::Image) {
 				readView = VK_NULL_HANDLE;
 			}
 		}
 		for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
-			auto& resource = r_graph.m_renderresources.get_direct(writeId);
+			auto& resource = r_graph.m_renderresources.get(writeId);
 			if (resource.m_type == RenderResource::Type::Image) {
 				writeView = VK_NULL_HANDLE;
 			}
 		}
 		for (auto attachmentId : m_attachments) {
-			auto& resource = r_graph.m_renderresources.get_direct(attachmentId);
+			auto& resource = r_graph.m_renderresources.get(attachmentId);
 			if (resource.m_type == RenderResource::Type::Image) {
 				auto& attachment = std::get<ImageAttachment>(resource.attachment);
 				auto& info = m_renderingCreateInfo;
@@ -386,7 +392,7 @@ void nyan::Renderpass::build_rendering_info()
 			}
 		}
 		if (m_depth != InvalidResourceId) {
-			auto& resource = r_graph.m_renderresources.get_direct(m_depth);
+			auto& resource = r_graph.m_renderresources.get(m_depth);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			assert(resource.m_type == RenderResource::Type::Image);
 			VkRenderingAttachmentInfo renderingAttachment{
@@ -406,7 +412,7 @@ void nyan::Renderpass::build_rendering_info()
 		}
 		if (m_stencil != InvalidResourceId) {
 			assert(m_depth == InvalidResourceId || m_depth == m_stencil);
-			auto& resource = r_graph.m_renderresources.get_direct(m_stencil);
+			auto& resource = r_graph.m_renderresources.get(m_stencil);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			assert(resource.m_type == RenderResource::Type::Image);
 			VkRenderingAttachmentInfo renderingAttachment{
@@ -497,7 +503,7 @@ void nyan::Renderpass::update_image_barriers()
 		auto& barrier = m_imageBarriers2.barriers[i];
 		auto& image = m_imageBarriers2.images[i];
 		assert(image != InvalidResourceId);
-		auto& resource = r_graph.m_renderresources.get_direct(image);
+		auto& resource = r_graph.m_renderresources.get(image);
 		assert(resource.m_type == RenderResource::Type::Image);
 		assert(resource.handle);
 		barrier.image = resource.handle->get_handle();
@@ -508,7 +514,7 @@ void nyan::Renderpass::update_rendering_info()
 {
 	uint32_t attachmentId = 0;
 	for (auto attachmentRessourceId : m_attachments) {
-		auto& resource = r_graph.m_renderresources.get_direct(attachmentRessourceId);
+		auto& resource = r_graph.m_renderresources.get(attachmentRessourceId);
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
 		if (resource.m_type == RenderResource::Type::Image) {
 			if (resource.m_uses[m_id].test(RenderResource::ImageUse::Clear)) {
@@ -533,7 +539,7 @@ void nyan::Renderpass::update_rendering_info()
 		}
 	}
 	if (m_depth != InvalidResourceId) {
-		auto& resource = r_graph.m_renderresources.get_direct(m_depth);
+		auto& resource = r_graph.m_renderresources.get(m_depth);
 		assert(resource.m_type == RenderResource::Type::Image);
 		assert(resource.handle);
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
@@ -548,7 +554,7 @@ void nyan::Renderpass::update_rendering_info()
 		}
 	}
 	if (m_stencil != InvalidResourceId) {
-		auto& resource = r_graph.m_renderresources.get_direct(m_stencil);
+		auto& resource = r_graph.m_renderresources.get(m_stencil);
 		assert(m_depth == InvalidResourceId || m_depth == m_stencil);
 		assert(resource.m_type == RenderResource::Type::Image);
 		assert(resource.handle);
@@ -568,7 +574,7 @@ void nyan::Renderpass::update_rendering_info()
 void nyan::Renderpass::update_views()
 {
 	for (auto& [readId, readType, readView, readBinding] : m_reads) {
-		auto& resource = r_graph.m_renderresources.get_direct(readId);
+		auto& resource = r_graph.m_renderresources.get(readId);
 		if (resource.m_type == RenderResource::Type::Image) {
 			assert(resource.handle);
 			if (readType == Renderpass::Read::Type::ImageColor) {
@@ -593,7 +599,7 @@ void nyan::Renderpass::update_views()
 		}
 	}
 	for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
-		auto& resource = r_graph.m_renderresources.get_direct(writeId);
+		auto& resource = r_graph.m_renderresources.get(writeId);
 		if (resource.m_type == RenderResource::Type::Image) {
 			assert(resource.handle);
 			if (!resource.handle)
@@ -654,13 +660,13 @@ Renderpass::Id nyan::Rendergraph::add_pass(const std::string& name, Renderpass::
 		m_lastGeneric = id;
 	else if(type == Renderpass::Type::AsyncCompute)
 		m_lastCompute = id;
-	m_renderpasses.emplace(id, *this, type, m_renderpassCount++, name);
+	m_renderpasses.emplace(id, *this, type, id, name);
 	return id;
 }
 
-Renderpass& nyan::Rendergraph::get_pass(const entt::hashed_string& name)
+Renderpass& nyan::Rendergraph::get_pass(Renderpass::Id id)
 {
-	return m_renderpasses.get(name.value());
+	return m_renderpasses.get(id);
 }
 
 void nyan::Rendergraph::build()
@@ -703,10 +709,10 @@ void nyan::Rendergraph::build()
 
 		if (resource.m_id == m_swapchainResource) {
 
-			for (int i = resource.m_uses.size() - 1; i > 0; i--) {
+			for (int64_t i = static_cast<int64_t>(resource.m_uses.size()) - 1; i > 0; i--) {
 				const auto& srcUse = resource.m_uses[i];
 				if (!srcUse.none()) {
-					swapchain_present_transition(static_cast<Renderpass::Id>(i));
+					swapchain_present_transition(Renderpass::Id{ static_cast<Renderpass::Id::Type>(i) });
 					break;
 				}
 			}
@@ -770,7 +776,7 @@ void nyan::Rendergraph::execute()
 		cmd.begin_region(pass.m_name.data());
 		pass.apply_pre_barriers(cmd);
 		for (auto [id, type, view, binding] : pass.m_writes) {
-			auto& resource = m_renderresources.get_direct(id);
+			auto& resource = m_renderresources.get(id);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			if (resource.m_type == RenderResource::Type::Image && !vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
 				if (resource.m_uses[pass.m_id].test(RenderResource::ImageUse::Clear)) {
@@ -797,7 +803,7 @@ void nyan::Rendergraph::execute()
 			signals.push_back(VK_NULL_HANDLE);
 		r_device.submit(cmdHandle, static_cast<uint32_t>(signals.size()), signals.data());
 		for (size_t i{ 0 }; i < pass.m_signals.size(); i++) {
-			auto& waitPass = m_renderpasses.get_direct(pass.m_signals[i].passId);
+			auto& waitPass = m_renderpasses.get(pass.m_signals[i].passId);
 			waitPass.add_wait(signals[i], pass.m_signals[i].stage);
 		}
 		if (pass.m_id == m_lastCompute || pass.m_id == m_lastGeneric)
@@ -824,7 +830,7 @@ RenderResource::Id nyan::Rendergraph::add_ressource(Attachment attachment)
 {
 	RenderResource::Id id{ m_resourceCount++ };
 	auto& r = m_renderresources.emplace(id, id);
-	r.name = std::format("UnnamedRenderResource{}", id);
+	r.name = std::format("UnnamedRenderResource {}", static_cast<uint32_t>(id));
 	r.attachment = attachment;
 	if (attachment.index() == 0) {
 		r.m_type = RenderResource::Type::Image;
@@ -843,12 +849,14 @@ bool nyan::Rendergraph::resource_exists(RenderResource::Id id)
 
 RenderResource& nyan::Rendergraph::get_resource(RenderResource::Id id)
 {
-	return m_renderresources.get_direct(id);
+	assert(id != InvalidResourceId);
+	return m_renderresources.get(id);
 }
 
 const RenderResource& nyan::Rendergraph::get_resource(RenderResource::Id id) const
 {
-	return m_renderresources.get_direct(id);
+	assert(id != InvalidResourceId);
+	return m_renderresources.get(id);
 }
 
 
@@ -860,20 +868,20 @@ vulkan::LogicalDevice& nyan::Rendergraph::get_device() const
 void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 {
 	if (m_swapchainResource == InvalidResourceId) {
-		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", src_const);
+		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", static_cast<uint32_t>(src_const));
 		assert(false);
 		return;
 	}
-	auto& src = m_renderpasses.get_direct(src_const);
+	auto& src = m_renderpasses.get(src_const);
 	assert(src.get_type() == Renderpass::Type::Generic);
 
-	auto& resource = m_renderresources.get_direct(m_swapchainResource);
+	auto& resource = m_renderresources.get(m_swapchainResource);
 	Utility::log().format("Swap Present Ressource ({}) Renderpass ({})", resource.name.data(), src.m_name.data());
 	assert(resource.m_uses.size() > src_const);
 	auto usage = resource.m_uses[src_const];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", src_const);
+		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", static_cast<uint32_t>(src_const));
 		assert(false);
 		return;
 	}
@@ -968,11 +976,12 @@ bool debugBarriers = false;
 
 void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to, const RenderResource& resource)
 {
-	auto& src = m_renderpasses.get_direct(from);
-	auto& dst = m_renderpasses.get_direct(to);
+	auto& src = m_renderpasses.get(from);
+	auto& dst = m_renderpasses.get(to);
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass ({}) -> ({}) wants to transition something which isn't an image ({}), which is not supported yet", from, to, resource.m_id);
+		Utility::log().format("Renderpass ({}) -> ({}) wants to transition something which isn't an image ({}), which is not supported yet",
+			src.m_name, dst.m_name, resource.name);
 		assert(false);
 		return;
 	}
@@ -1132,21 +1141,21 @@ void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to
 	}
 
 	if (debugBarriers) {
-		Utility::log().format("Ressource ({}) Renderpass ({}) -> ({})", resource.name.data(), src.m_name.data(), dst.m_name.data());
+		Utility::log().format("Ressource ({}) Renderpass ({}) -> ({})", resource.name, src.m_name, dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 	}
 	if (imageBarrier.oldLayout != imageBarrier.newLayout && imageBarrier.newLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		Utility::log().format("Renderpass {} -> {}, Possibly no Barrier needed here", src.m_name.data(), dst.m_name.data());
+		Utility::log().format("Renderpass {} -> {}, Possibly no Barrier needed here", src.m_name, dst.m_name);
 		return;
 	}
 
 	if (imageBarrier.oldLayout == imageBarrier.newLayout &&
 		imageBarrier.srcQueueFamilyIndex == imageBarrier.dstQueueFamilyIndex &&
 		srcUsage.only(RenderResource::ImageUse::Attachment) && dstUsage.only(RenderResource::ImageUse::Attachment)) {
-		Utility::log().format("Renderpass {} -> {}, Barrier for attachment only usage without layout transition or Queue Ownership transfer", src.m_name.data(), dst.m_name.data());
+		Utility::log().format("Renderpass {} -> {}, Barrier for attachment only usage without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
 	}
 	else {
 		src.add_post_barrier(imageBarrier, resource.m_id);
@@ -1210,7 +1219,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 				if (first) {
 					first = false;
 					initialLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-					Utility::log().format("First usage of image %d is sampling, is this intended?", resource.m_id);
+					Utility::log().format("First usage of image %d is sampling, is this intended?", resource.name);
 				}
 			}
 			if (use.any_of(RenderResource::ImageUse::ImageLoad, RenderResource::ImageUse::ImageStore)) {
@@ -1239,7 +1248,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 				if (first) {
 					first = false;
 					initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-					Utility::log().format("First usage of image %d is as copy source, is this intended?", resource.m_id);
+					Utility::log().format("First usage of image %d is as copy source, is this intended?", resource.name);
 				}
 			}
 		}
@@ -1247,18 +1256,18 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
 	}
 	resource.handle->set_debug_label(resource.name.data());
-	resource.handle->get_view()->set_debug_label((std::string(resource.name.data()) + "_view").c_str());
+	resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
 }
 
 void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const RenderResource& resource) {
-	auto& dst = m_renderpasses.get_direct(dst_const);
+	auto& dst = m_renderpasses.get(dst_const);
 	assert(dst.get_type() == Renderpass::Type::Generic);
 
 	assert(resource.m_uses.size() > dst_const);
 	auto usage = resource.m_uses[dst_const];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: {} tries not supported resource transition", dst_const);
+		Utility::log().format("Renderpass: {} tries not supported resource transition", dst.m_name);
 		assert(false);
 		return;
 	}
@@ -1289,7 +1298,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		assert(!usage.test(RenderResource::ImageUse::ImageLoad)); //Technically possible, but unreasonable?
 		assert(!usage.test(RenderResource::ImageUse::ImageStore));
 		if (!usage.any_of(RenderResource::ImageUse::BlitTarget, RenderResource::ImageUse::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst.m_name.data());
+			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		//TODO: Compute Shader
@@ -1301,7 +1310,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		assert(!usage.test(RenderResource::ImageUse::Attachment));
 		assert(!usage.test(RenderResource::ImageUse::Sample));  //Technically possible, but unreasonable?
 		if (!usage.any_of(RenderResource::ImageUse::BlitTarget, RenderResource::ImageUse::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst.m_name.data());
+			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		assert(false);
@@ -1332,7 +1341,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		return;
 
 	if (debugBarriers) {
-		Utility::log().format("Ressource ({}) Renderpass ({})", resource.name.data(), dst.m_name.data());
+		Utility::log().format("Ressource ({}) Renderpass ({})", resource.name.data(), dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
@@ -1344,13 +1353,13 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 }
 
 void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResource& resource) {
-	auto& dst = m_renderpasses.get_direct(dst_const);
+	auto& dst = m_renderpasses.get(dst_const);
 
 	assert(resource.m_uses.size() > dst_const);
 	auto usage = resource.m_uses[dst_const];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: {} tries not supported resource copy", dst_const);
+		Utility::log().format("Renderpass: {} tries not supported resource copy", dst.m_name);
 		assert(false);
 		return;
 	}
@@ -1464,7 +1473,7 @@ void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResour
 	assert(dst.get_type() == Renderpass::Type::Generic);
 
 	if (debugBarriers) {
-		Utility::log().format("Copy Ressource ({}) Renderpass ({})", resource.name.data(), dst.m_name.data());
+		Utility::log().format("Copy Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;

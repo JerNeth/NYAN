@@ -1,15 +1,20 @@
 #include "Renderer/DeferredLighting.h"
-#include "entt/entt.hpp"
+#include "Renderer/RenderGraph.h"
+#include "Renderer/RenderManager.h"
 #include "VulkanWrapper/CommandBuffer.h"
 #include "VulkanWrapper/Sampler.h"
 #include "Utility/Exceptions.h"
-#include <future>
+#include "entt/entt.hpp"
 
-nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass)
+nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
+	nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
+	nyan::RenderResource::Id stencilRead) :
+	Renderer(device, registry, renderManager, pass),
+	m_albedoRead (albedoRead),
+	m_normalRead (normalRead),
+	m_pbrRead (pbrRead),
+	m_depthRead	(depthRead),
+	m_stencilRead (stencilRead)
 {
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
@@ -45,15 +50,15 @@ void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 {
 	PushConstants constants{
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
-		.albedoBinding {r_pass.get_read_bind("g_Albedo")},
+		.albedoBinding {r_pass.get_read_bind(m_albedoRead)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.normalBinding {r_pass.get_read_bind("g_Normal")},
+		.normalBinding {r_pass.get_read_bind(m_normalRead)},
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.pbrBinding {r_pass.get_read_bind("g_PBR")},
+		.pbrBinding {r_pass.get_read_bind(m_pbrRead)},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.depthBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageDepth)},
+		.depthBinding {r_pass.get_read_bind(m_depthRead, nyan::Renderpass::Read::Type::ImageDepth)},
 		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.stencilBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageStencil)},
+		.stencilBinding {r_pass.get_read_bind(m_stencilRead, nyan::Renderpass::Read::Type::ImageStencil)},
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 	};
 	bind.push_constants(constants);
@@ -110,12 +115,18 @@ void nyan::DeferredLighting::create_pipeline()
 	r_pass.add_pipeline(pipelineConfig, &m_deferredPipeline);
 }
 
-nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass),
-	m_pipeline(device, generate_config())
+nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
+	nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
+	nyan::RenderResource::Id stencilRead, nyan::RenderResource::Id diffuseWrite, nyan::RenderResource::Id specularWrite) :
+	Renderer(device, registry, renderManager, pass),
+	m_pipeline(device, generate_config()),
+	m_albedoRead(albedoRead),
+	m_normalRead(normalRead),
+	m_pbrRead(pbrRead),
+	m_depthRead(depthRead),
+	m_stencilRead(stencilRead),
+	m_diffuseWrite(diffuseWrite),
+	m_specularWrite(specularWrite)
 {
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
@@ -128,22 +139,22 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 
 void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bind)
 {
-	auto writeBindDiffuse = r_pass.get_write_bind("DiffuseLighting", nyan::Renderpass::Write::Type::Compute);
-	auto writeBindSpecular = r_pass.get_write_bind("SpecularLighting", nyan::Renderpass::Write::Type::Compute);
+	auto writeBindDiffuse = r_pass.get_write_bind(m_diffuseWrite, nyan::Renderpass::Write::Type::Compute);
+	auto writeBindSpecular = r_pass.get_write_bind(m_specularWrite, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBindDiffuse != InvalidResourceId);
 	assert(writeBindSpecular != InvalidResourceId);
 	PushConstants constants{
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
-		.albedoBinding {r_pass.get_read_bind("g_Albedo")},
+		.albedoBinding {r_pass.get_read_bind(m_albedoRead)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.normalBinding {r_pass.get_read_bind("g_Normal")},
+		.normalBinding {r_pass.get_read_bind(m_normalRead)},
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.pbrBinding {r_pass.get_read_bind("g_PBR")},
+		.pbrBinding {r_pass.get_read_bind(m_pbrRead)},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.depthBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageDepth)},
+		.depthBinding {r_pass.get_read_bind(m_depthRead, nyan::Renderpass::Read::Type::ImageDepth)},
 		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.stencilBinding {r_pass.get_read_bind("g_Depth", nyan::Renderpass::Read::Type::ImageStencil)},
+		.stencilBinding {r_pass.get_read_bind(m_stencilRead, nyan::Renderpass::Read::Type::ImageStencil)},
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.diffuseImageBinding {writeBindDiffuse},
 		.specularImageBinding {writeBindSpecular},
@@ -174,11 +185,11 @@ vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_conf
 	};
 }
 
-nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	r_device(device),
-	r_registry(registry),
-	r_renderManager(renderManager),
-	r_pass(pass)
+nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass
+		, nyan::RenderResource::Id diffuseRead, nyan::RenderResource::Id specularRead) :
+	Renderer(device, registry, renderManager, pass),
+	m_diffuseRead(diffuseRead),
+	m_specularRead(specularRead)
 {
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
@@ -213,9 +224,9 @@ nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::regist
 void nyan::LightComposite::render(vulkan::GraphicsPipelineBind& bind)
 {
 	PushConstants constants{
-		.specularBinding {r_pass.get_read_bind(0)},
+		.specularBinding {r_pass.get_read_bind(m_specularRead)},
 		.specularSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.diffuseBinding {r_pass.get_read_bind(1)},
+		.diffuseBinding {r_pass.get_read_bind(m_diffuseRead)},
 		.diffuseSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 	};
 	bind.push_constants(constants);

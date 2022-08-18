@@ -2,12 +2,23 @@
 #ifndef RDRENDERER_H
 #define RDRENDERER_H
 #include "VkWrapper.h"
-#include "ShaderManager.h"
-#include "Material.h"
-#include "Shader.h"
-#include <map>
+#include "VulkanForwards.h"
+#include "entt/fwd.hpp"
 
 namespace nyan {
+	class Renderpass;
+	class RenderManager;
+	class Renderer {
+	public:
+	protected:
+		Renderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+
+		vulkan::LogicalDevice& r_device;
+		entt::registry& r_registry;
+		nyan::RenderManager& r_renderManager;
+		nyan::Renderpass& r_pass;
+		
+	};
 	//struct GraphicsModule {
 	//	std::array<vulkan::ShaderId, 5> shaderInstances;
 	//	uint32_t shaderCount;
