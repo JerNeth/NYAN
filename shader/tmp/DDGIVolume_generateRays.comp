@@ -44,6 +44,50 @@ vec3 sphericalFibonacci(float i, float n) {
 
 #   undef madfrac
 }
+//void DDGIVolumeBase::ComputeRandomRotation()
+//{
+//    // This approach is based on James Arvo's implementation from Graphics Gems 3 (pg 117-120).
+//    // Also available at: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.53.1357&rep=rep1&type=pdf
+//
+//    // Setup a random rotation matrix using 3 uniform RVs
+//    float u1 = RTXGI_2PI * GetRandomFloat();
+//    float cos1 = cosf(u1);
+//    float sin1 = sinf(u1);
+//
+//    float u2 = RTXGI_2PI * GetRandomFloat();
+//    float cos2 = cosf(u2);
+//    float sin2 = sinf(u2);
+//
+//    float u3 = GetRandomFloat();
+//    float sq3 = 2.f * sqrtf(u3 * (1.f - u3));
+//
+//    float s2 = 2.f * u3 * sin2 * sin2 - 1.f;
+//    float c2 = 2.f * u3 * cos2 * cos2 - 1.f;
+//    float sc = 2.f * u3 * sin2 * cos2;
+//
+//    // Create the random rotation matrix
+//    float _11 = cos1 * c2 - sin1 * sc;
+//    float _12 = sin1 * c2 + cos1 * sc;
+//    float _13 = sq3 * cos2;
+//
+//    float _21 = cos1 * sc - sin1 * s2;
+//    float _22 = sin1 * sc + cos1 * s2;
+//    float _23 = sq3 * sin2;
+//
+//    float _31 = cos1 * (sq3 * cos2) - sin1 * (sq3 * sin2);
+//    float _32 = sin1 * (sq3 * cos2) + cos1 * (sq3 * sin2);
+//    float _33 = 1.f - 2.f * u3;
+//
+//    // HLSL is column-major
+//    float3x3 transform;
+//    transform.r0 = { _11, _12, _13 };
+//    transform.r1 = { _21, _22, _23 };
+//    transform.r2 = { _31, _32, _33 };
+//
+//    m_probeRayRotationMatrix = transform;
+//    m_probeRayRotationQuaternion = RotationMatrixToQuaternion(m_probeRayRotationMatrix);
+//}
+//
 
 /**
     \param r Two uniform random numbers on [0,1]
