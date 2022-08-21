@@ -5,7 +5,7 @@
 #include "Utility/Exceptions.h"
 
 vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& info) :
-	r_device(parent),
+	VulkanObject(parent),
 	m_info(info)
 {
 	VkImageViewCreateInfo createInfo{
@@ -22,21 +22,20 @@ vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& i
 				.layerCount = m_info.layerCount
 			}
 	};
-	if (auto result = vkCreateImageView(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
+	if (auto result = vkCreateImageView(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
 
 
 vulkan::ImageView::ImageView(ImageView&& other) noexcept:
-    r_device(other.r_device),
-    m_vkHandle(other.m_vkHandle)
+	VulkanObject(other.r_device, other.m_handle)
 {
-    other.m_vkHandle = VK_NULL_HANDLE;
+    other.m_handle = VK_NULL_HANDLE;
 }
 vulkan::ImageView::~ImageView() noexcept {
-    if(m_vkHandle != VK_NULL_HANDLE) {
-        r_device.queue_image_view_deletion(m_vkHandle);
+    if(m_handle != VK_NULL_HANDLE) {
+        r_device.queue_image_view_deletion(m_handle);
     }
 }
 
@@ -48,7 +47,7 @@ void vulkan::ImageView::set_debug_label(const char* name) noexcept
 				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
 				.objectType {VK_OBJECT_TYPE_IMAGE_VIEW},
-				.objectHandle {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.objectHandle {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
 			vkSetDebugUtilsObjectNameEXT(r_device, &label);
@@ -67,7 +66,7 @@ void vulkan::ImageView::set_debug_label(const char* name) noexcept
 				.sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
 				.objectType {VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT},
-				.object {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.object {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
 			vkDebugMarkerSetObjectNameEXT(r_device, &label);
@@ -76,8 +75,7 @@ void vulkan::ImageView::set_debug_label(const char* name) noexcept
 }
 
 vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations, uint32_t mipTail) :
-	r_device(parent),
-	m_vkHandle(image),
+	VulkanObject(parent, image),
 	m_info(info),
 	m_allocations(allocations),
 	m_view(r_device.create_image_view(ImageViewCreateInfo{
@@ -120,10 +118,9 @@ vulkan::Image::Image(LogicalDevice& parent, VkImage image, const ImageInfo& info
 }
 
 vulkan::Image::Image(Image&& other) noexcept :
-	r_device(other.r_device),
+	VulkanObject(other.r_device, other.m_handle),
 	m_optimal(other.m_optimal),
 	m_ownsImage(other.m_ownsImage),
-	m_vkHandle(other.m_vkHandle),
 	m_stageFlags(other.m_stageFlags),
 	m_accessFlags(other.m_accessFlags),
 	m_info(other.m_info),
@@ -134,19 +131,19 @@ vulkan::Image::Image(Image&& other) noexcept :
 	m_singleMipTail(other.m_singleMipTail),
 	m_isBeingResized(other.m_isBeingResized)
 {
-	other.m_vkHandle = VK_NULL_HANDLE;
+	other.m_handle = VK_NULL_HANDLE;
 }
 
 vulkan::Image& vulkan::Image::operator=(Image&& other) noexcept
 {
 	if (this != &other) {
 		if (m_ownsImage)
-			if (m_vkHandle != VK_NULL_HANDLE)
-				r_device.queue_image_deletion(m_vkHandle);
+			if (m_handle != VK_NULL_HANDLE)
+				r_device.queue_image_deletion(m_handle);
 		m_allocations.clear();
 		m_optimal = other.m_optimal;
 		m_ownsImage = other.m_ownsImage;
-		m_vkHandle = other.m_vkHandle;
+		m_handle = other.m_handle;
 		m_stageFlags = other.m_stageFlags;
 		m_accessFlags = other.m_accessFlags;
 		m_info = other.m_info;
@@ -156,7 +153,7 @@ vulkan::Image& vulkan::Image::operator=(Image&& other) noexcept
 		m_mipTail = other.m_mipTail;
 		m_singleMipTail = other.m_singleMipTail;
 		m_isBeingResized = other.m_isBeingResized;
-		other.m_vkHandle = VK_NULL_HANDLE;
+		other.m_handle = VK_NULL_HANDLE;
 	}
 	return *this;
 }
@@ -164,8 +161,8 @@ vulkan::Image& vulkan::Image::operator=(Image&& other) noexcept
 vulkan::Image::~Image() noexcept
 {		
 	if (m_ownsImage)
-		if (m_vkHandle != VK_NULL_HANDLE)
-			r_device.queue_image_deletion(m_vkHandle);
+		if (m_handle != VK_NULL_HANDLE)
+			r_device.queue_image_deletion(m_handle);
 	
 }
 
@@ -239,7 +236,7 @@ void vulkan::Image::set_debug_label(const char* name) noexcept
 				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
 				.objectType {VK_OBJECT_TYPE_IMAGE},
-				.objectHandle {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.objectHandle {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
 			vkSetDebugUtilsObjectNameEXT(r_device, &label);
@@ -258,7 +255,7 @@ void vulkan::Image::set_debug_label(const char* name) noexcept
 				.sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
 				.objectType {VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT},
-				.object {reinterpret_cast<uint64_t>(m_vkHandle)},
+				.object {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
 			vkDebugMarkerSetObjectNameEXT(r_device, &label);
@@ -287,9 +284,6 @@ uint32_t vulkan::Image::get_height(uint32_t mipLevel) const noexcept {
 }
 uint32_t vulkan::Image::get_depth(uint32_t mipLevel) const noexcept {
 	return Math::max(1u, m_info.depth >> mipLevel);
-}
-VkImage vulkan::Image::get_handle() const noexcept {
-	return m_vkHandle;
 }
 VkImageUsageFlags vulkan::Image::get_usage() const noexcept {
 	return m_info.usage;

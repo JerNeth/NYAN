@@ -4,23 +4,31 @@
 #include "CommandBuffer.h"
 #include "AccelerationStructure.h"
 
-nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing) :
+nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing, const std::filesystem::path& directory) :
 	r_device(device),
+	m_rendergraph(r_device),
 	m_shaderManager(r_device),
-	m_textureManager(r_device),
+	m_textureManager(r_device, false, directory),
 	m_materialManager(r_device, m_textureManager),
 	m_meshManager(r_device, m_materialManager,
 		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure? useRaytracing : false),
 	m_instanceManager(r_device,
 		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
 	m_sceneManager(r_device),
-	m_ddgiManager(r_device, m_registry),
+	m_ddgiManager(r_device, m_rendergraph, m_registry),
 	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
 		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
 	m_primaryCamera(entt::null)
 {
 }
-
+nyan::Rendergraph& nyan::RenderManager::get_render_graph()
+{
+	return m_rendergraph;
+}
+const nyan::Rendergraph& nyan::RenderManager::get_render_graph() const
+{
+	return m_rendergraph;
+}
 vulkan::ShaderManager& nyan::RenderManager::get_shader_manager() 
 { 
 	return m_shaderManager;
@@ -125,11 +133,8 @@ const entt::entity& nyan::RenderManager::get_primary_camera() const
 	return m_primaryCamera;
 }
 
-void nyan::RenderManager::update()
+void nyan::RenderManager::update(std::chrono::nanoseconds dt)
 {
-	//Skeletal animations have to be before the mesh manager build
-	//Has to be before instance manager build and instance manager update
-	m_meshManager.build();
 	auto view = m_registry.view<const MeshID, const InstanceId>();
 	for (const auto& [entity, meshId, instanceId] : view.each()) {
 		//auto transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(transform.orientation, transform.position);
@@ -191,21 +196,31 @@ void nyan::RenderManager::update()
 		light.enabled = true;
 		light.color = Math::vec3{ 1, 1, 1 };
 		light.intensity = 1;
-		light.dir = Math::vec3{0.577, 0.577, 0.577};
+		light.dir = Math::vec3{ 0.577, 0.577, 0.577 };
 		m_sceneManager.set_dirlight(light);
 	}
-	bool needsSemaphore = false;
 	//Order doesn't matter
 	m_ddgiManager.update();
+}
+
+void nyan::RenderManager::begin_frame()
+{
+	//Skeletal animations have to be before the mesh manager build
+	//Has to be before instance manager build and instance manager update
+	m_ddgiManager.begin_frame();
+
+	m_meshManager.build();
+
+	bool needsSemaphore = false;
 	auto transferCmdHandle = r_device.request_command_buffer(vulkan::CommandBufferType::Transfer);
 	vulkan::CommandBuffer& transferCmd = transferCmdHandle;
-	needsSemaphore |= m_ddgiManager.upload(transferCmd);
 
-	//Order maybe matters (I forgot)
+	needsSemaphore |= m_ddgiManager.upload(transferCmd);
 	needsSemaphore |= m_meshManager.upload(transferCmd);
 	needsSemaphore |= m_materialManager.upload(transferCmd);
 	needsSemaphore |= m_sceneManager.upload(transferCmd);
 	needsSemaphore |= m_instanceManager.upload(transferCmd);
+
 	VkSemaphore semaphore{ VK_NULL_HANDLE };
 	r_device.submit(transferCmdHandle, needsSemaphore, &semaphore);
 	if (needsSemaphore) {
@@ -213,4 +228,9 @@ void nyan::RenderManager::update()
 	}
 
 	m_instanceManager.build();
+}
+
+void nyan::RenderManager::end_frame()
+{
+	m_ddgiManager.end_frame();
 }

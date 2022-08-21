@@ -19,7 +19,9 @@ namespace nyan {
 	};
 	class RenderManager {
 	public:
-		RenderManager(vulkan::LogicalDevice& device, bool useRaytracing = false);
+		RenderManager(vulkan::LogicalDevice& device, bool useRaytracing = false, const std::filesystem::path& directory = std::filesystem::current_path());
+		nyan::Rendergraph& get_render_graph();
+		const nyan::Rendergraph& get_render_graph() const;
 		vulkan::ShaderManager& get_shader_manager();
 		const vulkan::ShaderManager& get_shader_manager() const ;
 		nyan::TextureManager& get_texture_manager();
@@ -39,10 +41,13 @@ namespace nyan {
 		void add_materials(const std::vector<nyan::MaterialData>& materials);
 		void set_primary_camera(entt::entity entity);
 		const entt::entity& get_primary_camera() const;
-		void update();
+		void update(std::chrono::nanoseconds dt);
+		void begin_frame();
+		void end_frame();
 	private:
 		vulkan::LogicalDevice& r_device;
 		entt::registry m_registry;
+		nyan::Rendergraph m_rendergraph;
 		vulkan::ShaderManager m_shaderManager;
 		nyan::TextureManager m_textureManager;
 		nyan::MaterialManager m_materialManager;

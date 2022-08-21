@@ -10,17 +10,19 @@
 #include <fbxsdk.h>
 #include "Renderer/Mesh.h"
 #include "Renderer/Material.h"
+#include <filesystem>
 namespace Utility {
 
 	class FBXReader {
 	public:
-		FBXReader();
+		FBXReader(const std::filesystem::path& directory = std::filesystem::current_path());
 		~FBXReader();
-		void parse_meshes(std::string fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats);
+		void parse_meshes(const std::filesystem::path& fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats);
 	private:
 		void parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mesh>& retMeshes);
 		void parse_meshes(fbxsdk::FbxNode* parent, std::vector<nyan::Mesh>& retMeshes);
 
+		std::filesystem::path m_directory;
 		FbxManager* sdkManager;
 		FbxIOSettings* ios;
 	};

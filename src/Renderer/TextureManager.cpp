@@ -1,26 +1,31 @@
 #include "Renderer/TextureManager.h"
 #include "Utility/ImageReader.h"
+#include "Utility/Exceptions.h"
 
-nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streaming) :
+nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streaming, const std::filesystem::path& folder) :
 	r_device(device),
+	m_directory(folder),
 	m_streaming(streaming)
 {
-	create_image("white.png");
-	create_image("normal.png");
-	create_image("black.png");
+	std::vector< std::filesystem::path> defaultImages{ "white.png" ,"black.png", "normal.png" };
+	for (const auto& img : defaultImages) {
+		create_image(img);
+	}
 }
 
 ::vulkan::Image* nyan::TextureManager::request_texture(const std::string& name)
 {
-	if (const auto& res = m_textureIndex.find(name); res != m_textureIndex.end()) {
+	std::filesystem::path path{ name };
+	if (const auto& res = m_textureIndex.find(path.filename().string()); res != m_textureIndex.end()) {
 		assert(m_usedTextures.find(res->second) != m_usedTextures.end());
 		return m_usedTextures.find(res->second)->second.handle;
 	}
-	return create_image(name, m_minimumMipLevel);
+	return create_image(path, m_minimumMipLevel);
 }
 uint32_t nyan::TextureManager::get_texture_idx(const std::string& name, const std::string& defaultTex)
 {
-	if (const auto& res = m_textureIndex.find(name); res != m_textureIndex.end())
+	std::filesystem::path path{ name };
+	if (const auto& res = m_textureIndex.find(path.filename().string()); res != m_textureIndex.end())
 		return res->second;
 
 	Utility::log().format("Couldn't load \"{}\" using \"{}\" instead", name, defaultTex);
@@ -68,9 +73,9 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::path& file, uint32_t mipLevel)
 {
 	if (!file.extension().compare(".dds"))
-		return create_dds_image(file, mipLevel);
+		return create_dds_image(m_directory / file, mipLevel);
 	
-	auto [data, texInfo] = Utility::ImageReader::read_image_file(file);
+	auto [data, texInfo] = Utility::ImageReader::read_image_file(m_directory / file);
 
 
 	vulkan::ImageInfo info{
@@ -94,9 +99,9 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 		auto image = r_device.create_sparse_image(info, &data);
 
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
+		m_textureIndex.emplace(file.filename().string(), idx);
 		Utility::ImageReader::free_image(data.data);
 		return image;
 	}
@@ -105,9 +110,9 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 
 		r_device.wait_idle();
 
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
+		m_textureIndex.emplace(file.filename().string(), idx);
 		Utility::ImageReader::free_image(data.data);
 			
 		return image;
@@ -135,17 +140,17 @@ vulkan::ImageHandle nyan::TextureManager::create_dds_image(const std::filesystem
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, initalImageData.data());
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
+		m_textureIndex.emplace(file.filename().string(), idx);
 		return image;
 	}
 	else {
 		auto image = r_device.create_image(info, initalImageData.data());
 		r_device.wait_idle();
-		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = image->get_view()->get_image_view(), .imageLayout = info.layout });
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.string(), idx);
+		m_textureIndex.emplace(file.filename().string(), idx);
 		return image;
 	}
 }

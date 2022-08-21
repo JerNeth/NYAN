@@ -363,7 +363,7 @@ void nyan::ImguiRenderer::set_up_font()
 	};
 	m_font = r_device.create_image(info, &data);
 	m_fontBind = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ 
-		.imageView = (* m_font)->get_view()->get_image_view(),
+		.imageView = *(* m_font)->get_view(),
 		.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		});
 }

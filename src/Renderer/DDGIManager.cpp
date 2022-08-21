@@ -1,11 +1,13 @@
 #include "Renderer/DDGIManager.h"
+#include "Renderer/RenderGraph.h"
 #include "Buffer.h"
 #include "LogicalDevice.h"
 
 #include "entt/entt.hpp"
 
-nyan::DDGIManager::DDGIManager(vulkan::LogicalDevice& device, entt::registry& registry) :
+nyan::DDGIManager::DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry) :
 	DataManager(device),
+	r_rendergraph(rendergraph),
 	r_registry(registry)
 {
 }
@@ -33,12 +35,14 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.irradianceTextureSizeY {},
 			.inverseIrradianceTextureSizeX {},
 			.inverseIrradianceTextureSizeY {},
+			.irradianceTextureBinding {},
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.irradianceImageBinding {},
 			.depthTextureSizeX {},
 			.depthTextureSizeY {},
 			.inverseDepthTextureSizeX {},
 			.inverseDepthTextureSizeY {},
+			.depthTextureBinding {},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthImageBinding {},
 			.shadowBias {parameters.depthBias}
@@ -111,8 +115,14 @@ const nyan::shaders::DDGIVolume& nyan::DDGIManager::get(uint32_t id) const
 void nyan::DDGIManager::update()
 {
 
-	auto volumeView = r_registry.view<const DDGIVolumeParameters>();
-	for (const auto& [entity, parameters] : volumeView.each()) {
+	auto volumeView = r_registry.view<DDGIVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (!parameters.dirty)
+			continue;
+		parameters.dirty = false;
+		if (parameters.ddgiVolume == nyan::InvalidBinding) {
+			parameters.ddgiVolume = add_ddgi_volume();
+		}
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
@@ -134,9 +144,72 @@ void nyan::DDGIManager::update()
 		update_spacing(deviceVolume);
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
-		//TODO	update texture References must be done after rendergraph "update"
-		//		update/setup texture read/writes must be done before rendergraph "update"
+		if (parameters.depthResource) {
+			parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.size{nyan::ImageAttachment::Size::Absolute},
+				.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
+				.height {static_cast<float>(deviceVolume.depthTextureSizeY)}
+				});
+			for (const auto& read : m_reads) {
+				auto& pass = r_rendergraph.get_pass(read);
+				pass.add_read(parameters.depthResource);
+			}
+			for (const auto& [write, type] : m_writes) {
+				auto& pass = r_rendergraph.get_pass(write);
+				pass.add_write(parameters.depthResource, type);
+			}
+		}
+		else {
+			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
+			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
+			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
+			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+
+		}
+		if (parameters.irradianceResource) {
+			parameters.irradianceResource = r_rendergraph.add_ressource(std::format("DDGI_Irradiance_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+				.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+				.size{nyan::ImageAttachment::Size::Absolute},
+				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
+				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
+				});
+			for (const auto& read : m_reads) {
+				auto& pass = r_rendergraph.get_pass(read);
+				pass.add_read(parameters.irradianceResource);
+			}
+			for (const auto& [write, type] : m_writes) {
+				auto& pass = r_rendergraph.get_pass(write);
+				pass.add_write(parameters.irradianceResource, type);
+			}
+		}
+		else {
+			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
+			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
+			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
+			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+		}
+		// Update Probes -> Update Renderpass Read/Writes (if changed) -> Rendergraph update -> Update Bindings here
 	}
+}
+
+void nyan::DDGIManager::begin_frame()
+{
+	//Update Bindings here
+}
+
+void nyan::DDGIManager::end_frame()
+{
+}
+void  nyan::DDGIManager::add_read(Renderpass::Id pass)
+{
+	m_reads.push_back(pass);
+}
+void  nyan::DDGIManager::add_write(Renderpass::Id pass, Renderpass::Write::Type type)
+{
+	m_writes.push_back({ pass, type });
 }
 
 void nyan::DDGIManager::update_spacing(nyan::shaders::DDGIVolume& volume)

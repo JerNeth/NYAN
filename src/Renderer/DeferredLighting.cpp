@@ -141,8 +141,8 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 {
 	auto writeBindDiffuse = r_pass.get_write_bind(m_diffuseWrite, nyan::Renderpass::Write::Type::Compute);
 	auto writeBindSpecular = r_pass.get_write_bind(m_specularWrite, nyan::Renderpass::Write::Type::Compute);
-	assert(writeBindDiffuse != InvalidResourceId);
-	assert(writeBindSpecular != InvalidResourceId);
+	assert(writeBindDiffuse != InvalidBinding);
+	assert(writeBindSpecular != InvalidBinding);
 	PushConstants constants{
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3

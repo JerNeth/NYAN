@@ -495,7 +495,7 @@ namespace vulkan {
 		uint32_t baseArrayLayer = 0;
 		uint32_t layerCount = 1;
 	};
-	class ImageView : public Utility::UIDC {
+	class ImageView : public Utility::UIDC, public VulkanObject<VkImageView> {
 	public:
 		ImageView(LogicalDevice& parent, const ImageViewCreateInfo & info);
 		ImageView(ImageView& other) = delete;
@@ -503,9 +503,6 @@ namespace vulkan {
 		ImageView& operator=(ImageView&) = delete;
 		ImageView& operator=(ImageView&&) = delete;
 		~ImageView() noexcept;
-		VkImageView get_image_view() const noexcept {
-			return m_vkHandle;
-		}
 		VkFormat get_format() const noexcept {
 			return m_info.format;
 		}
@@ -517,11 +514,9 @@ namespace vulkan {
 		}
 		void set_debug_label(const char* name) noexcept;
 	private:
-		LogicalDevice& r_device;
-		VkImageView m_vkHandle;
 		ImageViewCreateInfo m_info;
 	};
-	class Image : public Utility::UIDC {
+	class Image : public Utility::UIDC, public VulkanObject<VkImage> {
 	public:
 		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations = {}, uint32_t mipTail = 0);
 		Image(Image&) = delete;
@@ -549,7 +544,6 @@ namespace vulkan {
 		uint32_t get_width(uint32_t mipLevel = 0) const noexcept;
 		uint32_t get_height(uint32_t mipLevel = 0) const noexcept;
 		uint32_t get_depth(uint32_t mipLevel = 0) const noexcept;
-		VkImage get_handle() const noexcept;
 		VkImageUsageFlags get_usage() const noexcept;
 		const ImageInfo& get_info() const;
 		VkFormat get_format() const;
@@ -635,10 +629,8 @@ namespace vulkan {
 		}
 
 	private:
-		LogicalDevice& r_device;
 		bool m_optimal = true;
 		bool m_ownsImage = true;
-		VkImage m_vkHandle = VK_NULL_HANDLE;
 		VkPipelineStageFlags m_stageFlags{};
 		VkAccessFlags m_accessFlags{};
 		ImageInfo m_info;

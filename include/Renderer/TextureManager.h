@@ -15,7 +15,7 @@ namespace nyan {
 			Utility::TextureInfo info;
 		};
 	public:
-		TextureManager(vulkan::LogicalDevice& device, bool streaming = false);
+		TextureManager(vulkan::LogicalDevice& device, bool streaming = false, const std::filesystem::path& folder = std::filesystem::current_path());
 		vulkan::Image* request_texture(const std::string& name);
 		uint32_t get_texture_idx(const std::string& name, const std::string& defaultTex = "white.png");
 		void change_mip(const std::string& name, uint32_t targetMip);
@@ -27,6 +27,7 @@ namespace nyan {
 		vulkan::ImageHandle create_dds_image(const std::filesystem::path& file, uint32_t mipLevel = 0);
 
 		vulkan::LogicalDevice& r_device;
+		std::filesystem::path m_directory;
 		std::unordered_map<uint32_t, Texture> m_usedTextures;
 		std::unordered_map<std::string, uint32_t> m_textureIndex;
 		bool m_streaming;

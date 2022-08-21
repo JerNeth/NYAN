@@ -483,7 +483,7 @@ namespace Utility {
 		void remove(const Key& key)  {
 			auto id = m_hashMap.find(key);
 			if (id == m_hashMap.end()) return;
-			m_storage.remove(id);
+			m_storage.remove(id->second);
 		}
 		Value& operator[](const Key& key) {
 			return get(key);

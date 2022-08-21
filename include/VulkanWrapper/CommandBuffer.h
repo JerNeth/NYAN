@@ -6,10 +6,8 @@
 #include <Util>
 #include "VulkanForwards.h"
 namespace vulkan {
-	class CommandBuffer {
+	class CommandBuffer : public VulkanObject<VkCommandBuffer> {
 	public:
-		
-	
 		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type = CommandBufferType::Generic, uint32_t threadIdx = 0);
 
 
@@ -56,8 +54,6 @@ namespace vulkan {
 		void clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor);
 		bool swapchain_touched() const noexcept;
 		void touch_swapchain() noexcept;
-		VkCommandBuffer get_handle() const noexcept;
-		operator VkCommandBuffer() const noexcept;
 		void end();
 		void begin_region(const char* name, const float* color = nullptr);
 		void end_region();
@@ -69,8 +65,6 @@ namespace vulkan {
 		/// *******************************************************************
 		/// Member variables
 		/// *******************************************************************
-		LogicalDevice& r_device;
-		VkCommandBuffer m_vkHandle;
 		CommandBufferType m_type;
 		uint32_t m_threadIdx = 0;
 		bool m_swapchainTouched = false;

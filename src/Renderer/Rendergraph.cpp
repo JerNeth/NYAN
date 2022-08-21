@@ -21,11 +21,11 @@ void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type re
 	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
 	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
 
-	if (resource.uses.size() <= m_id) {
-		resource.uses.resize(m_id + 1ull);
+	if (resource.uses.size() <= m_id.id) {
+		resource.uses.resize(m_id.id + 1ull);
 	}
 
-	resource.uses[m_id].set(RenderResource::ImageUse::Sample);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Sample);
 }
 
 void nyan::Renderpass::add_attachment(RenderResource::Id id, bool clear)
@@ -37,11 +37,11 @@ void nyan::Renderpass::add_attachment(RenderResource::Id id, bool clear)
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
-	resource.uses[m_id].set(RenderResource::ImageUse::Attachment);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Attachment);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 }
 
 void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clear)
@@ -61,11 +61,11 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 	m_attachments.push_back(resource.m_id);
 	m_rendersSwap = true;
 
-	if (resource.uses.size() <= m_id) 
-		resource.uses.resize(m_id + 1ull);
-	resource.uses[m_id].set(RenderResource::ImageUse::Attachment);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Attachment);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 }
 
 void nyan::Renderpass::add_depth_attachment(RenderResource::Id id, bool clear)
@@ -75,12 +75,12 @@ void nyan::Renderpass::add_depth_attachment(RenderResource::Id id, bool clear)
 	auto& resource = r_graph.get_resource(id);
 	m_depth = resource.m_id;
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
 	
-	resource.uses[m_id].set(RenderResource::ImageUse::Attachment);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Attachment);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 }
 
 void nyan::Renderpass::add_depth_stencil_attachment(RenderResource::Id id, bool clear)
@@ -90,11 +90,11 @@ void nyan::Renderpass::add_depth_stencil_attachment(RenderResource::Id id, bool 
 	auto& resource = r_graph.get_resource(id);
 	m_depth = m_stencil = resource.m_id;
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
-	resource.uses[m_id].set(RenderResource::ImageUse::Attachment);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Attachment);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 }
 
 void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
@@ -103,11 +103,11 @@ void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
 	assert(m_type == Renderpass::Type::Generic);
 	auto& resource = r_graph.get_resource(id);
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
-	resource.uses[m_id].set(RenderResource::ImageUse::Attachment);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::Attachment);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 
 	m_stencil = resource.m_id;
 }
@@ -119,11 +119,11 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
-	resource.uses[m_id].set(RenderResource::ImageUse::ImageStore);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::ImageStore);
 	if (clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 
 	assert(std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource](const auto& write) { return write.id == resource.m_id; }) == m_writes.cend());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE});
@@ -145,12 +145,12 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
 	resource.name = "swapchain";
 
-	if (resource.uses.size() <= m_id)
-		resource.uses.resize(m_id + 1ull);
+	if (resource.uses.size() <= m_id.id)
+		resource.uses.resize(m_id.id + 1ull);
 
-	resource.uses[m_id].set(RenderResource::ImageUse::ImageStore);
+	resource.uses[m_id.id].set(RenderResource::ImageUse::ImageStore);
 	if(clear)
-		resource.uses[m_id].set(RenderResource::ImageUse::Clear);
+		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE });
@@ -165,14 +165,14 @@ void nyan::Renderpass::copy(RenderResource::Id source, RenderResource::Id target
 	auto& sourceResource = r_graph.get_resource(source);
 	auto& targetResource = r_graph.get_resource(target);
 	targetResource.attachment = sourceResource.attachment;
-	if (targetResource.uses.size() <= m_id) {
-		targetResource.uses.resize(m_id + 1ull);
+	if (targetResource.uses.size() <= m_id.id) {
+		targetResource.uses.resize(m_id.id + 1ull);
 	}
-	if (sourceResource.uses.size() <= m_id) {
-		sourceResource.uses.resize(m_id + 1ull);
+	if (sourceResource.uses.size() <= m_id.id) {
+		sourceResource.uses.resize(m_id.id + 1ull);
 	}
-	targetResource.uses[m_id].set(RenderResource::ImageUse::CopyTarget);
-	sourceResource.uses[m_id].set(RenderResource::ImageUse::CopySource);
+	targetResource.uses[m_id.id].set(RenderResource::ImageUse::CopyTarget);
+	sourceResource.uses[m_id.id].set(RenderResource::ImageUse::CopySource);
 	m_copies.push_back(Copy{.src = sourceResource.m_id, .dst = targetResource.m_id});
 	//sourceResource.m_copiedIn.insert(m_id);
 	//targetResource.m_copiedIntoIn.insert(m_id);
@@ -318,7 +318,7 @@ uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type typ
 	if (res != m_writes.cend())
 		return res->binding;
 	else
-		return InvalidResourceId;
+		return InvalidResourceId.id;
 }
 
 uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
@@ -330,7 +330,7 @@ uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
 	if (res != m_reads.cend())
 		return res->binding;
 	else
-		return InvalidResourceId;
+		return InvalidResourceId.id;
 
 }
 
@@ -385,7 +385,7 @@ void nyan::Renderpass::clear_resource_references(RenderResource::Id id)
 		}
 	}
 	for (auto it = m_attachments.begin(); it != m_attachments.end();) {
-		if (it->id == id) {
+		if (it->id == id.id) {
 			assert(false && "Attachment deletion not supported yet");
 			return;
 			m_attachments.erase(it);
@@ -434,7 +434,7 @@ void nyan::Renderpass::build_rendering_info()
 					.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 					.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 				};
-				if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+				if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 					renderingAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 					for (size_t i = 0u; i < 4u; i++)
 						renderingAttachment.clearValue.color.float32[i] = attachment.clearColor[i];
@@ -453,7 +453,7 @@ void nyan::Renderpass::build_rendering_info()
 					.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 					.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 			};
-			if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+			if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 				renderingAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 				renderingAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
 			}
@@ -473,7 +473,7 @@ void nyan::Renderpass::build_rendering_info()
 					.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 					.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 			};
-			if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+			if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 				renderingAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 				renderingAttachment.clearValue.depthStencil.stencil = std::bit_cast<uint32_t>(attachment.clearColor[1]);
 			}
@@ -568,12 +568,12 @@ void nyan::Renderpass::update_rendering_info()
 		auto& resource = r_graph.m_renderresources.get(attachmentRessourceId);
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
 		if (resource.m_type == RenderResource::Type::Image) {
-			if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+			if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 				for (size_t i = 0u; i < 4u; i++)
 					m_colorAttachments[attachmentId].clearValue.color.float32[i] = attachment.clearColor[i];
 			}
 			assert(resource.handle);
-			m_colorAttachments[attachmentId++].imageView = resource.handle->get_view()->get_image_view();
+			m_colorAttachments[attachmentId++].imageView = *resource.handle->get_view();
 			uint32_t width = r_graph.r_device.get_swapchain_width();
 			uint32_t height = r_graph.r_device.get_swapchain_height();
 			if (attachment.size == ImageAttachment::Size::Absolute) {
@@ -595,12 +595,12 @@ void nyan::Renderpass::update_rendering_info()
 		assert(resource.handle);
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
 		if (m_stencil == InvalidResourceId) {
-			m_depthAttachment.imageView = resource.handle->get_depth_view()->get_image_view();
+			m_depthAttachment.imageView = *resource.handle->get_depth_view();
 		}
 		else {
-			m_depthAttachment.imageView = resource.handle->get_view()->get_image_view();
+			m_depthAttachment.imageView = *resource.handle->get_view();
 		}
-		if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+		if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 			m_depthAttachment.clearValue.depthStencil.depth = attachment.clearColor[0];
 		}
 	}
@@ -611,12 +611,12 @@ void nyan::Renderpass::update_rendering_info()
 		assert(resource.handle);
 		auto& attachment = std::get<ImageAttachment>(resource.attachment);
 		if (m_depth == InvalidResourceId) {
-			m_stencilAttachment.imageView = resource.handle->get_stencil_view()->get_image_view();
+			m_stencilAttachment.imageView = *resource.handle->get_stencil_view();
 		}
 		else {
-			m_stencilAttachment.imageView = resource.handle->get_view()->get_image_view();
+			m_stencilAttachment.imageView = *resource.handle->get_view();
 		}
-		if (resource.uses[m_id].test(RenderResource::ImageUse::Clear)) {
+		if (resource.uses[m_id.id].test(RenderResource::ImageUse::Clear)) {
 			m_stencilAttachment.clearValue.depthStencil.stencil = static_cast<uint32_t>(attachment.clearColor[1]);
 		}
 	}
@@ -629,7 +629,7 @@ void nyan::Renderpass::update_views()
 		if (resource.m_type == RenderResource::Type::Image) {
 			assert(resource.handle);
 			if (readType == Renderpass::Read::Type::ImageColor) {
-				readView = resource.handle->get_view()->get_image_view();
+				readView = *resource.handle->get_view();
 
 			}
 			else if (readType == Renderpass::Read::Type::ImageDepth) {
@@ -637,14 +637,14 @@ void nyan::Renderpass::update_views()
 				assert(tmp);
 				if (!tmp)
 					continue;
-				readView = tmp->get_image_view();
+				readView = *tmp;
 			}
 			else if (readType == Renderpass::Read::Type::ImageStencil) {
 				auto* tmp = resource.handle->get_stencil_view();
 				assert(tmp);
 				if (!tmp)
 					continue;
-				readView = tmp->get_image_view();
+				readView = *tmp;
 			}
 
 		}
@@ -655,7 +655,7 @@ void nyan::Renderpass::update_views()
 			assert(resource.handle);
 			if (!resource.handle)
 				continue;
-			writeView = resource.handle->get_view()->get_image_view();
+			writeView = *resource.handle->get_view();
 		}
 	}
 }
@@ -735,10 +735,9 @@ void nyan::Rendergraph::build()
 	assert(m_state == State::Build);
 	m_state = State::Execute;
 }
-
-void nyan::Rendergraph::execute()
+void nyan::Rendergraph::begin_frame()
 {
-	if (m_state == State::Dirty) 
+	if (m_state == State::Dirty)
 	{
 		clear_dependencies();
 		remove_queued_resources();
@@ -748,14 +747,19 @@ void nyan::Rendergraph::execute()
 
 		m_state = State::Execute;
 	}
-	assert(m_state == State::Execute);
 	//Update Attachments
 	m_renderresources.for_each([&](RenderResource& resource) {
 		update_render_resource(resource);
-	});
+		});
 	m_renderpasses.for_each([this](Renderpass& pass) {
 		pass.update();
 		});
+}
+
+void nyan::Rendergraph::end_frame()
+{
+
+	assert(m_state == State::Execute);
 
 	m_renderpasses.for_each([this](Renderpass& pass) {
 
@@ -777,7 +781,7 @@ void nyan::Rendergraph::execute()
 			auto& resource = m_renderresources.get(id);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			if (resource.m_type == RenderResource::Type::Image && !vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
-				if (resource.uses[pass.m_id].test(RenderResource::ImageUse::Clear)) {
+				if (resource.uses[pass.m_id.id].test(RenderResource::ImageUse::Clear)) {
 					VkClearColorValue clearValue{
 						.float32 {
 							attachment.clearColor.x(),
@@ -828,7 +832,7 @@ RenderResource::Id nyan::Rendergraph::add_ressource(Attachment attachment)
 {
 	RenderResource::Id id{ m_resourceCount++ };
 	auto& r = m_renderresources.emplace(id, id);
-	r.name = std::format("UnnamedRenderResource {}", static_cast<uint32_t>(id));
+	r.name = std::format("UnnamedRenderResource {}", static_cast<uint32_t>(id.id));
 	r.attachment = attachment;
 	if (attachment.index() == 0) {
 		r.m_type = RenderResource::Type::Image;
@@ -865,7 +869,7 @@ bool nyan::Rendergraph::resource_exists(RenderResource::Id id)
 void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 {
 	if (m_swapchainResource == InvalidResourceId) {
-		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", static_cast<uint32_t>(src_const));
+		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", static_cast<uint32_t>(src_const.id));
 		assert(false);
 		return;
 	}
@@ -874,11 +878,11 @@ void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 
 	auto& resource = m_renderresources.get(m_swapchainResource);
 	Utility::log().format("Swap Present Ressource ({}) Renderpass ({})", resource.name.data(), src.m_name.data());
-	assert(resource.uses.size() > src_const);
-	auto usage = resource.uses[src_const];
+	assert(resource.uses.size() > src_const.id);
+	auto usage = resource.uses[src_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", static_cast<uint32_t>(src_const));
+		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", static_cast<uint32_t>(src_const.id));
 		assert(false);
 		return;
 	}
@@ -983,8 +987,8 @@ void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to
 		assert(false);
 		return;
 	}
-	auto srcUsage = resource.uses[from];
-	auto dstUsage = resource.uses[to];
+	auto srcUsage = resource.uses[from.id];
+	auto dstUsage = resource.uses[to.id];
 
 	auto& attachment = std::get<ImageAttachment>(resource.attachment);
 	
@@ -1251,7 +1255,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 			}
 		}
 		if (!totalUses.none())
-			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id, usage, initialLayout);
+			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id.id, usage, initialLayout);
 	}
 	resource.handle->set_debug_label(resource.name.data());
 	resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
@@ -1307,8 +1311,8 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 	auto& dst = m_renderpasses.get(dst_const);
 	assert(dst.get_type() == Renderpass::Type::Generic);
 
-	assert(resource.uses.size() > dst_const);
-	auto usage = resource.uses[dst_const];
+	assert(resource.uses.size() > dst_const.id);
+	auto usage = resource.uses[dst_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
 		Utility::log().format("Renderpass: {} tries not supported resource transition", dst.m_name);
@@ -1399,8 +1403,8 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResource& resource) {
 	auto& dst = m_renderpasses.get(dst_const);
 
-	assert(resource.uses.size() > dst_const);
-	auto usage = resource.uses[dst_const];
+	assert(resource.uses.size() > dst_const.id);
+	auto usage = resource.uses[dst_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
 		Utility::log().format("Renderpass: {} tries not supported resource copy", dst.m_name);

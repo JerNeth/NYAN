@@ -2,7 +2,8 @@
 #include <iostream>
 #include <assert.h>
 
-Utility::FBXReader::FBXReader()
+Utility::FBXReader::FBXReader(const std::filesystem::path& directory) :
+	m_directory(directory)
 {
 	sdkManager = FbxManager::Create();
 
@@ -180,11 +181,17 @@ void Utility::FBXReader::parse_meshes(fbxsdk::FbxNode* parent, std::vector<nyan:
 	}
 
 }
-void Utility::FBXReader::parse_meshes(std::string fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats)
+void Utility::FBXReader::parse_meshes(const std::filesystem::path& fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats)
 {
 	fbxsdk::FbxImporter* importer = FbxImporter::Create(sdkManager, "");
 
-	if (!importer->Initialize(fbxFile.c_str(), -1, sdkManager->GetIOSettings()))
+	std::string filePath;
+	if (fbxFile.is_absolute())
+		filePath = fbxFile.string();
+	else
+		filePath = (m_directory / fbxFile).string();
+
+	if (!importer->Initialize(filePath.c_str(), -1, sdkManager->GetIOSettings()))
 		return;
 
 	fbxsdk::FbxScene* scene = ::FbxScene::Create(sdkManager, "ImportScene");

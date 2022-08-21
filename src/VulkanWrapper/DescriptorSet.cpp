@@ -426,7 +426,7 @@ VkDescriptorType vulkan::DescriptorSet::bindless_binding_to_type(uint32_t bindin
 }
 
 vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo) :
-	r_device(device),
+	VulkanObject(device),
 	m_createInfo(createInfo)
 {
 	const auto& vulkan12Properties = r_device.get_physical_device().get_vulkan12_properties();
@@ -595,7 +595,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data(),
 	};
-	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_pool); result != VK_SUCCESS) {
+	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -603,8 +603,8 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 
 vulkan::DescriptorPool::~DescriptorPool() noexcept
 {
-	if (m_pool != VK_NULL_HANDLE)
-		vkDestroyDescriptorPool(r_device.get_device(), m_pool, r_device.get_allocator());
+	if (m_handle != VK_NULL_HANDLE)
+		vkDestroyDescriptorPool(r_device.get_device(), m_handle, r_device.get_allocator());
 	if (m_layout != VK_NULL_HANDLE)
 		vkDestroyDescriptorSetLayout(r_device.get_device(), m_layout, r_device.get_allocator());
 }
@@ -622,7 +622,7 @@ vulkan::DescriptorSet vulkan::DescriptorPool::allocate_set()
 	VkDescriptorSetAllocateInfo allocateInfo{
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 		.pNext = nullptr,
-		.descriptorPool = m_pool,
+		.descriptorPool = m_handle,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &m_layout
 	};

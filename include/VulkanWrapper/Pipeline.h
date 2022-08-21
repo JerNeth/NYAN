@@ -182,7 +182,7 @@ namespace vulkan {
 		uint32_t recursionDepth{0};
 		VkPipelineLayout pipelineLayout{VK_NULL_HANDLE};
 	};
-	class PipelineLayout2 {
+	class PipelineLayout2 : public VulkanObject<VkPipelineLayout> {
 	public:
 		PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets);
 		~PipelineLayout2();
@@ -190,16 +190,10 @@ namespace vulkan {
 		PipelineLayout2(PipelineLayout2&&) = delete;
 		PipelineLayout2& operator=(PipelineLayout2&) = delete;
 		PipelineLayout2& operator=(PipelineLayout2&&) = delete;
-
-		operator VkPipelineLayout() const;
-		VkPipelineLayout get_layout() const noexcept;
-
 	private:
-		LogicalDevice& r_device;
-		VkPipelineLayout m_layout{ VK_NULL_HANDLE };
 	};
 
-	class PipelineCache {
+	class PipelineCache: public VulkanObject<VkPipelineCache>   {
 	public:
 		PipelineCache(LogicalDevice& device, const std::string& path);
 		PipelineCache(PipelineCache&) = delete;
@@ -207,23 +201,17 @@ namespace vulkan {
 		PipelineCache& operator=(PipelineCache&) = delete;
 		PipelineCache& operator=(PipelineCache&&) = delete;
 		~PipelineCache() noexcept;
-		VkPipelineCache get_handle() const noexcept;
 	private:
-		LogicalDevice& r_parent;
 		std::string m_path;
-		VkPipelineCache m_handle;
 	};
-	class Pipeline2 {
+	class Pipeline2 : public VulkanObject<VkPipeline> {
 	public:
 		Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config);
 		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
 		Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config);
-		VkPipeline get_pipeline() const noexcept;
-		operator VkPipeline() const noexcept;
 		VkPipelineLayout get_layout() const noexcept;
 		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
 	private:
-		VkPipeline m_pipeline { VK_NULL_HANDLE };
 		VkPipelineLayout m_layout { VK_NULL_HANDLE };
 		VkPipelineBindPoint m_type { VK_PIPELINE_BIND_POINT_GRAPHICS };
 		DynamicGraphicsPipelineState m_initialDynamicState {};

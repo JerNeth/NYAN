@@ -54,6 +54,7 @@ constexpr bool debugMarkers = true;
 #endif
 #include "glfwIncludes.h"
 
+#include "VulkanObject.h"
 
 #include "MaxVals.h"
 #include <array>

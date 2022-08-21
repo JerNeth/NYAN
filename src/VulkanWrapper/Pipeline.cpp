@@ -7,7 +7,7 @@
 #include "Utility/Exceptions.h"
 
 vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets) :
-	r_device(device)
+	VulkanObject(device)
 {
 	VkPushConstantRange range{
 		.stageFlags = VK_SHADER_STAGE_ALL,
@@ -22,25 +22,18 @@ vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vecto
 		.pPushConstantRanges = &range
 	};
 
-	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
+	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
 vulkan::PipelineLayout2::~PipelineLayout2()
 {
-	if (m_layout != VK_NULL_HANDLE)
-		vkDestroyPipelineLayout(r_device.get_device(), m_layout, r_device.get_allocator());
+	if (m_handle != VK_NULL_HANDLE)
+		vkDestroyPipelineLayout(r_device.get_device(), m_handle, r_device.get_allocator());
 }
-vulkan::PipelineLayout2::operator VkPipelineLayout() const
-{
-	return m_layout;
-}
-VkPipelineLayout vulkan::PipelineLayout2::get_layout() const noexcept
-{
-	return m_layout;
-}
+
 vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& path) :
-	r_parent(device),
+	VulkanObject(device),
 	m_path(path)
 {
 	size_t size = 0;
@@ -67,7 +60,7 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& p
 		.initialDataSize = size,
 		.pInitialData = data.data(),
 	};
-	if (auto result = vkCreatePipelineCache(r_parent.get_device(), &createInfo, r_parent.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = vkCreatePipelineCache(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
@@ -78,15 +71,15 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 	VkResult result;
 	std::vector<std::byte> data;
 	do {
-		vkGetPipelineCacheData(r_parent.get_device(), m_handle, &dataSize, nullptr);
+		vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, nullptr);
 		data.resize(dataSize);
-		result = vkGetPipelineCacheData(r_parent.get_device(), m_handle, &dataSize, data.data());
+		result = vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, data.data());
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
+			vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
 			return;
 		}
 		else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
+			vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
 			return;
 		}
 	} while (result != VK_SUCCESS);
@@ -95,15 +88,11 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 		out.write(reinterpret_cast<char*>(data.data()), dataSize);
 		out.close();
 	}
-	vkDestroyPipelineCache(r_parent.get_device(), m_handle, r_parent.get_allocator());
-}
-
-VkPipelineCache vulkan::PipelineCache::get_handle() const noexcept
-{
-	return m_handle;
+	vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
 }
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config) :
+	VulkanObject(parent),
 	m_layout(config.pipelineLayout),
 	m_type(VK_PIPELINE_BIND_POINT_GRAPHICS),
 	m_initialDynamicState(config.dynamicState)
@@ -296,7 +285,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 		.basePipelineIndex = -1
 	};
 
-	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_pipeline);
+	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_handle);
 		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
 		throw Utility::VulkanException(result);
 	}
@@ -304,6 +293,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config) : 
+	VulkanObject(parent),
 	m_layout(config.pipelineLayout),
 	m_type(VK_PIPELINE_BIND_POINT_COMPUTE)
 {
@@ -332,11 +322,12 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 		VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV)));
 	assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
-	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
+	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
 
 }
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config) :
+	VulkanObject(parent),
 	m_layout(config.pipelineLayout),
 	m_type(VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR),
 	m_initialDynamicState()
@@ -522,17 +513,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		Utility::log().location().format("Requested Recursion Depth for Pipeline too high\n requested: {} \t supported {}", createInfo.maxPipelineRayRecursionDepth, rtProperties.maxRayRecursionDepth);
 		createInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 	}
-	vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_pipeline);
-}
-
-VkPipeline vulkan::Pipeline2::get_pipeline() const noexcept
-{
-	return m_pipeline;
-}
-
-vulkan::Pipeline2::operator VkPipeline() const noexcept
-{
-	return m_pipeline;
+	vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
 }
 
 VkPipelineLayout vulkan::Pipeline2::get_layout() const noexcept
@@ -554,7 +535,7 @@ vulkan::PipelineStorage2::~PipelineStorage2()
 {
 	m_pipelines.for_each([this](Pipeline2& pipeline)
 	{
-		vkDestroyPipeline(r_device.get_device(), pipeline.get_pipeline(), r_device.get_allocator());
+		vkDestroyPipeline(r_device.get_device(), pipeline, r_device.get_allocator());
 	});
 }
 

@@ -20,13 +20,15 @@ int main() {
 
 	auto& input = application.get_input();
 
-	nyan::RenderManager renderManager(device, true);
+	auto directory = getenv("USERPROFILE") / std::filesystem::path{ "Documents/Assets" };
+
+	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
-	Utility::FBXReader reader;
+	Utility::FBXReader reader(directory);
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("ShaderBall.fbx", meshes, materials);
+	reader.parse_meshes("SunTemple.fbx", meshes, materials);
 	renderManager.add_materials(materials);
 
 
@@ -99,8 +101,7 @@ int main() {
 	}
 
 
-
-	nyan::Rendergraph rendergraph{ device };
+	auto& rendergraph {renderManager.get_render_graph()};
 	auto g_Depth = rendergraph.add_ressource("g_Depth", nyan::ImageAttachment
 		{
 			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
@@ -201,20 +202,27 @@ int main() {
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, DiffuseLighting, SpecularLighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
-	application.each_frame_begin([&]()
-		{
-			renderManager.update();
-			imgui.next_frame();
-		});
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
 			cameraController.update(dt);
+			renderManager.update(dt);
 			//imgui.update();
 		});
-	application.each_frame_end([&rendergraph, &device]()
+	application.each_frame_begin([&]()
 		{
-			//Could split an update out
-			rendergraph.execute();
+			//ddgiRenderer.begin_frame();
+			rendergraph.begin_frame();
+
+			imgui.next_frame();
+
+			//Upload/sync point here, don't really want stuff after here
+			renderManager.begin_frame();
+
+		});
+	application.each_frame_end([&]()
+		{
+			renderManager.end_frame();
+			rendergraph.end_frame();
 			//device.wait_idle(); //Brute forcing synchronization, currently 2 Frames in flight and I think the view matrix update gets mangled into the frame
 			//					//Potential solution, use staging buffer for rendermanager updates and synchronize via semaphores and barriers
 		});

@@ -10,7 +10,7 @@
 
 namespace vulkan {
 
-	class AccelerationStructure : public Utility::UIDC {
+	class AccelerationStructure : public Utility::UIDC, public VulkanObject< VkAccelerationStructureKHR>{
 	public:
 		AccelerationStructure(LogicalDevice& device, VkAccelerationStructureKHR handle, BufferHandle buffer, VkAccelerationStructureCreateInfoKHR info);
 		AccelerationStructure(AccelerationStructure&) = delete;
@@ -18,15 +18,11 @@ namespace vulkan {
 		AccelerationStructure& operator=(AccelerationStructure&) = delete;
 		AccelerationStructure& operator=(AccelerationStructure&& other);
 		~AccelerationStructure();
-		VkAccelerationStructureKHR get_handle() const noexcept;
-		operator VkAccelerationStructureKHR() const noexcept;
 		bool is_compactable() const noexcept;
 		VkAccelerationStructureInstanceKHR create_instance() const noexcept;
 		uint64_t get_reference() const noexcept;
 		void set_debug_label(const char* name) noexcept;
 	private:
-		LogicalDevice& r_device;
-		VkAccelerationStructureKHR m_handle = VK_NULL_HANDLE;
 		BufferHandle m_buffer;
 		VkAccelerationStructureCreateInfoKHR m_info;
 		uint64_t m_reference;

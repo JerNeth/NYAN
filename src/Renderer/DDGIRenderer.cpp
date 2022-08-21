@@ -40,32 +40,124 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd.bind_compute_pipeline(m_renderDDGIPipeline);
+			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
+			auto& renderGraph = r_renderManager.get_render_graph();
+			auto& resource = renderGraph.get_resource(m_renderTarget);
+			//TODO handle sparse set
+			VkImageMemoryBarrier2 readBarrier{
+				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+				.pNext {nullptr},
+				.srcStageMask{ VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR },
+				.srcAccessMask{ VK_ACCESS_2_SHADER_WRITE_BIT },
+				.dstStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.dstAccessMask{ VK_ACCESS_2_SHADER_READ_BIT },
+				.oldLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.newLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.srcQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.dstQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.image {*resource.handle},
+				.subresourceRange {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT },
+					.baseMipLevel {0},
+					.levelCount {VK_REMAINING_MIP_LEVELS},
+					.baseArrayLayer {0},
+					.layerCount {VK_REMAINING_ARRAY_LAYERS},
+				}
+			};
+			VkImageMemoryBarrier2 writeBarrier{
+				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+				.pNext {nullptr},
+				.srcStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.srcAccessMask{ 0 },
+				.dstStageMask{ VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR },
+				.dstAccessMask{ 0  },
+				.oldLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.newLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.srcQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.dstQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.image {*resource.handle},
+				.subresourceRange {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT },
+					.baseMipLevel {0},
+					.levelCount {VK_REMAINING_MIP_LEVELS},
+					.baseArrayLayer {0},
+					.layerCount {VK_REMAINING_ARRAY_LAYERS},
+				}
+			};
+			PushConstants constants{
+				.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
+				.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
+				.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
+				.ddgiBinding {ddgiManager.get_binding()},
+				.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
+				.ddgiIndex {0},
+				.renderTarget {r_pass.get_write_bind(m_renderTarget)}
+				//.col {},
+				//.col2 {}
+			};
+			assert(resource.handle); 
 			for (uint32_t i = 0; i < r_renderManager.get_ddgi_manager().slot_count(); ++i) {
-				render_volume(pipelineBind, i);
+
+				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
+				constants.ddgiIndex = i;
+				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
+				render_volume(rtPipelineBind, constants);
+				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &readBarrier);
+				auto filterRtPipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
+				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &writeBarrier);
+				filter_volume(filterRtPipelineBind, constants);
 			}
 		}, false);
 }
 
-void nyan::DDGIRenderer::render_volume(vulkan::ComputePipelineBind& bind, uint32_t volumeId)
+void nyan::DDGIRenderer::begin_frame() 
 {
-	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	uint32_t maxRays = 0;
+	auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	for (uint32_t i = 0; i < ddgiManager.slot_count(); ++i) {
+		const auto& volume = ddgiManager.get(i);
+		auto rayCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ * volume.raysPerProbe;
+		if (rayCount > maxRays)
+			maxRays = rayCount;
+	}
+	auto& renderGraph = r_renderManager.get_render_graph();
+	if (!m_renderTarget) {
+		m_renderTarget = renderGraph.add_ressource("DDGI_RenderTarget", nyan::ImageAttachment
+			{
+				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.size {ImageAttachment::Size::Absolute},
+				.width { static_cast<float>(maxRays)},
+				.height { 1},
+				.clearColor{0.f, 0.f, 0.f, 0.f},
+			});
+		r_pass.add_write(m_renderTarget, nyan::Renderpass::Write::Type::Compute);
+		ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
+	}
+	else {
+		auto& resource = renderGraph.get_resource(m_renderTarget);
+		auto& image = std::get<nyan::ImageAttachment>(resource.attachment);
+		image.width = static_cast<float>(maxRays);
+		image.height = 1;
+
+	}
+}
+
+void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants)
+{
 	//auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
 	//assert(writeBind != InvalidResourceId);
-	PushConstants constants{
-		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
-		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
-		.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
-		.ddgiBinding {ddgiManager.get_binding()},
-		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
-		.ddgiIndex {volumeId},
-		//.col {},
-		//.col2 {}
-	};
-	const auto& volume = ddgiManager.get(volumeId);
+
+	//const auto& volume = ddgiManager.get(volumeId);
 
 	bind.push_constants(constants);
-	bind.dispatch(1, 1, 1);
+	//bind.dispatch(1, 1, 1);
+	//bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
+}
+
+void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants)
+{
+	bind.push_constants(constants);
+	//bind.dispatch(1, 1, 1);
 	//bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
 }
 

@@ -89,7 +89,7 @@ namespace vulkan {
 		uint32_t m_storageImageCount {0};
 		uint32_t m_accelerationStructureCount {0};
 	};
-	class DescriptorPool {
+	class DescriptorPool : public VulkanObject<VkDescriptorPool> {
 	public:
 		friend class DescriptorSet;
 		DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo = {});
@@ -104,8 +104,6 @@ namespace vulkan {
 		const DescriptorCreateInfo& get_info() const;
 		VkDescriptorSetLayout get_layout() const;
 	private:
-		LogicalDevice& r_device;
-		VkDescriptorPool m_pool;
 		VkDescriptorSetLayout m_layout;
 		DescriptorCreateInfo m_createInfo;
 	};

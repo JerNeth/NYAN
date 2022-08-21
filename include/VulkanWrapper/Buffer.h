@@ -50,47 +50,15 @@ namespace vulkan {
 			return flags;
 		}
 	};
-	class Buffer : public Utility::UIDC {
+	class Buffer : public Utility::UIDC, public VulkanObject<VkBuffer>  {
 	public:
-		Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation allocation, const BufferInfo& info) :
-			r_device(device), 
-			m_vkHandle(buffer),
-			m_allocation(allocation),
-			m_info(info)
-		{
-			
-		}
+		Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation allocation, const BufferInfo& info);
 		void resize(VkDeviceSize newSize, bool copyData = false);
-		operator VkBuffer() const noexcept { return m_vkHandle; }
-		VkBufferUsageFlags get_usage() const noexcept {
-			return m_info.usage;
-		}
-		VmaMemoryUsage get_memory_usage() const noexcept {
-			return m_info.memoryUsage;
-		}
-		const VkDeviceSize get_size() const noexcept {
-			return m_info.size;
-		}
-		const BufferInfo& get_info() const noexcept {
-			return m_info;
-		}
-		VkBuffer get_handle() const noexcept {
-			return m_vkHandle;
-		}
-		void swap_contents(Buffer& other) noexcept {
-			//auto tmp = m_vkHandle;
-			//auto tmpAll = m_allocation;
-			//auto tmpInf = m_info;
-			//m_vkHandle = other.m_vkHandle;
-			//m_allocation = other.m_allocation;
-			//m_info = other.m_info;
-			//other.m_vkHandle = tmp;
-			//other.m_allocation = tmpAll;
-			//other.m_info = tmpInf;
-			std::swap(m_vkHandle, other.m_vkHandle);
-			std::swap(m_allocation, other.m_allocation); 
-			std::swap(m_info, other.m_info);
-		}
+		VkBufferUsageFlags get_usage()  const noexcept;
+		VmaMemoryUsage get_memory_usage()  const noexcept;
+		VkDeviceSize get_size() const noexcept;
+		const BufferInfo& get_info() const noexcept;
+		void swap_contents(Buffer& other) noexcept;
 		//MappedMemoryHandle<uint8_t> map_data() const noexcept;
 		void* map_data() noexcept;
 		void unmap_data() noexcept;
@@ -100,8 +68,6 @@ namespace vulkan {
 		void set_debug_label(const char* label) noexcept;
 		~Buffer();
 	private:
-		LogicalDevice& r_device;
-		VkBuffer m_vkHandle{ VK_NULL_HANDLE };
 		VmaAllocation m_allocation;
 		BufferInfo m_info;
 		void* maped = nullptr;

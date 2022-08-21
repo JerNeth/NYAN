@@ -26,15 +26,29 @@ namespace nyan {
 	//using RenderResourceId = uint32_t;
 
 
-
+	static constexpr uint32_t invalidValue{ std::numeric_limits<uint32_t>::max() };
 
 	struct RenderResource {
 		struct Id
 		{
 			using Type = uint32_t;
-			Id() : id(std::numeric_limits<uint32_t>::max()) {}
-			constexpr explicit Id(Type id) :id(id) {}
-			constexpr operator Type() const noexcept { return id; }
+			constexpr Id() : id(invalidValue)
+			{
+			}
+			constexpr explicit Id(Type id) :id(id)
+			{
+			}
+			constexpr operator Type() const noexcept
+			{
+				return id;
+			}
+			constexpr operator bool() const noexcept
+			{
+				return id != invalidValue;
+			}
+			friend constexpr bool operator==(const Id& lhs, const Id& rhs) noexcept {
+				return lhs.id == rhs.id;
+			}
 			Type id;
 		};
 		enum class Type : uint8_t {
@@ -63,7 +77,8 @@ namespace nyan {
 		Attachment attachment;
 		vulkan::Image* handle = nullptr;
 	};
-	static constexpr RenderResource::Id InvalidResourceId{ std::numeric_limits<uint32_t>::max() };
+	static constexpr RenderResource::Id InvalidResourceId{ invalidValue };
+	static constexpr uint32_t InvalidBinding{ invalidValue };
 
 	class Rendergraph;
 	class Renderpass {
@@ -73,9 +88,23 @@ namespace nyan {
 		struct Id
 		{
 			using Type = uint32_t;
-			Id() : id(std::numeric_limits<uint32_t>::max()) {}
-			constexpr explicit Id(Type id) :id(id) {}
-			constexpr operator Type() const noexcept { return id; }
+			constexpr Id() : id(invalidValue)
+			{
+			}
+			constexpr explicit Id(Type id) :id(id)
+			{
+			}
+			constexpr operator Type() const noexcept
+			{
+				return id;
+			}
+			constexpr operator bool() const noexcept
+			{
+				return id != invalidValue;
+			}
+			friend constexpr bool operator==(const Id& lhs, const Id& rhs) noexcept {
+				return lhs.id == rhs.id;
+			}
 			Type id;
 		};
 		struct Read {
@@ -269,34 +298,34 @@ namespace nyan {
 
 
 	};
-	static constexpr Renderpass::Id InvalidRenderpassId{ std::numeric_limits<uint32_t>::max() };
+	static constexpr Renderpass::Id InvalidRenderpassId{ invalidValue };
 
 }
 
 template <> struct ::std::hash< nyan::RenderResource::Id>
 {
-	size_t operator()(const nyan::RenderResource::Id& id) const
+	size_t operator()(const nyan::RenderResource::Id& id) const noexcept
 	{
 		return id.id;
 	}
 };
 template <> struct ::std::hash< nyan::Renderpass::Id>
 {
-	size_t operator()(const nyan::Renderpass::Id& id) const
+	size_t operator()(const nyan::Renderpass::Id& id) const noexcept
 	{
 		return id.id;
 	}
 };
 template <> struct ::std::equal_to< nyan::RenderResource::Id>
 {
-	size_t operator()(const nyan::RenderResource::Id& lhs, const nyan::RenderResource::Id& rhs) const
+	bool operator()(const nyan::RenderResource::Id& lhs, const nyan::RenderResource::Id& rhs) const noexcept
 	{
 		return lhs.id == rhs.id;
 	}
 };
 template <> struct ::std::equal_to< nyan::Renderpass::Id>
 {
-	size_t operator()(const nyan::Renderpass::Id& lhs, const nyan::Renderpass::Id& rhs) const
+	bool operator()(const nyan::Renderpass::Id& lhs, const nyan::Renderpass::Id& rhs) const noexcept
 	{
 		return lhs.id == rhs.id;
 	}
@@ -317,7 +346,8 @@ namespace nyan {
 		Renderpass::Id add_pass(const std::string& name, Renderpass::Type type);
 		Renderpass& get_pass(Renderpass::Id id);
 		void build();
-		void execute();
+		void begin_frame();
+		void end_frame();
 		//RenderResource& add_ressource(const entt::hashed_string& name, Attachment attachment);
 		//RenderResource& get_resource(const entt::hashed_string& name);
 		//bool resource_exists(const entt::hashed_string& name);

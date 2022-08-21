@@ -5,8 +5,7 @@
 
 
 vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAccelerationStructureKHR handle, BufferHandle buffer, VkAccelerationStructureCreateInfoKHR info) :
-	r_device(device),
-	m_handle(handle),
+	VulkanObject(device, handle),
 	m_buffer(buffer),
 	m_info(info)
 {
@@ -20,8 +19,7 @@ vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAc
 }
 
 vulkan::AccelerationStructure::AccelerationStructure(AccelerationStructure&& other) :
-	r_device(other.r_device),
-	m_handle(other.m_handle),
+	VulkanObject(other.r_device, other.m_handle),
 	m_buffer(std::move(other.m_buffer)),
 	m_info(std::move(other.m_info)),
 	m_reference(other.m_reference)
@@ -49,16 +47,6 @@ vulkan::AccelerationStructure::~AccelerationStructure()
 		m_handle = VK_NULL_HANDLE;
 		m_reference = 0;
 	}
-}
-
-VkAccelerationStructureKHR vulkan::AccelerationStructure::get_handle() const noexcept
-{
-	return m_handle;
-}
-
-vulkan::AccelerationStructure::operator VkAccelerationStructureKHR() const noexcept
-{
-	return m_handle;
 }
 
 bool vulkan::AccelerationStructure::is_compactable() const noexcept
