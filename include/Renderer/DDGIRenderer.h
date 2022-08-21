@@ -26,8 +26,8 @@ namespace nyan {
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
 	private:
-		void render_volume(vulkan::RaytracingPipelineBind& bind, uint32_t volumeId);
-		void filter_volume(vulkan::ComputePipelineBind& bind, uint32_t volumeId);
+		void render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants);
+		void filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants);
 		vulkan::PipelineId create_pipeline();
 		vulkan::RaytracingPipelineConfig generate_config();
 
