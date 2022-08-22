@@ -139,6 +139,7 @@ int main() {
 		});
 
 
+	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::AsyncCompute));
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
 	deferredPass.add_depth_stencil_attachment(g_Depth, true);
 	deferredPass.add_attachment(g_Albedo, true);
@@ -166,7 +167,6 @@ int main() {
 	//		//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 	//		.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 	//	});
-	//auto& ddgiPass = rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic);
 
 	
 	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
@@ -194,9 +194,9 @@ int main() {
 	imguiPass.add_swapchain_attachment();
 
 
+	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
-	//nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, g_Albedo, g_Normal, g_PBR, g_Depth, g_Depth, DiffuseLighting, SpecularLighting);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, DiffuseLighting, SpecularLighting);
@@ -210,7 +210,7 @@ int main() {
 		});
 	application.each_frame_begin([&]()
 		{
-			//ddgiRenderer.begin_frame();
+			ddgiRenderer.begin_frame();
 			rendergraph.begin_frame();
 
 			imgui.next_frame();

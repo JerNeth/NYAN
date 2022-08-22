@@ -9,7 +9,7 @@
 
 nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	Renderer(device, registry, renderManager, pass),
-	m_renderDDGIPipeline(create_pipeline()),
+	m_filterDDGIPipeline(create_pipeline()),
 	m_rtPipeline(device, generate_config())
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
@@ -113,12 +113,16 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 void nyan::DDGIRenderer::begin_frame() 
 {
 	uint32_t maxRays = 0;
+	uint32_t maxProbes = 0;
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	for (uint32_t i = 0; i < ddgiManager.slot_count(); ++i) {
 		const auto& volume = ddgiManager.get(i);
-		auto rayCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ * volume.raysPerProbe;
+		auto rayCount =  volume.raysPerProbe;
+		auto probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
 		if (rayCount > maxRays)
 			maxRays = rayCount;
+		if (probeCount > maxProbes)
+			maxProbes = probeCount;
 	}
 	auto& renderGraph = r_renderManager.get_render_graph();
 	if (!m_renderTarget) {
@@ -127,7 +131,7 @@ void nyan::DDGIRenderer::begin_frame()
 				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 				.size {ImageAttachment::Size::Absolute},
 				.width { static_cast<float>(maxRays)},
-				.height { 1},
+				.height { static_cast<float>(maxProbes)},
 				.clearColor{0.f, 0.f, 0.f, 0.f},
 			});
 		r_pass.add_write(m_renderTarget, nyan::Renderpass::Write::Type::Compute);
@@ -137,7 +141,7 @@ void nyan::DDGIRenderer::begin_frame()
 		auto& resource = renderGraph.get_resource(m_renderTarget);
 		auto& image = std::get<nyan::ImageAttachment>(resource.attachment);
 		image.width = static_cast<float>(maxRays);
-		image.height = 1;
+		image.height = static_cast<float>(maxProbes);
 
 	}
 }
@@ -150,8 +154,8 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 	//const auto& volume = ddgiManager.get(volumeId);
 
 	bind.push_constants(constants);
-	//bind.dispatch(1, 1, 1);
-	//bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
+	
+	bind.trace_rays(m_rtPipeline, /*numRays*/1, /*numProbes*/1, 1);
 }
 
 void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants)
