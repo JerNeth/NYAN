@@ -1,8 +1,9 @@
 #include "Renderer/ImguiRenderer.h"
 #include "entt/entt.hpp"
-#include "CommandBuffer.h"
-#include "Pipeline.h"
-#include "Buffer.h"
+#include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/Pipeline.h"
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/Image.h"
 #include "Renderer/MeshRenderer.h"
 using namespace vulkan;
 

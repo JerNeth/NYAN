@@ -3,20 +3,21 @@
 #include "VulkanWrapper/Buffer.h"
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/Shader.h"
+#include "VulkanWrapper/Image.h"
 
 #include "entt/entt.hpp"
 
 
 nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	Renderer(device, registry, renderManager, pass),
-	m_filterDDGIPipeline(create_pipeline()),
 	m_rtPipeline(device, generate_config())
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	//For now limit adding ddgi volumes to not allow adding any after render graph build
 	//This holds until render graph refactor in regards to modification or rebuild is done
 	//Also limit to one ddgi volume for now
-	ddgiManager.add_ddgi_volume(nyan::DDGIManager::DDGIVolumeParameters{});
+	ddgiManager.add_ddgi_volume();
 	//pass.add_write("DDGI_Rays", nyan::ImageAttachment
 	//		{
 	//			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
@@ -44,7 +45,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 			auto& renderGraph = r_renderManager.get_render_graph();
 			auto& resource = renderGraph.get_resource(m_renderTarget);
 			//TODO handle sparse set
-			VkImageMemoryBarrier2 readBarrier{
+			VkImageMemoryBarrier2 writeBarrier{
 				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
 				.pNext {nullptr},
 				.srcStageMask{ VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR },
@@ -64,13 +65,13 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.layerCount {VK_REMAINING_ARRAY_LAYERS},
 				}
 			};
-			VkImageMemoryBarrier2 writeBarrier{
+			VkImageMemoryBarrier2 readBarrier{
 				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
 				.pNext {nullptr},
 				.srcStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
 				.srcAccessMask{ 0 },
 				.dstStageMask{ VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR },
-				.dstAccessMask{ 0  },
+				.dstAccessMask{ 0 },
 				.oldLayout {VK_IMAGE_LAYOUT_GENERAL},
 				.newLayout {VK_IMAGE_LAYOUT_GENERAL},
 				.srcQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
@@ -91,21 +92,39 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.ddgiBinding {ddgiManager.get_binding()},
 				.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 				.ddgiIndex {0},
-				.renderTarget {r_pass.get_write_bind(m_renderTarget)}
+				.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)}
 				//.col {},
 				//.col2 {}
 			};
-			assert(resource.handle); 
+			assert(resource.handle); 				
+			 
 			for (uint32_t i = 0; i < r_renderManager.get_ddgi_manager().slot_count(); ++i) {
 
 				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
 				constants.ddgiIndex = i;
+				const auto& volume = ddgiManager.get(i);
+				PipelineConfig config{
+					.workSizeX {volume.depthProbeSize},
+					.workSizeY {volume.depthProbeSize},
+					.workSizeZ {1},
+					.ray_count {volume.raysPerProbe}
+				};
+				vulkan::PipelineId pipelineId;
+				if (auto it = m_pipelines.find(config); it != m_pipelines.end()) {
+					pipelineId = it->second;
+				}
+				else {
+					pipelineId = create_pipeline(config);
+					m_pipelines.emplace(config, pipelineId);
+				}
+				
 				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
-				render_volume(rtPipelineBind, constants);
-				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &readBarrier);
-				auto filterRtPipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
+				render_volume(rtPipelineBind, constants, volume.raysPerProbe, volume.probeCountX * volume.probeCountY * volume.probeCountZ);
 				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &writeBarrier);
-				filter_volume(filterRtPipelineBind, constants);
+
+				auto filterRtPipelineBind = cmd.bind_compute_pipeline(pipelineId);
+				filter_volume(filterRtPipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &readBarrier);
 			}
 		}, false);
 }
@@ -124,6 +143,7 @@ void nyan::DDGIRenderer::begin_frame()
 		if (probeCount > maxProbes)
 			maxProbes = probeCount;
 	}
+
 	auto& renderGraph = r_renderManager.get_render_graph();
 	if (!m_renderTarget) {
 		m_renderTarget = renderGraph.add_ressource("DDGI_RenderTarget", nyan::ImageAttachment
@@ -146,7 +166,7 @@ void nyan::DDGIRenderer::begin_frame()
 	}
 }
 
-void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants)
+void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants, uint32_t numRays, uint32_t numProbes)
 {
 	//auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
 	//assert(writeBind != InvalidResourceId);
@@ -155,20 +175,21 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 
 	bind.push_constants(constants);
 	
-	bind.trace_rays(m_rtPipeline, /*numRays*/1, /*numProbes*/1, 1);
+	bind.trace_rays(m_rtPipeline, numRays, numProbes, 1);
 }
 
-void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants)
+void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
-	//bind.dispatch(1, 1, 1);
-	//bind.trace_rays(&m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callableRegion, 1920, 1080, 1);
+	bind.dispatch(probeCountX, probeCountY, probeCountZ);
 }
 
-vulkan::PipelineId nyan::DDGIRenderer::create_pipeline()
+vulkan::PipelineId nyan::DDGIRenderer::create_pipeline(const PipelineConfig& config)
 {
 	vulkan::ComputePipelineConfig pipelineConfig{
-		.shaderInstance {r_renderManager.get_shader_manager().add_work_group_size_shader_instance("update_DDGI_comp", 64, 1, 1)},
+		.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_comp",
+		config.workSizeX, config.workSizeY,
+		config.workSizeZ, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::ray_countShaderName, config.ray_count})},
 		.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 	};
 	return r_device.get_pipeline_storage().add_pipeline(pipelineConfig);

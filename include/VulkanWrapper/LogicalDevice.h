@@ -7,10 +7,8 @@
 #include <functional>
 
 #include "Util"
-#include "Allocator.h"
 #include "Manager.h"
 #include "DescriptorSet.h"
-#include "Pipeline.h"
 namespace vulkan {
 	//Important to delete the device after everything else
 
@@ -299,13 +297,13 @@ namespace vulkan {
 		std::vector<std::unique_ptr<FrameResource>> m_frameResources;
 
 		Utility::Pool<CommandBuffer> m_commandBufferPool;
-		Utility::Pool<Allocation> m_allocationPool;
-		Utility::LinkedBucketList<Buffer> m_bufferPool;
-		Utility::LinkedBucketList<ImageView> m_imageViewPool;
-		Utility::LinkedBucketList<Image> m_imagePool;
+		std::unique_ptr<Utility::Pool<Allocation>> m_allocationPool;
+		std::unique_ptr<Utility::LinkedBucketList<Buffer>> m_bufferPool;
+		std::unique_ptr<Utility::LinkedBucketList<ImageView>> m_imageViewPool;
+		std::unique_ptr<Utility::LinkedBucketList<Image>> m_imagePool;
 		WSIState m_wsiState;
 
-		AttachmentAllocator m_attachmentAllocator;
+		std::unique_ptr<AttachmentAllocator> m_attachmentAllocator;
 		Queue m_graphics;
 		Queue m_compute;
 		Queue m_transfer;
@@ -315,8 +313,8 @@ namespace vulkan {
 		std::unordered_multimap<VkFence, std::function<void(void)>> m_fenceCallbacks;
 
 
-		ShaderStorage m_shaderStorage;
-		PipelineStorage2 m_pipelineStorage2;
+		std::unique_ptr<ShaderStorage> m_shaderStorage;
+		std::unique_ptr<PipelineStorage2> m_pipelineStorage2;
 
 
 		std::array<std::unique_ptr<Sampler>, static_cast<size_t>(vulkan::DefaultSampler::Size)> m_defaultSampler;
@@ -325,7 +323,7 @@ namespace vulkan {
 
 		DescriptorPool m_bindlessPool;
 		DescriptorSet m_bindlessSet;
-		PipelineLayout2 m_bindlessPipelineLayout;
+		std::unique_ptr < PipelineLayout2> m_bindlessPipelineLayout;
 	};
 }
 #endif // VKLOGICALDEVICE_H

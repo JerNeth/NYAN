@@ -5,6 +5,7 @@
 #include <variant>
 #include <set>
 #include "entt/core/hashed_string.hpp"
+#include "PipelineConfig.h"
 namespace nyan {
 
 	struct ImageAttachment {
@@ -337,8 +338,8 @@ namespace nyan {
 	private:
 		enum class State : uint8_t{
 			Setup,
-			Dirty,
 			Build,
+			Dirty,
 			Execute
 		};
 	public:

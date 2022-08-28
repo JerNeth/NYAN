@@ -55,3 +55,65 @@ void barycentric_derivatives(vec4 x, vec3 n, vec3 x0, vec3 x1, vec3 x2, mat4 wor
 	duDXY = (duDxt.xy + duDxt.z * ddepthdXY) * wMx;
 	dvDXY = (dvDxt.xy + dvDxt.z * ddepthdXY) * wMx;
 }
+
+const uint HitDDGIMiss = 0xFDu;
+
+struct Payload {
+	vec3 albedo;
+	float opacity;
+	vec3 worldPos;
+	float metallic;
+	vec3 normal;
+	float roughness;
+	vec3 shadingNormal;
+	float hitT;
+	uint hitkind;
+};
+struct PackedPayload {
+	vec3 worldPos;
+	float hitT;
+	uvec4 packed0;
+	uvec3 packed1;
+};
+
+Payload unpack_payload(PackedPayload packed) {
+	Payload payload;
+	payload.hitT = packed.hitT;
+	payload.worldPos = packed.worldPos;
+
+	payload.albedo.xy = unpackHalf2x16(packed.packed0.x);
+	{
+		const vec2 tmp = unpackHalf2x16(packed.packed0.y);
+		payload.albedo.z = tmp.x;
+		payload.opacity = tmp.y;
+	}
+	payload.normal.xy = unpackHalf2x16(packed.packed0.z);
+	{	
+		const vec2 tmp = unpackHalf2x16(packed.packed0.w);
+		payload.normal.z = tmp.x;
+		payload.metallic = tmp.y;
+	}
+	payload.shadingNormal.xy = unpackHalf2x16(packed.packed1.x);
+	{
+		const vec2 tmp = unpackHalf2x16(packed.packed1.y);
+		payload.shadingNormal.z = tmp.x;
+		payload.roughness = tmp.y;
+	}
+	payload.hitkind = packed.packed1.z;
+	return payload;
+}
+
+PackedPayload pack_payload(Payload payload) {
+	PackedPayload packed;
+	packed.hitT = payload.hitT;
+	packed.worldPos = payload.worldPos;
+	packed.packed0.x = packHalf2x16(payload.albedo.xy);
+	packed.packed0.y = packHalf2x16(vec2(payload.albedo.z, payload.opacity));
+	packed.packed0.z = packHalf2x16(payload.normal.xy);
+	packed.packed0.w = packHalf2x16(vec2(payload.normal.z, payload.metallic));
+	packed.packed1.x = packHalf2x16(payload.shadingNormal.xy);
+	packed.packed1.y = packHalf2x16(vec2(payload.shadingNormal.z, payload.roughness));
+	packed.packed1.z = payload.hitkind;
+
+	return packed;
+}

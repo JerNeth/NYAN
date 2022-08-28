@@ -114,7 +114,7 @@ add_executable(GLTFTest ${GLTFTest_SRC})
 add_executable(HybridTest ${HybridTest_SRC})
 add_executable(DDGITest ${DDGITest_SRC})
 
-#set_target_properties(FBXTest PROPERTIES 
+#set_target_properties(DDGITest PROPERTIES 
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)

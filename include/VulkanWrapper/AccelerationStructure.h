@@ -6,7 +6,6 @@
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
 #include "Buffer.h"
-#include "Shader.h"
 
 namespace vulkan {
 

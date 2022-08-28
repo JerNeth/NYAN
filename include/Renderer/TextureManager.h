@@ -5,6 +5,7 @@
 #include "VkWrapper.h"
 #include "LinAlg.h"
 #include "LogicalDevice.h"
+#include "Image.h"
 #include "Utility/DDSReader.h"
 #include <Util>
 namespace nyan {

@@ -220,6 +220,14 @@ namespace Utility {
 			assert(ptr_container);
 			return ptr_container->get_ptr(m_id);
 		}
+		T& get() {
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
+		const T& get() const {
+			assert(ptr_container);
+			return ptr_container->get(m_id);
+		}
 		T& operator*() {
 			assert(ptr_container);
 			return ptr_container->get(m_id);

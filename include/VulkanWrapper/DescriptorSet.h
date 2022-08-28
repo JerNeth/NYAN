@@ -4,7 +4,6 @@
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
 #include "..\..\shader\descriptors.h"
-#include "Shader.h"
 #include <Util>
 #include <numeric>
 #include <format>

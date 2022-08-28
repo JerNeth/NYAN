@@ -1,0 +1,60 @@
+
+
+uvec3 get_probe_index(uint probeIdx, DDGIVolume volume) 
+{
+	const uint zStride = volume.probeCountX * volume.probeCountY;
+	const uint yStride = volume.probeCountX;
+	const uint z = probeIdx / zStride;
+	probeIdx -= z*zStride;
+	const uint y = probeIdx / yStride;
+	probeIdx -= y*yStride;
+	const uint x = probeIdx;
+	return uvec3(x, y, z);
+}
+
+uint get_probe_index(uvec3 probeIdx, DDGIVolume volume) 
+{
+	const uint zStride = volume.probeCountX * volume.probeCountY;
+	const uint yStride = volume.probeCountX;
+	return probeIdx.z * zStride + probeIdx.y*yStride +probeIdx.x;
+}
+
+vec3 get_volume_origin(DDGIVolume volume) 
+{
+	return vec3(volume.gridOriginX, volume.gridOriginY, volume.gridOriginZ);
+}
+
+vec3 get_volume_spacing(DDGIVolume volume) 
+{
+	return vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
+}
+
+vec3 get_probe_coordinates(uint probeIdx, DDGIVolume volume) 
+{
+	uvec3 idx = get_probe_index(probeIdx, volume);
+	vec3 origin = get_volume_origin(volume);
+	vec3 spacing = get_volume_spacing(volume);
+	return origin + idx * spacing;
+}
+
+
+vec3 spherical_fibonacci(float i, float n) {
+	const float pi = 3.14159265359f;
+    const float PHI = sqrt(5) * 0.5 + 0.5;
+#define madfrac(A, B) ((A)*(B)-floor((A)*(B)))
+    float phi = 2.0 * pi * madfrac(i, PHI - 1);
+    float cosTheta = 1.0 - (2.0 * i + 1.0) * (1.0 / n);
+    float sinTheta = sqrt(max(min(1.0 - cosTheta*cosTheta, 1.0), 0.0));
+
+    return vec3(
+        cos(phi) * sinTheta,
+        sin(phi) * sinTheta,
+        cosTheta);
+
+#undef madfrac
+}
+
+vec3 get_ray_direction(uint rayIdx, DDGIVolume volume)
+{
+	return spherical_fibonacci(rayIdx, volume.raysPerProbe);
+}

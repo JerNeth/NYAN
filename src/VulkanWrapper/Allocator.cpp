@@ -1,5 +1,6 @@
 #include "Allocator.h"
 #include "LogicalDevice.h"
+#include "Image.h"
 
 vulkan::Allocator::Allocator(VmaAllocator handle) :
 	m_VmaHandle(handle)
@@ -43,8 +44,12 @@ void vulkan::Allocator::invalidate(VmaAllocation allocation, uint32_t offset, ui
 	vmaInvalidateAllocation(m_VmaHandle, allocation, offset, size);
 }
 vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
-	r_device(parent)
+	r_device(parent),
+	m_attachmentIds(new std::unordered_map<Utility::HashValue, ImageHandle>{})
 {
+}
+void vulkan::AttachmentAllocator::clear() noexcept {
+	m_attachmentIds->clear();
 }
 vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkSampleCountFlagBits samples, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers)
 {
@@ -56,12 +61,12 @@ vulkan::Image* vulkan::AttachmentAllocator::request_attachment(uint32_t width, u
 	hasher(usage);
 	hasher(arrayLayers);
 	auto hash = hasher(samples);
-	if (auto res = m_attachmentIds.find(hash); res != m_attachmentIds.end())
+	if (auto res = m_attachmentIds->find(hash); res != m_attachmentIds->end())
 		return res->second;
 	ImageInfo info = ImageInfo::render_target(width, height, format, arrayLayers);
 	info.usage |= usage;
 	info.layout = initialLayout;
-	return m_attachmentIds.emplace(hash, r_device.create_image(info)).first->second;
+	return m_attachmentIds->emplace(hash, r_device.create_image(info)).first->second;
 }
 
 vulkan::Allocation::Allocation(LogicalDevice& device, VmaAllocation handle)

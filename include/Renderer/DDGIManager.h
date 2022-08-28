@@ -23,6 +23,7 @@ namespace nyan {
 			uint32_t irradianceProbeSize{ 8 };
 			uint32_t depthProbeSize{ 16 };
 			float depthBias{ 1e-2f };
+			float maxRayDistance{1000.f};
 		private:
 			uint32_t ddgiVolume {nyan::InvalidBinding};
 			RenderResource::Id depthResource{};
@@ -47,6 +48,7 @@ namespace nyan {
 		void set_depth_probe_size(uint32_t id, uint32_t probeSize);
 		void set_rays_per_probe(uint32_t id, uint32_t rayCount);
 		void set_depth_bias(uint32_t id, float depthBias);
+		void set_max_ray_distance(uint32_t id, float maxRayDistance);
 		const nyan::shaders::DDGIVolume& get(uint32_t id) const;
 
 		void update();

@@ -1,8 +1,9 @@
 #include "Renderer/RenderManager.h"
 #include "Utility/Exceptions.h"
-#include "LogicalDevice.h"
-#include "CommandBuffer.h"
-#include "AccelerationStructure.h"
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/AccelerationStructure.h"
+#include "VulkanWrapper/Shader.h"
 
 nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing, const std::filesystem::path& directory) :
 	r_device(device),
@@ -133,7 +134,7 @@ const entt::entity& nyan::RenderManager::get_primary_camera() const
 	return m_primaryCamera;
 }
 
-void nyan::RenderManager::update(std::chrono::nanoseconds dt)
+void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 {
 	auto view = m_registry.view<const MeshID, const InstanceId>();
 	for (const auto& [entity, meshId, instanceId] : view.each()) {

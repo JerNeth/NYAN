@@ -119,15 +119,54 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
     specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * NdotL) * F * light.color ;
 }
 
+struct ShadingData
+{
+    vec3 albedo;
+    float roughness;
+    vec3 outLightDir;
+    float metalness;
+    vec3 shadingNormal;
+    //float anisotropy (maybe)
+};
+
+vec3 diffuse_dir_light(in DirectionalLight light, in ShadingData shadingData)
+{
+    float alpha = shadingData.roughness * shadingData.roughness;
+
+    float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
+    if(NdotL <= 0) {
+        return vec3(0.f);
+    }
+    float LdotV = dot(light.dir, shadingData.outLightDir);
+    float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
+    float rcpLenLV = inversesqrt(2 + 2 * LdotV);
+    float NdotH = (NdotL + NdotV) * rcpLenLV;
+    float LdotH = rcpLenLV * LdotV + rcpLenLV;
+    
+    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL) * light.color;
+
+    return diffuse;
+}
+
+vec3 calc_diffuse_light(in Scene scene, in ShadingData shadingData)
+{
+    vec3 diffuse = vec3(0.f);
+    float alpha = shadingData.roughness * shadingData.roughness;
+    //Only shade dielectrics
+    if(shadingData.metalness < 1) {
+        diffuse = diffuse_dir_light(scene.dirLight, shadingData);
+    }
+    return diffuse;
+}
+
 void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo, in float metalness, in float roughness, out vec4 specular, out vec4 diffuse) {
-	DirectionalLight light1 = scene.dirLight1;
-	DirectionalLight light2 = scene.dirLight2;
+	DirectionalLight light = scene.dirLight;
     vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
     vec3 viewVec = normalize(viewPos - worldPos.xyz);
 
     diffuse = vec4(0.0);
     specular= vec4(0.0);
-    calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
+    calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light, specular, diffuse);
 
     specular.a = albedo.a;
     diffuse.a = albedo.a;

@@ -12,6 +12,10 @@ layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer Scenes {
 	Scene scene;
 } scenes[SSBO_COUNT];
 
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer DDGIVolumes {
+	DDGIVolume volume[];
+} ddgiVolumes[SSBO_COUNT];
+
 layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer Materials  {
 	Material materials[];
 } materials [SSBO_COUNT];

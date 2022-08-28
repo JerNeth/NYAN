@@ -1,4 +1,5 @@
 #include "Renderer/TextureManager.h"
+#include "VulkanWrapper/Image.h"
 #include "Utility/ImageReader.h"
 #include "Utility/Exceptions.h"
 

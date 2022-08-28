@@ -5,8 +5,11 @@
 
 #include "Utility/Exceptions.h"
 
+#include "Allocator.h"
+#include "Pipeline.h"
 #include "Shader.h"
 #include "Instance.h"
+#include "Image.h"
 #include "Sampler.h"
 #include "Allocator.h"
 #include "CommandPool.h"
@@ -22,17 +25,21 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
-	m_attachmentAllocator(*this),
+	m_allocationPool(new Utility::Pool<Allocation>()),
+	m_bufferPool(new Utility::LinkedBucketList<Buffer>()),
+	m_imageViewPool(new Utility::LinkedBucketList<ImageView>()),
+	m_imagePool(new Utility::LinkedBucketList<Image>()),
+	m_attachmentAllocator(new AttachmentAllocator(*this)),
 	m_graphics(graphicsFamilyQueueIndex),
 	m_compute(computeFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
 	m_transfer(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
-	m_shaderStorage(*this),
-	m_pipelineStorage2(*this),
+	m_shaderStorage(new ShaderStorage(*this)),
+	m_pipelineStorage2(new PipelineStorage2(* this)),
 	m_bindlessPool(*this),
 	m_bindlessSet(m_bindlessPool.allocate_set()),
-	m_bindlessPipelineLayout(*this, {m_bindlessPool.get_layout()})
+	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
 {
 	volkLoadDevice(device);
 	if (r_physicalDevice.get_extensions().performance_query) {
@@ -144,7 +151,7 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 
 	for (const auto image : swapchainImages) {
 		std::vector<AllocationHandle> allocs;
-		auto& handle = m_wsiState.swapchainImages.emplace_back(std::move(m_imagePool.emplace(*this, image, info, allocs)));
+		auto& handle = m_wsiState.swapchainImages.emplace_back(std::move(m_imagePool->emplace(*this, image, info, allocs)));
 		handle->disown();
 		handle->set_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
@@ -614,12 +621,14 @@ void vulkan::LogicalDevice::create_pipeline_cache(const std::string& path)
 
 vulkan::ShaderStorage& vulkan::LogicalDevice::get_shader_storage()
 {
-	return m_shaderStorage;
+	assert(m_shaderStorage);
+	return *m_shaderStorage;
 }
 
 vulkan::PipelineStorage2& vulkan::LogicalDevice::get_pipeline_storage()
 {
-	return m_pipelineStorage2;
+	assert(m_pipelineStorage2);
+	return *m_pipelineStorage2;
 }
 
 vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
@@ -667,7 +676,8 @@ vulkan::DescriptorPool& vulkan::LogicalDevice::get_bindless_pool() noexcept
 }
 vulkan::PipelineLayout2& vulkan::LogicalDevice::get_bindless_pipeline_layout() noexcept
 {
-	return m_bindlessPipelineLayout;
+	assert(m_bindlessPipelineLayout);
+	return *m_bindlessPipelineLayout;
 }
 uint32_t vulkan::LogicalDevice::get_swapchain_image_index() const noexcept {
 	return m_wsiState.index;
@@ -886,8 +896,8 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 	}
 	auto tmp = info;
 	tmp.mipLevels = createInfo.mipLevels;
-	std::vector<AllocationHandle> allocs{ m_allocationPool.emplace(*this, allocation) };
-	auto handle(m_imagePool.emplace(*this, image, tmp, allocs));
+	std::vector<AllocationHandle> allocs{ m_allocationPool->emplace(*this, allocation) };
+	auto handle(m_imagePool->emplace(*this, image, tmp, allocs));
 	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
 	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
 
@@ -971,7 +981,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 				.memoryOffset = allocInfo.offset,
 			};
 			mipTailBinds.push_back(mipTailBind);
-			allocs.push_back(m_allocationPool.emplace(*this, allocation));
+			allocs.push_back(m_allocationPool->emplace(*this, allocation));
 		}
 		else {
 			std::vector<VmaAllocation> allocations;
@@ -994,7 +1004,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 					.memoryOffset = allocInfos[layer].offset,
 				};
 				mipTailBinds.push_back(mipTailBind);
-				allocs.push_back(m_allocationPool.emplace(*this, allocations[layer]));
+				allocs.push_back(m_allocationPool->emplace(*this, allocations[layer]));
 			}
 		}
 		VkSparseImageOpaqueMemoryBindInfo mipTailBindInfo{
@@ -1061,12 +1071,13 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 		}
 	}
 	
-	auto handle(m_imagePool.emplace(*this, image, info, allocs, mipTailBegin));
-	handle->set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
-	handle->set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
-	handle->set_single_mip_tail(singleMipTail);
-	handle->set_optimal(false);
-	handle->set_available_mip(sparseMemoryRequirement.imageMipTailFirstLod);
+	auto handle{ m_imagePool->emplace(*this, image, info, allocs, mipTailBegin) };
+	auto& img = *handle;
+	img.set_stage_flags(Image::possible_stages_from_image_usage(createInfo.usage));
+	img.set_access_flags(Image::possible_access_from_image_usage(createInfo.usage));
+	img.set_single_mip_tail(singleMipTail);
+	img.set_optimal(false);
+	img.set_available_mip(sparseMemoryRequirement.imageMipTailFirstLod);
 	return handle;
 }
 void vulkan::LogicalDevice::transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout)
@@ -1294,7 +1305,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 							.memoryOffset = allocationInfo.offset
 						};
 						imageBinds.push_back(imageBind);
-						allocationHandles.push_back(m_allocationPool.emplace(*this, allocations[current]));
+						allocationHandles.push_back(m_allocationPool->emplace(*this, allocations[current]));
 					}
 					blockExtent.width = granularity.width;
 				}
@@ -1548,7 +1559,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 	vmaCreateBuffer(m_vmaAllocator->get_handle(), &bufferCreateInfo, &allocInfo, &buffer, &allocation, nullptr);
 	BufferInfo tmp = info;
 	tmp.usage = usage;
-	auto handle(m_bufferPool.emplace(*this, buffer, allocation, tmp));
+	auto handle(m_bufferPool->emplace(*this, buffer, allocation, tmp));
 
 	if (!initialData.empty() && (info.memoryUsage == VMA_MEMORY_USAGE_GPU_ONLY)) {
 		//Need to stage
@@ -1575,7 +1586,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 
 vulkan::ImageViewHandle vulkan::LogicalDevice::create_image_view(const ImageViewCreateInfo& info)
 {
-	return m_imageViewPool.emplace(*this,info);
+	return m_imageViewPool->emplace(*this,info);
 }
 
 vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, InitialImageData* initialData, vulkan::FenceHandle* fence)
@@ -1666,7 +1677,8 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 
 vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkImageLayout initialLayout, VkSampleCountFlagBits sampleCount, uint32_t arrayLayers)
 {
-	return m_attachmentAllocator.request_attachment(width, height, format, index, sampleCount, usage, initialLayout, arrayLayers);
+	assert(m_attachmentAllocator);
+	return m_attachmentAllocator->request_attachment(width, height, format, index, sampleCount, usage, initialLayout, arrayLayers);
 }
 
 void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)

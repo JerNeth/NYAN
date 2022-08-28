@@ -107,6 +107,12 @@ void nyan::DDGIManager::set_depth_bias(uint32_t id, float depthBias)
 	volume.shadowBias = depthBias;
 }
 
+void nyan::DDGIManager::set_max_ray_distance(uint32_t id, float maxRayDistance)
+{
+	auto& volume = DataManager<nyan::shaders::DDGIVolume>::get(id);
+	volume.maxRayDistance = maxRayDistance;
+}
+
 const nyan::shaders::DDGIVolume& nyan::DDGIManager::get(uint32_t id) const
 {
 	return DataManager<nyan::shaders::DDGIVolume>::get(id);
@@ -139,7 +145,8 @@ void nyan::DDGIManager::update()
 			.depthProbeSize {parameters.depthProbeSize},
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
-			.shadowBias {parameters.depthBias}
+			.shadowBias {parameters.depthBias},
+			.maxRayDistance {parameters.maxRayDistance}
 		};
 		update_spacing(deviceVolume);
 		update_depth_texture(deviceVolume);
@@ -227,7 +234,7 @@ void nyan::DDGIManager::update_depth_texture(nyan::shaders::DDGIVolume& volume)
 {
 	//Add 1 pixel sample border
 	volume.depthTextureSizeX = volume.probeCountX * (2 + volume.depthProbeSize);
-	volume.depthTextureSizeY = volume.probeCountY * volume.probeCountY * (2 + volume.depthProbeSize);
+	volume.depthTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.depthProbeSize);
 	volume.inverseDepthTextureSizeX = 1.0f / volume.depthTextureSizeX;
 	volume.inverseDepthTextureSizeY = 1.0f / volume.depthTextureSizeY;
 }
@@ -236,7 +243,7 @@ void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& vol
 {
 	//Add 1 pixel sample border
 	volume.irradianceTextureSizeX = volume.probeCountX * (2 + volume.irradianceProbeSize);
-	volume.irradianceTextureSizeY = volume.probeCountY * volume.probeCountY * (2 + volume.irradianceProbeSize);
+	volume.irradianceTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.irradianceProbeSize);
 	volume.inverseIrradianceTextureSizeX = 1.0f / volume.irradianceTextureSizeX;
 	volume.inverseIrradianceTextureSizeY = 1.0f / volume.irradianceTextureSizeY;
 }

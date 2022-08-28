@@ -53,8 +53,7 @@ struct Scene {
 	mat4 invView;
 	mat4 invProj;
 	mat4 invViewProj;
-	DirectionalLight dirLight1;
-	DirectionalLight dirLight2;
+	DirectionalLight dirLight;
 	uint numLights;
 	float viewerPosX;
 	float viewerPosY;
@@ -96,16 +95,16 @@ struct DDGIVolume {
 	uint irradianceProbeSize;
 	uint depthProbeSize;
 
-	int irradianceTextureSizeX;
-	int irradianceTextureSizeY;
+	uint irradianceTextureSizeX;
+	uint irradianceTextureSizeY;
 	float inverseIrradianceTextureSizeX;
 	float inverseIrradianceTextureSizeY;
 	uint irradianceTextureBinding;
 	uint irradianceTextureSampler;
 	uint irradianceImageBinding;
 
-	int depthTextureSizeX;
-	int depthTextureSizeY;
+	uint depthTextureSizeX;
+	uint depthTextureSizeY;
 	float inverseDepthTextureSizeX;
 	float inverseDepthTextureSizeY;
 	uint depthTextureBinding;
@@ -113,6 +112,7 @@ struct DDGIVolume {
 	uint depthImageBinding;
 
 	float shadowBias;
+	float maxRayDistance;
 };
 
 #endif

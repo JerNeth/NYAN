@@ -30,8 +30,6 @@ layout(location = 1) out vec4 outDiffuse;
 void main() {
 
     Scene scene = scenes[constants.sceneBinding].scene;
-	DirectionalLight light1 = scene.dirLight1;
-	DirectionalLight light2 = scene.dirLight2;
     
     uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_FragCoord.xy), 0).x;
 

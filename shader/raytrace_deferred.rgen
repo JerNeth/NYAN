@@ -35,8 +35,7 @@ void main()
     const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
 
     Scene scene = scenes[constants.sceneBinding].scene;
-	DirectionalLight light1 = scene.dirLight1;
-	DirectionalLight light2 = scene.dirLight2;
+	DirectionalLight light = scene.dirLight;
     
     uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_LaunchIDEXT.xy), 0).x;
 
@@ -63,12 +62,12 @@ void main()
 //        if(dot(normal, viewVec) < 0) {
 //            normal = -normal;
 //        }
-        float NdotL = max(dot(normal, light1.dir), 0.0);
+        float NdotL = max(dot(normal, light.dir), 0.0);
         if(NdotL > 0) {
             
             vec4 diffuse = vec4(0.0);
             vec4 specular= vec4(0.0);
-            calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light1, specular, diffuse);
+            calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light, specular, diffuse);
 
             specular.a = albedo.a;
             diffuse.a = albedo.a;
@@ -81,7 +80,7 @@ void main()
             //vec3 perpR = 0.005 * normalize(cross(light1.dir, perpL));
             vec3 shadowRayDir;
             
-            shadowRayDir = normalize(light1.dir);
+            shadowRayDir = normalize(light.dir);
             shadowed = 0.0;
             traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
                     rayFlags,       // rayFlags

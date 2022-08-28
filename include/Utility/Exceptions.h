@@ -109,6 +109,18 @@ namespace Utility {
 	private:
 		std::string m_msg{};
 	};
+	class DevicePropertyException : public std::exception {
+	public:
+		DevicePropertyException(const std::string& msg, const std::source_location location = std::source_location::current())
+			: m_msg(std::format("{}({}): {}: Requested property exceeds supported property: {}", location.file_name(), location.line(), location.function_name(), msg))
+		{
+		}
+		const char* what() const override {
+			return m_msg.c_str();
+		}
+	private:
+		std::string m_msg{};
+	};
 	class FileNotFoundException : public std::exception {
 	public:
 		FileNotFoundException(const std::filesystem::path& file, const std::source_location location = std::source_location::current()) 

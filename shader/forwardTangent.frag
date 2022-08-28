@@ -63,7 +63,7 @@ void main() {
     
     rayQueryEXT rq;
 
-    rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, fragWorldPos.xyz, 0.01, scene.dirLight1.dir, 10000);
+    rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, fragWorldPos.xyz, 0.01, scene.dirLight.dir, 10000);
 
     // Traverse the acceleration structure and store information about the first intersection (if any)
     rayQueryProceedEXT(rq);

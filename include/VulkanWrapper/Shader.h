@@ -6,6 +6,7 @@
 #include <Util>
 #include "LinAlg.h"
 #include "MaxVals.h"
+#include <typeinfo>
 
 namespace vulkan {
 	struct ResourceBinding {
@@ -132,9 +133,31 @@ namespace vulkan {
 	//	}
 	//};
 
-	
+	static constexpr uint32_t invalidSpecializationConstant {std::numeric_limits<uint32_t>::max()};
 	class Shader
 	{
+	public:
+		template<typename T>
+		struct SpecializationConstant {
+			uint32_t id;
+			T value;
+		};
+		struct SpecializationConstantId {
+			enum class Type : uint32_t {
+				SByte,
+				UByte,
+				Short,
+				UShort,
+				Int,
+				UInt,
+				Int64,
+				UInt64,
+				Half,
+				Float,
+				Double
+			} type;
+			uint32_t id;
+		};
 	public:
 		Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode);
 		~Shader();
@@ -146,9 +169,7 @@ namespace vulkan {
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
 		VkShaderModule get_module();
-		uint32_t get_work_group_id_X() const;
-		uint32_t get_work_group_id_Y() const;
-		uint32_t get_work_group_id_Z() const;
+		SpecializationConstantId get_specialization_constant_id(const std::string& name) const;
 	private:
 		void create_module(const std::vector<uint32_t>& shaderCode);
 
@@ -157,41 +178,143 @@ namespace vulkan {
 		ShaderStage m_stage;
 		//ShaderLayout m_layout;
 		Utility::HashValue m_hashValue;
-		uint32_t m_workGroupXId = ~0u;
-		uint32_t m_workGroupYId = ~0u;
-		uint32_t m_workGroupZId = ~0u;
-		
+		std::unordered_map<std::string, SpecializationConstantId> m_specilizationConstants;
 	}; 
+
+
 	class ShaderInstance {
 	public:
 		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage);
+		template<typename... Args>
+		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage, Args... args) :
+			m_module(module),
+			m_entryPoint("main"),
+			m_stage(stage),
+			m_offset(0)
+		{
+			handle_constants(std::forward<Args>(args)...);
+			m_specializationInfo = VkSpecializationInfo{
+				.mapEntryCount = static_cast<uint32_t>(m_specialization.size()),
+				.pMapEntries = m_specialization.data(),
+				.dataSize = m_dataStorage.size(),
+				.pData = m_dataStorage.data()
+			};
+		}
 		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage,
 			uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ,
 			uint32_t workGroupSizeXId = ~0, uint32_t workGroupSizeYId = ~0, uint32_t workGroupSizeZId = ~0);
 		VkPipelineShaderStageCreateInfo get_stage_info() const;
 		VkShaderStageFlagBits get_stage() const;
 	private:
+		template<typename T>
+		void handle_constants(const Shader::SpecializationConstant<T>& constant)
+		{
+			m_offset = create_constant(constant.id, constant.value, m_offset);
+		}
+		template<typename... Args>
+		void handle_constants(Args... args)
+		{
+			(handle_constants(args), ...);
+		}
+		template<typename T>
+		uint32_t create_constant(uint32_t constantId, T value, uint32_t offset) {
+			if (constantId != invalidSpecializationConstant) {
+				auto size = static_cast<uint32_t>(sizeof(T));
+				m_specialization.push_back(VkSpecializationMapEntry{ .constantID {constantId},.offset{offset},.size {size} });
+				offset += size;
+				m_dataStorage.resize(offset);
+				T* data = reinterpret_cast<T*>(&m_dataStorage[offset - size]);
+				*data = value;
+			}
+			else {
+				assert(false);
+			}
+			return offset;
+		}
+
 		VkShaderModule m_module;
 		std::vector< VkSpecializationMapEntry> m_specialization;
 		std::vector<std::byte> m_dataStorage;
 		std::string m_entryPoint;
+		uint32_t m_offset;
 		VkSpecializationInfo m_specializationInfo;
 		VkShaderStageFlagBits m_stage;
 	};
 	class ShaderStorage {
 	public:
+		template<typename T>
+		struct SpecializationConstant {
+			const std::string& name;
+			T value;
+		};
+	public:
 		ShaderStorage(LogicalDevice& device);
 
 		ShaderId add_instance(ShaderId shaderId);
 		ShaderId add_instance(ShaderId shaderId, uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ);
+		template<typename... Args>
+		ShaderId add_instance_with_constants(ShaderId shaderId, Args... args) noexcept
+		{
+			m_currentShader = get_shader(shaderId);
+			auto instance = ShaderInstance{ m_currentShader->get_module()
+				, static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(m_currentShader->get_stage()))
+				, handle_constant(args)... };
+			return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(std::move(instance)) );
+		}
 		ShaderId add_shader(const std::vector<uint32_t>& shaderCode);
 		Shader* get_shader(ShaderId shaderId);
 		ShaderInstance* get_instance(ShaderId instanceId);
 		void clear();
 	private:
+		template<typename T>
+		Shader::SpecializationConstant<T> handle_constant(SpecializationConstant<T> constant)
+		{
+			auto id = m_currentShader->get_specialization_constant_id(constant.name);
+			switch (id.type) {
+				case Shader::SpecializationConstantId::Type::SByte:
+					assert(typeid(constant.value) == typeid(int8_t));
+						break;
+				case Shader::SpecializationConstantId::Type::UByte:
+					assert(typeid(constant.value) == typeid(uint8_t));
+						break;
+				case Shader::SpecializationConstantId::Type::Short:
+					assert(typeid(constant.value) == typeid(int16_t));
+						break;
+				case Shader::SpecializationConstantId::Type::UShort:
+					assert(typeid(constant.value) == typeid(uint16_t));
+						break;
+				case Shader::SpecializationConstantId::Type::Int:
+					assert(typeid(constant.value) == typeid(int32_t));
+						break;
+				case Shader::SpecializationConstantId::Type::UInt:
+					assert(typeid(constant.value) == typeid(uint32_t));
+						break;
+				case Shader::SpecializationConstantId::Type::Int64:
+					assert(typeid(constant.value) == typeid(int64_t));
+						break;
+				case Shader::SpecializationConstantId::Type::UInt64:
+					assert(typeid(constant.value) == typeid(uint64_t));
+						break;
+				case Shader::SpecializationConstantId::Type::Float:
+					assert(typeid(constant.value) == typeid(float));
+						break;
+				case Shader::SpecializationConstantId::Type::Double:
+					assert(typeid(constant.value) == typeid(double));
+						break;
+				case Shader::SpecializationConstantId::Type::Half:
+					assert(typeid(constant.value) == typeid(Math::half));
+					break;
+				default:
+					assert(false && "TODO");
+					break;
+			}
+			return { id.id, constant.value};
+		}
+
 		LogicalDevice& r_device;
 		Utility::LinkedBucketList<ShaderInstance> m_instanceStorage;
 		Utility::LinkedBucketList<Shader> m_shaderStorage;
+		Shader* m_currentShader = nullptr;
 	};
 
 };

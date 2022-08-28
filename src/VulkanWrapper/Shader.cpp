@@ -94,6 +94,38 @@ static vulkan::ShaderStage convert_spriv_execution_model(spv::ExecutionModel mod
 	}
 }
 
+static vulkan::Shader::SpecializationConstantId::Type convertType(spirv_cross::SPIRType::BaseType type)
+{
+	using enum spirv_cross::SPIRType::BaseType;
+	switch (type) {
+	case SByte:
+		return vulkan::Shader::SpecializationConstantId::Type::SByte;
+	case UByte:
+		return vulkan::Shader::SpecializationConstantId::Type::UByte;
+	case Short:
+		return vulkan::Shader::SpecializationConstantId::Type::Short;
+	case UShort:
+		return vulkan::Shader::SpecializationConstantId::Type::UShort;
+	case Int:
+		return vulkan::Shader::SpecializationConstantId::Type::Int;
+	case UInt:
+		return vulkan::Shader::SpecializationConstantId::Type::UInt;
+	case Int64:
+		return vulkan::Shader::SpecializationConstantId::Type::Int64;
+	case UInt64:
+		return vulkan::Shader::SpecializationConstantId::Type::UInt64;
+	case Half:
+		return vulkan::Shader::SpecializationConstantId::Type::Half;
+	case Float:
+		return vulkan::Shader::SpecializationConstantId::Type::Float;
+	case Double:
+		return vulkan::Shader::SpecializationConstantId::Type::Double;
+	default:
+		assert(false);
+		throw std::runtime_error("Unknown BaseType");
+	}
+}
+
 void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 {
 	using namespace spirv_cross;
@@ -105,16 +137,31 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	ShaderResources resources = comp.get_shader_resources();
 	
 	if (m_stage == vulkan::ShaderStage::Compute) {
-		SpecializationConstant x, y, z;
+		spirv_cross::SpecializationConstant x, y, z;
 		comp.get_work_group_size_specialization_constants(x, y, z);
 		if (x.constant_id != 0 && x.id != 0) {
-			m_workGroupXId = x.constant_id;
+			const auto& constant = comp.get_constant(x.id);
+			const auto& type = comp.get_type(constant.constant_type);
+			m_specilizationConstants.emplace("local_size_x", SpecializationConstantId{ convertType(type.basetype), x.constant_id });
 		}
 		if (y.constant_id != 0 && y.id != 0) {
-			m_workGroupYId = y.constant_id;
+			const auto& constant = comp.get_constant(y.id);
+			const auto& type = comp.get_type(constant.constant_type);
+			m_specilizationConstants.emplace("local_size_y", SpecializationConstantId{ convertType(type.basetype), y.constant_id });
 		}
 		if (z.constant_id != 0 && z.id != 0) {
-			m_workGroupZId = z.constant_id;
+			const auto& constant = comp.get_constant(z.id);
+			const auto& type = comp.get_type(constant.constant_type);
+			m_specilizationConstants.emplace("local_size_z", SpecializationConstantId{ convertType(type.basetype), z.constant_id });
+		}
+		auto specs = comp.get_specialization_constants();
+		for (auto& spec : specs) {
+			const auto& name = comp.get_name(spec.id);
+			if (!name.empty()) {
+				const auto& constant = comp.get_constant(spec.id);
+				const auto& type = comp.get_type(constant.constant_type);
+				m_specilizationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
+			}
 		}
 	}
 	//auto specs = comp.get_specialization_constants();
@@ -219,6 +266,15 @@ VkShaderModule vulkan::Shader::get_module()
 {
 	return m_module;
 }
+
+vulkan::Shader::SpecializationConstantId vulkan::Shader::get_specialization_constant_id(const std::string& name) const
+{
+	auto it = m_specilizationConstants.find(name);
+	assert(it != m_specilizationConstants.end());
+	return it->second;
+}
+
+
 void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 {
 	VkShaderModuleCreateInfo createInfo{
@@ -230,21 +286,6 @@ void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
 		throw Utility::VulkanException(result);
 	}
 	
-}
-
-uint32_t vulkan::Shader::get_work_group_id_X() const
-{
-	return m_workGroupXId;
-}
-
-uint32_t vulkan::Shader::get_work_group_id_Y() const
-{
-	return m_workGroupYId;
-}
-
-uint32_t vulkan::Shader::get_work_group_id_Z() const
-{
-	return m_workGroupZId;
 }
 
 vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage) :
@@ -261,39 +302,6 @@ vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagB
 	})
 {
 	
-}
-
-vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage,
-	uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ,
-	uint32_t workGroupSizeXId, uint32_t workGroupSizeYId, uint32_t workGroupSizeZId) :
-	m_module(module),
-	m_entryPoint("main"),
-	m_stage(stage)
-{
-	assert(m_stage == VK_SHADER_STAGE_COMPUTE_BIT);
-
-	uint32_t offset = 0;
-	auto create_constant = [this, &offset](uint32_t id, uint32_t value) 
-	{
-		if (id != ~0) {
-			auto size = static_cast<uint32_t>(sizeof(uint32_t));
-			m_specialization.push_back(VkSpecializationMapEntry{ .constantID {id},.offset{offset},.size {size} });
-			offset += size;
-			m_dataStorage.resize(offset);
-			uint32_t* data = reinterpret_cast<uint32_t*>(&m_dataStorage[offset - size]);
-			*data = value;
-		}
-	};
-	create_constant(workGroupSizeXId, workGroupSizeX);
-	create_constant(workGroupSizeYId, workGroupSizeY);
-	create_constant(workGroupSizeZId, workGroupSizeZ);
-
-	m_specializationInfo = VkSpecializationInfo{
-		.mapEntryCount = static_cast<uint32_t>(m_specialization.size()),
-		.pMapEntries = m_specialization.data(),
-		.dataSize = m_dataStorage.size(),
-		.pData = m_dataStorage.data()
-		};
 }
 
 VkPipelineShaderStageCreateInfo vulkan::ShaderInstance::get_stage_info() const
@@ -325,14 +333,6 @@ vulkan::ShaderId vulkan::ShaderStorage::add_instance(ShaderId shaderId)
 	auto* shader = get_shader(shaderId);
 	return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(shader->get_module()
 		,static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(shader->get_stage()))));
-}
-
-vulkan::ShaderId vulkan::ShaderStorage::add_instance(ShaderId shaderId, uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ)
-{
-	auto* shader = get_shader(shaderId);
-	return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(shader->get_module()
-		, static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(shader->get_stage())),
-		workGroupSizeX, workGroupSizeY, workGroupSizeZ, shader->get_work_group_id_X(), shader->get_work_group_id_Y(), shader->get_work_group_id_Z()));
 }
 
 vulkan::ShaderId vulkan::ShaderStorage::add_shader(const std::vector<uint32_t>& shaderCode) 

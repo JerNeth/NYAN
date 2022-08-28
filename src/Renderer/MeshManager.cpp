@@ -302,7 +302,7 @@ nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 
 void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& light)
 {
-	get(0).dirLight1 = light;
+	get(0).dirLight = light;
 }
 
 void nyan::SceneManager::set_view_pos(const Math::vec3& pos)

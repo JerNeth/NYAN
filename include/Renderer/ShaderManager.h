@@ -3,9 +3,11 @@
 #pragma once
 #include <filesystem>
 #include "VkWrapper.h"
+#include "VulkanWrapper/Shader.h"
 
 namespace vulkan {
 	class ShaderManager {
+	public:
 	public:
 		ShaderManager(LogicalDevice& device, const std::filesystem::path& shaderDirectory = (std::filesystem::current_path() / "shaders"));
 		//template<typename ...Args>
@@ -32,10 +34,50 @@ namespace vulkan {
 		//	return &program;
 		//}
 		ShaderId get_shader_id(const std::string& name) const noexcept;
-		ShaderId add_work_group_size_shader_instance(const std::string& name, uint32_t x, uint32_t y, uint32_t z) const noexcept;
-		ShaderId get_shader_instance_id(const std::string& name) const noexcept;
+		template<typename... Args>
+		ShaderId get_shader_instance_id_workgroup_size(const std::string& name, uint32_t x, uint32_t y, uint32_t z, Args... args) noexcept(false)
+		{
+			const auto& maxSize = r_device.get_physical_device_properties().limits.maxComputeWorkGroupSize;
+			assert(x < maxSize[0]); //Typically 1024, 1536 on older NVIDIA
+			assert(y < maxSize[1]); //Typically 1024
+			assert(z < maxSize[2]); //64 on NVIDIA and Intel, 1024 on AMD
+			if (x < maxSize[0] ||
+				y < maxSize[1] ||
+				z < maxSize[2])
+				throw_size_error(x, y, z, maxSize[0], maxSize[1], maxSize[2]);
+
+
+			return get_shader_instance_id(name, 
+				ShaderStorage::SpecializationConstant{ "local_size_x", x },
+				ShaderStorage::SpecializationConstant{ "local_size_y", y },
+				ShaderStorage::SpecializationConstant{ "local_size_z", z },
+				std::forward<Args>(args)...);
+		}
+		template<typename... Args>
+		ShaderId get_shader_instance_id(const std::string& name, Args... args) noexcept
+		{
+
+			Utility::Hasher h;
+			h(name);
+			(h(args),...);
+			auto res = m_shaderInstanceMapping2.find(h());
+			if (res != m_shaderInstanceMapping2.end()) {
+				return res->second;
+			}
+			if (auto it = m_shaderMapping.find(name); it != m_shaderMapping.end()) {
+				auto shaderId = it->second;
+				auto& shaderStorage = r_device.get_shader_storage();
+				auto shaderInstanceId = shaderStorage.add_instance_with_constants(shaderId, std::forward<Args>(args)...);
+				m_shaderInstanceMapping2.emplace(h(), shaderInstanceId);
+				return shaderInstanceId;
+			}
+			Utility::log(std::format("Requested shader not found {}\n", name));
+			return invalidShaderId;
+		}
+		//ShaderId get_shader_instance_id(const std::string& name) const noexcept;
 
 	private:
+		void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ) noexcept(false);
 		//Shader* request_shader(const std::string& filename);
 		LogicalDevice& r_device;
 		//Utility::HashMap<Program*> m_cachedPrograms;
@@ -44,6 +86,7 @@ namespace vulkan {
 
 		std::unordered_map<std::string, ShaderId> m_shaderMapping;
 		std::unordered_map<std::string, ShaderId> m_shaderInstanceMapping;
+		std::unordered_map<uint64_t, ShaderId> m_shaderInstanceMapping2;
 	};
 }
 

@@ -3,6 +3,7 @@
 #define RAYTRACEPIPELINE_H
 
 #include "VkWrapper.h"
+#include "Pipeline.h"
 
 
 namespace vulkan {

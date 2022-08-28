@@ -1,4 +1,5 @@
 #include "Renderer/RenderGraph.h"
+#include "VulkanWrapper/Image.h"
 #include "CommandBuffer.h"
 
 using namespace nyan;
@@ -14,7 +15,6 @@ nyan::Renderpass::Renderpass(nyan::Rendergraph& graph, nyan::Renderpass::Type ty
 
 void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type readType)
 {
-	assert(r_graph.m_state == Rendergraph::State::Setup || r_graph.m_state == Rendergraph::State::Dirty);
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
@@ -114,7 +114,6 @@ void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
 
 void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type writeType, bool clear)
 {
-	assert(r_graph.m_state == Rendergraph::State::Setup || r_graph.m_state == Rendergraph::State::Dirty);
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
@@ -131,7 +130,6 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType, bool clear)
 {
-	assert(r_graph.m_state == Rendergraph::State::Setup || r_graph.m_state == Rendergraph::State::Dirty);
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	assert(m_type == Renderpass::Type::Generic);
@@ -159,7 +157,6 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 
 void nyan::Renderpass::copy(RenderResource::Id source, RenderResource::Id target)
 {
-	assert(r_graph.m_state == Rendergraph::State::Setup || r_graph.m_state == Rendergraph::State::Dirty);
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& sourceResource = r_graph.get_resource(source);
@@ -388,8 +385,8 @@ void nyan::Renderpass::clear_resource_references(RenderResource::Id id)
 		if (it->id == id.id) {
 			assert(false && "Attachment deletion not supported yet");
 			return;
-			m_attachments.erase(it);
-			break;
+			//m_attachments.erase(it);
+			//break;
 		}
 	}
 	if (m_depth == id) {

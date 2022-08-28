@@ -1,7 +1,6 @@
 #include "DescriptorSet.h"
 #include "LogicalDevice.h"
 #include "Instance.h"
-
 #include "Utility/Exceptions.h"
 
 vulkan::DescriptorSet::DescriptorSet(DescriptorPool& pool, VkDescriptorSet vkHandle) :

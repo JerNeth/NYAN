@@ -6,6 +6,7 @@
 #include <Util>
 #include "LinAlg.h"
 #include <optional>
+#include "Allocator.h"
 
 namespace vulkan {
 	constexpr std::array<const char*,9> ImageLayoutNames{

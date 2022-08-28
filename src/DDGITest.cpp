@@ -8,6 +8,7 @@
 #include "Renderer/DDGIRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/DeferredLighting.h"
+#include "VulkanWrapper/Shader.h"
 using namespace nyan;
 
 int main() {
@@ -20,7 +21,7 @@ int main() {
 
 	auto& input = application.get_input();
 
-	auto directory = getenv("USERPROFILE") / std::filesystem::path{ "Documents/Assets" };
+	auto directory = getenv("USERPROFILE") / std::filesystem::path{ "Assets" };
 
 	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);

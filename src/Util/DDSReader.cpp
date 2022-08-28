@@ -2,6 +2,7 @@
 #include "LinAlg.h"
 #include "VulkanWrapper/VulkanIncludes.h"
 #include "VkWrapper.h"
+#include "Image.h"
 
 static VkFormat convertToVk(Utility::DXGI_FORMAT format) {
 	switch (format) {
