@@ -264,9 +264,9 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineSt
 		globals, bufferBarrierCounts, bufferBarriers, imageBarrierCounts, imageBarriers);
 }
 
-void vulkan::CommandBuffer::barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals,
 	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
-	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
 {
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
@@ -301,13 +301,26 @@ void vulkan::CommandBuffer::barrier2(VkDependencyFlags dependencyFlags, uint32_t
 	};
 	vkCmdPipelineBarrier2(m_handle, &dependencyInfo);
 }
+void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
+{
+	barrier2(barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
+}
+void vulkan::CommandBuffer::barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+{
+	barrier2(0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::barrier2(uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+{
+	barrier2(0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
+}
 
 void vulkan::CommandBuffer::reset_event2(VkEvent event, VkPipelineStageFlags2 stages)
 {
 	vkCmdResetEvent2(m_handle, event, stages);
 }
 
-void vulkan::CommandBuffer::set_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
 {
 
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
@@ -329,10 +342,25 @@ void vulkan::CommandBuffer::set_event2(VkEvent event, VkDependencyFlags dependen
 		.imageMemoryBarrierCount {imageBarrierCounts},
 		.pImageMemoryBarriers {imageBarriers}
 	};
-	vkCmdSetEvent2(m_handle, event,&dependencyInfo);
+	vkCmdSetEvent2(m_handle, event, &dependencyInfo);
 }
 
-void vulkan::CommandBuffer::wait_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
+{
+	set_event2(event, barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+{
+	set_event2(event, 0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+{
+	set_event2(event, 0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
 {
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
@@ -365,7 +393,22 @@ void vulkan::CommandBuffer::wait_event2(VkEvent event, VkDependencyFlags depende
 		.imageMemoryBarrierCount {imageBarrierCounts},
 		.pImageMemoryBarriers {imageBarriers}
 	};
-	vkCmdWaitEvents2(m_handle, 1, &event, &dependencyInfo);
+	wait_events2(1, &event, &dependencyInfo);
+}
+
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
+{
+	wait_event2(event, barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+{
+	wait_event2(event, 0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+{
+	wait_event2(event, 0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
 }
 
 void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo)

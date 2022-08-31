@@ -1,13 +1,11 @@
 #version 460
-
-#extension GL_EXT_ray_tracing : enable
-#extension GL_EXT_ray_query : enable
 #extension GL_GOOGLE_include_directive : enable
-#include "../raycommon.glsl"
 #include "../bufferReferences.glsl"
 #include "../structs.h"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
+#include "ddgi_common.glsl"
+
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -17,42 +15,127 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiBinding;
 	uint ddgiCount;
 	uint ddgiIndex;
-	vec4 col;
-	vec4 col2;
+	uint renderTarget;
+	vec4 col; //Unused here
+	vec4 col2; //Unused here
 } constants;
+
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
-layout(constant_id = 4) const uint ray_count = 64;
+layout(constant_id = 4) const uint rayCount = 64;
+layout(constant_id = 5) const bool filterIrradiance = false;
 //layout(local_size_x = 64) in;
 //layout(local_size_y = 1) in;
 //layout(local_size_z = 1) in;
 
 //layout(local_size_x = GroupSizeX, local_size_y = GroupSizeY, local_size_z = GroupSizeZ) in; 
-shared vec3 d[ray_count];
+
+shared vec3 rayDirection[rayCount];
+shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + 1]; //zero sized arrays are not valid SPIR-V
+shared float rayDistance[rayCount];
+
+
+float max_component(vec3 v) {
+	return max(max(v.x, v.y), v.z);
+}
 
 void main()
 {
-	// Ray Query for shadow
-	vec3  origin    = vec3(0);
-	vec3  direction = vec3(1, 0, 0);  // vector to light
-	float tMin      = 0.01f;
-	float tMax      = 1000;
+	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+	uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
 
-	// Initializes a ray query object but does not start traversal
-	rayQueryEXT rayQuery;
-	//rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, tMin, direction, tMax);
-
-	// Start traversal: return false if traversal is complete
-	//while(rayQueryProceedEXT(rayQuery))
-	//{
-	//}
-
-	// Returns type of committed (true) intersection
-	//if(rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT)
-	{
-	  // Got an intersection == Shadow
-	 // o_color *= 0.1;
+	//I think this is correct instead of gl_GlobalInvocationID
+	vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
+	vec3 texelDir = get_octahedral_direction(uv);
+	
+	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
+	const int offset = int(gl_LocalInvocationIndex)* iMax;
+	for(int i = 0; i <iMax;i++) {
+		const int rayIdx = offset + i;
+		if(rayIdx >= rayCount) break;
+		
+		rayDirection[rayIdx] = get_ray_direction(rayIdx, volume);
+		vec4 data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		if(filterIrradiance)
+			rayRadiance[rayIdx] = data.xyz;
+		rayDistance[rayIdx] = data.w;
 	}
+	barrier();
+
+	vec4 result = vec4(0.f);
+	float resultWeight = 0.f;
+	for(int rayIdx = 0; rayIdx < rayCount; rayIdx++) {
+
+		vec3 rayDir = rayDirection[rayIdx];
+		float rayDist = rayDistance[rayIdx];
+
+		float weight = max(0.f, dot(texelDir, rayDir));
+
+		if(filterIrradiance) {
+			if(rayDist < 0.f){
+				continue;
+			}
+			vec3 rayRadiance = rayRadiance[rayIdx];
+			result += vec4(rayRadiance * weight, 0.f);
+			resultWeight += weight;
+		}
+		else {
+			float maxRayDist = length(vec3(volume.spacingX, volume.spacingY, volume.spacingZ)) * 1.5f;
+			rayDist = min(abs(rayDist), maxRayDist);
+			const float rayDistSqarred = rayDist * rayDist;
+			const float rayWeighted = rayDist * weight;
+			result += vec4(rayWeighted, rayDist * rayWeighted, rayDistSqarred * rayWeighted, rayDistSqarred * rayDistSqarred * weight);
+			resultWeight += weight;
+		}
+	}
+	float epsilon = float(rayCount) * 1e-9f;
+	float hysteresis = volume.hysteresis;
+
+	ivec2 texCoord = ivec2(1) + ivec2(gl_LocalInvocationID.xy + gl_WorkGroupID.xy * (gl_WorkGroupSize.xy + uvec2(2)));
+
+	float weightNormalization = 1.f/ (max(resultWeight, epsilon));
+
+	if(filterIrradiance)
+		weightNormalization *= 0.5f;
+
+	result *= weightNormalization;
+
+	vec4 previous = vec4(0.f);
+	if(filterIrradiance) 
+		previous = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], texCoord);
+	else 
+		previous = imageLoad(imagesRGBA16F[volume.depthImageBinding], texCoord);
+
+	if(dot(previous, previous) == 0) 
+		hysteresis = 0.f;
+
+	if(filterIrradiance) {
+		vec3 delta = result.xyz - previous.xyz;
+		if(max_component(-delta) > volume.irradianceThreshold)
+		{
+			hysteresis = max(0.f, hysteresis - 0.75f);
+		}
+		if(length(delta) > volume.lightToDarkThreshold)
+		{
+			result.rgb = previous.xyz + (delta * 0.25f);
+		}
+
+
+		const float threshold = 1.f / 1024.f;
+		vec3 lerpDelta = (1.f - hysteresis) * delta;
+		if(max_component(result.xyz) < max_component(previous.xyz))
+		{
+			lerpDelta = min(max(vec3(threshold), abs(lerpDelta)), abs(delta)) * sign(lerpDelta);
+		}
+		result = vec4(previous.xyz + lerpDelta, 1.0f);
+		
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texCoord, result);
+	}
+	else {
+		result = vec4(mix(result, previous, hysteresis));
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texCoord, result);
+	}
+	
 }

@@ -20,14 +20,17 @@ namespace nyan {
 			Math::vec3 origin{ 0.f, 0.f, 0.f };
 			Math::uvec3 probeCount{ 16, 16, 4 };
 			uint32_t raysPerProbe{ 128 };
-			uint32_t irradianceProbeSize{ 8 };
-			uint32_t depthProbeSize{ 16 };
+			uint32_t irradianceProbeSize{ 6 };
+			uint32_t depthProbeSize{ 14 };
 			float depthBias{ 1e-2f };
 			float maxRayDistance{1000.f};
-		private:
-			uint32_t ddgiVolume {nyan::InvalidBinding};
+			float hysteresis{ 9e-1f };
+			float irradianceThreshold{0.25};
+			float lightToDarkThreshold{ 0.8 };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
+		private:
+			uint32_t ddgiVolume {nyan::InvalidBinding};
 			bool dirty{ true };
 
 		};
@@ -39,6 +42,8 @@ namespace nyan {
 	public:
 		DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry);
 		uint32_t add_ddgi_volume(const DDGIVolumeParameters& parameters = {});
+		const DDGIVolumeParameters& get_parameters(uint32_t id) const;
+		DDGIVolumeParameters& get_parameters(uint32_t id);
 
 		//Block probably unused for now
 		void set_spacing(uint32_t id, const Math::vec3& spacing);

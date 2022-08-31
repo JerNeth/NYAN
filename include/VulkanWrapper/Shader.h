@@ -134,7 +134,7 @@ namespace vulkan {
 	//};
 
 	static constexpr uint32_t invalidSpecializationConstant {std::numeric_limits<uint32_t>::max()};
-	class Shader
+	class Shader : public VulkanObject< VkShaderModule>
 	{
 	public:
 		template<typename T>
@@ -154,7 +154,8 @@ namespace vulkan {
 				UInt64,
 				Half,
 				Float,
-				Double
+				Double,
+				Bool
 			} type;
 			uint32_t id;
 		};
@@ -168,13 +169,10 @@ namespace vulkan {
 		//}
 		VkPipelineShaderStageCreateInfo get_create_info();
 		Utility::HashValue get_hash();
-		VkShaderModule get_module();
 		SpecializationConstantId get_specialization_constant_id(const std::string& name) const;
 	private:
-		void create_module(const std::vector<uint32_t>& shaderCode);
+		VkShaderModule create_module(LogicalDevice& device, const std::vector<uint32_t>& shaderCode);
 
-		LogicalDevice& m_parent;
-		VkShaderModule m_module = VK_NULL_HANDLE;
 		ShaderStage m_stage;
 		//ShaderLayout m_layout;
 		Utility::HashValue m_hashValue;
@@ -200,9 +198,6 @@ namespace vulkan {
 				.pData = m_dataStorage.data()
 			};
 		}
-		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage,
-			uint32_t workGroupSizeX, uint32_t workGroupSizeY, uint32_t workGroupSizeZ,
-			uint32_t workGroupSizeXId = ~0, uint32_t workGroupSizeYId = ~0, uint32_t workGroupSizeZId = ~0);
 		VkPipelineShaderStageCreateInfo get_stage_info() const;
 		VkShaderStageFlagBits get_stage() const;
 	private:
@@ -256,7 +251,7 @@ namespace vulkan {
 		ShaderId add_instance_with_constants(ShaderId shaderId, Args... args) noexcept
 		{
 			m_currentShader = get_shader(shaderId);
-			auto instance = ShaderInstance{ m_currentShader->get_module()
+			auto instance = ShaderInstance{ m_currentShader->get_handle()
 				, static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(m_currentShader->get_stage()))
 				, handle_constant(args)... };
 			return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(std::move(instance)) );
@@ -272,37 +267,40 @@ namespace vulkan {
 			auto id = m_currentShader->get_specialization_constant_id(constant.name);
 			switch (id.type) {
 				case Shader::SpecializationConstantId::Type::SByte:
-					assert(typeid(constant.value) == typeid(int8_t));
+					assert(typeid(T) == typeid(int8_t));
 						break;
 				case Shader::SpecializationConstantId::Type::UByte:
-					assert(typeid(constant.value) == typeid(uint8_t));
+					assert(typeid(T) == typeid(uint8_t));
 						break;
 				case Shader::SpecializationConstantId::Type::Short:
-					assert(typeid(constant.value) == typeid(int16_t));
+					assert(typeid(T) == typeid(int16_t));
 						break;
 				case Shader::SpecializationConstantId::Type::UShort:
-					assert(typeid(constant.value) == typeid(uint16_t));
+					assert(typeid(T) == typeid(uint16_t));
 						break;
 				case Shader::SpecializationConstantId::Type::Int:
-					assert(typeid(constant.value) == typeid(int32_t));
+					assert(typeid(T) == typeid(int32_t));
 						break;
 				case Shader::SpecializationConstantId::Type::UInt:
-					assert(typeid(constant.value) == typeid(uint32_t));
+					assert(typeid(T) == typeid(uint32_t));
 						break;
 				case Shader::SpecializationConstantId::Type::Int64:
-					assert(typeid(constant.value) == typeid(int64_t));
+					assert(typeid(T) == typeid(int64_t));
 						break;
 				case Shader::SpecializationConstantId::Type::UInt64:
-					assert(typeid(constant.value) == typeid(uint64_t));
+					assert(typeid(T) == typeid(uint64_t));
 						break;
 				case Shader::SpecializationConstantId::Type::Float:
-					assert(typeid(constant.value) == typeid(float));
+					assert(typeid(T) == typeid(float));
 						break;
 				case Shader::SpecializationConstantId::Type::Double:
-					assert(typeid(constant.value) == typeid(double));
+					assert(typeid(T) == typeid(double));
 						break;
 				case Shader::SpecializationConstantId::Type::Half:
-					assert(typeid(constant.value) == typeid(Math::half));
+					assert(typeid(T) == typeid(Math::half));
+					break;
+				case Shader::SpecializationConstantId::Type::Bool:
+					assert(typeid(T) == typeid(VkBool32));
 					break;
 				default:
 					assert(false && "TODO");

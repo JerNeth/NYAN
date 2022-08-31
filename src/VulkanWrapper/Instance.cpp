@@ -9,7 +9,7 @@
 	[[maybe_unused]] VkDebugReportObjectTypeEXT objectType, [[maybe_unused]] uint64_t object, [[maybe_unused]] size_t location,
 	[[maybe_unused]] int32_t messageCode, [[maybe_unused]] const char* pLayerPrefix, [[maybe_unused]] const char* pMessage,[[maybe_unused]] void* pUserData)
 {
-	Utility::Logger logger;
+	Utility::Logger logger{};
 	if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
 		logger.message("[Information] ");
 	else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
@@ -143,7 +143,7 @@
 			break;
 	}
 	logger.message("]");
-	Utility::log_error().format("({:#x}):\n{}n", object, pMessage);
+	Utility::log_error().format("({:#x}[{}]):\n{}n", object, vulkan::VulkanObject<VkInstance>::get_debug_label(object), pMessage);
 	return VK_FALSE;
 }
 

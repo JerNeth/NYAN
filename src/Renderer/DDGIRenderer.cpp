@@ -17,7 +17,6 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	//For now limit adding ddgi volumes to not allow adding any after render graph build
 	//This holds until render graph refactor in regards to modification or rebuild is done
 	//Also limit to one ddgi volume for now
-	ddgiManager.add_ddgi_volume();
 	//pass.add_write("DDGI_Rays", nyan::ImageAttachment
 	//		{
 	//			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
@@ -39,7 +38,31 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	//	}, nyan::Renderpass::Write::Type::Compute);
 
 
-	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+	BorderPipelineConfig irradianceBorderConfig{
+		.workSizeX {8},
+		.workSizeY {8},
+		.workSizeZ {1},
+		.columns {true},
+		.filterIrradiance {true},
+	};
+	vulkan::PipelineId irradianceColumnBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
+	irradianceBorderConfig.columns = false;
+	vulkan::PipelineId irradianceRowBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
+
+	BorderPipelineConfig depthBorderConfig{
+		.workSizeX {8},
+		.workSizeY {8},
+		.workSizeZ {1},
+		.columns {true},
+		.filterIrradiance {false},
+	};
+	vulkan::PipelineId depthColumnBorderPipelineId = create_border_pipeline(depthBorderConfig);
+	depthBorderConfig.columns = false;
+	vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
+
+	pass.add_renderfunction([this, irradianceColumnBorderPipelineId,
+		irradianceRowBorderPipelineId, depthColumnBorderPipelineId,
+		depthRowBorderPipelineId] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 			auto& renderGraph = r_renderManager.get_render_graph();
@@ -65,7 +88,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.layerCount {VK_REMAINING_ARRAY_LAYERS},
 				}
 			};
-			VkImageMemoryBarrier2 readBarrier{
+			std::array barriers{
+			VkImageMemoryBarrier2 {
 				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
 				.pNext {nullptr},
 				.srcStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
@@ -84,7 +108,45 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.baseArrayLayer {0},
 					.layerCount {VK_REMAINING_ARRAY_LAYERS},
 				}
-			};
+			},
+			VkImageMemoryBarrier2{
+				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+				.pNext {nullptr},
+				.srcStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.srcAccessMask{ VK_ACCESS_2_SHADER_WRITE_BIT },
+				.dstStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.dstAccessMask{ VK_ACCESS_2_SHADER_READ_BIT },
+				.oldLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.newLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.srcQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.dstQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.subresourceRange {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT },
+					.baseMipLevel {0},
+					.levelCount {VK_REMAINING_MIP_LEVELS},
+					.baseArrayLayer {0},
+					.layerCount {VK_REMAINING_ARRAY_LAYERS},
+				}
+			},
+			VkImageMemoryBarrier2{
+				.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+				.pNext {nullptr},
+				.srcStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.srcAccessMask{ VK_ACCESS_2_SHADER_WRITE_BIT },
+				.dstStageMask{ VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT },
+				.dstAccessMask{ VK_ACCESS_2_SHADER_READ_BIT },
+				.oldLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.newLayout {VK_IMAGE_LAYOUT_GENERAL},
+				.srcQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.dstQueueFamilyIndex{VK_QUEUE_FAMILY_IGNORED},
+				.subresourceRange {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT },
+					.baseMipLevel {0},
+					.levelCount {VK_REMAINING_MIP_LEVELS},
+					.baseArrayLayer {0},
+					.layerCount {VK_REMAINING_ARRAY_LAYERS},
+				}
+			} };
 			PushConstants constants{
 				.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 				.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
@@ -96,35 +158,61 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				//.col {},
 				//.col2 {}
 			};
-			assert(resource.handle); 				
+			assert(resource.handle); 	
+
+
 			 
 			for (uint32_t i = 0; i < r_renderManager.get_ddgi_manager().slot_count(); ++i) {
 
 				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
 				constants.ddgiIndex = i;
 				const auto& volume = ddgiManager.get(i);
-				PipelineConfig config{
+				const auto& parameters = ddgiManager.get_parameters(i);
+				auto& irradiance = renderGraph.get_resource(parameters.irradianceResource);
+				auto& depth = renderGraph.get_resource(parameters.depthResource);
+				barriers[1].image = *irradiance.handle;
+				barriers[2].image = *depth.handle;
+				
+				PipelineConfig irradianceConfig{
 					.workSizeX {volume.depthProbeSize},
 					.workSizeY {volume.depthProbeSize},
 					.workSizeZ {1},
-					.ray_count {volume.raysPerProbe}
+					.rayCount {volume.raysPerProbe},
+					//.probeSize {volume.raysPerProbe},
+					.filterIrradiance {true},
 				};
-				vulkan::PipelineId pipelineId;
-				if (auto it = m_pipelines.find(config); it != m_pipelines.end()) {
-					pipelineId = it->second;
-				}
-				else {
-					pipelineId = create_pipeline(config);
-					m_pipelines.emplace(config, pipelineId);
-				}
+				vulkan::PipelineId irradiancePipelineId = create_filter_pipeline(irradianceConfig);
+
+				PipelineConfig depthConfig{
+					.workSizeX {volume.irradianceProbeSize},
+					.workSizeY {volume.irradianceProbeSize},
+					.workSizeZ {1},
+					.rayCount {volume.raysPerProbe},
+					//.probeSize {volume.raysPerProbe},
+					.filterIrradiance {false},
+				};
+				vulkan::PipelineId depthPipelineId = create_filter_pipeline(depthConfig);
 				
 				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
 				render_volume(rtPipelineBind, constants, volume.raysPerProbe, volume.probeCountX * volume.probeCountY * volume.probeCountZ);
-				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &writeBarrier);
+				cmd.barrier2(1, &writeBarrier);
 
-				auto filterRtPipelineBind = cmd.bind_compute_pipeline(pipelineId);
-				filter_volume(filterRtPipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
-				cmd.barrier2(0, 0, nullptr, 0, nullptr, 1, &readBarrier);
+				auto pipelineBind = cmd.bind_compute_pipeline(irradiancePipelineId);
+				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				pipelineBind = cmd.bind_compute_pipeline(depthPipelineId);
+				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				cmd.barrier2(barriers.size(), barriers.data());
+
+				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				pipelineBind = cmd.bind_compute_pipeline(irradianceRowBorderPipelineId);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				pipelineBind = cmd.bind_compute_pipeline(depthColumnBorderPipelineId);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				pipelineBind = cmd.bind_compute_pipeline(depthRowBorderPipelineId);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+
+
 			}
 		}, false);
 }
@@ -184,15 +272,54 @@ void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const 
 	bind.dispatch(probeCountX, probeCountY, probeCountZ);
 }
 
-vulkan::PipelineId nyan::DDGIRenderer::create_pipeline(const PipelineConfig& config)
+void nyan::DDGIRenderer::copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
-	vulkan::ComputePipelineConfig pipelineConfig{
-		.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_comp",
-		config.workSizeX, config.workSizeY,
-		config.workSizeZ, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::ray_countShaderName, config.ray_count})},
-		.pipelineLayout {r_device.get_bindless_pipeline_layout()}
-	};
-	return r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+	bind.push_constants(constants);
+	bind.dispatch(probeCountX / m_borderSizeX, probeCountY / m_borderSizeY, probeCountZ);
+}
+
+vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConfig& config)
+{
+	vulkan::PipelineId pipelineId;
+	if (auto it = m_pipelines.find(config); it != m_pipelines.end()) {
+		pipelineId = it->second;
+	}
+	else {
+		vulkan::ComputePipelineConfig pipelineConfig{
+			.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_comp",
+			config.workSizeX, config.workSizeY,
+			config.workSizeZ, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount}
+			//, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::probeSizeShaderName, config.probeSize}
+			, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance})},
+			.pipelineLayout {r_device.get_bindless_pipeline_layout()}
+		};
+		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+		m_pipelines.emplace(config, pipelineId);
+	}
+	return pipelineId;
+}
+
+vulkan::PipelineId nyan::DDGIRenderer::create_border_pipeline(const BorderPipelineConfig& config)
+{
+	vulkan::PipelineId pipelineId;
+	if (auto it = m_borderPipelines.find(config); it != m_borderPipelines.end()) {
+		pipelineId = it->second;
+	}
+	else {
+		vulkan::ComputePipelineConfig pipelineConfig{
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_borders_comp",
+				config.workSizeX, config.workSizeY,
+				config.workSizeZ
+				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount},
+				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::probeSizeShaderName, config.probeSize},
+				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance}
+				)},
+				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
+		};
+		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+		m_borderPipelines.emplace(config, pipelineId);
+	}
+	return pipelineId;
 }
 
 vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
@@ -208,13 +335,13 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
 		.hitGroups {
 			vulkan::Group
 			{
-				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rchit")},
+				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rchit")},
 			},
 		},
 		.missGroups {
 			vulkan::Group
 			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rmiss")},
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rmiss")},
 			},
 			vulkan::Group
 			{

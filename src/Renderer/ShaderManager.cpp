@@ -23,23 +23,7 @@ static std::vector<uint32_t> read_binary_file(const std::filesystem::path& path)
 vulkan::ShaderManager::ShaderManager(LogicalDevice& device, const std::filesystem::path& shaderDirectory)
 	: r_device(device) 
 {
-	if (std::filesystem::exists(shaderDirectory)) {
-		for (const auto& entry : std::filesystem::directory_iterator{ shaderDirectory }) {
-			if (!entry.is_regular_file())
-				continue;
-			if (entry.path().extension().compare(".spv"))
-				continue;
-			auto& shaderStorage = r_device.get_shader_storage();
-			auto shaderCode = read_binary_file(entry.path());
-			auto shaderId = shaderStorage.add_shader(shaderCode);
-			m_shaderMapping[entry.path().stem().string()] = shaderId;
-			//auto shaderInstanceId = shaderStorage.add_instance(shaderId);
-			//m_shaderInstanceMapping[entry.path().stem().string()] = shaderInstanceId;
-		}
-	}
-	else {
-		Utility::log("Invalid shader directory given");
-	}
+	load_shaders(shaderDirectory);
 }
 
 vulkan::ShaderId vulkan::ShaderManager::get_shader_id(const std::string& name) const noexcept
@@ -53,6 +37,30 @@ void vulkan::ShaderManager::throw_size_error(uint32_t x, uint32_t y, uint32_t z,
 {
 	throw Utility::DevicePropertyException(std::format("Requested WorkgroupSize ({}, {}, {}) exceeds supported: ({}, {}, {})",
 		x, y, z, maxX, maxY, maxZ));
+}
+void vulkan::ShaderManager::load_shaders(const std::filesystem::path& shaderDirectory) 
+{
+	if (std::filesystem::exists(shaderDirectory)) {
+		r_device.wait_idle();
+		auto& shaderStorage = r_device.get_shader_storage();
+		shaderStorage.clear();
+		for (const auto& entry : std::filesystem::directory_iterator{ shaderDirectory }) {
+			if (!entry.is_regular_file())
+				continue;
+			if (entry.path().extension().compare(".spv"))
+				continue;
+			auto shaderCode = read_binary_file(entry.path());
+			auto shaderId = shaderStorage.add_shader(shaderCode);
+			auto* shader = shaderStorage.get_shader(shaderId);
+			shader->set_debug_label(entry.path().stem().string().c_str());
+			m_shaderMapping[entry.path().stem().string()] = shaderId;
+			//auto shaderInstanceId = shaderStorage.add_instance(shaderId);
+			//m_shaderInstanceMapping[entry.path().stem().string()] = shaderInstanceId;
+		}
+	}
+	else {
+		Utility::log("Invalid shader directory given");
+	}
 }
 
 //vulkan::ShaderId vulkan::ShaderManager::get_shader_instance_id(const std::string& name) const noexcept

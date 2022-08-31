@@ -10,11 +10,12 @@ nyan::DDGIManager::DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph&
 	r_rendergraph(rendergraph),
 	r_registry(registry)
 {
+	auto entity = r_registry.create();
+	r_registry.emplace< DDGIVolumeParameters>(entity, DDGIVolumeParameters{});
 }
 
 uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& parameters)
 {
-
 	nyan::shaders::DDGIVolume volume{
 			.spacingX {parameters.spacing[0]},
 			.spacingY {parameters.spacing[1]},
@@ -45,12 +46,39 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.depthTextureBinding {},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthImageBinding {},
-			.shadowBias {parameters.depthBias}
+			.shadowBias {parameters.depthBias},
+			.hysteresis {parameters.hysteresis},
+			.irradianceThreshold {parameters.irradianceThreshold},
+			.lightToDarkThreshold {parameters.lightToDarkThreshold}
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
 	update_irradiance_texture(volume);
 	return add(volume);
+}
+
+const nyan::DDGIManager::DDGIVolumeParameters& nyan::DDGIManager::get_parameters(uint32_t id) const
+{
+
+	auto volumeView = r_registry.view<DDGIVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.ddgiVolume == id)
+			return parameters;
+	}
+	assert(false && "Invalid Id");
+	throw std::runtime_error("Invalid Id");
+}
+
+nyan::DDGIManager::DDGIVolumeParameters& nyan::DDGIManager::get_parameters(uint32_t id)
+{
+
+	auto volumeView = r_registry.view<DDGIVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.ddgiVolume == id)
+			return parameters;
+	}
+	assert(false && "Invalid Id");
+	throw std::runtime_error("Invalid Id");
 }
 
 void nyan::DDGIManager::set_spacing(uint32_t id, const Math::vec3& spacing)
@@ -123,12 +151,14 @@ void nyan::DDGIManager::update()
 
 	auto volumeView = r_registry.view<DDGIVolumeParameters>();
 	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.ddgiVolume == nyan::InvalidBinding) {
+			parameters.ddgiVolume = add_ddgi_volume(parameters);
+			parameters.dirty = true;
+		}
 		if (!parameters.dirty)
 			continue;
 		parameters.dirty = false;
-		if (parameters.ddgiVolume == nyan::InvalidBinding) {
-			parameters.ddgiVolume = add_ddgi_volume();
-		}
+
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
@@ -146,12 +176,22 @@ void nyan::DDGIManager::update()
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.shadowBias {parameters.depthBias},
-			.maxRayDistance {parameters.maxRayDistance}
+			.maxRayDistance {parameters.maxRayDistance},
+			.hysteresis {parameters.hysteresis},
+			.irradianceThreshold {parameters.irradianceThreshold},
+			.lightToDarkThreshold {parameters.lightToDarkThreshold}
 		};
 		update_spacing(deviceVolume);
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
 		if (parameters.depthResource) {
+			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
+			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
+			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
+			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+		}
+		else {
 			parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
 				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
@@ -167,17 +207,18 @@ void nyan::DDGIManager::update()
 				pass.add_write(parameters.depthResource, type);
 			}
 		}
-		else {
-			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
-			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
-			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
-			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
-			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
-
-		}
 		if (parameters.irradianceResource) {
+			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
+			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
+			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
+			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+		}
+		else {
 			parameters.irradianceResource = r_rendergraph.add_ressource(std::format("DDGI_Irradiance_{}", parameters.ddgiVolume), nyan::ImageAttachment{
 				.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+				//VK_FORMAT_E5B9G9R9_UFLOAT_PACK32
+				//VK_FORMAT_R16G16B16_SFLOAT
 				.size{nyan::ImageAttachment::Size::Absolute},
 				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
 				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
@@ -190,13 +231,6 @@ void nyan::DDGIManager::update()
 				auto& pass = r_rendergraph.get_pass(write);
 				pass.add_write(parameters.irradianceResource, type);
 			}
-		}
-		else {
-			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
-			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
-			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
-			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
-			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
 		}
 		// Update Probes -> Update Renderpass Read/Writes (if changed) -> Rendergraph update -> Update Bindings here
 	}

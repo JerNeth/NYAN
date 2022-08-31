@@ -58,3 +58,29 @@ vec3 get_ray_direction(uint rayIdx, DDGIVolume volume)
 {
 	return spherical_fibonacci(rayIdx, volume.raysPerProbe);
 }
+
+vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels) 
+{
+	vec2 uv = vec2(texCoords.x % numTexels, texCoords.y % numTexels);
+
+	uv += vec2(0.5f);
+	uv /= vec2(numTexels);
+	uv *= 2.f;
+	uv -= vec2(1.f);
+	return uv;
+}
+
+vec2 sign_not_zero(vec2 v)
+{
+	return step(0, v)*vec2(2.f) - vec2(1.f);
+}
+
+vec3 get_octahedral_direction(vec2 uv) 
+{
+	vec3 direction = vec3(uv.xy, 1.f - abs(uv.x) - abs(uv.y));
+	if(direction.z < 0.f)
+	{
+		direction.xy = (vec2(1.f) - abs(uv.yx)) * sign_not_zero(direction.xy);
+	}
+	return normalize(direction);
+}

@@ -1,5 +1,6 @@
 #include "Shader.h"
 #include "DescriptorSet.h"
+#include "Instance.h"
 #include "LogicalDevice.h"
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -18,18 +19,17 @@
 #include "Utility/Exceptions.h"
 
 vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shaderCode) :
-	m_parent(parent)
+	VulkanObject(parent, create_module(parent, shaderCode))
 {
 	Utility::VectorHash<uint32_t> hasher;
 	m_hashValue = hasher(shaderCode);
-	create_module(shaderCode);
 	parse_shader( shaderCode);
 }
 
 vulkan::Shader::~Shader()
 {
-	if(m_module != VK_NULL_HANDLE)
-		vkDestroyShaderModule(m_parent.get_device(), m_module, m_parent.get_allocator());
+	if(m_handle != VK_NULL_HANDLE)
+		vkDestroyShaderModule(r_device.get_device(), m_handle, r_device.get_allocator());
 }
 
 vulkan::ShaderStage vulkan::Shader::get_stage()
@@ -120,6 +120,8 @@ static vulkan::Shader::SpecializationConstantId::Type convertType(spirv_cross::S
 		return vulkan::Shader::SpecializationConstantId::Type::Float;
 	case Double:
 		return vulkan::Shader::SpecializationConstantId::Type::Double;
+	case Boolean:
+		return vulkan::Shader::SpecializationConstantId::Type::Bool;
 	default:
 		assert(false);
 		throw std::runtime_error("Unknown BaseType");
@@ -247,11 +249,11 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 
 VkPipelineShaderStageCreateInfo vulkan::Shader::get_create_info()
 {
-	assert(m_module != VK_NULL_HANDLE);
+	assert(m_handle != VK_NULL_HANDLE);
 	VkPipelineShaderStageCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = static_cast<VkShaderStageFlagBits>(1u <<static_cast<uint32_t>(m_stage)),
-		.module = m_module,
+		.module = m_handle,
 		.pName = "main",
 		.pSpecializationInfo = nullptr,
 	};
@@ -262,10 +264,6 @@ Utility::HashValue vulkan::Shader::get_hash()
 {
 	return m_hashValue;
 }
-VkShaderModule vulkan::Shader::get_module()
-{
-	return m_module;
-}
 
 vulkan::Shader::SpecializationConstantId vulkan::Shader::get_specialization_constant_id(const std::string& name) const
 {
@@ -274,18 +272,18 @@ vulkan::Shader::SpecializationConstantId vulkan::Shader::get_specialization_cons
 	return it->second;
 }
 
-
-void vulkan::Shader::create_module(const std::vector<uint32_t>& shaderCode)
+VkShaderModule vulkan::Shader::create_module(LogicalDevice& device, const std::vector<uint32_t>& shaderCode)
 {
+	VkShaderModule module{VK_NULL_HANDLE};
 	VkShaderModuleCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		.codeSize = shaderCode.size() * sizeof(uint32_t),
 		.pCode = shaderCode.data(),
 	};
-	if (auto result = vkCreateShaderModule(m_parent.get_device(), &createInfo, m_parent.get_allocator(), &m_module); result != VK_SUCCESS) {
+	if (auto result = vkCreateShaderModule(device.get_device(), &createInfo, device.get_allocator(), &module); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
-	
+	return module;
 }
 
 vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage) :
@@ -331,7 +329,7 @@ vulkan::ShaderStorage::ShaderStorage(LogicalDevice& device) :
 vulkan::ShaderId vulkan::ShaderStorage::add_instance(ShaderId shaderId) 
 {
 	auto* shader = get_shader(shaderId);
-	return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(shader->get_module()
+	return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(shader->get_handle()
 		,static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(shader->get_stage()))));
 }
 

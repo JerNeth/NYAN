@@ -169,10 +169,6 @@ namespace vulkan {
 		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
-		size_t register_shader(const std::vector<uint32_t>& shaderCode);
-		//Shader* request_shader(const std::string& shaderName, const std::vector<uint32_t>& shaderCode);
-		//Shader* request_shader(const std::string& shaderName) noexcept;
-		Shader* request_shader(size_t id);
 		FenceHandle request_empty_fence();
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBufferType type);

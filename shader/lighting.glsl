@@ -101,8 +101,11 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
 
 
     //diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, LdotH, albedo.xyz, alpha) *( (1- metalness) * light.intensity * NdotL) * light.color ;
-   
-    diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- metalness) * light.intensity * albedo.xyz * NdotL) * light.color ; 
+
+    vec3 specularColor = mix( vec3(0.04), albedo.xyz, metalness);
+    vec3 F = F_Schlick(NdotV, specularColor);
+
+    diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- metalness) * light.intensity * NdotL * albedo.xyz ) * (vec3(1.f) -F) * light.color ; 
     //diffuse.xyz += brdf_lambert()*( (1- metalness) * light.intensity * albedo.xyz * NdotL) * light.color;
     //TODO Energy Compensation for multiple Scattering
     //Consider Energy Compensation from: Revisiting Physically Based Shading at Imageworks
@@ -114,25 +117,22 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
 	// https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
     //Fdez-Agüera, A Multiple-Scattering Microfacet Model for Real-Time Image Based Lighting.
 
-    vec3 specularColor = mix( vec3(0.04), albedo.xyz, metalness);
-    vec3 F = F_Schlick(NdotV, specularColor);
     specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * NdotL) * F * light.color ;
 }
 
 struct ShadingData
 {
     vec3 albedo;
-    float roughness;
+    float alpha;
     vec3 outLightDir;
     float metalness;
     vec3 shadingNormal;
     //float anisotropy (maybe)
+    vec3 worldPos;
 };
 
 vec3 diffuse_dir_light(in DirectionalLight light, in ShadingData shadingData)
 {
-    float alpha = shadingData.roughness * shadingData.roughness;
-
     float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
     if(NdotL <= 0) {
         return vec3(0.f);
@@ -143,21 +143,26 @@ vec3 diffuse_dir_light(in DirectionalLight light, in ShadingData shadingData)
     float NdotH = (NdotL + NdotV) * rcpLenLV;
     float LdotH = rcpLenLV * LdotV + rcpLenLV;
     
-    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL) * light.color;
+    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL) * light.color;
 
     return diffuse;
 }
-
-vec3 calc_diffuse_light(in Scene scene, in ShadingData shadingData)
+vec3 diffuse_point_light(in PointLight light, in vec3 lightDir, in ShadingData shadingData) 
 {
-    vec3 diffuse = vec3(0.f);
-    float alpha = shadingData.roughness * shadingData.roughness;
-    //Only shade dielectrics
-    if(shadingData.metalness < 1) {
-        diffuse = diffuse_dir_light(scene.dirLight, shadingData);
+    float NdotL = max(dot(shadingData.shadingNormal, lightDir), 0.0);
+    if(NdotL <= 0) {
+        return vec3(0.f);
     }
+    float LdotV = dot(lightDir, shadingData.outLightDir);
+    float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
+    float rcpLenLV = inversesqrt(2 + 2 * LdotV);
+    float NdotH = (NdotL + NdotV) * rcpLenLV;
+    float LdotH = rcpLenLV * LdotV + rcpLenLV;
+
+    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL) * light.color;
     return diffuse;
 }
+
 
 void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo, in float metalness, in float roughness, out vec4 specular, out vec4 diffuse) {
 	DirectionalLight light = scene.dirLight;

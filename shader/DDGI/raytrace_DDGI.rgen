@@ -9,6 +9,12 @@
 #include "../lighting.glsl"
 #include "ddgi_common.glsl"
 
+layout(location = 0) rayPayloadEXT PackedPayload pld;
+layout(location = 1) rayPayloadEXT float shadowed;
+
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
+
+
 layout(std430, push_constant) uniform PushConstants
 {
 	uint accBinding;
@@ -22,22 +28,77 @@ layout(std430, push_constant) uniform PushConstants
 	vec4 col2;
 } constants;
 
-vec3 diffuse_direct_lighting(in Scene scene, in Payload payload)
+
+float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
 {
-	//TODO
-	//Evaluate BRDF and visibility
-	return vec3(0.f);
+    shadowed = 0.f;
+    uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+    float tMin     = 0.0;
+	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
+            rayFlags,       // rayFlags
+            0xFF,           // cullMask
+            0,              // sbtRecordOffset
+            0,              // sbtRecordStride
+            1,              // missIndex
+            shadingData.worldPos.xyz, // ray origin
+            tMin,           // ray min range
+            dir.xyz,  // ray direction
+            tMax,           // ray max range
+            1               // payload (location = 0)
+        );
+    return shadowed;
 }
-vec3 diffuse_indirect_lighting(in Scene scene, in Payload payload)
+
+vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData) 
+{
+    vec3 diffuse = vec3(0.f);
+    for(int i = 0; i < scene.numPointLights; i++) 
+    {
+        PointLight light = scene.pointLights[i];
+        vec3 lightDir = light.pos - shadingData.worldPos;
+        float dist = length(lightDir);
+        if(dist > light.attenuationDistance)
+            continue;
+
+        lightDir /= dist;
+        float lightShadow = light_visibility(shadingData, lightDir,dist);
+        if(lightShadow < 1.f )
+            continue;
+
+        diffuse += diffuse_point_light(light, lightDir, shadingData);
+        
+    }
+    return diffuse;
+}
+
+
+vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
+{
+    vec3 diffuse = vec3(0.f);
+    //Only shade dielectrics
+    if(shadingData.metalness >= 1) {
+        return vec3(0.f);
+    }
+    if(scene.dirLight.enabled) 
+    {
+        float lightShadow = light_visibility(shadingData, scene.dirLight.dir, 1e27f);
+        if(lightShadow < 1.f) {
+            diffuse += diffuse_dir_light(scene.dirLight, shadingData);
+        }
+    }
+    if(scene.numPointLights > 0)
+    {
+        diffuse += diffuse_point_lights(scene, shadingData);
+    }
+    return diffuse;
+}
+vec3 diffuse_indirect_lighting(in Payload payload)
 {
 	//TODO
 	//Evaluate DDGI
 	return vec3(0.f);
 }
 
-layout(location = 0) rayPayloadEXT PackedPayload pld;
-
-layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 void main()
 {
     //gl_LaunchIDEXT.xy;
@@ -83,9 +144,19 @@ void main()
 		hitDistance = 65519.f; 
 	 } 
 	 else {
-		diffuse += diffuse_direct_lighting(scene, payload);
-		//diffuse += diffuse_indirect_lighting(payload);
+        ShadingData shadingData;
+        shadingData.albedo = payload.albedo;
+        shadingData.alpha = payload.roughness * payload.roughness;
+        shadingData.outLightDir = direction;
+        shadingData.metalness = payload.metallic;
+        shadingData.shadingNormal = payload.shadingNormal;
+        shadingData.worldPos = payload.worldPos;
+        //High compile time here, probably due to shadow rays
+		diffuse += diffuse_direct_lighting(scene, shadingData);
+
+		diffuse += diffuse_indirect_lighting(payload);
 	 }
+     
 
 	 imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

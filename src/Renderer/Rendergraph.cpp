@@ -213,7 +213,7 @@ void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBuffer& cmd)
 	if (m_globalBarriers2.postIndex != m_globalBarriers2.preIndex ||
 		m_bufferBarriers2.postIndex != m_bufferBarriers2.preIndex ||
 		m_imageBarriers2.postIndex != m_imageBarriers2.preIndex)
-		cmd.barrier2(0, 
+		cmd.barrier2(
 			static_cast<uint32_t>(m_globalBarriers2.postIndex - m_globalBarriers2.preIndex), m_globalBarriers2.barriers.data() + m_globalBarriers2.preIndex,
 			static_cast<uint32_t>(m_bufferBarriers2.postIndex - m_bufferBarriers2.preIndex), m_bufferBarriers2.barriers.data() + m_bufferBarriers2.preIndex,
 			static_cast<uint32_t>(m_imageBarriers2.postIndex - m_imageBarriers2.preIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.preIndex);
@@ -224,7 +224,7 @@ void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBuffer& cmd)
 	if (m_globalBarriers2.preIndex != m_globalBarriers2.copyIndex ||
 		m_bufferBarriers2.preIndex != m_bufferBarriers2.copyIndex ||
 		m_imageBarriers2.preIndex != m_imageBarriers2.copyIndex)
-		cmd.barrier2(0,
+		cmd.barrier2(
 			static_cast<uint32_t>(m_globalBarriers2.preIndex - m_globalBarriers2.copyIndex), m_globalBarriers2.barriers.data() + m_globalBarriers2.copyIndex,
 			static_cast<uint32_t>(m_bufferBarriers2.preIndex - m_bufferBarriers2.copyIndex), m_bufferBarriers2.barriers.data() + m_bufferBarriers2.copyIndex,
 			static_cast<uint32_t>(m_imageBarriers2.preIndex - m_imageBarriers2.copyIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.copyIndex);
@@ -235,7 +235,7 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 	if (m_globalBarriers2.barriers.size() != m_globalBarriers2.postIndex ||
 		m_bufferBarriers2.barriers.size() != m_bufferBarriers2.postIndex ||
 		m_imageBarriers2.barriers.size() != m_imageBarriers2.postIndex)
-		cmd.barrier2(0,
+		cmd.barrier2(
 			static_cast<uint32_t>(m_globalBarriers2.barriers.size() - m_globalBarriers2.postIndex), m_globalBarriers2.barriers.data() + m_globalBarriers2.postIndex,
 			static_cast<uint32_t>(m_bufferBarriers2.barriers.size() - m_bufferBarriers2.postIndex), m_bufferBarriers2.barriers.data() + m_bufferBarriers2.postIndex,
 			static_cast<uint32_t>(m_imageBarriers2.barriers.size() - m_imageBarriers2.postIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.postIndex);

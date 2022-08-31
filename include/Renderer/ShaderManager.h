@@ -41,9 +41,9 @@ namespace vulkan {
 			assert(x < maxSize[0]); //Typically 1024, 1536 on older NVIDIA
 			assert(y < maxSize[1]); //Typically 1024
 			assert(z < maxSize[2]); //64 on NVIDIA and Intel, 1024 on AMD
-			if (x < maxSize[0] ||
-				y < maxSize[1] ||
-				z < maxSize[2])
+			if (x > maxSize[0] ||
+				y > maxSize[1] ||
+				z > maxSize[2])
 				throw_size_error(x, y, z, maxSize[0], maxSize[1], maxSize[2]);
 
 
@@ -78,6 +78,7 @@ namespace vulkan {
 
 	private:
 		void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ) noexcept(false);
+		void load_shaders(const std::filesystem::path& shaderDirectory);
 		//Shader* request_shader(const std::string& filename);
 		LogicalDevice& r_device;
 		//Utility::HashMap<Program*> m_cachedPrograms;

@@ -35,16 +35,25 @@ namespace vulkan {
 		void barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount = 0,
 			const VkMemoryBarrier* globals = nullptr, uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier* bufferBarriers = nullptr,
 			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier* imageBarriers = nullptr);
-		void barrier2(VkDependencyFlags dependencyFlags, uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
+		void barrier2(uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
 			uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier2* bufferBarriers = nullptr,
-			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr);
+			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags = VkDependencyFlags{0});
+		void barrier2(uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
 		void reset_event2(VkEvent event, VkPipelineStageFlags2 stages);
-		void set_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
-			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
-			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
-		void wait_event2(VkEvent event, VkDependencyFlags dependencyFlags, uint32_t barrierCount, const VkMemoryBarrier2* globals,
-			uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
-			uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers);
+		void set_event2(VkEvent event, uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
+			uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier2* bufferBarriers = nullptr,
+			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void set_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void set_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void wait_event2(VkEvent event, uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
+			uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier2* bufferBarriers = nullptr,
+			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void wait_event2(VkEvent event,	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void wait_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
 		void wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo);
 		void barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess);
 		void image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout,

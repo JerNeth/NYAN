@@ -321,9 +321,12 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 		VK_PIPELINE_CREATE_RAY_TRACING_ALLOW_MOTION_BIT_NV |
 		VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV)));
 	assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
-
-	vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
-
+	
+	if (auto result = vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
+		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+		throw Utility::VulkanException(result);
+	}
+	
 }
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config) :
@@ -513,7 +516,11 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		Utility::log().location().format("Requested Recursion Depth for Pipeline too high\n requested: {} \t supported {}", createInfo.maxPipelineRayRecursionDepth, rtProperties.maxRayRecursionDepth);
 		createInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 	}
-	vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
+	
+	if (auto result = vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
+		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT && result != VK_OPERATION_DEFERRED_KHR && result != VK_OPERATION_NOT_DEFERRED_KHR) {
+		throw Utility::VulkanException(result);
+	}
 }
 
 VkPipelineLayout vulkan::Pipeline2::get_layout() const noexcept

@@ -54,7 +54,7 @@ struct Scene {
 	mat4 invProj;
 	mat4 invViewProj;
 	DirectionalLight dirLight;
-	uint numLights;
+	uint numPointLights;
 	float viewerPosX;
 	float viewerPosY;
 	float viewerPosZ;
@@ -113,6 +113,9 @@ struct DDGIVolume {
 
 	float shadowBias;
 	float maxRayDistance;
+	float hysteresis;
+	float irradianceThreshold;
+	float lightToDarkThreshold;
 };
 
 #endif
