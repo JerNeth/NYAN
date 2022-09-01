@@ -87,6 +87,7 @@ namespace vulkan {
 		SemaphoreManager(SemaphoreManager&& other) = delete;
 		VkSemaphore request_semaphore();
 		void recycle_semaphore(VkSemaphore semaphore);
+		void clear();
 	private:
 		LogicalDevice& r_device;
 		std::unordered_set<VkSemaphore> m_semaphores;

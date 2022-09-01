@@ -100,6 +100,7 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 		m_frameResources.emplace_back(new FrameResource{*this});
 	}
 }
+static std::unordered_map<uint64_t, std::source_location> m_debugMap;
 vulkan::LogicalDevice::~LogicalDevice()
 {
 	wait_no_lock();
@@ -107,11 +108,17 @@ vulkan::LogicalDevice::~LogicalDevice()
 
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
 		if (aquire != VK_NULL_HANDLE)
-			vkDestroySemaphore(get_device(), aquire, get_allocator());
+			destroy_semaphore(aquire);
 	}
 	for (auto& present : m_wsiState.presentSemaphores) {
 		if (present != VK_NULL_HANDLE) 
-			vkDestroySemaphore(get_device(), present, get_allocator());
+			destroy_semaphore(present);
+	}
+
+	m_semaphoreManager.clear();
+
+	for (const auto& [sem, source] : m_debugMap) {
+		Utility::log().location(source).format( "{:0x}", sem);
 	}
 }
 
@@ -247,7 +254,7 @@ void vulkan::LogicalDevice::end_frame()
 	}
 }
 
-void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores, uint64_t* semaphoreValues)
+void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphores, uint64_t* semaphoreValues, const std::source_location& location)
 {
 	auto& queue = get_queue(type);
 	auto& submissions = get_current_submissions(type);
@@ -309,7 +316,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 					});
 			}
 			auto tmp = present;
-			present = request_semaphore();
+			present = request_semaphore(location);
 			if (tmp != VK_NULL_HANDLE)
 				frame().recycle_semaphore(tmp);
 			signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
@@ -328,9 +335,10 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 		*fence = m_fenceManager.request_fence();
 	for (uint32_t i = 0; i < semaphoreCount; i++) {
 		assert(semaphores);
-		assert(semaphores[i] == VK_NULL_HANDLE || semaphoreValues[i]);
+		assert(semaphores[i] == VK_NULL_HANDLE || (semaphoreValues && semaphoreValues[i]));
 		if(semaphores[i] == VK_NULL_HANDLE)
-			semaphores[i] = request_semaphore();
+			semaphores[i] = request_semaphore(location);
+
 		signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
@@ -466,7 +474,7 @@ void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fe
 		assert(semaphores);
 		assert(semaphores[i] == VK_NULL_HANDLE || semaphoreValues[i]);
 		if(!semaphores[i])
-			semaphores[i] = m_semaphoreManager.request_semaphore();
+			semaphores[i] = request_semaphore();
 		signalInfos.push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
@@ -554,14 +562,14 @@ void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsag
 	}
 }
 
-void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence, uint64_t* semaphoreValues)
+void vulkan::LogicalDevice::submit(CommandBufferHandle cmd, uint32_t semaphoreCount, VkSemaphore* semaphores, vulkan::FenceHandle* fence, uint64_t* semaphoreValues, const std::source_location& location)
 {
 	auto type = cmd->get_type();
 	auto& submissions = get_current_submissions(type);
 	cmd->end();
 	submissions.push_back(cmd);
 	if (semaphoreCount || fence) {
-		submit_queue(type, fence, semaphoreCount, semaphores, semaphoreValues);
+		submit_queue(type, fence, semaphoreCount, semaphores, semaphoreValues, location);
 	}
 }
 
@@ -593,15 +601,15 @@ void vulkan::LogicalDevice::clear_semaphores() noexcept
 {
 	for (auto& waitInfo : m_graphics.waitInfos)
 		if (!waitInfo.value)
-			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+			destroy_semaphore(waitInfo.semaphore);
 		
 	for (auto& waitInfo : m_compute.waitInfos)
-		if (!waitInfo.value) 
-			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		if (!waitInfo.value)
+			destroy_semaphore(waitInfo.semaphore);
 		
 	for (auto& waitInfo : m_transfer.waitInfos)
-		if (!waitInfo.value) 
-			vkDestroySemaphore(m_device, waitInfo.semaphore, m_allocator);
+		if (!waitInfo.value)
+			destroy_semaphore(waitInfo.semaphore);
 		
 	m_graphics.waitInfos.clear();
 	m_compute.waitInfos.clear();
@@ -1656,9 +1664,19 @@ vulkan::FenceHandle vulkan::LogicalDevice::request_empty_fence()
 {
 	return FenceHandle(m_fenceManager);;
 }
-VkSemaphore vulkan::LogicalDevice::request_semaphore()
+
+
+void vulkan::LogicalDevice::destroy_semaphore(VkSemaphore semaphore)
 {
-	return m_semaphoreManager.request_semaphore();
+	m_debugMap.erase(reinterpret_cast<uint64_t>(semaphore));
+	vkDestroySemaphore(m_device, semaphore, m_allocator);
+}
+
+VkSemaphore vulkan::LogicalDevice::request_semaphore(const std::source_location& location)
+{
+	auto semaphore = m_semaphoreManager.request_semaphore();
+	m_debugMap[reinterpret_cast<uint64_t>(semaphore)] = location;
+	return semaphore;
 }
 
 vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(CommandBufferType type)
@@ -2003,7 +2021,7 @@ void vulkan::LogicalDevice::FrameResource::delete_resources()
 	deletedFramebuffer.clear();
 
 	for (auto semaphore : deletedSemaphores)
-		vkDestroySemaphore(r_device.get_device(), semaphore, r_device.get_allocator());
+		r_device.destroy_semaphore(semaphore);
 
 	deletedSemaphores.clear();
 
