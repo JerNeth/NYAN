@@ -15,10 +15,12 @@ nyan::Renderpass::Renderpass(nyan::Rendergraph& graph, nyan::Renderpass::Type ty
 
 void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type readType)
 {
+	assert(r_graph.resource_exists(id));
+	if (std::find_if(m_reads.cbegin(), m_reads.cend(), [id, readType](const auto& read) { return read.id == id && readType == read.type;  }) != m_reads.cend())
+		return;
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
-	assert(std::find_if(m_reads.cbegin(), m_reads.cend(), [&resource, readType](const auto& read) { return read.id == resource.m_id && read.type == readType;  }) == m_reads.cend());
 	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
 
 	if (resource.uses.size() <= m_id.id) {
@@ -54,8 +56,9 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 		nyan::ImageAttachment swap;
 		swap.clearColor = clearColor;
 		swap.format = r_graph.r_device.get_swapchain_image_view()->get_format();
-		r_graph.m_swapchainResource = r_graph.add_ressource(swap);
+		r_graph.m_swapchainResource = r_graph.add_ressource("swapchain", swap);
 	}
+	assert(r_graph.resource_exists(r_graph.m_swapchainResource));
 	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 	m_attachments.push_back(resource.m_id);
@@ -72,6 +75,7 @@ void nyan::Renderpass::add_depth_attachment(RenderResource::Id id, bool clear)
 {
 	assert(r_graph.m_state == Rendergraph::State::Setup);
 	assert(m_type == Renderpass::Type::Generic);
+	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
 	m_depth = resource.m_id;
 
@@ -87,6 +91,7 @@ void nyan::Renderpass::add_depth_stencil_attachment(RenderResource::Id id, bool 
 {
 	assert(r_graph.m_state == Rendergraph::State::Setup);
 	assert(m_type == Renderpass::Type::Generic);
+	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
 	m_depth = m_stencil = resource.m_id;
 
@@ -101,6 +106,7 @@ void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
 {
 	assert(r_graph.m_state == Rendergraph::State::Setup);
 	assert(m_type == Renderpass::Type::Generic);
+	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
 
 	if (resource.uses.size() <= m_id.id)
@@ -114,6 +120,9 @@ void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
 
 void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type writeType, bool clear)
 {
+	assert(r_graph.resource_exists(id));
+	if (std::find_if(m_writes.cbegin(), m_writes.cend(), [id, writeType](const auto& write) { return write.id == id && writeType == write.type; }) != m_writes.cend())
+		return;
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
@@ -123,25 +132,28 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 	resource.uses[m_id.id].set(RenderResource::ImageUse::ImageStore);
 	if (clear)
 		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
+	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 
-	assert(std::find_if(m_writes.cbegin(), m_writes.cend(), [&resource](const auto& write) { return write.id == resource.m_id; }) == m_writes.cend());
 	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE});
 }
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType, bool clear)
 {
-	if (r_graph.m_state != Rendergraph::State::Setup)
-		r_graph.m_state = Rendergraph::State::Dirty;
-	assert(m_type == Renderpass::Type::Generic);
-	//Currently only support hybrid queue for swapchain Synchronization
 	if (r_graph.m_swapchainResource == InvalidResourceId) {
 		nyan::ImageAttachment swap;
 		swap.clearColor = clearColor;
 		swap.format = r_graph.r_device.get_swapchain_image_view()->get_format();
-		r_graph.m_swapchainResource = r_graph.add_ressource(swap);
+		r_graph.m_swapchainResource = r_graph.add_ressource("swapchain", swap);
 	}
+	assert(r_graph.resource_exists(r_graph.m_swapchainResource));
+	if (std::find_if(m_writes.cbegin(), m_writes.cend(), [id = r_graph.m_swapchainResource, writeType](const auto& write) { return write.id == id && writeType == write.type; }) != m_writes.cend())
+		return;
+	if (r_graph.m_state != Rendergraph::State::Setup)
+		r_graph.m_state = Rendergraph::State::Dirty;
+	assert(m_type == Renderpass::Type::Generic);
+	//Currently only support hybrid queue for swapchain Synchronization
+
 	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
-	resource.name = "swapchain";
 
 	if (resource.uses.size() <= m_id.id)
 		resource.uses.resize(m_id.id + 1ull);

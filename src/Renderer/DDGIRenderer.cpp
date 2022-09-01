@@ -14,6 +14,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	m_rtPipeline(device, generate_config())
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
 	//For now limit adding ddgi volumes to not allow adding any after render graph build
 	//This holds until render graph refactor in regards to modification or rebuild is done
 	//Also limit to one ddgi volume for now
@@ -243,7 +244,6 @@ void nyan::DDGIRenderer::begin_frame()
 				.clearColor{0.f, 0.f, 0.f, 0.f},
 			});
 		r_pass.add_write(m_renderTarget, nyan::Renderpass::Write::Type::Compute);
-		ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
 	}
 	else {
 		auto& resource = renderGraph.get_resource(m_renderTarget);

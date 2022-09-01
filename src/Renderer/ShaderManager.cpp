@@ -41,7 +41,6 @@ void vulkan::ShaderManager::throw_size_error(uint32_t x, uint32_t y, uint32_t z,
 void vulkan::ShaderManager::load_shaders(const std::filesystem::path& shaderDirectory) 
 {
 	if (std::filesystem::exists(shaderDirectory)) {
-		r_device.wait_idle();
 		auto& shaderStorage = r_device.get_shader_storage();
 		shaderStorage.clear();
 		for (const auto& entry : std::filesystem::directory_iterator{ shaderDirectory }) {
