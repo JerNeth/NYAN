@@ -54,6 +54,8 @@ namespace nyan {
 		std::vector< std::function<void()>> m_beginFrameFunctions;
 		std::vector< std::function<void()>> m_endFrameFunctions;
 		std::chrono::time_point<std::chrono::steady_clock> lastUpdate;
+		uint64_t m_frameCount {0};
+		uint64_t m_tickCount {0};
 	};
 }
 

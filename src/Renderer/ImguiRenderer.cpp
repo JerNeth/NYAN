@@ -74,6 +74,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	r_registry(registry),
 	ptr_window(window)
 {
+	pass.add_swapchain_attachment();
 	manager = &renderManager.get_material_manager();
 
 	start = std::chrono::high_resolution_clock::now();

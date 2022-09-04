@@ -26,7 +26,173 @@ layout(constant_id = 4) const bool columns = false;
 layout(constant_id = 5) const bool filterIrradiance = false;
 
 
+//struct DDGIVolume {
+//	//Assuming Grid
+//	float spacingX;
+//	float spacingY;
+//	float spacingZ;
+//
+//	float inverseSpacingX;
+//	float inverseSpacingY;
+//	float inverseSpacingZ;
+//
+//	float gridOriginX;
+//	float gridOriginY;
+//	float gridOriginZ;
+//
+//	uint probeCountX;
+//	uint probeCountY;
+//	uint probeCountZ;
+//
+//	uint raysPerProbe;
+//
+//	//Probe size in px 
+//	uint irradianceProbeSize;
+//	uint depthProbeSize;
+//
+//	uint irradianceTextureSizeX;
+//	uint irradianceTextureSizeY;
+//	float inverseIrradianceTextureSizeX;
+//	float inverseIrradianceTextureSizeY;
+//	uint irradianceTextureBinding;
+//	uint irradianceTextureSampler;
+//	uint irradianceImageBinding;
+//
+//	uint depthTextureSizeX;
+//	uint depthTextureSizeY;
+//	float inverseDepthTextureSizeX;
+//	float inverseDepthTextureSizeY;
+//	uint depthTextureBinding;
+//	uint depthTextureSampler;
+//	uint depthImageBinding;
+//
+//	float shadowBias;
+//	float maxRayDistance;
+//	float hysteresis;
+//	float irradianceThreshold;
+//	float lightToDarkThreshold;
+//};
+void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
+	uint maxSize = 0;
+	
+	if(filterIrradiance) {
+		maxSize = volume.irradianceTextureSizeY;
+	}
+	else {
+		maxSize = volume.depthTextureSizeY;
+	}
+
+	int probeSize = 2;
+	if(filterIrradiance) {
+		probeSize += int(volume.irradianceProbeSize);
+	}
+	else {
+		probeSize += int(volume.depthProbeSize);
+	}
+	int probeSizeMinusOne = probeSize - 1;
+	ivec2 texelCoord = ivec2(globalId.xy);
+	texelCoord.y *= probeSize;
+	if(texelCoord.x >= maxSize || texelCoord.y >= maxSize)	return;
+
+	uint probeTexelCoord = texelCoord.x % probeSize;
+	if(probeTexelCoord == 0 || probeTexelCoord == probeSizeMinusOne) return;
+
+	//wrap around and use "opposite"
+	uint probeStart = uint(texelCoord.x / probeSize) * probeSize;
+	uint offset = probeSizeMinusOne - probeTexelCoord;
+	
+	ivec2 copyLoad = ivec2(probeStart + offset, texelCoord.y +1);
+	
+
+	if(filterIrradiance) 
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, 
+					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad));
+	else 
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, 
+					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad));
+	
+	texelCoord += probeSizeMinusOne;
+	copyLoad = ivec2(probeStart + offset, texelCoord.y - 1);
+	
+	if(filterIrradiance) 
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, 
+					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad));
+	else 
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, 
+					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad));
+	
+
+}
+
+void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
+	uint maxSize = 0;
+	
+	if(filterIrradiance) {
+		maxSize = volume.irradianceTextureSizeY;
+	}
+	else {
+		maxSize = volume.depthTextureSizeY;
+	}
+
+	int probeSize = 2;
+	if(filterIrradiance) {
+		probeSize += int(volume.irradianceProbeSize);
+	}
+	else {
+		probeSize += int(volume.depthProbeSize);
+	}
+	int probeSizeMinusOne = probeSize - 1;
+	ivec2 texelCoordFirst = ivec2(globalId.xy);
+	texelCoordFirst.x *= probeSize;
+
+	if(texelCoordFirst.x >= maxSize || texelCoordFirst.y >= maxSize)	return;
+
+	ivec2 copyLoadFirst = ivec2(0);
+	ivec2 texelCoordSecond = ivec2(0);
+	ivec2 copyLoadSecond = ivec2(0);
+
+	int probeTexelCoord = texelCoordFirst.y % probeSize;
+
+	if(probeTexelCoord == 0 || probeTexelCoord == probeSizeMinusOne)
+	{
+		int probeSizeWithoutBorder = (probeSize - 2);
+		copyLoadFirst = ivec2(texelCoordFirst.x + probeSizeWithoutBorder,
+						texelCoordFirst.y - sign(probeTexelCoord - 1) * probeSizeWithoutBorder);
+		texelCoordSecond = ivec2(texelCoordFirst.x + probeSizeMinusOne, texelCoordFirst.y);
+		copyLoadSecond = ivec2(texelCoordSecond.x - probeSizeWithoutBorder, copyLoadFirst.y);
+	}
+	else {
+		uint probeStart = uint(texelCoordFirst.y / probeSize) * probeSize;
+		uint offset = probeSizeMinusOne - probeTexelCoord;
+		copyLoadFirst = ivec2(texelCoordFirst.x +1, probeStart + offset);
+		texelCoordSecond = ivec2(texelCoordFirst.x + probeSizeMinusOne,texelCoordFirst.y); 
+		copyLoadSecond = ivec2(texelCoordSecond.x - 1, copyLoadFirst.y);
+	}
+	
+	if(filterIrradiance) 
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordFirst, 
+					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadFirst));
+	else 
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordFirst, 
+					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadFirst));
+		
+	if(filterIrradiance) 
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordSecond, 
+					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadSecond));
+	else 
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordSecond, 
+					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadSecond));
+
+}
+
 void main()
 {
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+	if(columns) {
+		copy_border_columns(volume, gl_GlobalInvocationID);
+	}
+	else {
+		copy_border_rows(volume, gl_GlobalInvocationID);
+	}
+
 }

@@ -40,23 +40,25 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 
 
 	BorderPipelineConfig irradianceBorderConfig{
-		.workSizeX {8},
-		.workSizeY {8},
+		.workSizeX {m_borderSizeX},
+		.workSizeY {m_borderSizeY},
 		.workSizeZ {1},
 		.columns {true},
 		.filterIrradiance {true},
 	};
+
 	vulkan::PipelineId irradianceColumnBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
 	irradianceBorderConfig.columns = false;
 	vulkan::PipelineId irradianceRowBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
 
 	BorderPipelineConfig depthBorderConfig{
-		.workSizeX {8},
-		.workSizeY {8},
+		.workSizeX {m_borderSizeX},
+		.workSizeY {m_borderSizeY},
 		.workSizeZ {1},
 		.columns {true},
 		.filterIrradiance {false},
 	};
+
 	vulkan::PipelineId depthColumnBorderPipelineId = create_border_pipeline(depthBorderConfig);
 	depthBorderConfig.columns = false;
 	vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
@@ -163,7 +165,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 
 
 			 
-			for (uint32_t i = 0; i < r_renderManager.get_ddgi_manager().slot_count(); ++i) {
+			for (uint32_t i = 0; i < static_cast<uint32_t>(r_renderManager.get_ddgi_manager().slot_count()); ++i) {
 
 				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
 				constants.ddgiIndex = i;
@@ -275,7 +277,9 @@ void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const 
 void nyan::DDGIRenderer::copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
-	bind.dispatch(probeCountX / m_borderSizeX, probeCountY / m_borderSizeY, probeCountZ);
+	bind.dispatch(static_cast<uint32_t>(std::ceil(probeCountX / static_cast<float>(m_borderSizeX))),
+		static_cast<uint32_t>(std::ceil(probeCountY / static_cast<float>(m_borderSizeY))),
+		probeCountZ);
 }
 
 vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConfig& config)

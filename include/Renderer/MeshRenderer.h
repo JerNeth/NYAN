@@ -32,7 +32,7 @@ namespace nyan {
 			uint32_t sceneBinding;
 		};
 	public:
-		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const GBuffer& gbuffer);
 		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const PushConstants& instance);
 		
 	private:
@@ -40,6 +40,7 @@ namespace nyan {
 
 		vulkan::PipelineId m_staticTangentPipeline;
 		vulkan::PipelineId m_staticTangentAlphaDiscardPipeline;
+		GBuffer m_gbuffer;
 	};
 	class ForwardMeshRenderer : Renderer {
 	private:
@@ -51,12 +52,14 @@ namespace nyan {
 			uint32_t accBinding;
 		};
 	public:
-		ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth);
 		void render(vulkan::GraphicsPipelineBind& bind, const MeshID& meshId, const PushConstants& instance);
 	private:
 		void create_pipeline();
 
 		vulkan::PipelineId m_staticTangentPipeline;
+		Lighting m_lighting;
+		nyan::RenderResource::Id m_depth;
 	};
 	class RTMeshRenderer : Renderer {
 

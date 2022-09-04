@@ -8,9 +8,15 @@
 #include "entt/entt.hpp"
 #include "Utility/Exceptions.h"
 
-nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	Renderer(device, registry, renderManager, pass)
+nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const GBuffer& gbuffer) :
+	Renderer(device, registry, renderManager, pass),
+	m_gbuffer(gbuffer)
 {
+	r_pass.add_depth_stencil_attachment(m_gbuffer.depth, true);
+	r_pass.add_attachment(m_gbuffer.albedo, true);
+	r_pass.add_attachment(m_gbuffer.normal, true);
+	r_pass.add_attachment(m_gbuffer.pbr, true);
+
 	create_pipeline();
 	renderManager.get_ddgi_manager().add_read(pass.get_id());
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
@@ -151,9 +157,14 @@ void nyan::MeshRenderer::create_pipeline()
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentAlphaDiscardPipeline);
 }
 
-nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	Renderer(device, registry, renderManager, pass)
+nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth) :
+	Renderer(device, registry, renderManager, pass),
+	m_lighting(lighting),
+	m_depth(depth)
 {
+	r_pass.add_depth_attachment(m_depth);
+	r_pass.add_attachment(m_lighting.specular);
+	r_pass.add_attachment(m_lighting.diffuse);
 
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)

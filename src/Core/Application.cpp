@@ -61,6 +61,7 @@ void nyan::Application::end_frame()
 		endFrameFunction();
 	}
 	m_windowSystemInterface->end_frame();
+	m_frameCount++;
 }
 
 void nyan::Application::main_loop()
@@ -106,6 +107,7 @@ void nyan::Application::update()
 	for (const auto& update : m_updateFunctions) {
 		update(delta);
 	}
+	m_tickCount++;
 }
 
 bool nyan::Application::setup_glfw()

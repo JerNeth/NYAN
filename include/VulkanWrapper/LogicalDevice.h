@@ -171,7 +171,7 @@ namespace vulkan {
 
 		FenceHandle request_empty_fence();
 		void destroy_semaphore(VkSemaphore semaphore);
-		VkSemaphore request_semaphore(const std::source_location& location = std::source_location::current());
+		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBufferType type);
 		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT, uint32_t arrayLayers = 1);
 		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
@@ -191,7 +191,7 @@ namespace vulkan {
 
 		void next_frame();
 		void end_frame();
-		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr, const std::source_location& location = std::source_location::current());
+		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr);
 		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
 		void queue_image_deletion(VkImage image) noexcept;
 		void queue_image_view_deletion(VkImageView imageView) noexcept;
@@ -207,7 +207,7 @@ namespace vulkan {
 		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
 		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore, uint64_t* semaphoreValues = nullptr);
 		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
-		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr, const std::source_location& location = std::source_location::current());
+		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
 		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
 		void wait_no_lock() noexcept;
 		void clear_semaphores() noexcept;

@@ -8,6 +8,8 @@
 #include "PipelineConfig.h"
 namespace nyan {
 
+	//Interfaces
+
 	struct ImageAttachment {
 		enum class Size : uint8_t {
 			Absolute,
@@ -144,6 +146,7 @@ namespace nyan {
 		Renderpass(Renderpass&&) = default;
 		Renderpass& operator=(const Renderpass&) = delete;
 		Renderpass& operator=(Renderpass&&) = default;
+		~Renderpass();
 
 		void add_read(RenderResource::Id id, Renderpass::Read::Type readType = Read::Type::ImageColor);
 		void add_attachment(RenderResource::Id id, bool clear = false);
@@ -332,6 +335,17 @@ template <> struct ::std::equal_to< nyan::Renderpass::Id>
 	}
 };
 namespace nyan {
+	struct GBuffer {
+		nyan::RenderResource::Id albedo;
+		nyan::RenderResource::Id normal;
+		nyan::RenderResource::Id pbr;
+		nyan::RenderResource::Id depth;
+		nyan::RenderResource::Id stencil;
+	};
+	struct Lighting {
+		nyan::RenderResource::Id diffuse;
+		nyan::RenderResource::Id specular;
+	};
 
 	class Rendergraph {
 		friend class Renderpass;
@@ -352,6 +366,8 @@ namespace nyan {
 		//RenderResource& add_ressource(const entt::hashed_string& name, Attachment attachment);
 		//RenderResource& get_resource(const entt::hashed_string& name);
 		//bool resource_exists(const entt::hashed_string& name);
+		GBuffer add_gbuffer(const std::string& name);
+		Lighting add_lighting(const std::string& name);
 		RenderResource::Id add_ressource(const std::string& name, Attachment attachment);
 		RenderResource::Id add_ressource(Attachment attachment);
 		const RenderResource& get_resource(RenderResource::Id id) const;

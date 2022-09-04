@@ -13,6 +13,12 @@ nyan::Renderpass::Renderpass(nyan::Rendergraph& graph, nyan::Renderpass::Type ty
 {
 }
 
+nyan::Renderpass::~Renderpass()
+{
+	for (const auto& waitInfo : m_waitInfos)
+		r_graph.r_device.frame().recycle_semaphore(waitInfo.semaphore);
+}
+
 void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type readType)
 {
 	assert(r_graph.resource_exists(id));
@@ -195,6 +201,8 @@ void nyan::Renderpass::update()
 	update_binds();
 }
 
+constexpr bool debugBarriers = false;
+
 void nyan::Renderpass::execute(vulkan::CommandBuffer& cmd)
 {
 	if (m_rendersSwap)
@@ -229,6 +237,13 @@ void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBuffer& cmd)
 			static_cast<uint32_t>(m_globalBarriers2.postIndex - m_globalBarriers2.preIndex), m_globalBarriers2.barriers.data() + m_globalBarriers2.preIndex,
 			static_cast<uint32_t>(m_bufferBarriers2.postIndex - m_bufferBarriers2.preIndex), m_bufferBarriers2.barriers.data() + m_bufferBarriers2.preIndex,
 			static_cast<uint32_t>(m_imageBarriers2.postIndex - m_imageBarriers2.preIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.preIndex);
+
+	if constexpr (debugBarriers) {
+		auto log = Utility::log();
+		log.format("Pre Pass \"{}\": ", m_name);
+		for (int i = m_imageBarriers2.preIndex; i < m_imageBarriers2.postIndex; i++)
+			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
+	}
 }
 
 void nyan::Renderpass::apply_copy_barriers(vulkan::CommandBuffer& cmd)
@@ -251,6 +266,13 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 			static_cast<uint32_t>(m_globalBarriers2.barriers.size() - m_globalBarriers2.postIndex), m_globalBarriers2.barriers.data() + m_globalBarriers2.postIndex,
 			static_cast<uint32_t>(m_bufferBarriers2.barriers.size() - m_bufferBarriers2.postIndex), m_bufferBarriers2.barriers.data() + m_bufferBarriers2.postIndex,
 			static_cast<uint32_t>(m_imageBarriers2.barriers.size() - m_imageBarriers2.postIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.postIndex);
+
+	if constexpr (debugBarriers) {
+		auto log = Utility::log();
+		log.format("Post Pass \"{}\": ", m_name);
+		for (int i = m_imageBarriers2.postIndex; i < m_imageBarriers2.barriers.size(); i++)
+			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
+	}
 }
 
 void nyan::Renderpass::add_pre_barrier(const VkImageMemoryBarrier2& barrier, RenderResource::Id image)
@@ -814,12 +836,63 @@ void nyan::Rendergraph::end_frame()
 			signals.push_back(VK_NULL_HANDLE);
 		r_device.submit(cmdHandle, static_cast<uint32_t>(signals.size()), signals.data());
 		for (size_t i{ 0 }; i < pass.m_signals.size(); i++) {
+			assert(pass.m_signals[i].passId);
+			assert(pass.m_signals[i].passId != pass.m_id);
 			auto& waitPass = m_renderpasses.get(pass.m_signals[i].passId);
 			waitPass.add_wait(signals[i], pass.m_signals[i].stage);
 		}
 		if (pass.m_id == m_lastCompute || pass.m_id == m_lastGeneric)
 			r_device.add_wait_semaphore(vulkan::CommandBufferType::Transfer, signals.back(), VK_PIPELINE_STAGE_2_COPY_BIT);
 	});
+}
+
+GBuffer nyan::Rendergraph::add_gbuffer(const std::string& name)
+{
+	GBuffer gbuffer{
+		   .albedo {add_ressource(name + "_albedo", nyan::ImageAttachment
+			   {
+				   //.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				   .format{VK_FORMAT_R8G8B8A8_SRGB},
+				   //.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+				   .clearColor{0.0f, 0.0f, 0.0f, 1.f},
+			   })},
+		   .normal {add_ressource(name + "_normal", nyan::ImageAttachment
+			   {
+				   //.format{VK_FORMAT_R8G8B8A8_UNORM},
+				   .format{VK_FORMAT_R8G8B8A8_UNORM},
+				   .clearColor{0.f, 0.f, 1.f, 1.f},
+			   })},
+		   .pbr {add_ressource(name + "_pbr", nyan::ImageAttachment
+		   {
+			   .format{VK_FORMAT_R8G8B8A8_UNORM},
+			   .clearColor{0.f, 0.f, 0.f, 1.f},
+		   })},
+		   .depth {add_ressource(name + "_depth", nyan::ImageAttachment
+		   {
+			   .format{VK_FORMAT_D32_SFLOAT_S8_UINT},
+			   .clearColor{0.f, static_cast<float>(static_cast<uint8_t>(0)), 0.f, 0.f},
+		   })},
+		   .stencil {gbuffer.depth},
+	};
+	return gbuffer;
+}
+
+Lighting nyan::Rendergraph::add_lighting(const std::string& name)
+{
+	return 	Lighting {
+		.diffuse {add_ressource(name + "_diffuse", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
+			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
+		})},
+		.specular {add_ressource(name + "specular", nyan::ImageAttachment
+		{
+			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+			//.clearColor{0.0f, 0.0f, 0.0f, 1.f},
+			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
+		})}
+	};
 }
 
 RenderResource::Id nyan::Rendergraph::add_ressource(const std::string& name, Attachment attachment)
@@ -981,8 +1054,6 @@ void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 	src.add_post_barrier(imageBarrier, m_swapchainResource);
 
 }
-
-bool debugBarriers = false;
 
 
 void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to, const RenderResource& resource)

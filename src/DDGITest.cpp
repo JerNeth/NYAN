@@ -29,9 +29,9 @@ int main() {
 	Utility::FBXReader reader(directory);
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("SunTemple.fbx", meshes, materials);
+	reader.parse_meshes("cube.fbx", meshes, materials);
 	renderManager.add_materials(materials);
-
+	//TODO do barrier issues, issue is first aquire of ddgi, but aquire is already implicitly done, also wrong initial format
 
 	auto parent = registry.create();
 	registry.emplace<Transform>(parent,
@@ -103,104 +103,30 @@ int main() {
 
 
 	auto& rendergraph {renderManager.get_render_graph()};
-	auto g_Depth = rendergraph.add_ressource("g_Depth", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_D32_SFLOAT_S8_UINT},
-			.clearColor{0.f, static_cast<float>(static_cast<uint8_t>(0)), 0.f, 0.f},
-		});
-	auto g_Albedo = rendergraph.add_ressource("g_Albedo", nyan::ImageAttachment
-		{
-			//.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			.format{VK_FORMAT_R8G8B8A8_SRGB},
-			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-		});
-	auto g_Normal = rendergraph.add_ressource("g_Normal", nyan::ImageAttachment
-		{
-			//.format{VK_FORMAT_R8G8B8A8_UNORM},
-			.format{VK_FORMAT_R8G8B8A8_UNORM},
-			.clearColor{0.f, 0.f, 1.f, 1.f},
-		});
-	auto g_PBR = rendergraph.add_ressource("g_PBR", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_R8G8B8A8_UNORM},
-			.clearColor{0.f, 0.f, 0.f, 1.f},
-		});
-	auto SpecularLighting = rendergraph.add_ressource("SpecularLighting", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-			//.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
-		});
-	auto DiffuseLighting = rendergraph.add_ressource("DiffuseLighting", nyan::ImageAttachment
-		{
-			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
-			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-		});
+
+	
+	auto gbuffer = rendergraph.add_gbuffer("gbuffer");
+	auto lighting = rendergraph.add_lighting("lighting");
 
 
 	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::AsyncCompute));
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
-	deferredPass.add_depth_stencil_attachment(g_Depth, true);
-	deferredPass.add_attachment(g_Albedo, true);
-	deferredPass.add_attachment(g_Normal, true);
-	deferredPass.add_attachment(g_PBR, true);
-	//deferredPass.add_swapchain_attachment();
-	//deferredPass.copy("g_Depth", "g_Depth2");
-	//deferredPass.copy("g_Normal", "g_Normal2");
-
-	//auto& deferredLightingPass = rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic);
-	//deferredLightingPass.add_read("g_Albedo");
-	//deferredLightingPass.add_read("g_Normal");
-	//deferredLightingPass.add_read("g_PBR");
-	//deferredLightingPass.add_read("g_Depth", nyan::Renderpass::Read::Type::ImageDepth);
-	//deferredLightingPass.add_read("g_Depth", nyan::Renderpass::Read::Type::ImageStencil);
-	//deferredLightingPass.add_attachment("SpecularLighting", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-	//		//.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-	//		.clearColor{0.4f, 0.6f, 0.8f, 1.f},
-	//	});
-	//deferredLightingPass.add_attachment("DiffuseLighting", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-	//		//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
-	//		.clearColor{0.0f, 0.0f, 0.0f, 1.f},
-	//	});
-
 	
 	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
-	deferredRTPass.add_read(g_Albedo);
-	deferredRTPass.add_read(g_Normal);
-	deferredRTPass.add_read(g_PBR);
-	deferredRTPass.add_read(g_Depth, nyan::Renderpass::Read::Type::ImageDepth);
-	deferredRTPass.add_read(g_Depth, nyan::Renderpass::Read::Type::ImageStencil);
-	deferredRTPass.add_write(SpecularLighting, nyan::Renderpass::Write::Type::Compute);
-	deferredRTPass.add_write(DiffuseLighting, nyan::Renderpass::Write::Type::Compute);
-
 
 	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
-	forwardPass.add_depth_attachment(g_Depth);
-	forwardPass.add_attachment(SpecularLighting);
-	forwardPass.add_attachment(DiffuseLighting);
 
 	auto& compositePass = rendergraph.get_pass(rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic));
-	compositePass.add_read(SpecularLighting);
-	compositePass.add_read(DiffuseLighting);
-	compositePass.add_swapchain_attachment(Math::vec4{}, true);
 
 
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
-	imguiPass.add_swapchain_attachment();
-
 
 	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
-	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass);
+	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
-	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, g_Albedo, g_Normal, g_PBR, g_Depth, g_Depth, DiffuseLighting, SpecularLighting);
-	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass);
-	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, DiffuseLighting, SpecularLighting);
+	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
 	application.each_update([&](std::chrono::nanoseconds dt)
