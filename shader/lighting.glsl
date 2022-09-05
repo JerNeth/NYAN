@@ -130,8 +130,14 @@ struct ShadingData
     //float anisotropy (maybe)
     vec3 worldPos;
 };
+struct LightData
+{
+    vec3 dir;
+    float intensity;
+    vec3 color;
+};
 
-vec3 diffuse_dir_light(in DirectionalLight light, in ShadingData shadingData)
+vec3 diffuse_light(in LightData light, in ShadingData shadingData)
 {
     float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
     if(NdotL <= 0) {
@@ -147,22 +153,6 @@ vec3 diffuse_dir_light(in DirectionalLight light, in ShadingData shadingData)
 
     return diffuse;
 }
-vec3 diffuse_point_light(in PointLight light, in vec3 lightDir, in ShadingData shadingData) 
-{
-    float NdotL = max(dot(shadingData.shadingNormal, lightDir), 0.0);
-    if(NdotL <= 0) {
-        return vec3(0.f);
-    }
-    float LdotV = dot(lightDir, shadingData.outLightDir);
-    float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
-    float rcpLenLV = inversesqrt(2 + 2 * LdotV);
-    float NdotH = (NdotL + NdotV) * rcpLenLV;
-    float LdotH = rcpLenLV * LdotV + rcpLenLV;
-
-    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL) * light.color;
-    return diffuse;
-}
-
 
 void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo, in float metalness, in float roughness, out vec4 specular, out vec4 diffuse) {
 	DirectionalLight light = scene.dirLight;

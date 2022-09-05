@@ -64,13 +64,22 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
         float lightShadow = light_visibility(shadingData, lightDir,dist);
         if(lightShadow < 1.f )
             continue;
-
-        diffuse += diffuse_point_light(light, lightDir, shadingData);
+        //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
+        float distRatio = dist / light.attenuationDistance;
+        distRatio *= distRatio;
+        distRatio *= distRatio;
+        float falloff = min(max(1.f - distRatio, 0.0f), 1.0f);
+        falloff *= falloff;
+        falloff *= 1.f / (dist * dist + 1.f);
+        LightData lightData;
+        lightData.dir = lightDir;
+        lightData.intensity = light.intensity;
+        lightData.color = light.color;
+        diffuse += diffuse_light(lightData, shadingData) * falloff;
         
     }
     return diffuse;
 }
-
 
 vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
 {
@@ -83,7 +92,11 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     {
         float lightShadow = light_visibility(shadingData, scene.dirLight.dir, 1e27f);
         if(lightShadow < 1.f) {
-            diffuse += diffuse_dir_light(scene.dirLight, shadingData);
+            LightData lightData;
+            lightData.dir = scene.dirLight.dir;
+            lightData.intensity = scene.dirLight.intensity;
+            lightData.color = scene.dirLight.color;
+            diffuse += diffuse_light(lightData, shadingData);
         }
     }
     if(scene.numPointLights > 0)
@@ -92,6 +105,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     return diffuse;
 }
+
 vec3 diffuse_indirect_lighting(in Payload payload)
 {
 	//TODO

@@ -29,22 +29,23 @@ int main() {
 	Utility::FBXReader reader(directory);
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("cube.fbx", meshes, materials);
+	std::vector<nyan::LightParameters> lights;
+	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
-	//TODO do barrier issues, issue is first aquire of ddgi, but aquire is already implicitly done, also wrong initial format
+	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
 	auto parent = registry.create();
 	registry.emplace<Transform>(parent,
 		Transform{
 			.position{},
-			.scale{},
+			.scale{1.f},
 			.orientation{0, 180, 0},
 		});
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
 			.position{600.f, 350.f,960.f},
-			.scale{},
+			.scale{1.f},
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
 	//Transform{
@@ -88,9 +89,9 @@ int main() {
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
-				.position{},
-				.scale{},
-				.orientation{},
+				.position{a.translate},
+				.scale{1.f},
+				.orientation{a.rotate},
 			});
 		registry.emplace<Parent>(entity,
 			Parent{
@@ -99,6 +100,47 @@ int main() {
 		registry.emplace<std::string>(entity, a.name);
 		registry.emplace<DeferredAlphaTest>(entity);
 
+	}
+
+	for (const auto& light : lights) {
+		auto entity = registry.create();
+		registry.emplace<Transform>(entity,
+			Transform{
+				.position{light.translate},
+				.scale{1.f},
+				.orientation{light.rotate},
+			});
+		registry.emplace<Parent>(entity,
+			Parent{
+				.parent {parent},
+			});
+		registry.emplace<std::string>(entity, light.name);
+		if (light.type == LightParameters::Type::Directional)
+			registry.emplace<Directionallight>(entity, Directionallight
+				{
+				.shadows{ true },
+				.color {light.color},
+				.intensity {light.intensity},
+				.direction {Math::vec3 {0, 0, 1}},
+				});
+		if (light.type == LightParameters::Type::Point)
+			registry.emplace<Pointlight>(entity, Pointlight
+				{
+				.shadows{ true },
+				.color {light.color},
+				.intensity {light.intensity},
+				.attenuation {50}
+				});
+		if (light.type == LightParameters::Type::Spot)
+			registry.emplace<Spotlight>(entity, Spotlight
+				{
+				.shadows{ true },
+				.color {light.color},
+				.intensity {light.intensity},
+				.direction {Math::vec3 {0, 0, 1}},
+				.cone {45},
+				.attenuation {50},
+				});
 	}
 
 

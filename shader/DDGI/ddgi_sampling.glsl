@@ -7,5 +7,5 @@ float get_volume_weight(vec3 worldPos, DDGIVolume volume) {
 
 vec3 sample_ddgi(vec3 worldPos, vec3 direction, 
 				DDGIVolume volume) {
-
+	
 }

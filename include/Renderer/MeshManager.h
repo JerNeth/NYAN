@@ -125,9 +125,12 @@ namespace nyan {
 		uint32_t m_tlasBind;
 	};
 
+
 	class SceneManager : public DataManager<nyan::shaders::Scene>{
 	public:
 		SceneManager(vulkan::LogicalDevice& device);
+		uint32_t add_point_light(const nyan::shaders::PointLight& light);
+		void set_point_light(uint32_t id, const nyan::shaders::PointLight& light);
 		void set_dirlight(const nyan::shaders::DirectionalLight& light);
 		void set_view_pos(const Math::vec3& pos);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);

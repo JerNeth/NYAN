@@ -16,11 +16,179 @@ Utility::FBXReader::~FBXReader()
 	ios->Destroy();
 	sdkManager->Destroy();
 }
-void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mesh>& retMeshes) {
+
+void Utility::FBXReader::parse_meshes(const std::filesystem::path& fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats, std::vector<nyan::LightParameters>& retLights)
+{
+	fbxsdk::FbxImporter* importer = FbxImporter::Create(sdkManager, "");
+
+	std::string filePath;
+	if (fbxFile.is_absolute())
+		filePath = fbxFile.string();
+	else
+		filePath = (m_directory / fbxFile).string();
+
+	if (!importer->Initialize(filePath.c_str(), -1, sdkManager->GetIOSettings()))
+		return;
+
+	fbxsdk::FbxScene* scene = ::FbxScene::Create(sdkManager, "ImportScene");
+
+	importer->Import(scene);
+
+	importer->Destroy();
+	fbxsdk::FbxNode* rootNode = scene->GetRootNode();
+	for (int matIdx = 0; matIdx < scene->GetMaterialCount(); matIdx++) {
+		fbxsdk::FbxSurfaceMaterial* mat = scene->GetMaterial(matIdx);
+		//std::cout<< mat->GetName() << ' ';
+
+		std::vector<std::string> props;
+		for (int i = 0; i < mat->GetSrcPropertyCount(); ++i) {
+			auto prop = mat->GetSrcProperty(i);
+			props.push_back(prop.GetNameAsCStr());
+		}
+		for (int i = 0; i < mat->GetDstPropertyCount(); ++i) {
+			auto prop = mat->GetDstProperty(i);
+			props.push_back(prop.GetNameAsCStr());
+		}
+
+		auto s = mat->ShadingModel.Get();
+		if (s == "Phong") {
+			auto phong = reinterpret_cast<fbxsdk::FbxSurfacePhong*>(mat);
+			nyan::MaterialData material
+			{
+				.name { mat->GetName() },
+				.ambientColor { Math::vec3{phong->Ambient.Get()[0], phong->Ambient.Get()[1], phong->Ambient.Get()[2]} },
+				.diffuseColor { Math::vec3{phong->Diffuse.Get()[0], phong->Diffuse.Get()[1], phong->Diffuse.Get()[2]} },
+				.ambientFactor { static_cast<float>(phong->AmbientFactor.Get()) },
+				.diffuseFactor { static_cast<float>(phong->DiffuseFactor.Get()) },
+				.shininessFactor { static_cast<float>(phong->Shininess.Get()) },
+				.transparendyFactor { static_cast<float>(phong->TransparencyFactor.Get()) },
+
+			};
+			for (int i = 0; i < phong->Diffuse.GetSrcObjectCount(); i++) {
+				auto* obj = phong->Diffuse.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.diffuseTex = tex->GetRelativeFileName();
+				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
+			}
+			//for (int i = 0; i < phong->Ambient.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Ambient.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Bump.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Bump.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Emissive.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Emissive.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
+			//}
+			for (int i = 0; i < phong->NormalMap.GetSrcObjectCount(); i++) {
+				auto* obj = phong->NormalMap.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.normalTex = tex->GetRelativeFileName();
+				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
+			}
+			//for (int i = 0; i < phong->Reflection.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Reflection.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
+			//}
+			//for (int i = 0; i < phong->Shininess.GetSrcObjectCount(); i++) {
+			//	auto* obj = phong->Shininess.GetSrcObject(i);
+			//	auto* tex = static_cast<FbxFileTexture*>(obj);
+			//	//std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
+			//}
+			retMats.push_back(material);
+		}
+		else if (s == "Lambert") {
+
+			auto lambert = reinterpret_cast<fbxsdk::FbxSurfaceLambert*>(mat);
+
+			nyan::MaterialData material
+			{
+				.name { mat->GetName() },
+				.ambientColor { Math::vec3{lambert->Ambient.Get()[0], lambert->Ambient.Get()[1], lambert->Ambient.Get()[2]} },
+				.diffuseColor { Math::vec3{lambert->Diffuse.Get()[0], lambert->Diffuse.Get()[1], lambert->Diffuse.Get()[2]} },
+				.ambientFactor { static_cast<float>(lambert->AmbientFactor.Get()) },
+				.diffuseFactor { static_cast<float>(lambert->DiffuseFactor.Get()) },
+			};
+			for (int i = 0; i < lambert->Diffuse.GetSrcObjectCount(); i++) {
+				auto* obj = lambert->Diffuse.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.diffuseTex = tex->GetRelativeFileName();
+				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
+			}
+			for (int i = 0; i < lambert->NormalMap.GetSrcObjectCount(); i++) {
+				auto* obj = lambert->NormalMap.GetSrcObject(i);
+				auto* tex = static_cast<FbxFileTexture*>(obj);
+				material.normalTex = tex->GetRelativeFileName();
+				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
+			}
+			retMats.push_back(material);
+		}
+	}
+	//std::cout << rootNode->GetChildCount() << '\n';
+	parse_meshes(rootNode, retMeshes, retLights);
+
+	scene->Destroy(true);
+}
+
+void Utility::FBXReader::parse_meshes(fbxsdk::FbxNode* parent, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::LightParameters>& retLights) {
+	for (int child = 0, endChildren = parent->GetChildCount(false); child < endChildren; child++) {
+		//nyan::MeshData ret;
+		auto* node = parent->GetChild(child);
+		if (!node)
+			continue;
+		parse_node(node, retMeshes, retLights);
+		parse_meshes(node, retMeshes, retLights);
+	}
+
+}
+
+void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::LightParameters>& retLights) {
 	auto translation = node->LclTranslation.Get();
 	auto rotation = node->LclRotation.Get();
 	auto scale = node->LclScaling.Get();
 
+	auto* light = node->GetLight();
+	if (light) {
+		auto AreaLightShape = light->AreaLightShape.Get();
+		auto CastLight = light->CastLight.Get();
+		auto CastShadows = light->CastShadows.Get();
+		auto Color = light->Color.Get();
+		auto decay = light->DecayStart.Get();
+		auto decay2 = light->DecayType.Get();
+		auto EnableFarAttenuation = light->EnableFarAttenuation.Get();
+		auto EnableNearAttenuation = light->EnableNearAttenuation.Get();
+		auto FarAttenuationEnd = light->FarAttenuationEnd.Get();
+		auto FarAttenuationStart = light->FarAttenuationStart.Get();
+		auto Fog = light->Fog.Get();
+		auto InnerAngle = light->InnerAngle.Get();
+		auto Intensity = light->Intensity.Get();
+		auto LightType = light->LightType.Get();
+		auto OuterAngle = light->OuterAngle.Get();
+		auto NearAttenuationEnd = light->NearAttenuationEnd.Get();
+		auto NearAttenuationStart = light->NearAttenuationStart.Get();
+		nyan::LightParameters::Type type;
+		if (LightType == fbxsdk::FbxLight::EType::ePoint)
+			type = nyan::LightParameters::Type::Point;
+		if (LightType == fbxsdk::FbxLight::EType::eDirectional)
+			type = nyan::LightParameters::Type::Directional;
+		if (LightType == fbxsdk::FbxLight::EType::eSpot)
+			type = nyan::LightParameters::Type::Spot;
+		retLights.push_back(nyan::LightParameters{
+			.type {type},
+			.name{ node->GetName()},
+			.color {Math::vec3{Color.mData[0],Color.mData[1], Color.mData[2] }},
+			.intensity {static_cast<float>(Intensity)},
+			.translate{ Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] } },
+			.rotate{ Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]} },
+			.scale{ Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]} },
+		});
+	}
 	auto* mesh = node->GetMesh();
 	if (!mesh) {
 		std::cout << "Not a mesh: " << node->GetName() << "\n";
@@ -39,7 +207,7 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	auto binormals = mesh->GetElementBinormal(0);
 	auto materials = mesh->GetElementMaterial(0);
 
-	
+
 	//ret.name = 
 	//std::cout << node->GetName() << ' ';
 	//std::cout << mesh->GetName() << ' ';
@@ -169,133 +337,4 @@ void Utility::FBXReader::parse_mesh(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 			retVal.indices.push_back(firstVertex + l);
 		}
 	}
-}
-void Utility::FBXReader::parse_meshes(fbxsdk::FbxNode* parent, std::vector<nyan::Mesh>& retMeshes) {
-	for (int child = 0, endChildren = parent->GetChildCount(false); child < endChildren; child++) {
-		//nyan::MeshData ret;
-		auto* node = parent->GetChild(child);
-		if (!node)
-			continue;
-		parse_mesh(node, retMeshes);
-		parse_meshes(node, retMeshes);
-	}
-
-}
-void Utility::FBXReader::parse_meshes(const std::filesystem::path& fbxFile, std::vector<nyan::Mesh>& retMeshes, std::vector<nyan::MaterialData>& retMats)
-{
-	fbxsdk::FbxImporter* importer = FbxImporter::Create(sdkManager, "");
-
-	std::string filePath;
-	if (fbxFile.is_absolute())
-		filePath = fbxFile.string();
-	else
-		filePath = (m_directory / fbxFile).string();
-
-	if (!importer->Initialize(filePath.c_str(), -1, sdkManager->GetIOSettings()))
-		return;
-
-	fbxsdk::FbxScene* scene = ::FbxScene::Create(sdkManager, "ImportScene");
-
-	importer->Import(scene);
-
-	importer->Destroy();
-	fbxsdk::FbxNode* rootNode = scene->GetRootNode();
-	for (int matIdx = 0; matIdx < scene->GetMaterialCount(); matIdx++) {
-		fbxsdk::FbxSurfaceMaterial* mat = scene->GetMaterial(matIdx);
-		//std::cout<< mat->GetName() << ' ';
-
-		std::vector<std::string> props;
-		for (int i = 0; i < mat->GetSrcPropertyCount(); ++i) {
-			auto prop = mat->GetSrcProperty(i);
-			props.push_back(prop.GetNameAsCStr());
-		}
-		for (int i = 0; i < mat->GetDstPropertyCount(); ++i) {
-			auto prop = mat->GetDstProperty(i);
-			props.push_back(prop.GetNameAsCStr());
-		}
-
-		auto s = mat->ShadingModel.Get();
-		if (s == "Phong") {
-			auto phong = reinterpret_cast<fbxsdk::FbxSurfacePhong*>(mat);
-			nyan::MaterialData material
-			{
-				.name { mat->GetName() },
-				.ambientColor { Math::vec3{phong->Ambient.Get()[0], phong->Ambient.Get()[1], phong->Ambient.Get()[2]} },
-				.diffuseColor { Math::vec3{phong->Diffuse.Get()[0], phong->Diffuse.Get()[1], phong->Diffuse.Get()[2]} },
-				.ambientFactor { static_cast<float>(phong->AmbientFactor.Get()) },
-				.diffuseFactor { static_cast<float>(phong->DiffuseFactor.Get()) },
-				.shininessFactor { static_cast<float>(phong->Shininess.Get()) },
-				.transparendyFactor { static_cast<float>(phong->TransparencyFactor.Get()) },
-
-			};
-			for (int i = 0; i < phong->Diffuse.GetSrcObjectCount(); i++) {
-				auto* obj = phong->Diffuse.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				material.diffuseTex = tex->GetRelativeFileName();
-				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
-			}
-			//for (int i = 0; i < phong->Ambient.GetSrcObjectCount(); i++) {
-			//	auto* obj = phong->Ambient.GetSrcObject(i);
-			//	auto* tex = static_cast<FbxFileTexture*>(obj);
-			//	//std::cout << "Ambient: " << tex->GetRelativeFileName() << "\n";
-			//}
-			//for (int i = 0; i < phong->Bump.GetSrcObjectCount(); i++) {
-			//	auto* obj = phong->Bump.GetSrcObject(i);
-			//	auto* tex = static_cast<FbxFileTexture*>(obj);
-			//	//std::cout << "Bump: " << tex->GetRelativeFileName() << "\n";
-			//}
-			//for (int i = 0; i < phong->Emissive.GetSrcObjectCount(); i++) {
-			//	auto* obj = phong->Emissive.GetSrcObject(i);
-			//	auto* tex = static_cast<FbxFileTexture*>(obj);
-			//	//std::cout << "Emissive: " << tex->GetRelativeFileName() << "\n";
-			//}
-			for (int i = 0; i < phong->NormalMap.GetSrcObjectCount(); i++) {
-				auto* obj = phong->NormalMap.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				material.normalTex = tex->GetRelativeFileName();
-				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
-			}
-			//for (int i = 0; i < phong->Reflection.GetSrcObjectCount(); i++) {
-			//	auto* obj = phong->Reflection.GetSrcObject(i);
-			//	auto* tex = static_cast<FbxFileTexture*>(obj);
-			//	//std::cout << "Reflection: " << tex->GetRelativeFileName() << "\n";
-			//}
-			//for (int i = 0; i < phong->Shininess.GetSrcObjectCount(); i++) {
-			//	auto* obj = phong->Shininess.GetSrcObject(i);
-			//	auto* tex = static_cast<FbxFileTexture*>(obj);
-			//	//std::cout << "Shininess: " << tex->GetRelativeFileName() << "\n";
-			//}
-			retMats.push_back(material);
-		}
-		else if (s == "Lambert") {
-
-			auto lambert = reinterpret_cast<fbxsdk::FbxSurfaceLambert*>(mat);
-
-			nyan::MaterialData material
-			{
-				.name { mat->GetName() },
-				.ambientColor { Math::vec3{lambert->Ambient.Get()[0], lambert->Ambient.Get()[1], lambert->Ambient.Get()[2]} },
-				.diffuseColor { Math::vec3{lambert->Diffuse.Get()[0], lambert->Diffuse.Get()[1], lambert->Diffuse.Get()[2]} },
-				.ambientFactor { static_cast<float>(lambert->AmbientFactor.Get()) },
-				.diffuseFactor { static_cast<float>(lambert->DiffuseFactor.Get()) },
-			};
-			for (int i = 0; i < lambert->Diffuse.GetSrcObjectCount(); i++) {
-				auto* obj = lambert->Diffuse.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				material.diffuseTex = tex->GetRelativeFileName();
-				//std::cout << "Diffuse: " << tex->GetRelativeFileName() << "\n";
-			}
-			for (int i = 0; i < lambert->NormalMap.GetSrcObjectCount(); i++) {
-				auto* obj = lambert->NormalMap.GetSrcObject(i);
-				auto* tex = static_cast<FbxFileTexture*>(obj);
-				material.normalTex = tex->GetRelativeFileName();
-				//std::cout << "NormalMap: " << tex->GetRelativeFileName() << "\n";
-			}
-			retMats.push_back(material);
-		}
-	}
-	//std::cout << rootNode->GetChildCount() << '\n';
-	parse_meshes(rootNode, retMeshes);
-
-	scene->Destroy(true);
 }

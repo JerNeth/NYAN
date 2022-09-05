@@ -300,6 +300,23 @@ nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 	add({});
 }
 
+uint32_t nyan::SceneManager::add_point_light(const nyan::shaders::PointLight& light)
+{
+	auto scene = get(0);
+	auto id = scene.numPointLights++;
+	scene.pointLights[id] = light;
+	return id;
+}
+
+void nyan::SceneManager::set_point_light(uint32_t id, const nyan::shaders::PointLight& light)
+{
+	auto scene = get(0);
+	assert(id < scene.numPointLights);
+	if (id >= scene.numPointLights)
+		return;
+	scene.pointLights[id] = light;
+}
+
 void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& light)
 {
 	get(0).dirLight = light;
