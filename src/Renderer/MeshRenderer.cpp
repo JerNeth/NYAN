@@ -18,7 +18,6 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	r_pass.add_attachment(m_gbuffer.pbr, true);
 
 	create_pipeline();
-	renderManager.get_ddgi_manager().add_read(pass.get_id());
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 	{
 		{

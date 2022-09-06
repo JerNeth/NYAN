@@ -1,4 +1,5 @@
-
+#ifndef DDGI_COMMON_GLSL
+#define DDGI_COMMON_GLSL
 
 uvec3 get_probe_index(uint probeIdx, DDGIVolume volume) 
 {
@@ -29,12 +30,18 @@ vec3 get_volume_spacing(DDGIVolume volume)
 	return vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
 }
 
-vec3 get_probe_coordinates(uint probeIdx, DDGIVolume volume) 
+vec3 get_probe_coordinates(uvec3 idx, DDGIVolume volume) 
 {
-	uvec3 idx = get_probe_index(probeIdx, volume);
 	vec3 origin = get_volume_origin(volume);
 	vec3 spacing = get_volume_spacing(volume);
 	return origin + idx * spacing;
+}
+
+
+vec3 get_probe_coordinates(uint probeIdx, DDGIVolume volume) 
+{
+	uvec3 idx = get_probe_index(probeIdx, volume);
+	return get_probe_coordinates(idx, volume);
 }
 
 
@@ -70,12 +77,19 @@ vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels)
 	return uv;
 }
 
-vec2 sign_not_zero(vec2 v)
-{
-	return step(0, v)*vec2(2.f) - vec2(1.f);
+ivec2 get_probe_texel_coords(ivec3 probeIdx, in int probeTexelSize, in DDGIVolume volume) {
+	probeIdx.y += int(volume.probeCountY) * probeIdx.z;
+	return 1 + probeIdx.xy *  ivec2(2+ probeTexelSize);
 }
 
-vec3 get_octahedral_direction(vec2 uv) 
+
+vec2 sign_not_zero(in vec2 v)
+{
+	return fma(step(0, v),vec2(2.f),vec2(-1.f));
+}
+
+//[-1, 1] domain
+vec3 get_octahedral_direction(in vec2 uv) 
 {
 	vec3 direction = vec3(uv.xy, 1.f - abs(uv.x) - abs(uv.y));
 	if(direction.z < 0.f)
@@ -84,3 +98,21 @@ vec3 get_octahedral_direction(vec2 uv)
 	}
 	return normalize(direction);
 }
+//[-1, 1] domain
+vec2 get_octahedral_coords(in vec3 direction)
+{
+    vec2 uv= direction.xy *  (1.f / dot(abs(direction), vec3(1.f)));
+    uv = mix(uv, (1.0 - abs(uv.yx)) * sign_not_zero(uv), step(direction.z, 0.0));
+	return uv;
+
+}
+
+vec2 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexelSize, in DDGIVolume volume)
+{
+	ivec2 texelCoords = get_probe_texel_coords(probeIdx, int(probeTexelSize), volume);
+
+	vec2 uv = texelCoords + (octahedralCoords * 0.5 + 0.5) * probeTexelSize;
+	vec2 texSize = vec2(volume.probeCountX, volume.probeCountY * volume.probeCountZ) * (probeTexelSize + 2);
+	return uv / texSize;
+}
+#endif

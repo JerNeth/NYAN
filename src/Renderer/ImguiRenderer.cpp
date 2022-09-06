@@ -5,6 +5,7 @@
 #include "VulkanWrapper/Buffer.h"
 #include "VulkanWrapper/Image.h"
 #include "Renderer/MeshRenderer.h"
+//#include "Renderer/DDGIManager.h"
 using namespace vulkan;
 
 static nyan::MaterialManager* manager;
@@ -68,6 +69,25 @@ namespace MM {
 	void ComponentEditorWidget<nyan::ForwardTransparent>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
 	{
 	}
+	template <>
+	void ComponentEditorWidget<nyan::DDGIManager::DDGIVolumeParameters>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& volume = reg.get<nyan::DDGIManager::DDGIVolumeParameters>(e);
+		//auto& mat = manager->get_material(t);
+		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+		ImGui::DragFloat3("Spacing", &volume.spacing.x());
+		ImGui::DragFloat3("Origin", &volume.origin.x());
+		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()));
+		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe));
+		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize));
+		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize));
+		ImGui::DragFloat("Depth Bias", &volume.depthBias);
+		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance);
+		ImGui::DragFloat("Hysteresis", &volume.hysteresis);
+		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold);
+		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold);
+		//ImGui::ColorEdit3("F0", &mat.F0_R);
+	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
@@ -104,6 +124,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<DeferredAlphaTest>("Alpha Test");
 	m_editor.registerComponent<Forward>("Forward");
 	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
+	m_editor.registerComponent<DDGIManager::DDGIVolumeParameters>("DDGI Volume");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}

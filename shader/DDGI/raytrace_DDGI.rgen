@@ -8,6 +8,7 @@
 #include "../common.glsl"
 #include "../lighting.glsl"
 #include "ddgi_common.glsl"
+#include "ddgi_sampling.glsl"
 
 layout(location = 0) rayPayloadEXT PackedPayload pld;
 layout(location = 1) rayPayloadEXT float shadowed;

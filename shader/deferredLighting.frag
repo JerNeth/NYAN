@@ -21,6 +21,9 @@ layout(std430, push_constant) uniform PushConstants
     uint depthSampler;
     uint stencilBinding;
     uint stencilSampler;
+    uint ddgiBinding;
+    uint ddgiCount;
+    uint ddgiIndex;
 } constants;
 
 layout(location = 0) in vec2 inTexCoord;
@@ -30,6 +33,7 @@ layout(location = 1) out vec4 outDiffuse;
 void main() {
 
     Scene scene = scenes[constants.sceneBinding].scene;
+	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     
     uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_FragCoord.xy), 0).x;
 

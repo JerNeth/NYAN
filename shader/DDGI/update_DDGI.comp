@@ -93,7 +93,7 @@ void main()
 	float epsilon = float(rayCount) * 1e-9f;
 	float hysteresis = volume.hysteresis;
 
-	ivec2 texCoord = ivec2(1) + ivec2(gl_LocalInvocationID.xy + gl_WorkGroupID.xy * (gl_WorkGroupSize.xy + uvec2(2)));
+	ivec2 texCoord = ivec2(gl_LocalInvocationID.xy + get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), int(gl_WorkGroupSize.x), volume));
 
 	float weightNormalization = 1.f/ (max(resultWeight, epsilon));
 

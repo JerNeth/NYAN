@@ -21,6 +21,9 @@ namespace nyan {
 			uint32_t depthSampler;
 			uint32_t stencilBinding;
 			uint32_t stencilSampler;
+			uint32_t ddgiBinding;
+			uint32_t ddgiCount;
+			uint32_t ddgiIndex;
 		};
 	public:
 		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
@@ -55,6 +58,9 @@ namespace nyan {
 			uint32_t stencilSampler;
 			uint32_t diffuseImageBinding;
 			uint32_t specularImageBinding;
+			uint32_t ddgiBinding;
+			uint32_t ddgiCount;
+			uint32_t ddgiIndex;
 		};
 	public:
 		DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,

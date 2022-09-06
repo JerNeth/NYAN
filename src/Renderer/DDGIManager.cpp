@@ -155,12 +155,33 @@ void nyan::DDGIManager::update()
 			parameters.ddgiVolume = add_ddgi_volume(parameters);
 			parameters.dirty = true;
 		}
+
+		const auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
+
+		if (deviceVolume.spacingX != parameters.spacing[0] ||
+			deviceVolume.spacingY != parameters.spacing[1] ||
+			deviceVolume.spacingZ != parameters.spacing[2] ||
+			deviceVolume.gridOriginX != parameters.origin[0] ||
+			deviceVolume.gridOriginY != parameters.origin[1] ||
+			deviceVolume.gridOriginZ != parameters.origin[2] ||
+			deviceVolume.probeCountX != parameters.probeCount[0] ||
+			deviceVolume.probeCountY != parameters.probeCount[1] ||
+			deviceVolume.probeCountZ != parameters.probeCount[2] ||
+			deviceVolume.raysPerProbe != parameters.raysPerProbe ||
+			deviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
+			deviceVolume.depthProbeSize != parameters.depthProbeSize ||
+			deviceVolume.shadowBias != parameters.depthBias ||
+			deviceVolume.maxRayDistance != parameters.maxRayDistance ||
+			deviceVolume.hysteresis != parameters.hysteresis ||
+			deviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
+			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold)
+			parameters.dirty = true;
+
 		if (!parameters.dirty)
 			continue;
-		parameters.dirty = false;
 
-		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
-		deviceVolume = nyan::shaders::DDGIVolume{
+		auto& deviceVolume2 = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
+		deviceVolume2 = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
 			.spacingY {parameters.spacing[1]},
 			.spacingZ {parameters.spacing[2]},
@@ -181,9 +202,10 @@ void nyan::DDGIManager::update()
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold}
 		};
-		update_spacing(deviceVolume);
-		update_depth_texture(deviceVolume);
-		update_irradiance_texture(deviceVolume);
+		parameters.dirty = false;
+		update_spacing(deviceVolume2);
+		update_depth_texture(deviceVolume2);
+		update_irradiance_texture(deviceVolume2);
 		if (parameters.depthResource) {
 			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
 			assert(depthResource.m_type == nyan::RenderResource::Type::Image);

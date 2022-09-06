@@ -48,6 +48,7 @@ nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::re
 
 void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 {
+	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	PushConstants constants{
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 		.albedoBinding {r_pass.get_read_bind(m_albedoRead)},
@@ -60,6 +61,9 @@ void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.stencilBinding {r_pass.get_read_bind(m_stencilRead, nyan::Renderpass::Read::Type::ImageStencil)},
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.ddgiBinding{ ddgiManager.get_binding() },
+		.ddgiCount{ static_cast<uint32_t>(ddgiManager.slot_count()) },
+		.ddgiIndex{ 0 },
 	};
 	bind.push_constants(constants);
 	bind.draw(3, 1);
@@ -129,6 +133,7 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 	r_pass.add_read(m_gbuffer.stencil, nyan::Renderpass::Read::Type::ImageStencil);
 	r_pass.add_write(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	r_pass.add_write(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
+	renderManager.get_ddgi_manager().add_read(pass.get_id());
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_raytracing_pipeline(m_pipeline);
@@ -140,6 +145,7 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 
 void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bind)
 {
+	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	auto writeBindDiffuse = r_pass.get_write_bind(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	auto writeBindSpecular = r_pass.get_write_bind(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBindDiffuse != InvalidBinding);
@@ -159,6 +165,9 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.diffuseImageBinding {writeBindDiffuse},
 		.specularImageBinding {writeBindSpecular},
+		.ddgiBinding {ddgiManager.get_binding()},
+		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
+		.ddgiIndex {0},
 		
 	};
 	bind.push_constants(constants);

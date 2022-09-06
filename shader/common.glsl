@@ -1,3 +1,5 @@
+#ifndef COMMON_GLSL
+#define COMMON_GLSL
 
 vec4 fromLinear(vec4 linearRGB)
 {
@@ -19,7 +21,7 @@ vec4 fromSRGB(vec4 sRGB)
 
 vec2 encodeOctahedronMapping(vec3 n) 
 {
-    n /= dot(abs(n), vec3(1));
+    n *=  1.f / dot(abs(n), vec3(1));
     n.xy = mix(n.xy, (1.0 - abs(n.yx)) * fma(step(vec2(0.0), n.xy), vec2(2.0), vec2(-1.0)), step(n.z, 0.0));
     return n.xy * 0.5 + 0.5;
 }
@@ -118,3 +120,5 @@ vec3 computeTangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec4 
         return tmpNormal;
     }
 }
+
+#endif

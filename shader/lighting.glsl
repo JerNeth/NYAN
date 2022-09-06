@@ -1,3 +1,6 @@
+#ifndef LIGHTING_GLSL
+#define LIGHTING_GLSL
+
 
 vec3 F_sphericalGaussian(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * exp2((-5.55473 * cosTheta -  6.98316) * cosTheta);
@@ -167,3 +170,5 @@ void shadeFragment(in vec3 worldPos, in vec3 normal, Scene scene, in vec4 albedo
     diffuse.a = albedo.a;
     //specular = albedo;
 }
+
+#endif
