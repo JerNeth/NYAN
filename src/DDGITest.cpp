@@ -30,8 +30,8 @@ int main() {
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	std::vector<nyan::LightParameters> lights;
-	//reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
-	reader.parse_meshes("cube.fbx", meshes, materials, lights);
+	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	//reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
 	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
