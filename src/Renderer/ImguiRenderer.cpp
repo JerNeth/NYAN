@@ -86,6 +86,7 @@ namespace MM {
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold);
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold);
+		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius);
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
 	}
 }

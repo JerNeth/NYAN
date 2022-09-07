@@ -184,11 +184,12 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 				Math::Mat<float, 4, 4, true>::perspectiveFovXLH(perspective.nearPlane, perspective.farPlane, perspective.fovX, perspective.aspect));
 		}
 		auto cameraPos = static_cast<Math::vec3>(transformMatrix.col(3));
-		auto cameraDir = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.forward));
-		auto cameraUp = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.up));
-		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right));
+		auto cameraDir = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.forward)).normalize();
+		auto cameraUp = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.up)).normalize();
+		auto cameraRight = static_cast<Math::vec3>(transformMatrix * static_cast<Math::vec4>(perspective.right)).normalize();
 		m_sceneManager.set_view_matrix(Math::Mat<float, 4, 4, true>::first_person(cameraPos, cameraDir, cameraUp, cameraRight));
 		m_sceneManager.set_view_pos(cameraPos);
+		m_sceneManager.set_camera_up(cameraUp);
 	}
 
 	{

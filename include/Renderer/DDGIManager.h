@@ -16,17 +16,18 @@ namespace nyan {
 		struct DDGIVolumeParameters
 		{
 			friend class DDGIManager;
-			Math::vec3 spacing{ 1.f, 1.f, 1.f };
+			Math::vec3 spacing{ 10.f, 10.f, 10.f };
 			Math::vec3 origin{ 0.f, 0.f, 0.f };
-			Math::uvec3 probeCount{ 16, 16, 4 };
+			Math::uvec3 probeCount{ 16, 4, 16 };
 			uint32_t raysPerProbe{ 128 };
 			uint32_t irradianceProbeSize{ 6 };
 			uint32_t depthProbeSize{ 14 };
 			float depthBias{ 1e-2f };
 			float maxRayDistance{1000.f};
 			float hysteresis{ 9e-1f };
-			float irradianceThreshold{0.25};
-			float lightToDarkThreshold{ 0.8 };
+			float irradianceThreshold{0.25f};
+			float lightToDarkThreshold{ 0.8f };
+			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
 		private:

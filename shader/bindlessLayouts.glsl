@@ -1,3 +1,5 @@
+#ifndef BINDLESS_LAYOUTS_GLSL
+#define BINDLESS_LAYOUTS_GLSL
 #include "descriptors.h"
 
 layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer MeshData {
@@ -34,3 +36,4 @@ layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba16f) uniform image2D images
 //layout(set = 0, binding = 3) uniform texture2D textures[512 * 1024];
 //layout(set = 0, binding = 4) uniform image2D images[];
 //layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[];
+#endif

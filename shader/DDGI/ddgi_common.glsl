@@ -1,5 +1,6 @@
 #ifndef DDGI_COMMON_GLSL
 #define DDGI_COMMON_GLSL
+#include "../structs.h"
 
 uvec3 get_probe_index(uint probeIdx, DDGIVolume volume) 
 {

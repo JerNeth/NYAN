@@ -58,6 +58,9 @@ struct Scene {
 	float viewerPosX;
 	float viewerPosY;
 	float viewerPosZ;
+	float cameraUpX;
+	float cameraUpY;
+	float cameraUpZ;
 	PointLight pointLights[256];
 };
 
@@ -116,6 +119,8 @@ struct DDGIVolume {
 	float hysteresis;
 	float irradianceThreshold;
 	float lightToDarkThreshold;
+
+	float visualizerRadius;
 };
 
 #endif

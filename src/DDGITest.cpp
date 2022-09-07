@@ -30,7 +30,8 @@ int main() {
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	std::vector<nyan::LightParameters> lights;
-	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	//reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
 	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
@@ -42,9 +43,16 @@ int main() {
 			.orientation{0, 180, 0},
 		});
 	auto camera = registry.create();
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{600.f, 350.f,960.f},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
+
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 350.f,960.f},
+			.position{50, 10,20},
 			.scale{1.f},
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
@@ -165,9 +173,10 @@ int main() {
 
 	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
-	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	nyan::DDGIVisualizer ddgiVisualizer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();

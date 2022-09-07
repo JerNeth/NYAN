@@ -83,19 +83,20 @@ namespace nyan {
 		struct PushConstants
 		{
 			uint32_t sceneBinding;
-			uint32_t meshBinding;
 			uint32_t ddgiBinding;
 			uint32_t ddgiCount;
 			uint32_t ddgiIndex;
 		};
 	public:
-		DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth);
 	private:
 		void visualize_volume(vulkan::GraphicsPipelineBind& bind, uint32_t volumeId);
 		void create_pipeline();
 
 		vulkan::PipelineId m_pipeline;
 		bool m_enabled;
+		Lighting m_lighting;
+		nyan::RenderResource::Id m_depth;
 	};
 }
 

@@ -357,25 +357,65 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
 	};
 }
 
-nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
+nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth) :
 	Renderer(device, registry, renderManager, pass),
-	m_enabled(true)
+	m_enabled(true),
+	m_lighting(lighting),
+	m_depth(depth)
 {
+	r_pass.add_depth_attachment(m_depth);
+	r_pass.add_attachment(m_lighting.specular);
+	r_pass.add_attachment(m_lighting.diffuse);
+	auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	ddgiManager.add_read(r_pass.get_id());
 	create_pipeline();
-	r_pass.add_renderfunction([](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+	r_pass.add_renderfunction([this, &ddgiManager](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 
+			auto pipelineBind = cmd.bind_graphics_pipeline(m_pipeline);
+			VkViewport viewport{
+			.x = 0,
+			.y = 0,
+			.width = static_cast<float>(r_device.get_swapchain_width()),
+			.height = static_cast<float>(r_device.get_swapchain_height()),
+			.minDepth = 0,
+			.maxDepth = 1,
+			};
+			VkRect2D scissor{
+			.offset {
+				.x = static_cast<int32_t>(0),
+				.y = static_cast<int32_t>(0),
+			},
+			.extent {
+				.width = static_cast<uint32_t>(viewport.width),
+				.height = static_cast<uint32_t>(viewport.height),
+			}
+			};
+			pipelineBind.set_scissor(scissor);
+			pipelineBind.set_viewport(viewport);
+			for(uint32_t volumeId {0}; volumeId < ddgiManager.slot_count(); volumeId++)
+				visualize_volume(pipelineBind, volumeId);
 		}, true);
 }
 
 void nyan::DDGIVisualizer::visualize_volume(vulkan::GraphicsPipelineBind& bind, uint32_t volumeId)
 {
+	auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	const auto& volume = ddgiManager.get(volumeId);
+	PushConstants pushConstants{
+		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+		.ddgiBinding {ddgiManager.get_binding()},
+		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
+		.ddgiIndex {volumeId}
+	};
+	bind.push_constants(pushConstants);
+	bind.draw(volume.probeCountX * volume.probeCountY * volume.probeCountZ * 6, 1);
 }
 
 void nyan::DDGIVisualizer::create_pipeline()
 {
 
-	vulkan::GraphicsPipelineConfig staticTangentConfig{
+	vulkan::GraphicsPipelineConfig visualizerConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::GraphicsPipelineState{
 		.polygon_mode {VK_POLYGON_MODE_FILL},
@@ -387,21 +427,20 @@ void nyan::DDGIVisualizer::create_pipeline()
 			vulkan::defaultBlendAttachment,
 		}
 		},
-	.vertexInputCount = get_num_formats<nyan::Mesh>(),
+	.vertexInputCount = 0,
 	.shaderCount = 2,
 	.vertexInputFormats {
-		get_formats<nyan::Mesh>()
 	},
 	.shaderInstances {
-		r_renderManager.get_shader_manager().get_shader_instance_id("staticTangent_vert"),
-		r_renderManager.get_shader_manager().get_shader_instance_id("forwardTangent_frag")
+		r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_visualizer_vert"),
+		r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_visualizer_frag")
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
-	staticTangentConfig.dynamicState.stencil_test_enable = VK_FALSE;
+	visualizerConfig.dynamicState.depth_write_enable = VK_TRUE;
+	visualizerConfig.dynamicState.depth_test_enable = VK_TRUE;
+	visualizerConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	visualizerConfig.dynamicState.stencil_test_enable = VK_FALSE;
 
-	r_pass.add_pipeline(staticTangentConfig, &m_pipeline);
+	r_pass.add_pipeline(visualizerConfig, &m_pipeline);
 }

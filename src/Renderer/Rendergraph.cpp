@@ -42,7 +42,9 @@ void nyan::Renderpass::add_attachment(RenderResource::Id id, bool clear)
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
-	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
+	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
+		return;
+	}
 	m_attachments.push_back(resource.m_id);
 
 	if (resource.uses.size() <= m_id.id)
@@ -66,7 +68,10 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 	}
 	assert(r_graph.resource_exists(r_graph.m_swapchainResource));
 	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
-	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
+
+	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
+		return;
+	}
 	m_attachments.push_back(resource.m_id);
 	m_rendersSwap = true;
 
@@ -83,6 +88,9 @@ void nyan::Renderpass::add_depth_attachment(RenderResource::Id id, bool clear)
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
+	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
+		return;
+	}
 	m_depth = resource.m_id;
 
 	if (resource.uses.size() <= m_id.id)
@@ -99,6 +107,9 @@ void nyan::Renderpass::add_depth_stencil_attachment(RenderResource::Id id, bool 
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
+	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
+		return;
+	}
 	m_depth = m_stencil = resource.m_id;
 
 	if (resource.uses.size() <= m_id.id)
@@ -114,6 +125,9 @@ void nyan::Renderpass::add_stencil_attachment(RenderResource::Id id, bool clear)
 	assert(m_type == Renderpass::Type::Generic);
 	assert(r_graph.resource_exists(id));
 	auto& resource = r_graph.get_resource(id);
+	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
+		return;
+	}
 
 	if (resource.uses.size() <= m_id.id)
 		resource.uses.resize(m_id.id + 1ull);

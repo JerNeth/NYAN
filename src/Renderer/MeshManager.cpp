@@ -329,6 +329,13 @@ void nyan::SceneManager::set_view_pos(const Math::vec3& pos)
 	get(0).viewerPosZ = pos[2];
 }
 
+void nyan::SceneManager::set_camera_up(const Math::vec3& up)
+{
+	get(0).cameraUpX = up[0];
+	get(0).cameraUpY = up[1];
+	get(0).cameraUpZ = up[2];
+}
+
 void nyan::SceneManager::set_view_matrix(const Math::Mat<float, 4, 4, true>& view)
 {
 	auto& sceneData = get(0);

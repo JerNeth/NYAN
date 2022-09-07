@@ -49,7 +49,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.shadowBias {parameters.depthBias},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
-			.lightToDarkThreshold {parameters.lightToDarkThreshold}
+			.lightToDarkThreshold {parameters.lightToDarkThreshold},
+			.visualizerRadius {parameters.visualizerRadius}
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -174,7 +175,8 @@ void nyan::DDGIManager::update()
 			deviceVolume.maxRayDistance != parameters.maxRayDistance ||
 			deviceVolume.hysteresis != parameters.hysteresis ||
 			deviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
-			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold)
+			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
+			deviceVolume.visualizerRadius != parameters.visualizerRadius)
 			parameters.dirty = true;
 
 		if (!parameters.dirty)
@@ -200,7 +202,8 @@ void nyan::DDGIManager::update()
 			.maxRayDistance {parameters.maxRayDistance},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
-			.lightToDarkThreshold {parameters.lightToDarkThreshold}
+			.lightToDarkThreshold {parameters.lightToDarkThreshold},
+			.visualizerRadius {parameters.visualizerRadius}
 		};
 		parameters.dirty = false;
 		update_spacing(deviceVolume2);
