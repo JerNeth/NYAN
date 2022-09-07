@@ -43,19 +43,19 @@ int main() {
 			.orientation{0, 180, 0},
 		});
 	auto camera = registry.create();
-	//registry.emplace<Transform>(camera,
-	//	Transform{
-	//		.position{600.f, 350.f,960.f},
-	//		.scale{1.f},
-	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
-	//	});
-
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{50, 10,20},
+			.position{600.f, 350.f,960.f},
 			.scale{1.f},
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
+
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{50, 10,20},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
 	//Transform{
 	//.position{108.f, 216.f,320.f},
 	//.scale{},

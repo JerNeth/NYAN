@@ -164,7 +164,7 @@ namespace Utility {
 		void for_each(Functor functor) {
 			for (uint32_t i = 0; i < bucketSize; i++) {
 				if (occupancy.test(i))
-					functor(get(i));
+					functor(get(zero_id + i));
 			}
 		}
 	public:

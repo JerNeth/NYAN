@@ -18,6 +18,8 @@ layout(std430, push_constant) uniform PushConstants
 
 layout(location = 0) out vec3 centerWorldPos;
 layout(location = 1) out vec3 worldPos;
+layout(location = 2) out uvec3 probeIdx;
+layout(location = 3) out vec3 offsetWorldPos;
 
 void main() {
     Scene scene = scenes[constants.sceneBinding].scene;
@@ -27,7 +29,7 @@ void main() {
 
 	
 
-	uvec3 probeIdx = get_probe_index(probeId, volume);
+	probeIdx = get_probe_index(probeId, volume);
 	centerWorldPos = get_probe_coordinates(probeIdx, volume);
 	worldPos = centerWorldPos;
 	vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
@@ -52,9 +54,9 @@ void main() {
 	{
 		worldPos += (-right - up)* volume.visualizerRadius;
 	}
-
+	offsetWorldPos =worldPos + viewDir * volume.visualizerRadius;
 	
-	gl_Position = scene.proj * scene.view * vec4(worldPos, 1.0);
+	gl_Position = scene.proj * scene.view * vec4(offsetWorldPos, 1.0);
 
 
 }

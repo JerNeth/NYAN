@@ -5,10 +5,12 @@
 #include "VulkanWrapper/Buffer.h"
 #include "VulkanWrapper/Image.h"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/CameraController.h"
 //#include "Renderer/DDGIManager.h"
 using namespace vulkan;
 
 static nyan::MaterialManager* manager;
+static nyan::DDGIManager* ddgiManager;
 
 
 
@@ -87,6 +89,29 @@ namespace MM {
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold);
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold);
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius);
+		if (volume.ddgiVolume != ~0) {
+			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
+			ImGui::Text("Irradiance Texture");
+			ImGui::SameLine(0, 25);
+			ImGui::Text("Depth Texture");
+			if (devvolume.irradianceTextureBinding != ~0) {
+				ImGui::Image(static_cast<ImTextureID>(devvolume.irradianceTextureBinding + 1), ImVec2(128, 256));
+			}
+			if (devvolume.depthTextureBinding != ~0) {
+				ImGui::SameLine();
+				ImGui::Image(static_cast<ImTextureID>(devvolume.depthTextureBinding + 1), ImVec2(128, 256));
+			}
+		}
+		//ImGui::ColorEdit3("F0", &mat.F0_R);
+	}
+	template <>
+	void ComponentEditorWidget<nyan::CameraMovement>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& movement = reg.get<nyan::CameraMovement>(e);
+		//auto& mat = manager->get_material(t);
+		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+		ImGui::DragFloat("Speed", &movement.speed);
+		ImGui::DragFloat("Rotational Speed", &movement.rotationalSpeed);
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
 	}
 }
@@ -97,6 +122,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 {
 	pass.add_swapchain_attachment();
 	manager = &renderManager.get_material_manager();
+	ddgiManager = &renderManager.get_ddgi_manager();
 
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
@@ -126,6 +152,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<Forward>("Forward");
 	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
 	m_editor.registerComponent<DDGIManager::DDGIVolumeParameters>("DDGI Volume");
+	m_editor.registerComponent<CameraMovement>("Camera Controller");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}
@@ -221,7 +248,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 			-1.0f - draw_data->DisplayPos.y * push.scale[1]
 		},
 		.texId {static_cast<int>(m_fontBind)},
-		.samplerId {static_cast<int>(vulkan::DefaultSampler::LinearWrap)},
+		.samplerId {static_cast<int>(vulkan::DefaultSampler::NearestClamp)},
 		//.customTexId {-1},
 		//.customSamplerId{static_cast<int>(vulkan::DefaultSampler::LinearWrap)}
 	};

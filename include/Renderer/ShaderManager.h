@@ -38,13 +38,16 @@ namespace vulkan {
 		ShaderId get_shader_instance_id_workgroup_size(const std::string& name, uint32_t x, uint32_t y, uint32_t z, Args... args) noexcept(false)
 		{
 			const auto& maxSize = r_device.get_physical_device_properties().limits.maxComputeWorkGroupSize;
-			assert(x < maxSize[0]); //Typically 1024, 1536 on older NVIDIA
-			assert(y < maxSize[1]); //Typically 1024
-			assert(z < maxSize[2]); //64 on NVIDIA and Intel, 1024 on AMD
+			const auto& maxInvocations = r_device.get_physical_device_properties().limits.maxComputeWorkGroupInvocations;
+			assert(x <= maxSize[0]); //Typically 1024, 1536 on older NVIDIA
+			assert(y <= maxSize[1]); //Typically 1024
+			assert(z <= maxSize[2]); //64 on NVIDIA and Intel, 1024 on AMD
+			assert(x * y * z <= maxInvocations); //1024 on NVIDIA
 			if (x > maxSize[0] ||
 				y > maxSize[1] ||
-				z > maxSize[2])
-				throw_size_error(x, y, z, maxSize[0], maxSize[1], maxSize[2]);
+				z > maxSize[2] ||
+				x * y * z > maxInvocations)
+				throw_size_error(x, y, z, maxSize[0], maxSize[1], maxSize[2], maxInvocations);
 
 
 			return get_shader_instance_id(name, 
@@ -77,7 +80,7 @@ namespace vulkan {
 		//ShaderId get_shader_instance_id(const std::string& name) const noexcept;
 
 	private:
-		void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ) noexcept(false);
+		void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ, uint32_t maxInv) noexcept(false);
 		void load_shaders(const std::filesystem::path& shaderDirectory);
 		//Shader* request_shader(const std::string& filename);
 		LogicalDevice& r_device;

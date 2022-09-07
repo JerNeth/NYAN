@@ -104,23 +104,30 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	ivec2 copyLoad = ivec2(probeStart + offset, texelCoord.y +1);
 	
 
-	if(filterIrradiance) 
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, 
-					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad));
-	else 
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, 
-					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad));
+	if(filterIrradiance) {
+		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
+	}
+	else {
+		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
+	}
 	
 	texelCoord += probeSizeMinusOne;
 	copyLoad = ivec2(probeStart + offset, texelCoord.y - 1);
 	
-	if(filterIrradiance) 
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, 
-					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad));
-	else 
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, 
-					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad));
-	
+	if(filterIrradiance) {
+		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
+	}
+	else {
+		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
+	}
 
 }
 
@@ -169,20 +176,28 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 		copyLoadSecond = ivec2(texelCoordSecond.x - 1, copyLoadFirst.y);
 	}
 	
-	if(filterIrradiance) 
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordFirst, 
-					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadFirst));
-	else 
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordFirst, 
-					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadFirst));
-		
-	if(filterIrradiance) 
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordSecond, 
-					imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadSecond));
-	else 
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordSecond, 
-					imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadSecond));
 
+	if(filterIrradiance) {
+		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadFirst);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordFirst, value);
+	}
+	else {
+		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadFirst);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordFirst, value);
+	}
+	if(filterIrradiance) {
+		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadSecond);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordSecond, value);
+	}
+	else {
+		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadSecond);
+		value = vec4(1, 0, 0,0);
+		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordSecond, value);
+	}
+	
 }
 
 void main()

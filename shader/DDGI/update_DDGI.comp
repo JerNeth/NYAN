@@ -130,7 +130,7 @@ void main()
 			lerpDelta = min(max(vec3(threshold), abs(lerpDelta)), abs(delta)) * sign(lerpDelta);
 		}
 		result = vec4(previous.xyz + lerpDelta, 1.0f);
-		
+		result = vec4(0, 0, 1.f, 1);
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texCoord, result);
 	}
 	else {

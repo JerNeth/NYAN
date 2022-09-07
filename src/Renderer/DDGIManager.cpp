@@ -264,6 +264,31 @@ void nyan::DDGIManager::update()
 void nyan::DDGIManager::begin_frame()
 {
 	//Update Bindings here
+	auto volumeView = r_registry.view<DDGIVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.ddgiVolume == nyan::InvalidBinding) {
+			continue;
+		}
+		const auto& constDeviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
+		if (!m_writes.empty()) {
+			auto& writePass = r_rendergraph.get_pass(m_writes.front().pass);
+			auto depthImageBind = writePass.get_write_bind(parameters.depthResource, Renderpass::Write::Type::Compute);
+			if (constDeviceVolume.depthImageBinding != depthImageBind)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthImageBinding = depthImageBind;
+			auto irradianceImageBind = writePass.get_write_bind(parameters.irradianceResource, Renderpass::Write::Type::Compute);
+			if (constDeviceVolume.irradianceImageBinding != irradianceImageBind)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceImageBinding = irradianceImageBind;
+		}
+		if (!m_reads.empty()) {
+			auto& readPass = r_rendergraph.get_pass(m_reads.front());
+			auto depthTextureBinding = readPass.get_read_bind(parameters.depthResource);
+			if (constDeviceVolume.depthTextureBinding != depthTextureBinding)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthTextureBinding = depthTextureBinding;
+			auto irradianceTextureBinding = readPass.get_read_bind(parameters.irradianceResource);
+			if (constDeviceVolume.irradianceTextureBinding != irradianceTextureBinding)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceTextureBinding = irradianceTextureBinding;
+		}
+	}
 }
 
 void nyan::DDGIManager::end_frame()

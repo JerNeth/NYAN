@@ -30,7 +30,8 @@ namespace nyan {
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
-		private:
+
+
 			uint32_t ddgiVolume {nyan::InvalidBinding};
 			bool dirty{ true };
 

@@ -26,7 +26,7 @@ void main() {
 //
     outColor = fromLinear(texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
                texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord));
-    outColor.xyz = outColor.xyz / (1 + outColor.xyz);
+    //outColor.xyz = outColor.xyz / (1 + outColor.xyz);
     
     //outColor = vec4(subpassLoad(inputColor).xyz * (diffuse + ambient), 1.0);
     //outColor = subpassLoad(inputNormal);

@@ -5,6 +5,10 @@
 #include "entt/entt.hpp"
 
 namespace nyan {
+	struct CameraMovement {
+		float speed{ 100.f };
+		float rotationalSpeed{45.f};
+	};
 	class RenderManager;
 	class Input;
 	class CameraController {
