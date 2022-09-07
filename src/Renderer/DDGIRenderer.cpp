@@ -177,8 +177,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				barriers[2].image = *depth.handle;
 				
 				PipelineConfig irradianceConfig{
-					.workSizeX {volume.depthProbeSize},
-					.workSizeY {volume.depthProbeSize},
+					.workSizeX {volume.irradianceProbeSize},
+					.workSizeY {volume.irradianceProbeSize},
 					.workSizeZ {1},
 					.rayCount {volume.raysPerProbe},
 					//.probeSize {volume.raysPerProbe},
@@ -187,8 +187,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				vulkan::PipelineId irradiancePipelineId = create_filter_pipeline(irradianceConfig);
 
 				PipelineConfig depthConfig{
-					.workSizeX {volume.irradianceProbeSize},
-					.workSizeY {volume.irradianceProbeSize},
+					.workSizeX {volume.depthProbeSize},
+					.workSizeY {volume.depthProbeSize},
 					.workSizeZ {1},
 					.rayCount {volume.raysPerProbe},
 					//.probeSize {volume.raysPerProbe},
@@ -207,13 +207,13 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				cmd.barrier2(barriers.size(), barriers.data());
 
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, 1);
 				pipelineBind = cmd.bind_compute_pipeline(irradianceRowBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				copy_borders(pipelineBind, constants, volume.irradianceTextureSizeX, volume.probeCountY* volume.probeCountZ, 1);
 				pipelineBind = cmd.bind_compute_pipeline(depthColumnBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.depthTextureSizeY, 1);
 				pipelineBind = cmd.bind_compute_pipeline(depthRowBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+				copy_borders(pipelineBind, constants, volume.depthTextureSizeX, volume.probeCountY* volume.probeCountZ, 1);
 
 
 			}
@@ -315,8 +315,8 @@ vulkan::PipelineId nyan::DDGIRenderer::create_border_pipeline(const BorderPipeli
 				config.workSizeX, config.workSizeY,
 				config.workSizeZ
 				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount},
-				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::probeSizeShaderName, config.probeSize},
-				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance}
+				,vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::columnsShaderName, config.columns}
+				,vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::filterIrradianceShaderName, config.filterIrradiance}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};

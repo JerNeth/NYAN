@@ -73,13 +73,13 @@ layout(constant_id = 5) const bool filterIrradiance = false;
 //	float lightToDarkThreshold;
 //};
 void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
-	uint maxSize = 0;
+	ivec2 maxSize = ivec2(0);
 	
 	if(filterIrradiance) {
-		maxSize = volume.irradianceTextureSizeY;
+		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
 	}
 	else {
-		maxSize = volume.depthTextureSizeY;
+		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
 	}
 
 	int probeSize = 2;
@@ -92,7 +92,7 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	int probeSizeMinusOne = probeSize - 1;
 	ivec2 texelCoord = ivec2(globalId.xy);
 	texelCoord.y *= probeSize;
-	if(texelCoord.x >= maxSize || texelCoord.y >= maxSize)	return;
+	if(any(greaterThanEqual(texelCoord, maxSize)))	return;
 
 	uint probeTexelCoord = texelCoord.x % probeSize;
 	if(probeTexelCoord == 0 || probeTexelCoord == probeSizeMinusOne) return;
@@ -106,39 +106,36 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 
 	if(filterIrradiance) {
 		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
 	}
 	else {
 		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
 	}
 	
-	texelCoord += probeSizeMinusOne;
+	texelCoord.y += probeSizeMinusOne;
 	copyLoad = ivec2(probeStart + offset, texelCoord.y - 1);
 	
 	if(filterIrradiance) {
 		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
 	}
 	else {
 		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
 	}
 
 }
 
 void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
-	uint maxSize = 0;
+	
+	ivec2 maxSize = ivec2(0);
 	
 	if(filterIrradiance) {
-		maxSize = volume.irradianceTextureSizeY;
+		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
 	}
 	else {
-		maxSize = volume.depthTextureSizeY;
+		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
 	}
 
 	int probeSize = 2;
@@ -151,8 +148,8 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 	int probeSizeMinusOne = probeSize - 1;
 	ivec2 texelCoordFirst = ivec2(globalId.xy);
 	texelCoordFirst.x *= probeSize;
-
-	if(texelCoordFirst.x >= maxSize || texelCoordFirst.y >= maxSize)	return;
+	
+	if(any(greaterThanEqual(texelCoordFirst, maxSize)))	return;
 
 	ivec2 copyLoadFirst = ivec2(0);
 	ivec2 texelCoordSecond = ivec2(0);
@@ -179,22 +176,18 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 
 	if(filterIrradiance) {
 		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadFirst);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordFirst, value);
 	}
 	else {
 		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadFirst);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordFirst, value);
 	}
 	if(filterIrradiance) {
 		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadSecond);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordSecond, value);
 	}
 	else {
 		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadSecond);
-		value = vec4(1, 0, 0,0);
 		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordSecond, value);
 	}
 	
