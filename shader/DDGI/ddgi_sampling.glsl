@@ -70,13 +70,15 @@ ivec3 get_volume_base_probe(vec3 worldPos, DDGIVolume volume) {
 
 }
 
+
 vec3 sample_ddgi(vec3 worldPos, 
 				vec3 bias,
 				vec3 direction, 
 				DDGIVolume volume) {
 
 	vec3 irradiance = vec3(0.f);
-
+	if(volume.enabled == 0)
+		return vec3(0.05f);
 	float weightSum = 0.f;
 
 	vec3 biasedWorldPos = worldPos + bias;
@@ -108,7 +110,7 @@ vec3 sample_ddgi(vec3 worldPos,
 
 		#ifdef WRAPSHADING
 		float wrapShading = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
-		weight += fma(wrapShading, wrapShading, 0.2f);
+		weight *= fma(wrapShading, wrapShading, 0.2f);
 		#endif
 
 

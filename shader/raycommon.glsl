@@ -73,7 +73,7 @@ struct PackedPayload {
 	vec3 worldPos;
 	float hitT;
 	uvec4 packed0;
-	uvec3 packed1;
+	uvec4 packed1;
 };
 
 Payload unpack_payload(PackedPayload packed) {

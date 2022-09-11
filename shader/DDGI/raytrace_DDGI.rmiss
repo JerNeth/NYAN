@@ -8,7 +8,6 @@
 #include "../extracts.glsl"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
-#include "../rayvertex.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -20,10 +19,11 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiIndex;
 	uint renderTarget;
 	vec4 col;
-	vec4 col2;
+	vec4 randomRotation;
 } constants;
 
-layout(location = 0) rayPayloadEXT PackedPayload pld;
+layout(location = 0) rayPayloadInEXT  PackedPayload pld;
+//layout(location = 0) rayPayloadInEXT  Payload payload;
 
 void main()
 {

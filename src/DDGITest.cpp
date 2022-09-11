@@ -50,6 +50,11 @@ int main() {
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
 
+	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
+			.spacing {500.f, 500.f, 500.f},
+			.origin {-2000.f, 0.f, -7500.f },
+			.probeCount {12, 4, 18},
+		});
 	//registry.emplace<Transform>(camera,
 	//	Transform{
 	//		.position{50, 10,20},
@@ -159,7 +164,7 @@ int main() {
 	auto lighting = rendergraph.add_lighting("lighting");
 
 
-	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::AsyncCompute));
+	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic));
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
 	
 	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));

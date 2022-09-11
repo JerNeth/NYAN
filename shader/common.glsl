@@ -1,22 +1,32 @@
 #ifndef COMMON_GLSL
 #define COMMON_GLSL
 
-vec4 fromLinear(vec4 linearRGB)
+vec3 fromLinear(vec3 linearRGB)
 {
     bvec3 cutoff = lessThan(linearRGB.rgb, vec3(0.0031308));
     vec3 higher = vec3(1.055)*pow(linearRGB.rgb, vec3(1.0/2.4)) - vec3(0.055);
     vec3 lower = linearRGB.rgb * vec3(12.92);
 
-    return vec4(mix(higher, lower, cutoff), linearRGB.a);
+    return mix(higher, lower, cutoff);
 }
 
-vec4 fromSRGB(vec4 sRGB)
+vec4 fromLinear(vec4 linearRGB)
+{
+    return vec4(fromLinear(linearRGB.rgb), linearRGB.a);
+}
+
+vec3 fromSRGB(vec3 sRGB)
 {
     bvec3 cutoff = lessThan(sRGB.rgb, vec3(0.0031308 * 12.92));
     vec3 higher = pow(vec3(0.94786729) * (sRGB.rgb + vec3(0.055)), vec3(2.4));
     vec3 lower = sRGB.rgb / vec3(12.92);
 
-    return vec4(mix(higher, lower, cutoff), sRGB.a);
+    return mix(higher, lower, cutoff);
+}
+
+vec4 fromSRGB(vec4 sRGB)
+{
+    return vec4(fromSRGB(sRGB.xyz), sRGB.a);
 }
 
 vec2 encodeOctahedronMapping(vec3 n) 
@@ -119,6 +129,13 @@ vec3 computeTangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec4 
     else {
         return tmpNormal;
     }
+}
+
+vec3 quaternion_rotate(vec4 q, vec3 v)
+{
+    return cross(q.xyz, v) * (2.f * q.w) + 
+                v * (q.w * q.w - dot(q.xyz, q.xyz)) + 
+                q.xyz * (2.f * dot(v, q.xyz));
 }
 
 #endif

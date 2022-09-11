@@ -394,6 +394,32 @@ namespace Math {
 	private:
 		std::array<Scalar, Size> m_data;
 	};
+	template<ScalarT Scalar,
+		size_t Size >
+	constexpr Vec<Scalar, Size> lerp(Vec<Scalar, Size> a, Vec<Scalar, Size> b, Scalar alpha) noexcept {
+		return a * alpha + (1 - alpha) * b;
+	}
+	template<ScalarT Scalar,
+		size_t Size >
+	constexpr Vec<Scalar, Size> lerp(Vec<Scalar, Size> a, Vec<Scalar, Size> b, Vec<Scalar, Size> alpha) noexcept {
+		return a * alpha + (1 - alpha) * b;
+	}
+	template<ScalarT Scalar,
+		size_t Size >
+	constexpr Vec<Scalar, Size> pow(Vec<Scalar, Size> base, Vec<Scalar, Size> exp) noexcept {
+		Vec<Scalar, Size> ret;
+		for (size_t i{ 0 }; i < Size; ++i)
+			ret[i] = pow(base[i], exp[i]);
+		return ret;
+	}
+	template<ScalarT Scalar,
+		size_t Size >
+	constexpr Vec<Scalar, Size> pow(Vec<Scalar, Size> base, Scalar exp) noexcept {
+		Vec<Scalar, Size> ret;
+		for (size_t i{ 0 }; i < Size; ++i)
+			ret[i] = pow(base[i], exp);
+		return ret;
+	}
 
 	template<typename... Args>
 	constexpr Vec<std::common_type_t<Args...>, sizeof...(Args)> make_vector(Args... args) {

@@ -92,9 +92,9 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 		.flags = texInfo.cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : static_cast<VkImageCreateFlags>(0x0u),
 		.createFlags {}
 	};
-	info.createFlags.set(vulkan::ImageInfo::Flags::GenerateMips);
 	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentAsyncCompute);
 	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentGraphics);
+	info.createFlags.set(vulkan::ImageInfo::Flags::GenerateMips);
 	if (m_useSparse) {
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, &data);
@@ -137,6 +137,8 @@ vulkan::ImageHandle nyan::TextureManager::create_dds_image(const std::filesystem
 		.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		.flags = texInfo.cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : static_cast<VkImageCreateFlags>(0x0u),
 	};
+	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentAsyncCompute);
+	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentGraphics);
 	if (m_useSparse) {
 		info.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
 		auto image = r_device.create_sparse_image(info, initalImageData.data());

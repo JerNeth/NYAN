@@ -6,6 +6,7 @@
 #include "VulkanWrapper/Shader.h"
 #include "VulkanWrapper/Image.h"
 
+
 #include "entt/entt.hpp"
 
 
@@ -62,6 +63,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	vulkan::PipelineId depthColumnBorderPipelineId = create_border_pipeline(depthBorderConfig);
 	depthBorderConfig.columns = false;
 	vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
+
 
 	pass.add_renderfunction([this, irradianceColumnBorderPipelineId,
 		irradianceRowBorderPipelineId, depthColumnBorderPipelineId,
@@ -150,6 +152,10 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.layerCount {VK_REMAINING_ARRAY_LAYERS},
 				}
 			} };
+			float u = m_dist(m_generator);
+			float v = m_dist(m_generator);
+			float w = m_dist(m_generator);
+
 			PushConstants constants{
 				.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 				.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
@@ -157,20 +163,23 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.ddgiBinding {ddgiManager.get_binding()},
 				.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 				.ddgiIndex {0},
-				.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)}
-				//.col {},
-				//.col2 {}
+				.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)},
+				.col { 0.4f, 0.6f, 0.8f, 1.0f },
+				.randomRotation {sqrt(1- u) * sin(Math::pi_2 * v), sqrt(1-u) * cos(Math::pi_2 * v),
+									sqrt(u) * sin(Math::pi_2*w), sqrt(u) * cos(Math::pi_2 * w)}
 			};
 			assert(resource.handle); 	
 
 
 			 
 			for (uint32_t i = 0; i < static_cast<uint32_t>(r_renderManager.get_ddgi_manager().slot_count()); ++i) {
-
 				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
 				constants.ddgiIndex = i;
 				const auto& volume = ddgiManager.get(i);
 				const auto& parameters = ddgiManager.get_parameters(i);
+				if (!parameters.enabled)
+					continue;
+
 				auto& irradiance = renderGraph.get_resource(parameters.irradianceResource);
 				auto& depth = renderGraph.get_resource(parameters.depthResource);
 				barriers[1].image = *irradiance.handle;
@@ -393,8 +402,11 @@ nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::regist
 			};
 			pipelineBind.set_scissor(scissor);
 			pipelineBind.set_viewport(viewport);
-			for(uint32_t volumeId {0}; volumeId < ddgiManager.slot_count(); volumeId++)
-				visualize_volume(pipelineBind, volumeId);
+			for (uint32_t volumeId{ 0 }; volumeId < ddgiManager.slot_count(); volumeId++) {
+				if (ddgiManager.get_parameters(volumeId).visualization) {
+					visualize_volume(pipelineBind, volumeId);
+				}
+			}
 		}, true);
 }
 

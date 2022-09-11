@@ -121,6 +121,8 @@ struct DDGIVolume {
 	float lightToDarkThreshold;
 
 	float visualizerRadius;
+
+	uint enabled;
 };
 
 #endif

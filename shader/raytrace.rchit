@@ -9,7 +9,6 @@
 #include "common.glsl"
 #include "lighting.glsl"
 #include "raycommon.glsl"
-#include "rayvertex.glsl"
 
 
 layout(std430, push_constant) uniform PushConstants

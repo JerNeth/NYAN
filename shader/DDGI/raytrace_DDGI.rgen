@@ -11,6 +11,7 @@
 #include "ddgi_sampling.glsl"
 
 layout(location = 0) rayPayloadEXT PackedPayload pld;
+//layout(location = 0) rayPayloadEXT Payload payload;
 layout(location = 1) rayPayloadEXT float shadowed;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
@@ -26,7 +27,7 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiIndex;
 	uint renderTarget;
 	vec4 col;
-	vec4 col2;
+	vec4 randomRotation;
 } constants;
 
 
@@ -48,8 +49,9 @@ float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax)
             1               // payload (location = 0)
         );
     return shadowed;
+    //return 1.0f;
 }
-
+const float minLight = 1e-5;
 vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData) 
 {
     vec3 diffuse = vec3(0.f);
@@ -63,7 +65,7 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
 
         lightDir /= dist;
         float lightShadow = light_visibility(shadingData, lightDir,dist);
-        if(lightShadow < 1.f )
+        if(lightShadow <= minLight )
             continue;
         //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
         float distRatio = dist / light.attenuationDistance;
@@ -91,8 +93,8 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     if(scene.dirLight.enabled) 
     {
-        float lightShadow = light_visibility(shadingData, scene.dirLight.dir, 1e27f);
-        if(lightShadow < 1.f) {
+        float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
+        if(lightShadow > minLight) {
             LightData lightData;
             lightData.dir = scene.dirLight.dir;
             lightData.intensity = scene.dirLight.intensity;
@@ -102,7 +104,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     if(scene.numPointLights > 0)
     {
-        diffuse += diffuse_point_lights(scene, shadingData);
+        //diffuse += diffuse_point_lights(scene, shadingData);
     }
     return diffuse;
 }
@@ -124,10 +126,10 @@ void main()
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 
 	vec3 probeCords = get_probe_coordinates(probeIdx, volume);
-	vec3 direction = get_ray_direction(rayIdx, volume);
+	vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(rayIdx, volume));
 
     uint  rayFlags = gl_RayFlagsOpaqueEXT;
-    float tMin     = 0.0;
+    float tMin     = 0.001;
     float tMax     = volume.maxRayDistance;
 	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
           rayFlags,       // rayFlags
@@ -162,16 +164,14 @@ void main()
         ShadingData shadingData;
         shadingData.albedo = payload.albedo;
         shadingData.alpha = payload.roughness * payload.roughness;
-        shadingData.outLightDir = direction;
+        shadingData.outLightDir = -direction;
         shadingData.metalness = payload.metallic;
         shadingData.shadingNormal = payload.shadingNormal;
         shadingData.worldPos = payload.worldPos;
         //High compile time here, probably due to shadow rays
 		diffuse += diffuse_direct_lighting(scene, shadingData);
-
 		diffuse += diffuse_indirect_lighting(payload);
-	 }
-     
+     }
 
 	 imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

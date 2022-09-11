@@ -60,7 +60,7 @@ vec3 brdf_hammon_diffuse(float NdotL, float NdotV,float NdotH, float VdotL, floa
     return diffuseColor.xyz * (single + diffuseColor.xyz * multi);
 }
 
-//[Stephen McAuley, 2018] "A Journey Through Implementing BRDFs & Area Lights
+//[Stephen McAuley, 2018] "A Journey Through Implementing BRDFs & Area Lights"
 // Who adapted "Material Advances in Call of Duty: WWII"
 float multi_scattering_diffuse_brdf(float NdotL, float NdotV, float NdotH, float LdotH, float alpha) {
     float g = min(1.0, max(0.0, 0.18455 * log(2.0/ ((alpha * alpha)) - 1.0 )));
@@ -76,7 +76,7 @@ float multi_scattering_diffuse_brdf(float NdotL, float NdotV, float NdotH, float
 
 float brdf_lambert()
 {
-    float single = 1 / 3.1415926;
+    float single = 1.f / 3.1415926f;
 
     return  single;
 }

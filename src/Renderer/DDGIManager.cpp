@@ -10,8 +10,6 @@ nyan::DDGIManager::DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph&
 	r_rendergraph(rendergraph),
 	r_registry(registry)
 {
-	auto entity = r_registry.create();
-	r_registry.emplace< DDGIVolumeParameters>(entity, DDGIVolumeParameters{});
 }
 
 uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& parameters)
@@ -50,7 +48,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
-			.visualizerRadius {parameters.visualizerRadius}
+			.visualizerRadius {parameters.visualizerRadius},
+			.enabled {parameters.enabled},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -159,7 +158,8 @@ void nyan::DDGIManager::update()
 
 		const auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 
-		if (deviceVolume.spacingX != parameters.spacing[0] ||
+		if(	deviceVolume.enabled != parameters.enabled ||
+			deviceVolume.spacingX != parameters.spacing[0] ||
 			deviceVolume.spacingY != parameters.spacing[1] ||
 			deviceVolume.spacingZ != parameters.spacing[2] ||
 			deviceVolume.gridOriginX != parameters.origin[0] ||
@@ -203,7 +203,8 @@ void nyan::DDGIManager::update()
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
-			.visualizerRadius {parameters.visualizerRadius}
+			.visualizerRadius {parameters.visualizerRadius},
+			.enabled {parameters.enabled},
 		};
 		parameters.dirty = false;
 		update_spacing(deviceVolume2);

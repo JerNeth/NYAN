@@ -1,6 +1,5 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
-#extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "../raycommon.glsl"
 #include "../bufferReferences.glsl"
@@ -8,7 +7,6 @@
 #include "../extracts.glsl"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
-#include "../rayvertex.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -20,10 +18,11 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiIndex;
 	uint renderTarget;
 	vec4 col;
-	vec4 col2;
+	vec4 randomRotation;
 } constants;
 
-layout(location = 0) rayPayloadEXT PackedPayload pld;
+layout(location = 0) rayPayloadInEXT PackedPayload pld;
+//layout(location = 0) rayPayloadInEXT Payload payload;
 
 
 hitAttributeEXT vec2 baryCoord;
@@ -49,6 +48,6 @@ void main()
 	payload.shadingNormal = materialData.shadingNormal;
 	payload.hitT = gl_HitTEXT;
 	payload.hitkind = gl_HitKindEXT;
-
+	//payload.albedo = vec3(1,0, 0);
 	pld = pack_payload(payload);
 }

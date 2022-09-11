@@ -6,6 +6,7 @@
 #include "VulkanForwards.h"
 #include "RayTracePipeline.h"
 #include "RenderGraph.h"
+#include <random>
 
 namespace nyan {
 
@@ -22,7 +23,7 @@ namespace nyan {
 			uint32_t ddgiIndex;
 			uint32_t renderTarget;
 			Math::vec4 col{ 0.4f, 0.3f, 0.8f, 1.0f };
-			Math::vec4 col2{ 0.4f, 0.6f, 0.8f, 1.f };
+			Math::vec4 randomRotation{ 0.4f, 0.6f, 0.8f, 1.f };
 		};
 		struct PipelineConfig
 		{
@@ -77,6 +78,8 @@ namespace nyan {
 		uint32_t m_borderSizeY{ 8 };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
+		std::mt19937 m_generator{ 420 };
+		std::uniform_real_distribution<float> m_dist {0.f, 1.f};
 	};
 
 	class DDGIVisualizer : Renderer {

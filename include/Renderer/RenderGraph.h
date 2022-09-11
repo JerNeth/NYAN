@@ -19,7 +19,7 @@ namespace nyan {
 		Size size = Size::Swapchain;
 		float width = 1.0f;
 		float height = 1.0f;
-		Math::vec4 clearColor;
+		Math::vec4 clearColor{0.f, 0.f, 0.f, 0.f};
 	};
 	struct BufferAttachment {
 		VkDeviceSize size = 0;

@@ -23,13 +23,15 @@ namespace nyan {
 			uint32_t irradianceProbeSize{ 6 };
 			uint32_t depthProbeSize{ 14 };
 			float depthBias{ 1e-2f };
-			float maxRayDistance{1000.f};
+			float maxRayDistance{5000.f};
 			float hysteresis{ 9e-1f };
 			float irradianceThreshold{0.25f};
 			float lightToDarkThreshold{ 0.8f };
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
+			bool enabled{ true };
+			bool visualization{ true };
 
 
 			uint32_t ddgiVolume {nyan::InvalidBinding};
