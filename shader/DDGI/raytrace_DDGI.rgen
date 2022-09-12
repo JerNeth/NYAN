@@ -108,12 +108,17 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     return diffuse;
 }
-
-vec3 diffuse_indirect_lighting(in Payload payload)
+#define SAMPLE_DDGI
+vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
 {
-	//TODO
-	//Evaluate DDGI
-	return vec3(0.f);
+#ifdef SAMPLE_DDGI
+    if(shadingData.metalness < 1.f) {
+        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, vec3(0), shadingData.shadingNormal, volume);
+        vec3 radiance = shadingData.albedo.xyz * irradiance * (1.f - shadingData.metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+        return radiance;
+    }
+#endif
+    return vec3(0.f);
 }
 
 void main()
@@ -170,7 +175,7 @@ void main()
         shadingData.worldPos = payload.worldPos;
         //High compile time here, probably due to shadow rays
 		diffuse += diffuse_direct_lighting(scene, shadingData);
-		diffuse += diffuse_indirect_lighting(payload);
+		diffuse += diffuse_indirect_lighting(volume, shadingData);
      }
 
 	 imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));

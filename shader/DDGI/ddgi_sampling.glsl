@@ -56,20 +56,17 @@ float get_volume_weight(vec3 worldPos, DDGIVolume volume) {
 }
 
 ivec3 get_volume_base_probe(vec3 worldPos, DDGIVolume volume) {
-	vec3 position = worldPos - vec3(volume.gridOriginX, volume.gridOriginY, volume.gridOriginZ);
-	vec3 spacing = vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
+	vec3 position = worldPos - get_volume_origin(volume);
+	vec3 spacing = get_volume_spacing(volume);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
-	//shift domain to 0-n
-	position += (spacing * probeCountsMinusOne) * 0.5f;
 
 	ivec3 probeIdx = ivec3(position / spacing);
 
 	probeIdx = clamp(probeIdx, ivec3(0), probeCountsMinusOne);
 
 	return probeIdx;
-
 }
-
+//#define SAMPLE_IRRADIANCE_NEAREST
 
 vec3 sample_ddgi(vec3 worldPos, 
 				vec3 bias,
@@ -91,7 +88,10 @@ vec3 sample_ddgi(vec3 worldPos,
 
 	vec3 delta = biasedWorldPos - baseProbeWorldPos;
 	vec3 alpha = clamp( delta / spacing,vec3(0.f), vec3(1.f));
-
+	#ifdef SAMPLE_IRRADIANCE_NEAREST
+	float closestDist = 1e16;
+	vec3 closestIrradiance = vec3(0);
+	#endif
 	for(int probeIndex = 0; probeIndex < 8; probeIndex++)
 	{
 		ivec3 adjacentProbeIdxOffset = ivec3(probeIndex, probeIndex >> 1, probeIndex >> 2) & ivec3(1, 1, 1);
@@ -100,7 +100,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		vec3 adjacentProbeWorldPos = get_probe_coordinates(adjacentProbeIdx, volume);
 
 		vec3 worldPosToAdjacentProbe = normalize(adjacentProbeWorldPos - worldPos);
-		vec3 biasedWorldPosToAdjacentProbe = adjacentProbeWorldPos - biasedWorldPos;
+		vec3 biasedWorldPosToAdjacentProbe = biasedWorldPos - adjacentProbeWorldPos;
 		float biasedWorldPosToAdjacentProbeDist = length(biasedWorldPosToAdjacentProbe);
 		biasedWorldPosToAdjacentProbe *= 1.f/ biasedWorldPosToAdjacentProbeDist;
 
@@ -109,12 +109,15 @@ vec3 sample_ddgi(vec3 worldPos,
 		float weight = 1.f;
 
 		#ifdef WRAPSHADING
-		float wrapShading = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
-		weight *= fma(wrapShading, wrapShading, 0.2f);
+		float backFaceWeight = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
+		weight *= fma(backFaceWeight, backFaceWeight, 0.2f);
+		#else
+		float backFaceWeight = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
+		weight *= backFaceWeight * backFaceWeight;
 		#endif
 
 
-		vec2 octCoords = get_octahedral_coords(-biasedWorldPosToAdjacentProbe);
+		vec2 octCoords = get_octahedral_coords(biasedWorldPosToAdjacentProbe);
 		
 		vec2 depthUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.depthProbeSize, volume);
 		octCoords = get_octahedral_coords(direction);
@@ -129,22 +132,35 @@ vec3 sample_ddgi(vec3 worldPos,
 			float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
 			float v = biasedWorldPosToAdjacentProbeDist - filteredDistance.x;
 			chebyshev = variance / (variance + (v * v));
-			chebyshev *= chebyshev * chebyshev;
+			//Pretty sure we don't need max here since variance is positive and v² is also positive
+			chebyshev = chebyshev * chebyshev * chebyshev;
 		}
 		weight *= max(0.05f, chebyshev);
 
 		weight = max(1e-6f, weight);
 
-		const float threshold = 0.2f;
-		if(weight < threshold)
-		{
-			weight *= weight * weight * (1.f / (threshold * threshold));
-		}
+//		Originally crush tiny weights because of log perception
+//		const float threshold = 0.2f;
+//		if(weight < threshold)
+//		{
+//			weight *= weight * weight * (1.f / (threshold * threshold));
+//		}
+
 		weight *= trilinearWeight;
 		//TODO maybe do gamma
 		irradiance += weight * probeIrradiance;
 		weightSum += weight;
+
+	#ifdef SAMPLE_IRRADIANCE_NEAREST
+		if(closestDist > biasedWorldPosToAdjacentProbeDist) {
+			closestDist = biasedWorldPosToAdjacentProbeDist;
+			closestIrradiance = probeIrradiance;
+		}
+		#endif
 	}
+	#ifdef SAMPLE_IRRADIANCE_NEAREST
+	return closestIrradiance;
+	#endif
 	if(weightSum == 0.f) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize

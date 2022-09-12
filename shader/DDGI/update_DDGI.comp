@@ -4,6 +4,7 @@
 #include "../structs.h"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
+#include "../debug.glsl"
 #include "ddgi_common.glsl"
 
 
@@ -43,10 +44,10 @@ float max_component(vec3 v) {
 
 void main()
 {
+
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 	uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
 
-	//I think this is correct instead of gl_GlobalInvocationID
 	vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
 	vec3 texelDir = get_octahedral_direction(uv);
 	
@@ -71,7 +72,7 @@ void main()
 		vec3 rayDir = rayDirection[rayIdx];
 		float rayDist = rayDistance[rayIdx];
 
-		float weight = max(0.f, dot(texelDir, rayDir));
+		float weight = max(0.f, dot(rayDir, texelDir));
 
 		if(filterIrradiance) {
 			if(rayDist < 0.f){
@@ -82,11 +83,10 @@ void main()
 			resultWeight += weight;
 		}
 		else {
-			float maxRayDist = length(vec3(volume.spacingX, volume.spacingY, volume.spacingZ)) * 1.5f;
+			float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
 			rayDist = min(abs(rayDist), maxRayDist);
 			const float rayDistSqarred = rayDist * rayDist;
-			const float rayWeighted = rayDist * weight;
-			result += vec4(rayWeighted, rayDist * rayWeighted, rayDistSqarred * rayWeighted, rayDistSqarred * rayDistSqarred * weight);
+			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;
 			resultWeight += weight;
 		}
 	}
@@ -108,7 +108,7 @@ void main()
 	else 
 		previous = imageLoad(imagesRGBA16F[volume.depthImageBinding], texCoord);
 
-	if(dot(previous, previous) == 0) 
+	if(dot(previous, previous) == 0)
 		hysteresis = 0.f;
 
 	if(filterIrradiance) {
@@ -128,7 +128,7 @@ void main()
 		vec3 lerpDelta = (1.f - hysteresis) * delta;
 		if(max_component(result.xyz) < max_component(previous.xyz))
 		{
-			lerpDelta = min(max(vec3(threshold), abs(lerpDelta)), abs(delta)) * sign(lerpDelta);
+			lerpDelta = clamp(vec3(threshold), abs(lerpDelta), abs(delta)) * sign(lerpDelta);
 		}
 		result = vec4(previous.xyz + lerpDelta, 1.0f);
 //Debug checkerboard pattern
@@ -139,7 +139,9 @@ void main()
 //			result.xy = vec2(1, 0);
 //		if((gl_WorkGroupID.z &0x1) == 1)
 //			result.z = 1;
-
+#ifdef DEBUG_COLORS
+		result = debugColors[probeIdx % debugColors.length()];
+#endif
 		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texCoord, result);
 	}
 	else {
