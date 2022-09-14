@@ -7,6 +7,7 @@
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
 #include "../lighting.glsl"
+#include "../debug.glsl"
 #include "ddgi_common.glsl"
 #include "ddgi_sampling.glsl"
 
@@ -163,7 +164,7 @@ void main()
 	 {
 		diffuse = payload.albedo;
 		//If miss hitDist = 1e27f for 32-float, less for 16-float 65519, might reconsider 16-bit since rays are filtered
-		hitDistance = 65519.f; 
+		//hitDistance = 65519.f; 
 	 } 
 	 else {
         ShadingData shadingData;
@@ -173,10 +174,16 @@ void main()
         shadingData.metalness = payload.metallic;
         shadingData.shadingNormal = payload.shadingNormal;
         shadingData.worldPos = payload.worldPos;
-        //High compile time here, probably due to shadow rays
+        //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
 		diffuse += diffuse_direct_lighting(scene, shadingData);
 		diffuse += diffuse_indirect_lighting(volume, shadingData);
      }
 
-	 imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
+    hitDistance = min(hitDistance, 65519.f);
+
+#ifdef DEBUG_COLORS
+	diffuse = debugColors[probeIdx % debugColors.length()].xyz;
+#endif
+
+    imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

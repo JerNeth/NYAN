@@ -40,14 +40,16 @@ int main() {
 	auto& input = application.get_input();
 
 
-	nyan::RenderManager renderManager(device, true);
+	auto directory = getenv("USERPROFILE") / std::filesystem::path{ "Assets" };
+	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
 
 	Utility::FBXReader reader;
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
-	reader.parse_meshes("SunTemple.fbx", meshes, materials);
+	std::vector<nyan::LightParameters> lights;
+	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
 
 
@@ -110,32 +112,36 @@ int main() {
 			Parent{
 				.parent {parent},
 			});
+		registry.emplace<std::string>(entity, a.name);
 
 	}
-	nyan::Rendergraph rendergraph{ device };
-	auto& rtPass = rendergraph.add_pass("RT-Pass", nyan::Renderpass::Type::Generic);
-	rtPass.add_swapchain_write( Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
+	auto& rendergraph{ renderManager.get_render_graph() };
+	auto& rtPass = rendergraph.get_pass(rendergraph.add_pass("RT-Pass", nyan::Renderpass::Type::Generic));
 
 
-	auto& imguiPass = rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic);
-	imguiPass.add_swapchain_attachment();
+	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
 
-	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, rtPass);
+	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
-	application.each_frame_begin([&]()
-		{
-			renderManager.update();
-			imgui.next_frame();
-		});
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
 			cameraController.update(dt);
-			//imgui.update();
+			renderManager.update(dt);
 		});
-	application.each_frame_end([&rendergraph]()
+	application.each_frame_begin([&]()
 		{
-			rendergraph.execute();
+			rendergraph.begin_frame();
+
+			imgui.next_frame();
+
+			//Upload/sync point here, don't really want stuff after here
+			renderManager.begin_frame();
+		});
+	application.each_frame_end([&]()
+		{
+			renderManager.end_frame();
+			rendergraph.end_frame();
 		});
 	application.main_loop();
 

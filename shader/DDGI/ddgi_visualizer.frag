@@ -13,6 +13,7 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiBinding;
 	uint ddgiCount;
 	uint ddgiIndex;
+	vec4 randomRotation;
 } constants;
 
 layout(location = 0) in flat vec3 centerWorldPos;
@@ -47,12 +48,19 @@ void main() {
     vec3 surfacePos = dir * rayHit + viewPos;
     vec3 sphereDir = normalize(surfacePos - centerWorldPos);
     
-    
 	vec2 octCoords = get_octahedral_coords(sphereDir);
 	vec2 irradianceUV = get_probe_uv(ivec3(probeIdx), octCoords, volume.irradianceProbeSize, volume);
 
 	vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
 
+    for(int i = 0; i < volume.raysPerProbe; i++) {
+        vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(i, volume));
+        if(dot(sphereDir, direction) > 0.99999)  {
+            probeIrradiance = vec3(1.0f);
+            break;
+        }
+    }
+    
     vec4 pos = vec4(scene.proj * scene.view * vec4(surfacePos, 1.0));
 	gl_FragDepth = pos.z / pos.w;
 

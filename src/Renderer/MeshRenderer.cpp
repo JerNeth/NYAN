@@ -260,6 +260,7 @@ nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::regist
 	m_pipeline(device, generate_config()),
 	m_rendertarget(rendertarget)
 {
+	r_pass.add_swapchain_write(Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_raytracing_pipeline(m_pipeline);

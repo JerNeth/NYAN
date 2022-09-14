@@ -273,13 +273,22 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 	//const auto& volume = ddgiManager.get(volumeId);
 
 	bind.push_constants(constants);
-	
+
+	assert(numRays * numRays <= r_device.get_physical_device().get_ray_tracing_pipeline_properties().maxRayDispatchInvocationCount);
+	auto groupsSize = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize;
+	auto groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(numRays <= groupsSize[0] * groupsCount[0]);
+	assert(numProbes <= groupsSize[1] * groupsCount[1]);
 	bind.trace_rays(m_rtPipeline, numRays, numProbes, 1);
 }
 
 void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
+	auto groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(probeCountX <= groupsCount[0]);
+	assert(probeCountY <= groupsCount[1]);
+	assert(probeCountZ <= groupsCount[2]);
 	bind.dispatch(probeCountX, probeCountY, probeCountZ);
 }
 
@@ -414,12 +423,18 @@ void nyan::DDGIVisualizer::visualize_volume(vulkan::GraphicsPipelineBind& bind, 
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	const auto& volume = ddgiManager.get(volumeId);
+	float u = m_dist(m_generator);
+	float v = m_dist(m_generator);
+	float w = m_dist(m_generator);
 	PushConstants pushConstants{
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 		.ddgiBinding {ddgiManager.get_binding()},
 		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
-		.ddgiIndex {volumeId}
+		.ddgiIndex {volumeId},
+		.randomRotation {sqrt(1 - u) * sin(Math::pi_2 * v), sqrt(1 - u) * cos(Math::pi_2 * v),
+						sqrt(u) * sin(Math::pi_2 * w), sqrt(u) * cos(Math::pi_2 * w)}
 	};
+
 	bind.push_constants(pushConstants);
 	bind.draw(volume.probeCountX * volume.probeCountY * volume.probeCountZ * 6, 1);
 }

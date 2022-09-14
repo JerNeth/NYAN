@@ -89,6 +89,7 @@ namespace nyan {
 			uint32_t ddgiBinding;
 			uint32_t ddgiCount;
 			uint32_t ddgiIndex;
+			Math::vec4 randomRotation{ 0.4f, 0.6f, 0.8f, 1.f };
 		};
 	public:
 		DDGIVisualizer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth);
@@ -100,6 +101,8 @@ namespace nyan {
 		bool m_enabled;
 		Lighting m_lighting;
 		nyan::RenderResource::Id m_depth;
+		std::mt19937 m_generator{ 420 };
+		std::uniform_real_distribution<float> m_dist{ 0.f, 1.f };
 	};
 }
 
