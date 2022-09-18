@@ -39,7 +39,7 @@ float sphIntersect( vec3 ro, vec3 rd, vec4 sph )
 void main() {
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     Scene scene = scenes[constants.sceneBinding].scene;
-    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewPos = get_viewer_pos(scene);
     vec3 dir = normalize(offsetWorldPos - viewPos);
 	float radius = volume.visualizerRadius;
     float rayHit = sphIntersect(viewPos, dir, vec4(centerWorldPos, radius));

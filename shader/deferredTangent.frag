@@ -29,7 +29,7 @@ layout(location = 2) out vec4 outPBR;
 
 void flip_backfacing_normal(inout MaterialData materialData, in VertexData vertexData, in Scene scene) 
 {
-    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewPos = get_viewer_pos(scene);
     vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
 
     if(dot(materialData.shadingNormal, viewVec) < 0) {

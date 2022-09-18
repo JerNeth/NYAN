@@ -145,8 +145,10 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 	VkPipelineViewportStateCreateInfo viewportStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-		.viewportCount = 1,
-		.scissorCount = 1
+		.viewportCount = 0,
+		.pViewports {nullptr},
+		.scissorCount = 0,
+		.pScissors {nullptr} 
 	};
 
 	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
@@ -154,9 +156,9 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 		.depthClampEnable = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode = config.state.polygon_mode,
-		.cullMode = config.dynamicState.cull_mode,
-		.frontFace = config.dynamicState.front_face,
-		.depthBiasEnable = config.dynamicState.depth_bias_enable,
+		.cullMode = config.dynamicState.cull_mode, //ignored since dynamic
+		.frontFace = config.dynamicState.front_face, //ignored since dynamic
+		.depthBiasEnable = config.dynamicState.depth_bias_enable, //ignored since dynamic
 		.depthBiasConstantFactor = 0.f,
 		.depthBiasClamp = 0.f,
 		.depthBiasSlopeFactor = 0.f,
@@ -175,13 +177,13 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = config.dynamicState.depth_test_enable,
-		.depthWriteEnable = config.dynamicState.depth_write_enable,
-		.depthCompareOp = config.dynamicState.depth_compare_op,
-		.depthBoundsTestEnable = config.dynamicState.depth_bounds_test_enable,
-		.stencilTestEnable = config.dynamicState.stencil_test_enable,
+		.depthTestEnable = config.dynamicState.depth_test_enable, //ignored since dynamic
+		.depthWriteEnable = config.dynamicState.depth_write_enable, //ignored since dynamic
+		.depthCompareOp = config.dynamicState.depth_compare_op, //ignored since dynamic
+		.depthBoundsTestEnable = config.dynamicState.depth_bounds_test_enable, //ignored since dynamic
+		.stencilTestEnable = config.dynamicState.stencil_test_enable, //ignored since dynamic
 		.front
-		{
+		{ //ignored since dynamic
 			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_pass),
 			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_fail),
 			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_depth_fail),
@@ -190,7 +192,8 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 			.writeMask = config.dynamicState.stencil_front_write_mask,
 			.reference = config.dynamicState.stencil_front_reference,
 		},
-		.back{
+		.back
+		{ //ignored since dynamic
 			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_pass),
 			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_fail),
 			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_depth_fail),
@@ -227,27 +230,46 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 		.blendConstants{0.0f, 0.0f, 0.0f, 0.0f}
 	};
 
-	std::array dynamicStates{
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR,
-		VK_DYNAMIC_STATE_LINE_WIDTH,
-		VK_DYNAMIC_STATE_DEPTH_BIAS,
-		VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-		VK_DYNAMIC_STATE_STENCIL_REFERENCE,
-		VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-		VK_DYNAMIC_STATE_CULL_MODE,
-		VK_DYNAMIC_STATE_FRONT_FACE,
-		VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
-		VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
-		VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
-		VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
-		VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE,
-		VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
-		VK_DYNAMIC_STATE_STENCIL_OP,
-		VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
-		VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
-		VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE,
-	};
+	std::vector<VkDynamicState> dynamicStates;
+	dynamicStates.reserve(config.dynamicState.flags.count());
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ViewportWithCount))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ScissorWithCount))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::LineWidth))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_LINE_WIDTH);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBias))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilCompareMask))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilReference))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilWriteMask))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::CullMode))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_CULL_MODE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::FrontFace))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_FRONT_FACE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveTopology))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthTestEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthWriteEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthCompareOp))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBoundsTestEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilTestEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilOp))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_OP);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBiasEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled))
+		dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE);
 
 	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -689,9 +711,19 @@ void vulkan::GraphicsPipelineBind::set_scissor(VkRect2D scissor)
 	vkCmdSetScissor(m_cmd, 0, 1, &scissor);
 }
 
+void vulkan::GraphicsPipelineBind::set_scissor_with_count(uint32_t count, VkRect2D* scissor)
+{
+	vkCmdSetScissorWithCount(m_cmd, count, scissor);
+}
+
 void vulkan::GraphicsPipelineBind::set_viewport(VkViewport viewport)
 {
 	vkCmdSetViewport(m_cmd, 0, 1, &viewport);
+}
+
+void vulkan::GraphicsPipelineBind::set_viewport_with_count(uint32_t count, VkViewport* viewport)
+{
+	vkCmdSetViewportWithCount(m_cmd, count, viewport);
 }
 
 void vulkan::GraphicsPipelineBind::bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* buffers, const VkDeviceSize* offsets)

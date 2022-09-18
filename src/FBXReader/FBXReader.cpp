@@ -155,6 +155,14 @@ void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 
 	auto* light = node->GetLight();
 	if (light) {
+		auto target = node->GetTarget();
+		Math::vec3 targetTranslate {};
+		if (target) {
+			auto targetTranslation = target->LclTranslation.Get();
+			auto targetRotation = target->LclRotation.Get();
+			auto targetScale = target->LclScaling.Get();
+		}
+
 		auto AreaLightShape = light->AreaLightShape.Get();
 		auto CastLight = light->CastLight.Get();
 		auto CastShadows = light->CastShadows.Get();
@@ -187,6 +195,7 @@ void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 			.translate{ Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] } },
 			.rotate{ Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]} },
 			.scale{ Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]} },
+			.direction { (targetTranslate - Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] }).normalized()}
 		});
 	}
 	auto* mesh = node->GetMesh();

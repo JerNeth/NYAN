@@ -27,6 +27,29 @@ namespace vulkan {
 	};
 
 	struct DynamicGraphicsPipelineState {
+		enum class DynamicState : uint32_t {
+			ViewportWithCount,
+			ScissorWithCount,
+			LineWidth,
+			DepthBias,
+			StencilCompareMask,
+			StencilReference,
+			StencilWriteMask,
+			CullMode,
+			FrontFace,
+			PrimitiveTopology,
+			DepthTestEnabled,
+			DepthWriteEnabled,
+			DepthCompareOp,
+			DepthBoundsTestEnabled,
+			StencilTestEnabled,
+			StencilOp,
+			DepthBiasEnabled,
+			PrimitiveRestartEnabled,
+			RasterizerDiscardEnabled,
+			SIZE
+		};
+		Utility::bitset<static_cast<size_t>(DynamicState::SIZE), DynamicState> flags;
 		VkBool32 depth_write_enable : 1;
 		VkBool32 depth_test_enable : 1;
 		VkBool32 depth_bias_enable : 1;

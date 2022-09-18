@@ -6,6 +6,7 @@
 #include "VulkanWrapper/Image.h"
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/CameraController.h"
+#include "Renderer/Light.h"
 //#include "Renderer/DDGIManager.h"
 using namespace vulkan;
 
@@ -116,6 +117,23 @@ namespace MM {
 		ImGui::DragFloat("Rotational Speed", &movement.rotationalSpeed);
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
 	}
+	template <>
+	void ComponentEditorWidget<nyan::Directionallight>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& light = reg.get<nyan::Directionallight>(e);
+		ImGui::Checkbox("Enabled", &light.enabled);
+		ImGui::ColorEdit3("Color", &light.color.x());
+		ImGui::DragFloat("Intensity", &light.intensity);
+		ImGui::DragFloat3("Direction", &light.direction.x(), 0.05f, -1.f, 1.f);
+	}
+	template <>
+	void ComponentEditorWidget<nyan::Pointlight>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& light = reg.get<nyan::Pointlight>(e);
+		ImGui::ColorEdit3("Color", &light.color.x());
+		ImGui::DragFloat("Intensity", &light.intensity);
+		ImGui::DragFloat("Attenuation", &light.attenuation);
+	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
@@ -155,6 +173,8 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
 	m_editor.registerComponent<DDGIManager::DDGIVolumeParameters>("DDGI Volume");
 	m_editor.registerComponent<CameraMovement>("Camera Controller");
+	m_editor.registerComponent<Directionallight>("Directional Light");
+	m_editor.registerComponent<Pointlight>("Point Light");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}
@@ -276,7 +296,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 	.minDepth = 0,
 	.maxDepth = 1,
 	};
-	pipelineBind.set_viewport(viewport);
+	pipelineBind.set_viewport_with_count(1, &viewport);
 	for (int n = 0; n < draw_data->CmdListsCount; n++)
 	{
 		const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -328,7 +348,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 						push.texId = static_cast<int>(m_fontBind);
 					}
 					pipelineBind.push_constants(push);
-					pipelineBind.set_scissor(scissor);
+					pipelineBind.set_scissor_with_count(1, &scissor);
 					// Draw
 					pipelineBind.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
 				}

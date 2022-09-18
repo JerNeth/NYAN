@@ -37,7 +37,7 @@ struct DirectionalLight {
 	vec3 dir;
 	float intensity;
 	vec3 color;
-	bool enabled;
+	uint enabled;
 };
 
 struct PointLight {
@@ -46,6 +46,7 @@ struct PointLight {
 	vec3 color;
 	float attenuationDistance;
 };
+const uint maxNumPointLights = 12;
 struct Scene {
 	mat4 view;
 	mat4 proj;
@@ -61,7 +62,7 @@ struct Scene {
 	float cameraUpX;
 	float cameraUpY;
 	float cameraUpZ;
-	PointLight pointLights[256];
+	PointLight pointLights[maxNumPointLights];
 };
 
 struct Instance {

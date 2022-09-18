@@ -93,4 +93,8 @@ MaterialData get_material_data(in Material material, in VertexData vertexData)
     return materialData;
 }
 
+vec3 get_viewer_pos(in Scene scene) {
+    return vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+}
+
 #endif

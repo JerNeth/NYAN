@@ -9,6 +9,27 @@
 namespace vulkan {
 
 	constexpr DynamicGraphicsPipelineState defaultDynamicGraphicsPipelineState{
+		.flags {
+			DynamicGraphicsPipelineState::DynamicState::ViewportWithCount,
+			DynamicGraphicsPipelineState::DynamicState::ScissorWithCount,
+			DynamicGraphicsPipelineState::DynamicState::LineWidth,
+			DynamicGraphicsPipelineState::DynamicState::DepthBias,
+			DynamicGraphicsPipelineState::DynamicState::StencilCompareMask,
+			DynamicGraphicsPipelineState::DynamicState::StencilReference,
+			DynamicGraphicsPipelineState::DynamicState::StencilWriteMask,
+			DynamicGraphicsPipelineState::DynamicState::CullMode,
+			DynamicGraphicsPipelineState::DynamicState::FrontFace,
+			//DynamicGraphicsPipelineState::DynamicState::PrimitiveTopology, //Clashes with cull mode on NVIDIA even on 516.94 (Supposedly fixed in 473.50)
+			DynamicGraphicsPipelineState::DynamicState::DepthTestEnabled,
+			DynamicGraphicsPipelineState::DynamicState::DepthWriteEnabled,
+			DynamicGraphicsPipelineState::DynamicState::DepthCompareOp,
+			DynamicGraphicsPipelineState::DynamicState::DepthBoundsTestEnabled,
+			DynamicGraphicsPipelineState::DynamicState::StencilTestEnabled,
+			DynamicGraphicsPipelineState::DynamicState::StencilOp,
+			DynamicGraphicsPipelineState::DynamicState::DepthBiasEnabled,
+			DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled,
+			DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled,
+		},
 		.depth_write_enable {VK_TRUE},
 		.depth_test_enable {VK_TRUE},
 		.depth_bias_enable {VK_FALSE},
@@ -27,7 +48,8 @@ namespace vulkan {
 		.stencil_back_compare_op {},
 
 		.cull_mode {VK_CULL_MODE_BACK_BIT},
-		.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
+		//.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
+		.front_face {VK_FRONT_FACE_CLOCKWISE},
 		.primitive_restart_enable {VK_FALSE},
 		.rasterizer_discard_enable {VK_FALSE},
 		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
@@ -159,7 +181,9 @@ namespace vulkan {
 		void set_rasterizer_discard_enable(bool enabled);
 		void set_primitive_topology(VkPrimitiveTopology topology);
 		void set_scissor(VkRect2D scissor);
+		void set_scissor_with_count(uint32_t count, VkRect2D* scissor);
 		void set_viewport(VkViewport viewport);
+		void set_viewport_with_count(uint32_t count, VkViewport* viewport);
 		void bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, const VkBuffer* buffers, const VkDeviceSize* offsets);
 		void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
 		void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex = 0, uint32_t firstInstance = 0);

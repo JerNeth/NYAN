@@ -391,26 +391,10 @@ nyan::DDGIVisualizer::DDGIVisualizer(vulkan::LogicalDevice& device, entt::regist
 		{
 
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_pipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);
+
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);
 			for (uint32_t volumeId{ 0 }; volumeId < ddgiManager.slot_count(); volumeId++) {
 				if (ddgiManager.get_parameters(volumeId).visualization) {
 					visualize_volume(pipelineBind, volumeId);

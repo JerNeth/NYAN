@@ -55,7 +55,7 @@ void main() {
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
         vec4 worldSpacePos = scene.invView * viewSpacePos;
-        vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+        vec3 viewPos = get_viewer_pos(scene);
         vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
 //        if(dot(normal, viewVec) <= 0) {
 //            normal = -normal;

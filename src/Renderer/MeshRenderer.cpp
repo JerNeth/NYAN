@@ -22,26 +22,10 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	{
 		{
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_staticTangentPipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);
+
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);
 
 			PushConstants instance{
 				.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
@@ -57,26 +41,10 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		}
 		{
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_staticTangentAlphaDiscardPipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);
+
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);
 
 			PushConstants instance{
 				.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
@@ -131,9 +99,6 @@ void nyan::MeshRenderer::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
 	staticTangentConfig.dynamicState.stencil_test_enable = VK_TRUE;
 	staticTangentConfig.dynamicState.stencil_front_reference = 0;
 	staticTangentConfig.dynamicState.stencil_front_write_mask = 0xFF;
@@ -151,6 +116,7 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
+	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
 
 	staticTangentConfig.shaderInstances[1] = r_renderManager.get_shader_manager().get_shader_instance_id("deferredTangentAlphaDiscard_frag");
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentAlphaDiscardPipeline);
@@ -169,26 +135,9 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_staticTangentPipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);				
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);				
 			PushConstants instance{
 					.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
 					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
@@ -248,7 +197,6 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 	};
 	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
 	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_BACK_BIT;
 	staticTangentConfig.dynamicState.stencil_test_enable = VK_FALSE;
 
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);

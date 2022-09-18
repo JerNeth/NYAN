@@ -338,6 +338,14 @@ namespace Math {
 			return *this;
 		}
 
+		constexpr inline Vec<Scalar, 2> xy() const noexcept {
+			assert(("Vector too small", Size > 1));
+			return Vec<Scalar, 2>(m_data[0], m_data[1]);
+		}
+		constexpr inline Vec<Scalar, 3> xyz() const noexcept {
+			assert(("Vector too small", Size > 2));
+			return Vec<Scalar, 3>(m_data[0], m_data[1], m_data[2]);
+		}
 		constexpr inline Scalar& x() noexcept {
 			assert(("Vector too small", Size > 0));
 			return m_data[0];

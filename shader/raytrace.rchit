@@ -37,7 +37,7 @@ void main()
     const MaterialData materialData = get_material_data(material, vertexData);
     
 	DirectionalLight light = scene.dirLight;
-    vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewPos = get_viewer_pos(scene);
     vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
     
     vec4 diffuse = vec4(0.0);

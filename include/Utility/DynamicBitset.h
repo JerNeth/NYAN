@@ -131,24 +131,28 @@ namespace Utility {
 		static constexpr size_t typeSize  = bitSize / bitsPerWord + (bitSize % bitsPerWord != 0);
 		//static_assert(std::is_convertible<T, size_t>::value);
 	public:
-		bitset() : m_data() {
+		constexpr bitset() : m_data() {
 			m_data[0] = 0;
 		}
-		bitset(bitType t) {
+		constexpr bitset(bitType t) {
 			m_data[0] = t;
 		}
 
-		bitset(const bitType& t) {
+		constexpr bitset(const bitType& t) {
 			m_data[0] = t;
 		}
-		bool test(T _idx) const {
+		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
+		constexpr bitset(Tail... args) noexcept {
+			*this = (*this | ... | args);
+		}
+		constexpr bool test(T _idx) const {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
 			const auto bit = 1ull << (idx & bitsMask);
 			return static_cast<decltype(bit)>(word) & bit;
 		}
-		bool only(T _idx) const {
+		constexpr bool only(T _idx) const {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			if constexpr (typeSize > 1) {
@@ -173,7 +177,7 @@ namespace Utility {
 		template<class Head, class... Tail>
 		using are_same = std::conjunction<std::is_same<Head, Tail>...>;
 		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
-		bool any_of(Tail... args) const noexcept {
+		constexpr bool any_of(Tail... args) const noexcept {
 			bitset flags;
 			flags = (flags | ... | args);
 			for (size_t i = 0; i < typeSize; i++) {
@@ -184,7 +188,7 @@ namespace Utility {
 			return false;
 		}
 		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
-		bitset get_and_clear(Tail... args) noexcept {
+		constexpr bitset get_and_clear(Tail... args) noexcept {
 			bitset flags;
 			flags = (flags | ... | args);
 			for (size_t i = 0; i < typeSize; i++) {
@@ -194,13 +198,13 @@ namespace Utility {
 			}
 			return flags;
 		}
-		bitset& set() noexcept {
+		constexpr bitset& set() noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] = static_cast<bitType>(~bitType{0});
 			}
 			return *this;
 		}
-		bitset& set(T _idx) noexcept {
+		constexpr bitset& set(T _idx) noexcept {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
@@ -208,13 +212,13 @@ namespace Utility {
 			word |= static_cast<bitType>(bit);
 			return *this;
 		}
-		bitset& reset() noexcept {
+		constexpr bitset& reset() noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] = 0u;
 			}
 			return *this;
 		}
-		bitset& reset(T _idx) noexcept {
+		constexpr bitset& reset(T _idx) noexcept {
 			const size_t idx = static_cast<size_t>(_idx);
 			assert(idx < bitSize);
 			auto& word = m_data[idx >> bitsPerWord];
@@ -222,24 +226,24 @@ namespace Utility {
 			word &= ~bit;
 			return *this;
 		}
-		operator bool() const noexcept {
+		constexpr operator bool() const noexcept {
 			return any();
 		}
-		size_t count() const noexcept {
+		constexpr size_t count() const noexcept {
 			size_t ret = 0;
 			for (size_t i = 0; i < typeSize; i++) {
 				ret += std::popcount(m_data[i]);
 			}
 			return ret;
 		}
-		unsigned long long to_ullong() const {
+		constexpr unsigned long long to_ullong() const {
 			if constexpr (typeSize == 0)
 				return 0;
 			else {
 				return m_data[0];
 			}
 		}
-		unsigned long to_ulong() const {
+		constexpr unsigned long to_ulong() const {
 			if constexpr (typeSize == 0)
 				return 0;
 			else {
@@ -249,59 +253,59 @@ namespace Utility {
 		[[nodiscard]] constexpr size_t size() const noexcept {
 			return bitSize;
 		}
-		[[nodiscard]] bool any() const noexcept {
+		[[nodiscard]] constexpr bool any() const noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
 				if (m_data[i] != 0)
 					return true;
 			}
 			return false;
 		}
-		[[nodiscard]] bool none() const noexcept {
+		[[nodiscard]] constexpr bool none() const noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
 				if (m_data[i] != 0)
 					return false;
 			}
 			return true;
 		}
-		[[nodiscard]] bool all() const noexcept {
+		[[nodiscard]] constexpr bool all() const noexcept {
 			if constexpr (bitSize == 0)
 				return true;
 
-			constexpr bool no_padding = ((bitSize & bitsMask) == 0);
+			static constexpr bool no_padding = ((bitSize & bitsMask) == 0);
 			for (size_t i = 0; i < typeSize - !no_padding; i++) {
 				if (m_data[i] != ~bitType{0u})
 					return false;
 			}
 			return no_padding || m_data[typeSize - 1] == bitsMask;
 		}
-		bitset& flip() noexcept {
+		constexpr bitset& flip() noexcept {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] = ~m_data[i];
 			}
 			return *this;
 		}
-		bitset operator~() const noexcept {
+		constexpr bitset operator~() const noexcept {
 			return bitset(*this).flip();
 		}
-		bitset& operator^=(const bitset& rhs) {
+		constexpr bitset& operator^=(const bitset& rhs) {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] ^= rhs.m_data[i];
 			}
 			return *this;
 		}
-		bitset& operator&=(const bitset& rhs) {
+		constexpr bitset& operator&=(const bitset& rhs) {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] &= rhs.m_data[i];
 			}
 			return *this;
 		}
-		bitset& operator|=(const bitset& rhs) {
+		constexpr bitset& operator|=(const bitset& rhs) {
 			for (size_t i = 0; i < typeSize; i++) {
 				m_data[i] |= rhs.m_data[i];
 			}
 			return *this;
 		}		
-		bool operator==(const bitset& rhs) const noexcept {
+		constexpr bool operator==(const bitset& rhs) const noexcept {
 			if constexpr (bitSize == 0)
 				return true;
 			return memcmp(m_data.data(), rhs.m_data.data(), typeSize * sizeof(bitType)) == 0;
@@ -311,26 +315,26 @@ namespace Utility {
 	};
 	
 	template<size_t bitSize, typename T>
-	inline bitset<bitSize, T> operator!=(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
+	constexpr inline bitset<bitSize, T> operator!=(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
 		return !(lhs == rhs);
 	}
 	template<size_t bitSize, typename T>
-	inline bitset<bitSize, T> operator^(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
+	constexpr inline bitset<bitSize, T> operator^(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
 		bitset<bitSize, T> ret = lhs;
 		return ret ^= rhs;
 	}
 	template<size_t bitSize, typename T>
-	inline bitset<bitSize, T> operator&(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
+	constexpr inline bitset<bitSize, T> operator&(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
 		bitset<bitSize, T> ret = lhs;
 		return ret &= rhs;
 	}
 	template<size_t bitSize, typename T>
-	inline bitset<bitSize, T> operator|(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
+	constexpr inline bitset<bitSize, T> operator|(const bitset<bitSize, T>& lhs, const bitset<bitSize, T>& rhs) {
 		bitset<bitSize, T> ret = lhs;
 		return ret |= rhs;
 	}
 	template<size_t bitSize, typename T>
-	inline bitset<bitSize, T> operator|(const bitset<bitSize, T>& lhs, const T& rhs) {
+	constexpr inline bitset<bitSize, T> operator|(const bitset<bitSize, T>& lhs, const T& rhs) {
 		bitset<bitSize, T> ret;
 		ret.set(rhs);
 		return ret |= lhs;

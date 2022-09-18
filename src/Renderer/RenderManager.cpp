@@ -1,4 +1,5 @@
 #include "Renderer/RenderManager.h"
+#include "Renderer/Light.h"
 #include "Utility/Exceptions.h"
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/CommandBuffer.h"
@@ -193,13 +194,49 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 	}
 
 	{
-
-		nyan::shaders::DirectionalLight light;
-		light.enabled = true;
-		light.color = Math::vec3{ 1, 1, 1 };
-		light.intensity = 1;
-		light.dir = Math::vec3{ 0.577, 0.577, 0.577 };
-		m_sceneManager.set_dirlight(light);
+		{
+			nyan::shaders::DirectionalLight light;
+			light.enabled = true;
+			light.color = Math::vec3{ 1, 1, 1 };
+			light.intensity = 1;
+			light.dir = Math::vec3{ -0.577, -0.577, -0.577 };
+			m_sceneManager.set_dirlight(light);
+		}
+		{
+			auto view = m_registry.view<const Directionallight>();
+			for (const auto& [entity, dirLight] : view.each()) {
+				nyan::shaders::DirectionalLight light;
+				light.enabled = dirLight.enabled;
+				light.color = dirLight.color;
+				light.intensity = dirLight.intensity;
+				light.dir = dirLight.direction;
+				m_sceneManager.set_dirlight(light);
+			}
+		}
+		{
+			auto view = m_registry.view<Pointlight>();
+			for (const auto& it : view.each()) {
+				const auto& entity = it._Myfirst._Val;
+				auto& pointLight = it._Get_rest()._Myfirst._Val;
+				auto transformMatrix = Math::Mat<float, 4, 4, false>::identity();
+				for (auto parent = entity; parent != entt::null; parent = m_registry.all_of<Parent>(parent) ? m_registry.get<Parent>(parent).parent : entt::null) {
+					if (m_registry.all_of<Transform>(parent)) {
+						const auto& parentTransform = m_registry.get<Transform>(parent);
+						transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position) * transformMatrix;
+					}
+				}
+				auto pos = transformMatrix *Math::vec4(0, 0, 0, 1);
+				nyan::shaders::PointLight light;
+				light.pos = pos.xyz();
+				light.color = pointLight.color;
+				light.intensity = pointLight.intensity;
+				light.attenuationDistance = pointLight.attenuation;
+				if(pointLight.lightId == ~0)
+					pointLight.lightId = m_sceneManager.add_point_light(light);
+				else
+					m_sceneManager.set_point_light(pointLight.lightId, light);
+			}
+		}
 	}
 	//Order doesn't matter
 	m_ddgiManager.update();

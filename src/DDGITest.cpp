@@ -40,12 +40,12 @@ int main() {
 		Transform{
 			.position{},
 			.scale{1.f},
-			.orientation{0, 180, 0},
+			.orientation{0, 0, 0},
 		});
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 350.f,960.f},
+			.position{600.f, 350.f,-960.f},
 			.scale{1.f},
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
@@ -111,7 +111,10 @@ int main() {
 				.parent {parent},
 			});
 		registry.emplace<std::string>(entity, a.name);
-		registry.emplace<DeferredAlphaTest>(entity);
+		if(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos)
+			registry.emplace<DeferredAlphaTest>(entity);
+		else
+			registry.emplace<Deferred>(entity);
 
 	}
 
@@ -131,28 +134,29 @@ int main() {
 		if (light.type == LightParameters::Type::Directional)
 			registry.emplace<Directionallight>(entity, Directionallight
 				{
-				.shadows{ true },
-				.color {light.color},
-				.intensity {light.intensity},
-				.direction {Math::vec3 {0, 0, 1}},
+					.enabled {true},
+					.shadows{ true },
+					.color {light.color},
+					.intensity {light.intensity},
+					.direction {light.direction},
 				});
 		if (light.type == LightParameters::Type::Point)
 			registry.emplace<Pointlight>(entity, Pointlight
 				{
-				.shadows{ true },
-				.color {light.color},
-				.intensity {light.intensity},
-				.attenuation {50}
+					.shadows{ true },
+					.color {light.color},
+					.intensity {light.intensity},
+					.attenuation {500}
 				});
 		if (light.type == LightParameters::Type::Spot)
 			registry.emplace<Spotlight>(entity, Spotlight
 				{
-				.shadows{ true },
-				.color {light.color},
-				.intensity {light.intensity},
-				.direction {Math::vec3 {0, 0, 1}},
-				.cone {45},
-				.attenuation {50},
+					.shadows{ true },
+					.color {light.color},
+					.intensity {light.intensity},
+					.direction {Math::vec3 {0, 0, 1}},
+					.cone {45},
+					.attenuation {500},
 				});
 	}
 

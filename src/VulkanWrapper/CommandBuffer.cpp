@@ -38,30 +38,57 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 	vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
 
 	const auto& dynamicState = pipeline->get_dynamic_state();
-	vkCmdSetDepthBiasEnable(m_handle, dynamicState.depth_bias_enable);
-	vkCmdSetDepthWriteEnable(m_handle, dynamicState.depth_write_enable);
-	vkCmdSetDepthTestEnable(m_handle, dynamicState.depth_test_enable);
-	vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depth_bounds_test_enable);
-	vkCmdSetDepthCompareOp(m_handle, dynamicState.depth_compare_op);
-	vkCmdSetStencilTestEnable(m_handle, dynamicState.stencil_test_enable);
-	vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
-	vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
-	vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
-	vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
-	vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
-	vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
-	vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
-	vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
-	vkCmdSetCullMode(m_handle, dynamicState.cull_mode);
-	vkCmdSetFrontFace(m_handle, dynamicState.front_face);
-	vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitive_restart_enable);
-	vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizer_discard_enable);
-	vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitive_topology);
+	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ViewportWithCount))
+	//	dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ScissorWithCount))
+	//	dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::LineWidth))
+	//	dynamicStates.push_back(VK_DYNAMIC_STATE_LINE_WIDTH);
+	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBias))
+	//	dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilCompareMask)) {
+		vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
+		vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
+	}
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilReference)) {
+		vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
+		vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
+	}
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilWriteMask)) {
+		vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
+		vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
+	}
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::CullMode))
+		vkCmdSetCullMode(m_handle, dynamicState.cull_mode);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::FrontFace))
+		vkCmdSetFrontFace(m_handle, dynamicState.front_face);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveTopology))
+		vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitive_topology);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthTestEnabled))
+		vkCmdSetDepthTestEnable(m_handle, dynamicState.depth_test_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthWriteEnabled))
+		vkCmdSetDepthWriteEnable(m_handle, dynamicState.depth_write_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthCompareOp))
+		vkCmdSetDepthCompareOp(m_handle, dynamicState.depth_compare_op);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBoundsTestEnabled))
+		vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depth_bounds_test_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilTestEnabled))
+		vkCmdSetStencilTestEnable(m_handle, dynamicState.stencil_test_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilOp)) {
+		vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
+		vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
+	}
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBiasEnabled))
+		vkCmdSetDepthBiasEnable(m_handle, dynamicState.depth_bias_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled))
+		vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitive_restart_enable);
+	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled))
+		vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizer_discard_enable);
 
 	auto set = r_device.get_bindless_set().get_set();
 	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
-	return GraphicsPipelineBind(m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_GRAPHICS };
 }
 
 vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(PipelineId pipelineIdentifier)
@@ -72,7 +99,7 @@ vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(Pipelin
 	auto set = r_device.get_bindless_set().get_set();
 	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
-	return ComputePipelineBind(m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_COMPUTE);
+	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_COMPUTE };
 }
 
 vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(PipelineId pipelineIdentifier)
@@ -81,7 +108,7 @@ vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(P
 	vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, *pipeline);
 	auto set = r_device.get_bindless_set().get_set();
 	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
-	return RaytracingPipelineBind(m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
+	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR };
 }
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size)

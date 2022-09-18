@@ -6,6 +6,7 @@
 #include "structs.h"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
+#include "extracts.glsl"
 #include "lighting.glsl"
 #include "DDGI/ddgi_sampling.glsl"
 
@@ -31,7 +32,82 @@ layout(std430, push_constant) uniform PushConstants
 } constants;
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-layout(location = 1) rayPayloadEXT float shadowed;
+layout(location = 1) rayPayloadEXT float visibility;
+
+
+float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
+{
+    visibility = 0.f;
+    uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+    float tMin     = 0.01;
+	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
+            rayFlags,       // rayFlags
+            0xFF,           // cullMask
+            0,              // sbtRecordOffset
+            0,              // sbtRecordStride
+            0,              // missIndex
+            shadingData.worldPos.xyz + shadingData.shadingNormal * 0.02, // ray origin
+            tMin,           // ray min range
+            dir.xyz,  // ray direction
+            tMax,           // ray max range
+            1               // payload (location = 0)
+        );
+    return visibility;
+    //return 1.0f;
+}
+const float minLight = 1e-5;
+void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse, inout vec3 specular) 
+{
+    for(int i = 0; i < maxNumPointLights; i++) 
+    {
+        PointLight light = scene.pointLights[i];
+        vec3 lightDir = light.pos - shadingData.worldPos;
+        float dist = length(lightDir);
+        if(dist > light.attenuationDistance) //Something off with worldPos I think
+            continue;
+
+        lightDir /= dist;
+        //float lightShadow = light_visibility(shadingData, lightDir,dist);
+        float lightShadow = 1.f;
+        if(lightShadow <= minLight )
+            continue;
+        //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
+        float distRatio = dist / light.attenuationDistance;
+        distRatio *= distRatio;
+        distRatio *= distRatio;
+        float falloff = min(max(1.f - distRatio, 0.0f), 1.0f);
+        falloff *= falloff;
+        falloff *= 1.f / (dist * dist + 1.f);
+        LightData lightData;
+        lightData.dir = lightDir;
+        lightData.intensity = light.intensity * falloff;
+        lightData.color = light.color;
+        //diffuse += light.color;
+        calc_light(lightData, shadingData, diffuse, specular);
+    }
+}
+
+void direct_lighting(in Scene scene, in ShadingData shadingData, out vec3 diffuse, out vec3 specular)
+{
+    diffuse = vec3(0.f);
+    specular = vec3(0.f);
+    if(scene.dirLight.enabled > 0) 
+    {
+        float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
+        //float lightShadow = 1;
+        if(lightShadow > minLight) {
+            LightData lightData;
+            lightData.dir = -scene.dirLight.dir;
+            lightData.intensity = scene.dirLight.intensity;
+            lightData.color = scene.dirLight.color;
+            calc_light(lightData, shadingData, diffuse, specular);
+        }
+    }
+    if(scene.numPointLights > 0)
+    {
+        point_lights(scene, shadingData, diffuse, specular);
+    }
+}
 
 void main() 
 {    
@@ -61,49 +137,15 @@ void main()
 
         vec4 diffuseAccum  = vec4(0.0);
         vec4 specularAccum = vec4(0.0);
+        ShadingData shadingData;
+        shadingData.albedo = albedo.xyz;
+        shadingData.alpha = roughness * roughness;
+        shadingData.outLightDir = normalize(get_viewer_pos(scene) - worldSpacePos.xyz);
+        shadingData.metalness = metalness;
+        shadingData.shadingNormal = normal;
+        shadingData.worldPos = worldSpacePos.xyz;
+        direct_lighting(scene,shadingData, diffuseAccum.xyz, specularAccum.xyz);
         
-        vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
-        vec3 viewVec = normalize(viewPos - worldSpacePos.xyz);
-//        if(dot(normal, viewVec) < 0) {
-//            normal = -normal;
-//        }
-        float NdotL = max(dot(normal, light.dir), 0.0);
-        if(NdotL > 0) {
-            
-            vec4 diffuse = vec4(0.0);
-            vec4 specular= vec4(0.0);
-            calcDirLight(albedo.xyz, metalness, roughness, viewVec, normal, light, specular, diffuse);
-
-            specular.a = albedo.a;
-            diffuse.a = albedo.a;
-            uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
-            float tMin     = 0.5; //0.5 * (1.0 - NdotL);
-            float tMax     = 10000.0;
-            float shadowAccum = 0.0;
-            int numShadowRays = 1;
-            //vec3 perpL = 0.005 * normalize(vec3(light1.dir.y + light1.dir.z, light1.dir.z - light1.dir.x, -light1.dir.x - light1.dir.y)); //Hairy ball theorem: not guaranteed to always work
-            //vec3 perpR = 0.005 * normalize(cross(light1.dir, perpL));
-            vec3 shadowRayDir;
-            
-            shadowRayDir = normalize(light.dir);
-            shadowed = 0.0;
-            traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-                    rayFlags,       // rayFlags
-                    0xFF,           // cullMask
-                    0,              // sbtRecordOffset
-                    0,              // sbtRecordStride
-                    0,              // missIndex
-                    worldSpacePos.xyz,     // ray origin
-                    tMin,           // ray min range
-                    shadowRayDir,  // ray direction
-                    tMax,           // ray max range
-                    1               // payload (location = 0)
-            );
-            shadowAccum += shadowed / numShadowRays;
-
-            diffuseAccum += diffuse* shadowAccum;
-            specularAccum += specular* shadowAccum;
-        }
         if(metalness < 1.f) {
             vec3 irradiance = sample_ddgi(worldSpacePos.xyz, vec3(0), normal, volume);
             vec3 radiance = albedo.xyz * irradiance * (1.f - metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it

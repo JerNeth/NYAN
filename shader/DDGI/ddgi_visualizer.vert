@@ -32,7 +32,7 @@ void main() {
 	probeIdx = get_probe_index(probeId, volume);
 	centerWorldPos = get_probe_coordinates(probeIdx, volume);
 	worldPos = centerWorldPos;
-	vec3 viewPos = vec3(scene.viewerPosX, scene.viewerPosY, scene.viewerPosZ);
+    vec3 viewPos = get_viewer_pos(scene);
 	vec3 camUp = vec3(scene.cameraUpX, scene.cameraUpY, scene.cameraUpZ);
 	vec3 viewDir = normalize(viewPos - worldPos);
 	vec3 right = normalize(cross(viewDir, camUp));

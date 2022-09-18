@@ -16,6 +16,7 @@ namespace nyan {
 		Math::vec3 translate;
 		Math::vec3 rotate;
 		Math::vec3 scale;
+		Math::vec3 direction;
 	};
 	struct Spotlight {
 		bool shadows;
@@ -30,8 +31,11 @@ namespace nyan {
 		Math::vec3 color;
 		float intensity;
 		float attenuation;
+
+		uint32_t lightId{~0u};
 	};
 	struct Directionallight {
+		bool enabled;
 		bool shadows;
 		Math::vec3 color;
 		float intensity;

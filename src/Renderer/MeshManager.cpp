@@ -298,27 +298,56 @@ nyan::SceneManager::SceneManager(vulkan::LogicalDevice& device) :
 	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 1)
 {
 	add({});
+	auto& scene = get(0);
+	for (auto& light : scene.pointLights) {
+		light = nyan::shaders::PointLight{
+			.pos {0.f, 0.f, 0.f},
+			.intensity {0.f},
+			.color {0.f, 0.f, 0.f},
+			.attenuationDistance {0.f},
+		};
+	}
 }
 
 uint32_t nyan::SceneManager::add_point_light(const nyan::shaders::PointLight& light)
 {
-	auto scene = get(0);
-	auto id = scene.numPointLights++;
-	scene.pointLights[id] = light;
-	return id;
+	auto& scene = get(0);
+	if (scene.numPointLights < nyan::shaders::maxNumPointLights) {
+		auto id = scene.numPointLights++;
+		scene.pointLights[id] = light;
+		return id;
+	}
+	assert(false);
+	return invalidShaderId;
 }
 
 void nyan::SceneManager::set_point_light(uint32_t id, const nyan::shaders::PointLight& light)
 {
-	auto scene = get(0);
-	assert(id < scene.numPointLights);
-	if (id >= scene.numPointLights)
-		return;
+	{
+		const auto& scene = get(0);
+		assert(id < scene.numPointLights);
+		if (id >= scene.numPointLights)
+			return;
+		if (scene.pointLights[id].attenuationDistance == light.attenuationDistance &&
+			scene.pointLights[id].color == light.color &&
+			scene.pointLights[id].intensity == light.intensity &&
+			scene.pointLights[id].pos == light.pos)
+			return;
+	}
+	auto& scene = get(0);
 	scene.pointLights[id] = light;
 }
 
 void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& light)
 {
+	{
+		const auto& scene = get(0);
+		if (scene.dirLight.enabled == light.enabled &&
+			scene.dirLight.color == light.color &&
+			scene.dirLight.intensity == light.intensity &&
+			scene.dirLight.dir == light.dir)
+			return;
+	}
 	get(0).dirLight = light;
 }
 

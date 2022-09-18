@@ -63,6 +63,7 @@ namespace vulkan {
 		//uint32_t height = 0;
 	};
 	class LogicalDevice {
+	private:
 
 		struct WSIState {
 			//VkSemaphore aquire = VK_NULL_HANDLE;
@@ -147,6 +148,11 @@ namespace vulkan {
 			std::vector<VkSemaphore> signalSemaphores;
 			std::vector<FenceHandle> waitForFences;
 
+		};
+	public:
+		struct Viewport {
+			VkViewport viewport;
+			VkRect2D scissor;
 		};
 	public:
 
@@ -234,7 +240,7 @@ namespace vulkan {
 		PipelineLayout2& get_bindless_pipeline_layout() noexcept;
 
 
-
+		Viewport get_swapchain_viewport_and_scissor() const noexcept;
 		uint32_t get_swapchain_image_index() const noexcept;
 		uint32_t get_swapchain_image_count() const noexcept;
 		uint32_t get_swapchain_width() const noexcept;

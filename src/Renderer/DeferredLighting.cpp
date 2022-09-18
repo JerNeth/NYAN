@@ -20,26 +20,10 @@ nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::re
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_deferredPipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);
+
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);
 
 			
 			render(pipelineBind);
@@ -207,26 +191,10 @@ nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::regist
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_compositePipeline);
-			VkViewport viewport{
-			.x = 0,
-			.y = 0,
-			.width = static_cast<float>(r_device.get_swapchain_width()),
-			.height = static_cast<float>(r_device.get_swapchain_height()),
-			.minDepth = 0,
-			.maxDepth = 1,
-			};
-			VkRect2D scissor{
-			.offset {
-				.x = static_cast<int32_t>(0),
-				.y = static_cast<int32_t>(0),
-			},
-			.extent {
-				.width = static_cast<uint32_t>(viewport.width),
-				.height = static_cast<uint32_t>(viewport.height),
-			}
-			};
-			pipelineBind.set_scissor(scissor);
-			pipelineBind.set_viewport(viewport);
+
+			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+			pipelineBind.set_scissor_with_count(1, &scissor);
+			pipelineBind.set_viewport_with_count(1, &viewport);
 
 
 			render(pipelineBind);
