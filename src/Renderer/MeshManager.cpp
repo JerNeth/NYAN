@@ -325,9 +325,9 @@ void nyan::SceneManager::set_point_light(uint32_t id, const nyan::shaders::Point
 {
 	{
 		const auto& scene = get(0);
-		assert(id < scene.numPointLights);
-		if (id >= scene.numPointLights)
-			return;
+		//assert(id < scene.numPointLights);
+		//if (id >= scene.numPointLights)
+		//	return;
 		if (scene.pointLights[id].attenuationDistance == light.attenuationDistance &&
 			scene.pointLights[id].color == light.color &&
 			scene.pointLights[id].intensity == light.intensity &&
@@ -335,6 +335,8 @@ void nyan::SceneManager::set_point_light(uint32_t id, const nyan::shaders::Point
 			return;
 	}
 	auto& scene = get(0);
+	if (id >= scene.numPointLights)
+		scene.numPointLights = id + 1;
 	scene.pointLights[id] = light;
 }
 

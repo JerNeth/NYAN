@@ -6,14 +6,14 @@
 namespace Utility {
 	using HashValue = uint64_t;
 	struct Hasher {
-		Hasher() : hash(0xcbf29ce484222325ull){
+		constexpr Hasher() : hash(0xcbf29ce484222325ull){
 		}
-		Hasher(HashValue init) : hash(init){
+		constexpr Hasher(HashValue init) : hash(init){
 
 		}
 		template<typename T>
-		HashValue operator()(const T& t) {
-			static constexpr const HashValue prime = 0x100000001b3ull;
+		constexpr HashValue operator()(const T& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
 			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&t);
 			for (size_t i = 0; i < sizeof(T); i++) {
 				hash ^= static_cast<HashValue>(bytes[i]);
@@ -22,37 +22,46 @@ namespace Utility {
 			return hash;
 		}
 		template<>
-		HashValue operator()(const uint32_t& t) {
-			static constexpr const HashValue prime = 0x100000001b3ull;
+		constexpr HashValue operator()(const std::string& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
+			for (size_t i = 0; i < t.size(); i++) {
+				hash ^= static_cast<HashValue>(t[i]);
+				hash *= prime;
+			}
+			return hash;
+		}
+		template<>
+		constexpr HashValue operator()(const uint32_t& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
 			hash ^= static_cast<HashValue>(t);
 			hash *= prime;
 
 			return hash;
 		}
 		template<>
-		HashValue operator()(const int32_t& t) {
-			static constexpr const HashValue prime = 0x100000001b3ull;
+		constexpr HashValue operator()(const int32_t& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
 			hash ^= static_cast<HashValue>(t);
 			hash *= prime;
 
 			return hash;
 		}
 		template<>
-		HashValue operator()(const int64_t& t) {
-			static constexpr const HashValue prime = 0x100000001b3ull;
+		constexpr HashValue operator()(const int64_t& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
 			hash ^= static_cast<HashValue>(t);
 			hash *= prime;
 
 			return hash;
 		}
 		template<>
-		HashValue operator()(const HashValue& t) {
-			static constexpr const HashValue prime = 0x100000001b3ull;
+		constexpr HashValue operator()(const HashValue& t) {
+			constexpr HashValue prime = 0x100000001b3ull;
 			hash ^= t;
 			hash *= prime;
 			return hash;
 		}
-		HashValue operator()() {
+		constexpr HashValue operator()() {
 			return hash;
 		}
 	private:

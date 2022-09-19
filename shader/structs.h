@@ -55,13 +55,17 @@ struct Scene {
 	mat4 invProj;
 	mat4 invViewProj;
 	DirectionalLight dirLight;
+
 	uint numPointLights;
 	float viewerPosX;
 	float viewerPosY;
 	float viewerPosZ;
+
 	float cameraUpX;
 	float cameraUpY;
 	float cameraUpZ;
+	float pad0;
+
 	PointLight pointLights[maxNumPointLights];
 };
 
@@ -124,6 +128,8 @@ struct DDGIVolume {
 	float visualizerRadius;
 
 	uint enabled;
+	uint visualizeDepth;
+	uint visualizeDirections;
 };
 
 #endif

@@ -137,27 +137,29 @@ const entt::entity& nyan::RenderManager::get_primary_camera() const
 
 void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 {
-	auto view = m_registry.view<const MeshID, const InstanceId>();
-	for (const auto& [entity, meshId, instanceId] : view.each()) {
-		//auto transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(transform.orientation, transform.position);
-		auto transformMatrix = Math::Mat<float, 4, 4, false>::identity();
-		for (auto parent = entity; parent != entt::null; parent = m_registry.all_of<Parent>(parent) ? m_registry.get<Parent>(parent).parent : entt::null) {
-			if (m_registry.all_of<Transform>(parent)) {
-				const auto& parentTransform = m_registry.get<Transform>(parent);
-				transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position) * transformMatrix;
+	{
+		auto view = m_registry.view<const MeshID, const InstanceId>();
+		for (const auto& [entity, meshId, instanceId] : view.each()) {
+			//auto transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(transform.orientation, transform.position);
+			auto transformMatrix = Math::Mat<float, 4, 4, false>::identity();
+			for (auto parent = entity; parent != entt::null; parent = m_registry.all_of<Parent>(parent) ? m_registry.get<Parent>(parent).parent : entt::null) {
+				if (m_registry.all_of<Transform>(parent)) {
+					const auto& parentTransform = m_registry.get<Transform>(parent);
+					transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position) * transformMatrix;
+				}
 			}
-		}
 
-		m_instanceManager.set_transform(instanceId, Math::Mat<float, 3, 4, false>(transformMatrix));
+			m_instanceManager.set_transform(instanceId, Math::Mat<float, 3, 4, false>(transformMatrix));
 
-		auto accHandle = m_meshManager.get_acceleration_structure(meshId);
-		if (accHandle) {
-			auto instance = (*accHandle)->create_instance();
-			m_instanceManager.set_acceleration_structure(instanceId, instance.accelerationStructureReference);
-			m_instanceManager.set_flags(instanceId, instance.flags);
-			m_instanceManager.set_instance_shader_binding_table_record_offset(instanceId, instance.instanceShaderBindingTableRecordOffset);
-			m_instanceManager.set_mask(instanceId, instance.mask);
-			m_instanceManager.set_instance_custom_index(instanceId, meshId);
+			auto accHandle = m_meshManager.get_acceleration_structure(meshId);
+			if (accHandle) {
+				auto instance = (*accHandle)->create_instance();
+				m_instanceManager.set_acceleration_structure(instanceId, instance.accelerationStructureReference);
+				m_instanceManager.set_flags(instanceId, instance.flags);
+				m_instanceManager.set_instance_shader_binding_table_record_offset(instanceId, instance.instanceShaderBindingTableRecordOffset);
+				m_instanceManager.set_mask(instanceId, instance.mask);
+				m_instanceManager.set_instance_custom_index(instanceId, meshId);
+			}
 		}
 	}
 
@@ -196,7 +198,7 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 	{
 		{
 			nyan::shaders::DirectionalLight light;
-			light.enabled = true;
+			light.enabled = false;
 			light.color = Math::vec3{ 1, 1, 1 };
 			light.intensity = 1;
 			light.dir = Math::vec3{ -0.577, -0.577, -0.577 };
@@ -215,6 +217,7 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 		}
 		{
 			auto view = m_registry.view<Pointlight>();
+			uint32_t lightCount{ 0 };
 			for (const auto& it : view.each()) {
 				const auto& entity = it._Myfirst._Val;
 				auto& pointLight = it._Get_rest()._Myfirst._Val;
@@ -231,10 +234,16 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 				light.color = pointLight.color;
 				light.intensity = pointLight.intensity;
 				light.attenuationDistance = pointLight.attenuation;
-				if(pointLight.lightId == ~0)
-					pointLight.lightId = m_sceneManager.add_point_light(light);
-				else
-					m_sceneManager.set_point_light(pointLight.lightId, light);
+				m_sceneManager.set_point_light(lightCount++, light);
+			}
+
+			for (; lightCount < nyan::shaders::maxNumPointLights; ++lightCount) {
+				m_sceneManager.set_point_light(lightCount, nyan::shaders::PointLight{
+						.pos {0.f, 0.f, 0.f},
+						.intensity {0.f},
+						.color {0.f, 0.f, 0.f},
+						.attenuationDistance {0.f},
+					});
 			}
 		}
 	}

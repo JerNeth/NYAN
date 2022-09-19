@@ -78,7 +78,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		return vec3(0.05f);
 	float weightSum = 0.f;
 
-	vec3 biasedWorldPos = worldPos + bias;
+	vec3 biasedWorldPos = worldPos + bias * volume.shadowBias;
 	
 	vec3 spacing = vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
@@ -135,16 +135,16 @@ vec3 sample_ddgi(vec3 worldPos,
 			//Pretty sure we don't need max here since variance is positive and v² is also positive
 			chebyshev = chebyshev * chebyshev * chebyshev;
 		}
-		weight *= max(0.05f, chebyshev);
+		weight *= max(0.02f, chebyshev);
 
 		weight = max(1e-6f, weight);
 
 //		Originally crush tiny weights because of log perception
-//		const float threshold = 0.2f;
-//		if(weight < threshold)
-//		{
-//			weight *= weight * weight * (1.f / (threshold * threshold));
-//		}
+		const float threshold = 0.2f;
+		if(weight < threshold)
+		{
+			weight *= weight * weight * (1.f / (threshold * threshold));
+		}
 
 		weight *= trilinearWeight;
 		//TODO maybe do gamma

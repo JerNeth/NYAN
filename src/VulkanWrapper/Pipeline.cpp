@@ -102,6 +102,11 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 	for (uint32_t i = 0; i < config.shaderCount; i++)
 		shaders.push_back(parent.get_shader_storage().get_instance(config.shaderInstances[i])->get_stage_info());
 
+	for (auto shader1 = shaders.begin(); shader1 != shaders.end(); ++shader1)
+		for (auto shader2 = shader1 + 1; shader2 != shaders.end(); ++shader2)
+			assert(shader1->stage != shader2->stage);
+
+
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 	bindingDescriptions.reserve(config.vertexInputCount);

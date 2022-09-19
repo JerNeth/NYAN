@@ -32,6 +32,8 @@ namespace nyan {
 			RenderResource::Id irradianceResource{};
 			bool enabled{ true };
 			bool visualization{ true };
+			bool visualizeDepth{ false };
+			bool visualizeDirections{ false };
 
 
 			uint32_t ddgiVolume {nyan::InvalidBinding};

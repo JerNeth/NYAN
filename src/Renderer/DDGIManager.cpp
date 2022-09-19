@@ -50,6 +50,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
+			.visualizeDepth {parameters.visualizeDepth},
+			.visualizeDirections {parameters.visualizeDirections},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -158,7 +160,7 @@ void nyan::DDGIManager::update()
 
 		const auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 
-		if(	deviceVolume.enabled != parameters.enabled ||
+		if(	(deviceVolume.enabled != 0) != parameters.enabled ||
 			deviceVolume.spacingX != parameters.spacing[0] ||
 			deviceVolume.spacingY != parameters.spacing[1] ||
 			deviceVolume.spacingZ != parameters.spacing[2] ||
@@ -176,7 +178,9 @@ void nyan::DDGIManager::update()
 			deviceVolume.hysteresis != parameters.hysteresis ||
 			deviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
 			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
-			deviceVolume.visualizerRadius != parameters.visualizerRadius)
+			deviceVolume.visualizerRadius != parameters.visualizerRadius ||
+			deviceVolume.visualizeDepth != parameters.visualizeDepth ||
+			deviceVolume.visualizeDirections != parameters.visualizeDirections)
 			parameters.dirty = true;
 
 		if (!parameters.dirty)
@@ -205,6 +209,8 @@ void nyan::DDGIManager::update()
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
+			.visualizeDepth {parameters.visualizeDepth},
+			.visualizeDirections {parameters.visualizeDirections},
 		};
 		parameters.dirty = false;
 		update_spacing(deviceVolume2);

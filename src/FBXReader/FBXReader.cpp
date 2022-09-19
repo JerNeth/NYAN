@@ -210,11 +210,11 @@ void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	assert(mesh->GetElementUVCount());
 	assert(mesh->GetElementTangentCount());
 
-	auto normals = mesh->GetElementNormal(0);
-	auto uvs = mesh->GetElementUV(0);
-	auto tangents = mesh->GetElementTangent(0);
-	auto binormals = mesh->GetElementBinormal(0);
-	auto materials = mesh->GetElementMaterial(0);
+	auto* normals = mesh->GetElementNormal(0);
+	auto* uvs = mesh->GetElementUV(0);
+	auto* tangents = mesh->GetElementTangent(0);
+	auto* binormals = mesh->GetElementBinormal(0);
+	auto* materials = mesh->GetElementMaterial(0);
 
 
 	//ret.name = 
@@ -222,18 +222,20 @@ void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	//std::cout << mesh->GetName() << ' ';
 
 	auto beginRetVec = retMeshes.size();
-	auto& materialArray = materials->FbxGeometryElementMaterial::ParentClass::GetDirectArray();
-	for (int i = 0; i < materialArray.GetCount(); i++) {
-		fbxsdk::FbxSurfaceMaterial* mat = materialArray.GetAt(i);
+	if (materials) {
+		auto& materialArray = materials->FbxGeometryElementMaterial::ParentClass::GetDirectArray();
+		for (int i = 0; i < materialArray.GetCount(); i++) {
+			fbxsdk::FbxSurfaceMaterial* mat = materialArray.GetAt(i);
 
-		retMeshes.push_back(nyan::Mesh
-			{
-				.name { node->GetName() + std::string(mat->GetName()) },
-				.material { mat->GetName() },
-				.translate { Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] } },
-				.rotate { Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]} },
-				.scale { Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]} },
-			});
+			retMeshes.push_back(nyan::Mesh
+				{
+					.name { node->GetName() + std::string(mat->GetName()) },
+					.material { mat->GetName() },
+					.translate { Math::vec3{translation.mData[0],translation.mData[1], translation.mData[2] } },
+					.rotate { Math::vec3{rotation.mData[0],rotation.mData[1], rotation.mData[2]} },
+					.scale { Math::vec3{scale.mData[0],scale.mData[1], scale.mData[2]} },
+				});
+		}
 	}
 
 	//materials->
@@ -242,6 +244,9 @@ void Utility::FBXReader::parse_node(fbxsdk::FbxNode* node, std::vector<nyan::Mes
 	for (int poly = 0, polyCount = mesh->GetPolygonCount(); poly < polyCount; poly++) {
 		int idx = poly;
 		//assert(materials->GetMappingMode() == FbxGeometryElement::eByPolygon);
+		assert(materials);
+		if (!materials)
+			continue;
 		if (materials->GetReferenceMode() == FbxGeometryElement::eIndexToDirect) {
 			idx = materials->GetIndexArray()[idx];
 		}

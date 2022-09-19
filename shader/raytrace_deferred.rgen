@@ -61,14 +61,13 @@ void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse
     for(int i = 0; i < maxNumPointLights; i++) 
     {
         PointLight light = scene.pointLights[i];
-        vec3 lightDir = light.pos - shadingData.worldPos;
+        vec3 lightDir = light.pos.xyz - shadingData.worldPos;
         float dist = length(lightDir);
-        if(dist > light.attenuationDistance) //Something off with worldPos I think
+        if(dist > light.attenuationDistance)
             continue;
 
         lightDir /= dist;
-        //float lightShadow = light_visibility(shadingData, lightDir,dist);
-        float lightShadow = 1.f;
+        float lightShadow = light_visibility(shadingData, lightDir,dist);
         if(lightShadow <= minLight )
             continue;
         //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
@@ -81,8 +80,7 @@ void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse
         LightData lightData;
         lightData.dir = lightDir;
         lightData.intensity = light.intensity * falloff;
-        lightData.color = light.color;
-        //diffuse += light.color;
+        lightData.color = light.color.rgb;
         calc_light(lightData, shadingData, diffuse, specular);
     }
 }
@@ -147,7 +145,7 @@ void main()
         direct_lighting(scene,shadingData, diffuseAccum.xyz, specularAccum.xyz);
         
         if(metalness < 1.f) {
-            vec3 irradiance = sample_ddgi(worldSpacePos.xyz, vec3(0), normal, volume);
+            vec3 irradiance = sample_ddgi(worldSpacePos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
             vec3 radiance = albedo.xyz * irradiance * (1.f - metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
             diffuseAccum.xyz += radiance;
         }

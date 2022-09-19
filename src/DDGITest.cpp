@@ -30,7 +30,8 @@ int main() {
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	std::vector<nyan::LightParameters> lights;
-	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	reader.parse_meshes("test.fbx", meshes, materials, lights);
+	//reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
 	//reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
 	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
@@ -38,22 +39,33 @@ int main() {
 	auto parent = registry.create();
 	registry.emplace<Transform>(parent,
 		Transform{
-			.position{},
+			.position{0.f, 0.f, 0.f},
 			.scale{1.f},
 			.orientation{0, 0, 0},
 		});
 	auto camera = registry.create();
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{600.f, 350.f,-960.f},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 350.f,-960.f},
+			.position{0.f, 10.f,  5.f},
 			.scale{1.f},
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
 
+	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
+	//		.spacing {500.f, 500.f, 500.f},
+	//		.origin {-2000.f, 0.f, -7500.f },
+	//		.probeCount {12, 4, 18},
+	//	});
 	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
-			.spacing {500.f, 500.f, 500.f},
-			.origin {-2000.f, 0.f, -7500.f },
-			.probeCount {12, 4, 18},
+			.spacing {57.5f, 25.f, 57.5f},
+			.origin {-500, 0.f, -500.f },
+			.probeCount {18, 4, 18},
 		});
 	//registry.emplace<Transform>(camera,
 	//	Transform{

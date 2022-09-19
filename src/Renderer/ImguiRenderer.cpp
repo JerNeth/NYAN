@@ -89,9 +89,11 @@ namespace MM {
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius,0.1, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Enabled", &volume.enabled);
 		ImGui::Checkbox("Visualization Enabled", &volume.visualization);
+		ImGui::Checkbox("Visualizate Depth", &volume.visualizeDepth);
+		ImGui::Checkbox("Visualizate Directions", &volume.visualizeDirections);
 		if (volume.ddgiVolume != ~0) {
 			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
 			ImGui::Text("Irradiance Texture");

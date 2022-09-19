@@ -168,7 +168,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.randomRotation {sqrt(1- u) * sin(Math::pi_2 * v), sqrt(1-u) * cos(Math::pi_2 * v),
 									sqrt(u) * sin(Math::pi_2*w), sqrt(u) * cos(Math::pi_2 * w)}
 			};
-			assert(resource.handle); 	
+			assert(resource.handle);
 
 
 			 
@@ -213,7 +213,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(depthPipelineId);
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
-				cmd.barrier2(barriers.size(), barriers.data());
+				cmd.barrier2(static_cast<uint32_t>(barriers.size()), barriers.data());
 
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
 				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, 1);
@@ -275,8 +275,8 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 	bind.push_constants(constants);
 
 	assert(numRays * numRays <= r_device.get_physical_device().get_ray_tracing_pipeline_properties().maxRayDispatchInvocationCount);
-	auto groupsSize = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize;
-	auto groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	const auto* const groupsSize = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize;
+	const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(numRays <= groupsSize[0] * groupsCount[0]);
 	assert(numProbes <= groupsSize[1] * groupsCount[1]);
 	bind.trace_rays(m_rtPipeline, numRays, numProbes, 1);
@@ -285,7 +285,7 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
-	auto groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(probeCountX <= groupsCount[0]);
 	assert(probeCountY <= groupsCount[1]);
 	assert(probeCountZ <= groupsCount[2]);

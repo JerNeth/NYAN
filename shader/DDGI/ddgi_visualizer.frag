@@ -49,22 +49,32 @@ void main() {
     vec3 sphereDir = normalize(surfacePos - centerWorldPos);
     
 	vec2 octCoords = get_octahedral_coords(sphereDir);
-	vec2 irradianceUV = get_probe_uv(ivec3(probeIdx), octCoords, volume.irradianceProbeSize, volume);
+    vec3 probeColor;
+    if(volume.visualizeDepth != 0) {
+	    vec2 depthUv = get_probe_uv(ivec3(probeIdx), octCoords, volume.depthProbeSize, volume);
 
-	vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
+	    vec3 probeDepth = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUv).rrr;
+        probeColor = probeDepth / length(vec3(volume.spacingX, volume.spacingY, volume.spacingZ));
 
-    for(int i = 0; i < volume.raysPerProbe; i++) {
-        vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(i, volume));
-        if(dot(sphereDir, direction) > 0.99999)  {
-            probeIrradiance = vec3(1.0f);
-            break;
+    } else {
+	    vec2 irradianceUV = get_probe_uv(ivec3(probeIdx), octCoords, volume.irradianceProbeSize, volume);
+
+	    vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
+        probeColor = probeIrradiance;
+    }
+    if(volume.visualizeDirections != 0) {
+        for(int i = 0; i < volume.raysPerProbe; i++) {
+            vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(i, volume));
+            if(dot(sphereDir, direction) > 0.99999)  {
+                probeColor = 1.f - probeColor;
+                break;
+            }
         }
     }
-    
     vec4 pos = vec4(scene.proj * scene.view * vec4(surfacePos, 1.0));
 	gl_FragDepth = pos.z / pos.w;
 
     outSpecular =  vec4(0, 0, 0, 0);
-    outDiffuse =vec4(probeIrradiance, 1); 
+    outDiffuse =vec4(probeColor, 1); 
    // outDiffuse = vec4(0, 1, 0, alpha);
 }

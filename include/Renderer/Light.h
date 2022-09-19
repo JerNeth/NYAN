@@ -31,8 +31,6 @@ namespace nyan {
 		Math::vec3 color;
 		float intensity;
 		float attenuation;
-
-		uint32_t lightId{~0u};
 	};
 	struct Directionallight {
 		bool enabled;
