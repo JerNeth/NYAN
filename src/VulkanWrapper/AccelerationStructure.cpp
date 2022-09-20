@@ -54,7 +54,7 @@ bool vulkan::AccelerationStructure::is_compactable() const noexcept
 	return m_info.createFlags;
 }
 
-VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instance() const noexcept
+VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instance(uint32_t sbtOffset) const noexcept
 {
 	VkAccelerationStructureInstanceKHR instance {
 		.transform {
@@ -66,7 +66,7 @@ VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instanc
 		},
 		.instanceCustomIndex = 0, //gl_InstanceCustomIndex != gl_InstanceID (latter = idx into built tlas)
 		.mask = 0xFFu,
-		.instanceShaderBindingTableRecordOffset = 0,
+		.instanceShaderBindingTableRecordOffset = sbtOffset,
 		.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
 		.accelerationStructureReference = m_reference
 	};

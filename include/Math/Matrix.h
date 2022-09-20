@@ -170,8 +170,17 @@ namespace Math {
 		constexpr inline Scalar determinante() const;
 		constexpr inline bool inverse(Mat& res) const;
 
-		constexpr static Mat eye(const Scalar& val);
-		constexpr static Mat identity();
+		constexpr static Mat eye(const Scalar& val) 
+		{
+			Mat ret {0};
+			for (int i = 0; i < min(Size_x, Size_y); i++)
+				ret.at(i, i) = val;
+			return ret;
+		}
+		constexpr inline static Mat identity() 
+		{
+			return Mat::eye(1);
+		}
 		template<size_t Size>
 		constexpr void set_col(Vec<Scalar, Size> column, size_t colNum = 0, size_t offset = 0) {
 			assert(colNum < Size_x);

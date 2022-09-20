@@ -14,6 +14,11 @@ layout(std430, push_constant) uniform PushConstants
 {
     uint accBinding;
 	uint sceneBinding;
+	uint meshBinding;
+    uint ddgiBinding;
+    uint ddgiCount;
+    uint ddgiIndex;
+
     uint albedoBinding;
     uint albedoSampler;
     uint normalBinding;
@@ -26,9 +31,6 @@ layout(std430, push_constant) uniform PushConstants
     uint stencilSampler;
     uint diffuseImageBinding;
     uint specularImageBinding;
-    uint ddgiBinding;
-    uint ddgiCount;
-    uint ddgiIndex;
 } constants;
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
@@ -38,7 +40,7 @@ layout(location = 1) rayPayloadEXT float visibility;
 float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
 {
     visibility = 0.f;
-    uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+    uint  rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
     float tMin     = 0.01;
 	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
             rayFlags,       // rayFlags

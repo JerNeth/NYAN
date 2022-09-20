@@ -19,6 +19,16 @@ nyan::Renderpass::~Renderpass()
 		r_graph.r_device.frame().recycle_semaphore(waitInfo.semaphore);
 }
 
+Rendergraph& nyan::Renderpass::get_graph() noexcept
+{
+	return r_graph;
+}
+
+const Rendergraph& nyan::Renderpass::get_graph() const noexcept
+{
+	return r_graph;
+}
+
 void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type readType)
 {
 	assert(r_graph.resource_exists(id));
@@ -255,7 +265,7 @@ void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBuffer& cmd)
 	if constexpr (debugBarriers) {
 		auto log = Utility::log();
 		log.format("Pre Pass \"{}\": ", m_name);
-		for (int i = m_imageBarriers2.preIndex; i < m_imageBarriers2.postIndex; i++)
+		for (auto i = m_imageBarriers2.preIndex; i < m_imageBarriers2.postIndex; i++)
 			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
 	}
 }
@@ -284,7 +294,7 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 	if constexpr (debugBarriers) {
 		auto log = Utility::log();
 		log.format("Post Pass \"{}\": ", m_name);
-		for (int i = m_imageBarriers2.postIndex; i < m_imageBarriers2.barriers.size(); i++)
+		for (auto i = m_imageBarriers2.postIndex; i < m_imageBarriers2.barriers.size(); i++)
 			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
 	}
 }

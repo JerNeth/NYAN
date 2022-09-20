@@ -46,6 +46,10 @@ namespace nyan {
 		struct PushConstants {
 			uint32_t accBinding;
 			uint32_t sceneBinding;
+			uint32_t meshBinding;
+			uint32_t ddgiBinding;
+			uint32_t ddgiCount;
+			uint32_t ddgiIndex;
 			uint32_t albedoBinding;
 			uint32_t albedoSampler;
 			uint32_t normalBinding;
@@ -58,9 +62,6 @@ namespace nyan {
 			uint32_t stencilSampler;
 			uint32_t diffuseImageBinding;
 			uint32_t specularImageBinding;
-			uint32_t ddgiBinding;
-			uint32_t ddgiCount;
-			uint32_t ddgiIndex;
 		};
 	public:
 		DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,

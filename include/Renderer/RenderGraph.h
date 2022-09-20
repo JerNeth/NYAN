@@ -147,6 +147,8 @@ namespace nyan {
 		Renderpass& operator=(const Renderpass&) = delete;
 		Renderpass& operator=(Renderpass&&) = default;
 		~Renderpass();
+		Rendergraph& get_graph() noexcept;
+		const Rendergraph& get_graph() const noexcept;
 
 		void add_read(RenderResource::Id id, Renderpass::Read::Type readType = Read::Type::ImageColor);
 		void add_attachment(RenderResource::Id id, bool clear = false);

@@ -35,7 +35,7 @@ layout(std430, push_constant) uniform PushConstants
 float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
 {
     visibility = 0.f;
-    uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+    uint  rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
     float tMin     = 0.02;
 	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
             rayFlags,       // rayFlags
@@ -97,7 +97,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
         float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
         if(lightShadow > minLight) {
             LightData lightData;
-            lightData.dir = scene.dirLight.dir;
+            lightData.dir = -scene.dirLight.dir;
             lightData.intensity = scene.dirLight.intensity;
             lightData.color = scene.dirLight.color;
             diffuse += diffuse_light(lightData, shadingData);
@@ -134,7 +134,7 @@ void main()
 	vec3 probeCords = get_probe_coordinates(probeIdx, volume);
 	vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(rayIdx, volume));
 
-    uint  rayFlags = gl_RayFlagsOpaqueEXT;
+    uint  rayFlags = 0;
     float tMin     = 0.001;
     float tMax     = volume.maxRayDistance;
 	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure

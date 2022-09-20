@@ -137,6 +137,10 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 	PushConstants constants{
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
+		.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+		.ddgiBinding {ddgiManager.get_binding()},
+		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
+		.ddgiIndex {0},
 		.albedoBinding {r_pass.get_read_bind(m_gbuffer.albedo)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalBinding {r_pass.get_read_bind(m_gbuffer.normal)},
@@ -149,13 +153,21 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.diffuseImageBinding {writeBindDiffuse},
 		.specularImageBinding {writeBindSpecular},
-		.ddgiBinding {ddgiManager.get_binding()},
-		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
-		.ddgiIndex {0},
 		
 	};
+	const auto& writeSpecular = r_pass.get_graph().get_resource(m_lighting.specular);
+	const auto& attachment = std::get<ImageAttachment>(writeSpecular.attachment);
+	uint32_t width {0}, height {0};
+	if (attachment.size == ImageAttachment::Size::Swapchain) {
+		width = attachment.width * r_device.get_swapchain_width();
+		height = attachment.height * r_device.get_swapchain_height();
+	}
+	else {
+		width = static_cast<uint32_t>(attachment.width);
+		height = static_cast<uint32_t>(attachment.height);
+	}
 	bind.push_constants(constants);
-	bind.trace_rays(m_pipeline, 1920, 1080, 1);
+	bind.trace_rays(m_pipeline, width, height, 1);
 
 }
 
@@ -166,6 +178,16 @@ vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_conf
 			vulkan::Group
 			{
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_deferred_rgen")},
+			},
+		},
+		.hitGroups {
+			vulkan::Group
+			{
+				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("transparent_rahit")},
+			},
+			vulkan::Group
+			{
+				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("transparent_rahit")},
 			},
 		},
 		.missGroups {

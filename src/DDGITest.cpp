@@ -30,13 +30,15 @@ int main() {
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	std::vector<nyan::LightParameters> lights;
-	reader.parse_meshes("test.fbx", meshes, materials, lights);
-	//reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	//reader.parse_meshes("test.fbx", meshes, materials, lights);
+	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	//reader.parse_meshes("san_miguel.fbx", meshes, materials, lights);
 	//reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
 	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
 	auto parent = registry.create();
+;
 	registry.emplace<Transform>(parent,
 		Transform{
 			.position{0.f, 0.f, 0.f},
@@ -57,16 +59,16 @@ int main() {
 			.orientation{14.f, -145.f, 0.f}, //Cathedral
 		});
 
-	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
-	//		.spacing {500.f, 500.f, 500.f},
-	//		.origin {-2000.f, 0.f, -7500.f },
-	//		.probeCount {12, 4, 18},
-	//	});
 	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
-			.spacing {57.5f, 25.f, 57.5f},
-			.origin {-500, 0.f, -500.f },
-			.probeCount {18, 4, 18},
+			.spacing {500.f, 500.f, 500.f},
+			.origin {-2000.f, 0.f, -7500.f },
+			.probeCount {12, 4, 18},
 		});
+	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
+	//		.spacing {57.5f, 25.f, 57.5f},
+	//		.origin {-500, 0.f, -500.f },
+	//		.probeCount {18, 4, 18},
+	//	});
 	//registry.emplace<Transform>(camera,
 	//	Transform{
 	//		.position{50, 10,20},
@@ -94,8 +96,9 @@ int main() {
 			.right {1.f, 0.f ,0.f},
 		});
 	renderManager.set_primary_camera(camera);
-	for (const auto& a : meshes) {
-
+	for (auto& a : meshes) {
+		bool opaque = !(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos);
+		a.opaque = opaque;
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
 		auto accHandle = renderManager.get_mesh_manager().get_acceleration_structure(meshId);
 		auto entity = registry.create();
@@ -103,7 +106,7 @@ int main() {
 		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
 		auto instance = accHandle ?
 			InstanceData{
-				(*accHandle)->create_instance()
+				(*accHandle)->create_instance(a.opaque? 0 : 1)
 		} :
 			InstanceData{
 				.transform{
@@ -123,7 +126,7 @@ int main() {
 				.parent {parent},
 			});
 		registry.emplace<std::string>(entity, a.name);
-		if(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos)
+		if(!a.opaque)
 			registry.emplace<DeferredAlphaTest>(entity);
 		else
 			registry.emplace<Deferred>(entity);

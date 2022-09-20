@@ -30,7 +30,7 @@ void main()
 	Payload payload;
 	//TODO maybe use Henyey-Greenstein or Environmentmap
 	payload.albedo = constants.col.xyz;
-	payload.albedo = vec3(0.f);
+	//payload.albedo = vec3(0.f);
 	//TODO some error possibly in tracing, 
 	//Issue: probes are dark even directly next to bright spot
 	//Issue probably somewhere in the transform, probably rotate

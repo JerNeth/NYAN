@@ -101,6 +101,15 @@ namespace glfww {
 		const std::string& get_identifier() const {
 			return m_identifier;
 		}
+		static std::vector<Monitor> get_monitors() {
+			int count;
+			std::vector<Monitor> monit;
+			auto monitors = glfwGetMonitors(&count);
+			for (int i = 0; i < count; i++) {
+				monit.emplace_back(monitors[i]);
+			}
+			return monit;
+		}
 	private:
 		GLFWmonitor* m_monitor = nullptr;
 		std::string m_name;
@@ -108,15 +117,7 @@ namespace glfww {
 		std::vector<GLFWvidmode> m_modes;
 		GLFWvidmode m_defaultMode;
 	};
-	static std::vector<Monitor> get_monitors() {
-		int count;
-		std::vector<Monitor> monit;
-		auto monitors = glfwGetMonitors(&count);
-		for (int i = 0; i < count; i++) {
-			monit.emplace_back(monitors[i]);
-		}
-		return monit;
-	}
+
 	class Window {
 		static const char* ImGui_ImplGlfw_GetClipboardText(void* user_data)
 		{

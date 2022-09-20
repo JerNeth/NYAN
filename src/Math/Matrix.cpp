@@ -378,20 +378,6 @@ inline constexpr bool Math::Mat<Scalar, Size_y, Size_x, column_major>::inverse(M
 }
 
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-constexpr Math::Mat<Scalar, Size_y, Size_x, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>::eye(const Scalar& val)
-{
-	Mat ret;
-	for (int i = 0; i < min(Size_x, Size_y); i++)
-		ret.at(i, i) = val;
-	return ret;
-}
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
-constexpr Math::Mat<Scalar, Size_y, Size_x, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>::identity()
-{
-	return Mat::eye(1);
-}
-
-template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 inline constexpr void Math::Mat<Scalar, Size_y, Size_x, column_major>::set_to_identity()
 {
 	for (int i = 0; i < Size_y * Size_x; i++)

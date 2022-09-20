@@ -18,7 +18,7 @@ namespace vulkan {
 		AccelerationStructure& operator=(AccelerationStructure&& other);
 		~AccelerationStructure();
 		bool is_compactable() const noexcept;
-		VkAccelerationStructureInstanceKHR create_instance() const noexcept;
+		VkAccelerationStructureInstanceKHR create_instance(uint32_t sbtOffset = 0) const noexcept;
 		uint64_t get_reference() const noexcept;
 		void set_debug_label(const char* name) noexcept;
 	private:
@@ -38,18 +38,19 @@ namespace vulkan {
 		};
 	public:
 		struct BLASInfo {
-			VkBuffer vertexBuffer = VK_NULL_HANDLE;
-			uint32_t vertexCount = 0;
-			VkDeviceSize vertexOffset = 0;
-			VkFormat vertexFormat = VK_FORMAT_UNDEFINED;
-			VkDeviceSize vertexStride = 0;
-			VkBuffer indexBuffer = VK_NULL_HANDLE;
-			uint32_t indexCount = 0;
-			VkDeviceSize indexOffset = 0;
-			VkBuffer transformBuffer = VK_NULL_HANDLE;
-			uint32_t transformOffset = 0;
-			VkIndexType indexType = VK_INDEX_TYPE_UINT32;
-			VkBuildAccelerationStructureFlagsKHR flags = 0;
+			VkBuffer vertexBuffer { VK_NULL_HANDLE };
+			uint32_t vertexCount { 0 };
+			VkDeviceSize vertexOffset { 0 };
+			VkFormat vertexFormat { VK_FORMAT_UNDEFINED };
+			VkDeviceSize vertexStride { 0 };
+			VkBuffer indexBuffer { VK_NULL_HANDLE };
+			uint32_t indexCount { 0 };
+			VkDeviceSize indexOffset { 0 };
+			VkBuffer transformBuffer { VK_NULL_HANDLE };
+			uint32_t transformOffset { 0 };
+			VkIndexType indexType { VK_INDEX_TYPE_UINT32 };
+			VkBuildAccelerationStructureFlagsKHR flags{ 0 };
+			VkGeometryFlagsKHR geometryFlags{ VK_GEOMETRY_OPAQUE_BIT_KHR };
 		};
 		AccelerationStructureBuilder(LogicalDevice& device);
 		std::optional<size_t> queue_item(const BLASInfo& info);

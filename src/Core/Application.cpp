@@ -124,7 +124,7 @@ bool nyan::Application::setup_glfw()
 bool nyan::Application::setup_glfw_window()
 {
 	try {
-		auto monitors = glfww::get_monitors();
+		auto monitors = glfww::Monitor::get_monitors();
 		auto monitorName = m_settings.get_or_default<std::string>(Settings::Setting::Monitor, "");
 		for (const auto& monitor : monitors) {
 			if (monitor.get_identifier() == monitorName) {

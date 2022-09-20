@@ -179,8 +179,8 @@ void nyan::DDGIManager::update()
 			deviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
 			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
 			deviceVolume.visualizerRadius != parameters.visualizerRadius ||
-			deviceVolume.visualizeDepth != parameters.visualizeDepth ||
-			deviceVolume.visualizeDirections != parameters.visualizeDirections)
+			(deviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
+			(deviceVolume.visualizeDirections != 0)!= parameters.visualizeDirections)
 			parameters.dirty = true;
 
 		if (!parameters.dirty)

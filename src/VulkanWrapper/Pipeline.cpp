@@ -407,9 +407,6 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 	}
 	for (const auto& group : config.hitGroups) {
 		assert(group.generalShader == invalidShaderId);
-		assert((group.closestHitShader != invalidShaderId)
-		|| (group.anyHitShader != invalidShaderId)
-		|| (group.intersectionShader != invalidShaderId));
 
 		if (!stageMap.contains(group.closestHitShader)) {
 			auto* instance = parent.get_shader_storage().get_instance(group.closestHitShader);

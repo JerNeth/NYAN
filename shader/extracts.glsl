@@ -61,6 +61,24 @@ VertexData get_vertex_data(in Mesh mesh, in vec2 barycentricCoords, in uint prim
     return vertexData;
 }
 
+VertexData get_uv_data(in Mesh mesh, in vec2 barycentricCoords, in uint primitiveId, in mat4x3 objectToWorld) 
+{
+    VertexData vertexData;
+    Indices indices = Indices(mesh.indicesAddress);
+    Positions positions = Positions(mesh.positionsAddress);
+
+    const vec3 barycentrics = vec3(1.0 - barycentricCoords.x - barycentricCoords.y, barycentricCoords.x, barycentricCoords.y);
+    
+
+    ivec3 ind = get_indices(mesh.indicesAddress, primitiveId);
+    
+    vertexData.uv = get_uv(mesh.uvsAddress, ind.x) * barycentrics.x 
+        + get_uv(mesh.uvsAddress, ind.y) * barycentrics.y 
+        + get_uv(mesh.uvsAddress, ind.z) * barycentrics.z;
+
+    return vertexData;
+}
+
 struct MaterialData
 {
     float metalness;
@@ -90,6 +108,19 @@ MaterialData get_material_data(in Material material, in VertexData vertexData)
     
     materialData.shadingNormal = tangentSpaceNormal(normalSample, vertexData.normal, vertexData.bitangent, vertexData.tangent);
 
+    return materialData;
+}
+
+MaterialData get_albedo_data(in Material material, in VertexData vertexData) 
+{
+    MaterialData materialData;
+
+    
+    vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
+    albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+    materialData.albedo = albedo.xyz;
+    materialData.opacity = albedo.w;
+    
     return materialData;
 }
 
