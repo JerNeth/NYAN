@@ -35,7 +35,7 @@ int main() {
 	//reader.parse_meshes("san_miguel.fbx", meshes, materials, lights);
 	//reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
-	//TODO do barrier issues, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
+	//TODO do barrier issues on async Compute, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
 	auto parent = registry.create();
 ;
@@ -98,7 +98,7 @@ int main() {
 	renderManager.set_primary_camera(camera);
 	for (auto& a : meshes) {
 		bool opaque = !(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos);
-		a.opaque = opaque;
+		a.type = opaque? nyan::Mesh::RenderType::Opaque : nyan::Mesh::RenderType::AlphaTest;
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
 		auto accHandle = renderManager.get_mesh_manager().get_acceleration_structure(meshId);
 		auto entity = registry.create();
@@ -106,7 +106,7 @@ int main() {
 		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
 		auto instance = accHandle ?
 			InstanceData{
-				(*accHandle)->create_instance(a.opaque? 0 : 1)
+				(*accHandle)->create_instance(static_cast<uint32_t>(a.type))
 		} :
 			InstanceData{
 				.transform{
@@ -114,6 +114,7 @@ int main() {
 				}
 		};
 		instance.instance.instanceCustomIndex = meshId;
+		instance.instance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(a.type); //Check renderManager if changed here
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
@@ -126,10 +127,12 @@ int main() {
 				.parent {parent},
 			});
 		registry.emplace<std::string>(entity, a.name);
-		if(!a.opaque)
-			registry.emplace<DeferredAlphaTest>(entity);
-		else
+		if(a.type == nyan::Mesh::RenderType::Opaque)
 			registry.emplace<Deferred>(entity);
+		else if (a.type == nyan::Mesh::RenderType::AlphaTest)
+			registry.emplace<DeferredAlphaTest>(entity);
+		else if (a.type == nyan::Mesh::RenderType::AlphaBlend)
+			registry.emplace<ForwardTransparent>(entity);
 
 	}
 
@@ -152,7 +155,8 @@ int main() {
 					.enabled {true},
 					.shadows{ true },
 					.color {light.color},
-					.intensity {light.intensity},
+					//.intensity {light.intensity},
+					.intensity {1},
 					.direction {light.direction},
 				});
 		if (light.type == LightParameters::Type::Point)

@@ -103,7 +103,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.transformBuffer { VK_NULL_HANDLE },
 			.transformOffset { 0 },
 			.indexType { mesh.mesh.indexType },
-			.geometryFlags {data.opaque ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{0}},
+			.geometryFlags {(data.type == nyan::Mesh::RenderType::Opaque) ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{0}},
 		};
 		auto ret = m_builder->queue_item(blasInfo);
 		if(ret)

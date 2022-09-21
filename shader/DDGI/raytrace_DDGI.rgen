@@ -164,7 +164,7 @@ void main()
 	 {
 		diffuse = payload.albedo;
 		//If miss hitDist = 1e27f for 32-float, less for 16-float 65519, might reconsider 16-bit since rays are filtered
-		//hitDistance = 65519.f; 
+		hitDistance = 65519.f; 
 	 } 
 	 else {
         ShadingData shadingData;
@@ -175,14 +175,18 @@ void main()
         shadingData.shadingNormal = payload.shadingNormal;
         shadingData.worldPos = payload.worldPos;
         //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
+        //Probable cause was loop end condition in an SSBO
 		diffuse += diffuse_direct_lighting(scene, shadingData);
 		diffuse += diffuse_indirect_lighting(volume, shadingData);
      }
-
-    hitDistance = min(hitDistance, 65519.f);
+     
+    hitDistance = clamp(hitDistance, -65519.f, 65519.f);
+    //float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
+    //hitDistance = hitDistance / maxRayDist;
+    //hitDistance = min(hitDistance, 65519.f);
 
 #ifdef DEBUG_COLORS
-	diffuse = debugColors[probeIdx % debugColors.length()].xyz;
+    diffuse = debugColors[probeIdx % debugColors.length()].xyz;
 #endif
 
     imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));

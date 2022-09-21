@@ -80,11 +80,11 @@ namespace MM {
 		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
 		ImGui::DragFloat3("Spacing", &volume.spacing.x());
 		ImGui::DragFloat3("Origin", &volume.origin.x());
-		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 256, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32,"%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 20.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32,"%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance, 1.f, 0.00001f, 100000.0f);
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);

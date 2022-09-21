@@ -150,7 +150,7 @@ std::optional<size_t> vulkan::AccelerationStructureBuilder::queue_item(const BLA
 					.transformData = transformAddress,
 				}
 			},
-			.flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
+			.flags = info.geometryFlags,
 		},
 		VkAccelerationStructureBuildRangeInfoKHR{
 			.primitiveCount = info.indexCount / 3,

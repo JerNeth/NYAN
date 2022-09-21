@@ -58,6 +58,7 @@ void main()
 	
 	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
+	float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
 	for(int i = 0; i <iMax;i++) {
 		const int rayIdx = offset + i;
 		if(rayIdx >= rayCount) break;
@@ -66,7 +67,7 @@ void main()
 		vec4 data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;
-		rayDistance[rayIdx] = data.w;
+		rayDistance[rayIdx] = data.w;// *maxRayDist;
 	}
 	barrier();
 
@@ -88,7 +89,6 @@ void main()
 			resultWeight += weight;
 		}
 		else {
-			float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
 			rayDist = min(abs(rayDist), maxRayDist);
 			const float rayDistSqarred = rayDist * rayDist;
 			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;

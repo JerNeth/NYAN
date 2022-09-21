@@ -134,8 +134,12 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 	auto writeBindSpecular = r_pass.get_write_bind(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBindDiffuse != InvalidBinding);
 	assert(writeBindSpecular != InvalidBinding);
+	auto tlas = r_renderManager.get_instance_manager().get_tlas_bind();
+	assert(tlas);
+	if (!tlas)
+		return;
 	PushConstants constants{
-		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
+		.accBinding {*tlas}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
 		.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
 		.ddgiBinding {ddgiManager.get_binding()},
@@ -183,11 +187,14 @@ vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_conf
 		.hitGroups {
 			vulkan::Group
 			{
-				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("transparent_rahit")},
+				//.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
 			},
 			vulkan::Group
 			{
-				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("transparent_rahit")},
+				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
+			},
+			vulkan::Group
+			{
 			},
 		},
 		.missGroups {
