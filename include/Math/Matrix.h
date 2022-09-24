@@ -101,7 +101,7 @@ namespace Math {
 				result.m_data[i] = lhs.m_data[i] / rhs;
 			return result;
 		}
-		constexpr friend inline Vec<Scalar, Size_y> operator*(const Mat& lhs, const Vec<Scalar, Size_x>& rhs) noexcept {
+		constexpr friend inline Vec<Scalar, Size_y>&& operator*(const Mat& lhs, const Vec<Scalar, Size_x>& rhs) noexcept {
 			Vec<Scalar, Size_y> result;
 			for (size_t y = 0; y < Size_y; y++) {
 				Scalar tmp = Scalar(0);
@@ -109,7 +109,7 @@ namespace Math {
 					tmp += lhs( x, y) * rhs[x];
 				result[y] = tmp;
 			}
-			return result;
+			return std::move(result);
 		}
 		constexpr friend inline bool operator==(const Mat& lhs, const Mat& rhs) noexcept {
 			for (size_t i = 0; i < Size_x * Size_y; i++)

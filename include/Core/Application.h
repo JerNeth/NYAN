@@ -34,7 +34,7 @@ namespace nyan {
 		bool setup_glfw();
 		bool setup_glfw_window();
 		bool setup_glfw_input();
-		bool setup_vulkan_instance();
+		bool setup_vulkan_instance(const vulkan::Instance::Validation& validation);
 		bool setup_vulkan_device();
 		bool setup_vulkan_surface();
 

@@ -50,8 +50,9 @@ namespace Math {
 				}
 			}
 		}
-		template<ScalarT OtherScalar,size_t Size_other>
+		template<ScalarT OtherScalar, size_t Size_other>
 		constexpr explicit Vec(Vec<OtherScalar, Size_other> other) noexcept : m_data() {
+			//Breaks stuff when using const ref
 			for (size_t i = 0; i < min(Size, Size_other); i++)
 				m_data[i] = other[i];
 			for (size_t i = min(Size, Size_other); i < Size; i++)
@@ -378,12 +379,26 @@ namespace Math {
 			assert(("Vector too small", Size > 3));
 			return m_data[3];
 		}
-		inline Vec& normalize() noexcept {
-			Scalar inverseNorm = static_cast<Scalar>(1.0) /L2_norm();
+		//inline Vec& normalize() noexcept {
+		//	Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
+		//	for (size_t i = 0; i < m_data.size(); i++) {
+		//		m_data[i] = m_data[i] * inverseNorm;
+		//	}
+		//	return *this;
+		//}
+		inline Vec& normalize() & noexcept {
+			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
 			for (size_t i = 0; i < m_data.size(); i++) {
-				m_data[i] = m_data[i]* inverseNorm;
+				m_data[i] = m_data[i] * inverseNorm;
 			}
 			return *this;
+		}
+		inline Vec&& normalize() && noexcept {
+			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
+			for (size_t i = 0; i < m_data.size(); i++) {
+				m_data[i] = m_data[i] * inverseNorm;
+			}
+			return std::move(* this);
 		}
 		inline Vec normalized() const noexcept  {
 			Vec ret {};

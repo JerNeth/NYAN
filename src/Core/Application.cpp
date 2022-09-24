@@ -1,12 +1,30 @@
 #include "Application.h"
+#include "Application.h"
 #include "Utility/Exceptions.h"
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
+	vulkan::Instance::Validation validation{
+		.enabled {debug},
+		.createCallback {debug},
+		.gpuAssisted { false },
+		.gpuAssistedReserveBindingSlot { false },
+		.bestPractices { false },
+		.debugPrintf { false },
+		.synchronizationValidation { false },
+		.disableAll { false },
+		.disableShaders { false },
+		.disableThreadSafety { false },
+		.disableAPIParameters { false },
+		.disableObjectLifetimes { false },
+		.disableCoreChecks { false },
+		.disableUniqueHandles { false },
+		.disableShaderValidationCache { false },
+	};
 	//OPTICK_THREAD("Main Thread");
 	if (!setup_glfw())
 		throw InitializationError("Could not initialize GLFW");
-	if (!setup_vulkan_instance())//OpenGL fallback maybe?
+	if (!setup_vulkan_instance(validation))//OpenGL fallback maybe?
 		throw InitializationError("Could not instantiate Vulkan, maybe no vulkan support or outdated drivers?");
 	if (!setup_glfw_window())
 		throw InitializationError("Could not create GLFW window");
@@ -155,28 +173,12 @@ bool nyan::Application::setup_glfw_input()
 	}
 	return true;
 }
-bool nyan::Application::setup_vulkan_instance()
+
+bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation& validation)
 {
 	try {
 		auto instanceExtensions = m_glfwLibrary->get_required_extensions();
-		vulkan::Instance::Validation validation{
-			.enabled {debug},
-			.createCallback {debug},
-			.gpuAssisted { false },
-			.gpuAssistedReserveBindingSlot { false },
-			.bestPractices { false },
-			.debugPrintf { false },
-			.synchronizationValidation { false },
-			.disableAll { false },
-			.disableShaders { false },
-			.disableThreadSafety { false },
-			.disableAPIParameters { false },
-			.disableObjectLifetimes { false },
-			.disableCoreChecks { false },
-			.disableUniqueHandles { false },
-			.disableShaderValidationCache { false },
 
-		};
 		if (validation.enabled) {
 			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
