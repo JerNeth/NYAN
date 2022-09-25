@@ -187,14 +187,7 @@ vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_conf
 		.hitGroups {
 			vulkan::Group
 			{
-				//.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
-			},
-			vulkan::Group
-			{
 				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
-			},
-			vulkan::Group
-			{
 			},
 		},
 		.missGroups {

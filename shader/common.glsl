@@ -138,4 +138,12 @@ vec3 quaternion_rotate(vec4 q, vec3 v)
                 q.xyz * (2.f * dot(v, q.xyz));
 }
 
+
+float hash_vec3(in vec3 seed) {
+    //courtesy of Hoskins, Dave https://www.shadertoy.com/view/4djSRW
+    vec3 p3  = fract(seed * .1031);
+    p3 += dot(p3, p3.yzx + 19.19);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 #endif

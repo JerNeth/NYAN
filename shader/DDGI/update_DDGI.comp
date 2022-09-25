@@ -112,6 +112,7 @@ void main()
 		previous = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], texCoord);
 	else 
 		previous = imageLoad(imagesRGBA16F[volume.depthImageBinding], texCoord);
+	//	previous = imageLoad(imagesRGBA32F[volume.depthImageBinding], texCoord);
 
 	if(dot(previous, previous) == 0)
 		hysteresis = 0.f;
@@ -152,6 +153,7 @@ void main()
 	else {
 		result = vec4(mix(result, previous, hysteresis));
 		imageStore(imagesRGBA16F[volume.depthImageBinding], texCoord, result);
+		//imageStore(imagesRGBA32F[volume.depthImageBinding], texCoord, result);
 	}
 	
 }

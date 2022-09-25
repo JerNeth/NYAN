@@ -6,7 +6,7 @@
 #include "entt/entt.hpp"
 
 nyan::DDGIManager::DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry) :
-	DataManager(device),
+	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 32),
 	r_rendergraph(rendergraph),
 	r_registry(registry)
 {
@@ -52,6 +52,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
+			.useMoments {parameters.useMoments},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -158,36 +159,37 @@ void nyan::DDGIManager::update()
 			parameters.dirty = true;
 		}
 
-		const auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
+		const auto& constDeviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 
-		if(	(deviceVolume.enabled != 0) != parameters.enabled ||
-			deviceVolume.spacingX != parameters.spacing[0] ||
-			deviceVolume.spacingY != parameters.spacing[1] ||
-			deviceVolume.spacingZ != parameters.spacing[2] ||
-			deviceVolume.gridOriginX != parameters.origin[0] ||
-			deviceVolume.gridOriginY != parameters.origin[1] ||
-			deviceVolume.gridOriginZ != parameters.origin[2] ||
-			deviceVolume.probeCountX != parameters.probeCount[0] ||
-			deviceVolume.probeCountY != parameters.probeCount[1] ||
-			deviceVolume.probeCountZ != parameters.probeCount[2] ||
-			deviceVolume.raysPerProbe != parameters.raysPerProbe ||
-			deviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
-			deviceVolume.depthProbeSize != parameters.depthProbeSize ||
-			deviceVolume.shadowBias != parameters.depthBias ||
-			deviceVolume.maxRayDistance != parameters.maxRayDistance ||
-			deviceVolume.hysteresis != parameters.hysteresis ||
-			deviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
-			deviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
-			deviceVolume.visualizerRadius != parameters.visualizerRadius ||
-			(deviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
-			(deviceVolume.visualizeDirections != 0)!= parameters.visualizeDirections)
+		if(	(constDeviceVolume.enabled != 0) != parameters.enabled ||
+			constDeviceVolume.spacingX != parameters.spacing[0] ||
+			constDeviceVolume.spacingY != parameters.spacing[1] ||
+			constDeviceVolume.spacingZ != parameters.spacing[2] ||
+			constDeviceVolume.gridOriginX != parameters.origin[0] ||
+			constDeviceVolume.gridOriginY != parameters.origin[1] ||
+			constDeviceVolume.gridOriginZ != parameters.origin[2] ||
+			constDeviceVolume.probeCountX != parameters.probeCount[0] ||
+			constDeviceVolume.probeCountY != parameters.probeCount[1] ||
+			constDeviceVolume.probeCountZ != parameters.probeCount[2] ||
+			constDeviceVolume.raysPerProbe != parameters.raysPerProbe ||
+			constDeviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
+			constDeviceVolume.depthProbeSize != parameters.depthProbeSize ||
+			constDeviceVolume.shadowBias != parameters.depthBias ||
+			constDeviceVolume.maxRayDistance != parameters.maxRayDistance ||
+			constDeviceVolume.hysteresis != parameters.hysteresis ||
+			constDeviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
+			constDeviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
+			constDeviceVolume.visualizerRadius != parameters.visualizerRadius ||
+			(constDeviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
+			(constDeviceVolume.visualizeDirections != 0) != parameters.visualizeDirections ||
+			(constDeviceVolume.useMoments != 0) != parameters.useMoments)
 			parameters.dirty = true;
 
 		if (!parameters.dirty)
 			continue;
 
-		auto& deviceVolume2 = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
-		deviceVolume2 = nyan::shaders::DDGIVolume{
+		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
+		deviceVolume = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
 			.spacingY {parameters.spacing[1]},
 			.spacingZ {parameters.spacing[2]},
@@ -211,11 +213,12 @@ void nyan::DDGIManager::update()
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
+			.useMoments {parameters.useMoments},
 		};
 		parameters.dirty = false;
-		update_spacing(deviceVolume2);
-		update_depth_texture(deviceVolume2);
-		update_irradiance_texture(deviceVolume2);
+		update_spacing(deviceVolume);
+		update_depth_texture(deviceVolume);
+		update_irradiance_texture(deviceVolume);
 		if (parameters.depthResource) {
 			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
 			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
@@ -226,6 +229,7 @@ void nyan::DDGIManager::update()
 		else {
 			parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
 				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
 				.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
 				.height {static_cast<float>(deviceVolume.depthTextureSizeY)}

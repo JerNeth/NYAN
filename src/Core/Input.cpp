@@ -42,8 +42,8 @@ void nyan::Input::update()
 		for (size_t i{ 0 }; i < inputMapping.size(); ++i) {
 			m_input[i] = r_window.get_key(inputMapping[i]) == GLFW_PRESS ? 1.f : 0.f;
 		}
-		for (auto& [input, axisMapping] : m_axisMapping) {
-			auto [axis, mapping] = axisMapping;
+		for (const auto& [input, axisMapping] : m_axisMapping) {
+			const auto& [axis, mapping] = axisMapping;
 			m_axis[static_cast<size_t>(axis)] += m_input[static_cast<size_t>(input)] * mapping;
 		}
 	}

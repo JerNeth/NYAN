@@ -177,23 +177,28 @@ void nyan::InstanceManager::set_transform(InstanceId id, const Math::Mat<float, 
 }
 void nyan::InstanceManager::set_acceleration_structure(InstanceId id, uint64_t accelerationStructureReference)
 {
-	get(id).instance.accelerationStructureReference = accelerationStructureReference;
+	auto& instance = get(id);
+	instance.instance.accelerationStructureReference = accelerationStructureReference;
 }
 void nyan::InstanceManager::set_flags(InstanceId id, VkGeometryInstanceFlagsKHR flags)
 {
-	get(id).instance.flags = flags;
+	auto& instance = get(id);
+	instance.instance.flags = flags;
 }
 void nyan::InstanceManager::set_instance_shader_binding_table_record_offset(InstanceId id, uint32_t instanceShaderBindingTableRecordOffset)
 {
-	get(id).instance.instanceShaderBindingTableRecordOffset = instanceShaderBindingTableRecordOffset;
+	auto& instance = get(id);
+	instance.instance.instanceShaderBindingTableRecordOffset = instanceShaderBindingTableRecordOffset;
 }
 void nyan::InstanceManager::set_mask(InstanceId id, uint32_t mask)
 {
-	get(id).instance.mask = mask;
+	auto& instance = get(id);
+	instance.instance.mask = mask;
 }
 void nyan::InstanceManager::set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex)
 {
-	get(id).instance.instanceCustomIndex = instanceCustomIndex;
+	auto& instance = get(id);
+	instance.instance.instanceCustomIndex = instanceCustomIndex;
 }
 void nyan::InstanceManager::set_instance(InstanceId id, const InstanceData& instance)
 {

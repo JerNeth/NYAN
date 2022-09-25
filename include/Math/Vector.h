@@ -386,20 +386,20 @@ namespace Math {
 		//	}
 		//	return *this;
 		//}
-		inline Vec& normalize() & noexcept {
+		inline Vec& normalize() noexcept {
 			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
 			for (size_t i = 0; i < m_data.size(); i++) {
 				m_data[i] = m_data[i] * inverseNorm;
 			}
 			return *this;
 		}
-		inline Vec&& normalize() && noexcept {
-			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
-			for (size_t i = 0; i < m_data.size(); i++) {
-				m_data[i] = m_data[i] * inverseNorm;
-			}
-			return std::move(* this);
-		}
+		//inline Vec&& normalize() && noexcept {
+		//	Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
+		//	for (size_t i = 0; i < m_data.size(); i++) {
+		//		m_data[i] = m_data[i] * inverseNorm;
+		//	}
+		//	return std::move({ m_data });
+		//}
 		inline Vec normalized() const noexcept  {
 			Vec ret {};
 			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();

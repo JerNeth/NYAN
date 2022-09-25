@@ -19,7 +19,7 @@ namespace nyan {
 		ImguiRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& shaderManager, nyan::Renderpass& pass, glfww::Window* window);
 		~ImguiRenderer();
 		void update(std::chrono::nanoseconds dt);
-		void next_frame();
+		void begin_frame();
 		void end_frame();
 	private:
 		void create_cmds(ImDrawData* draw_data, vulkan::CommandBuffer& cmd);

@@ -155,9 +155,9 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 			if (accHandle) {
 				auto instance = (*accHandle)->create_instance();
 				m_instanceManager.set_acceleration_structure(instanceId, instance.accelerationStructureReference);
-				//m_instanceManager.set_flags(instanceId, instance.flags);
-				//m_instanceManager.set_mask(instanceId, instance.mask);
-				//m_instanceManager.set_instance_shader_binding_table_record_offset(instanceId, instance.instanceShaderBindingTableRecordOffset);
+				m_instanceManager.set_flags(instanceId, instance.flags);
+				m_instanceManager.set_mask(instanceId, instance.mask);
+				m_instanceManager.set_instance_shader_binding_table_record_offset(instanceId, instance.instanceShaderBindingTableRecordOffset);
 				m_instanceManager.set_instance_custom_index(instanceId, meshId);
 			}
 		}

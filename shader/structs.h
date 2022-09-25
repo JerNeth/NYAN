@@ -130,6 +130,7 @@ struct DDGIVolume {
 	uint enabled;
 	uint visualizeDepth;
 	uint visualizeDirections;
+	uint useMoments;
 };
 
 #endif

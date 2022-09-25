@@ -114,7 +114,7 @@ int main() {
 				}
 		};
 		instance.instance.instanceCustomIndex = meshId;
-		instance.instance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(a.type); //Check renderManager if changed here
+		//instance.instance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(a.type); //Check renderManager if changed here
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
@@ -216,10 +216,18 @@ int main() {
 		});
 	application.each_frame_begin([&]()
 		{
+			//ImGui first here since we might want to use ImGui in other begin_frames
+			imgui.begin_frame();
+
 			ddgiRenderer.begin_frame();
 			rendergraph.begin_frame();
 
-			imgui.next_frame();
+			//ImGui::Begin("Input");
+			//ImGui::Text("Look Right %f", input.get_axis(Input::Axis::LookRight));
+			//ImGui::Text("Look Up %f", input.get_axis(Input::Axis::LookUp));
+			//ImGui::Text("Move Right %f", input.get_axis(Input::Axis::MoveRight));
+			//ImGui::Text("Move Forward %f", input.get_axis(Input::Axis::MoveForward));
+			//ImGui::End();
 
 			//Upload/sync point here, don't really want stuff after here
 			renderManager.begin_frame();

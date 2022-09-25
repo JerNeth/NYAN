@@ -20,8 +20,8 @@ namespace nyan {
 			Math::vec3 origin{ 0.f, 0.f, 0.f };
 			Math::uvec3 probeCount{ 16, 4, 16 };
 			uint32_t raysPerProbe{ 128 };
-			uint32_t irradianceProbeSize{ 6 };
-			uint32_t depthProbeSize{ 14 };
+			uint32_t irradianceProbeSize{ 8 };
+			uint32_t depthProbeSize{ 16 };
 			float depthBias{ 1e-2f };
 			float maxRayDistance{5000.f};
 			float hysteresis{ 9e-1f };
@@ -34,6 +34,7 @@ namespace nyan {
 			bool visualization{ true };
 			bool visualizeDepth{ false };
 			bool visualizeDirections{ false };
+			bool useMoments{ false };
 
 
 			uint32_t ddgiVolume {nyan::InvalidBinding};

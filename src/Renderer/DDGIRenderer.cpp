@@ -358,15 +358,7 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
 			vulkan::Group
 			{
 				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rchit")},
-			},
-			vulkan::Group
-			{
-				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rchit")},
 				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
-			},
-			vulkan::Group
-			{
-				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rchit")},
 			},
 		},
 		.missGroups {

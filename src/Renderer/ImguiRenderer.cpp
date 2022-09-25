@@ -90,6 +90,7 @@ namespace MM {
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Checkbox("Use Moments", &volume.useMoments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
 		ImGui::Checkbox("Visualization Enabled", &volume.visualization);
 		ImGui::Checkbox("Visualizate Depth", &volume.visualizeDepth);
@@ -192,7 +193,7 @@ void nyan::ImguiRenderer::update([[maybe_unused]] std::chrono::nanoseconds dt)
 
 }
 
-void nyan::ImguiRenderer::next_frame()
+void nyan::ImguiRenderer::begin_frame()
 {
 	std::chrono::duration<double> fp_ms = std::chrono::steady_clock::now() - start;
 	start = std::chrono::steady_clock::now();

@@ -2,6 +2,7 @@
 #define DDGI_SAMPLING_GLSL
 
 #include "ddgi_common.glsl"
+#include "../moments.glsl"
 
 //struct DDGIVolume {
 //	//Assuming Grid
@@ -124,18 +125,25 @@ vec3 sample_ddgi(vec3 worldPos,
 		vec2 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
 
 		
-		vec2 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rg;
 		vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
 
-		float chebyshev = 1.f;
-		if(biasedWorldPosToAdjacentProbeDist > filteredDistance.x) {
-			float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
-			float v = biasedWorldPosToAdjacentProbeDist - filteredDistance.x;
-			chebyshev = variance / (variance + (v * v));
-			//Pretty sure we don't need max here since variance is positive and v² is also positive
-			chebyshev = chebyshev * chebyshev * chebyshev;
+		if(volume.useMoments != 0) {
+			vec4 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rgba;
+			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
+			weight *= max(0.02f, shadowValue);
 		}
-		weight *= max(0.02f, chebyshev);
+		else {
+			vec2 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rg;
+			float chebyshev = 1.f;
+			if(biasedWorldPosToAdjacentProbeDist > filteredDistance.x) {
+				float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
+				float v = biasedWorldPosToAdjacentProbeDist - filteredDistance.x;
+				chebyshev = variance / (variance + (v * v));
+				//Pretty sure we don't need max here since variance is positive and v² is also positive
+				chebyshev = chebyshev * chebyshev * chebyshev;
+			}
+			weight *= max(0.02f, chebyshev);
+		}
 
 		weight = max(1e-6f, weight);
 
