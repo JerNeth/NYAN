@@ -58,12 +58,12 @@ void main()
 	
 	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
-	float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
+	//float maxRayDist = length(get_volume_spacing(volume)) * 2.f;
 	for(int i = 0; i <iMax;i++) {
 		const int rayIdx = offset + i;
 		if(rayIdx >= rayCount) break;
 		
-		rayDirection[rayIdx] = quaternion_rotate(constants.randomRotation, get_ray_direction(rayIdx, volume));
+		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume);
 		vec4 data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;
@@ -89,7 +89,7 @@ void main()
 			resultWeight += weight;
 		}
 		else {
-			rayDist = min(abs(rayDist), maxRayDist);
+			//rayDist = min(abs(rayDist), maxRayDist);
 			const float rayDistSqarred = rayDist * rayDist;
 			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;
 			resultWeight += weight;

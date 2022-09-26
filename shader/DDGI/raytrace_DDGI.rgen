@@ -132,7 +132,7 @@ void main()
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 
 	vec3 probeCords = get_probe_coordinates(probeIdx, volume);
-	vec3 direction = quaternion_rotate(constants.randomRotation, get_ray_direction(rayIdx, volume));
+	vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume);
 
     uint  rayFlags = 0;
     float tMin     = 0.001;
@@ -179,11 +179,11 @@ void main()
 		diffuse += diffuse_direct_lighting(scene, shadingData);
 		diffuse += diffuse_indirect_lighting(volume, shadingData);
      }
-     
-    hitDistance = clamp(hitDistance, -65519.f, 65519.f);
-    //float maxRayDist = length(get_volume_spacing(volume)) * 1.5f;
-    //hitDistance = hitDistance / maxRayDist;
-    //hitDistance = min(hitDistance, 65519.f);
+
+    float maxRayDist = length(get_volume_spacing(volume)) * 2.f; //Get maximum possible distance
+    //hitDistance = clamp(hitDistance, -65504.f, 65504.f) ;
+    hitDistance = clamp(hitDistance / maxRayDist, -1.f, 1.f); //Normalize since moments need more accuracy and we have more accuracy in [0;1]
+    //hitDistance = min(hitDistance, 65504.f);
 
 #ifdef DEBUG_COLORS
     diffuse = debugColors[probeIdx % debugColors.length()].xyz;

@@ -127,6 +127,8 @@ vec3 sample_ddgi(vec3 worldPos,
 		
 		vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
 
+		float maxRayDist = length(get_volume_spacing(volume)) * 2.f; //Get maximum possible distance
+		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;
 		if(volume.useMoments != 0) {
 			vec4 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rgba;
 			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);

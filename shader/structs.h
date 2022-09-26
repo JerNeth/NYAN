@@ -119,6 +119,10 @@ struct DDGIVolume {
 	uint depthTextureSampler;
 	uint depthImageBinding;
 
+	uint offsetBufferBinding;
+	uint fixedRayCount;
+	uint relocationBackfaceThreshold;
+
 	float shadowBias;
 	float maxRayDistance;
 	float hysteresis;
@@ -131,6 +135,8 @@ struct DDGIVolume {
 	uint visualizeDepth;
 	uint visualizeDirections;
 	uint useMoments;
+	uint relocationEnabled;
+	uint classificationEnabled;
 };
 
 #endif

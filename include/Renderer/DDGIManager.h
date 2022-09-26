@@ -30,11 +30,15 @@ namespace nyan {
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
+			uint32_t fixedRayCount{ 32 };
+			uint32_t relocationBackfaceThreshold{ 16 };
 			bool enabled{ true };
 			bool visualization{ true };
 			bool visualizeDepth{ false };
 			bool visualizeDirections{ false };
 			bool useMoments{ false };
+			bool relocationEnabled{ false };
+			bool classificationEnabled{ false };
 
 
 			uint32_t ddgiVolume {nyan::InvalidBinding};
@@ -45,6 +49,10 @@ namespace nyan {
 		struct Write {
 			Renderpass::Id pass {};
 			Renderpass::Write::Type type {};
+		};
+		struct Offsets {
+			vulkan::BufferHandle buffer;
+			uint32_t counts{ 0 };
 		};
 	public:
 		DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry);
@@ -72,11 +80,13 @@ namespace nyan {
 		void update_spacing(nyan::shaders::DDGIVolume& volume);
 		void update_depth_texture(nyan::shaders::DDGIVolume& volume);
 		void update_irradiance_texture(nyan::shaders::DDGIVolume& volume);
+		void update_offset_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume);
 
 		nyan::Rendergraph& r_rendergraph;
 		entt::registry& r_registry;
 		std::vector<Renderpass::Id> m_reads;
 		std::vector<Write> m_writes;
+		std::vector<std::unique_ptr<Offsets>> m_offsets;
 	};
 }
 

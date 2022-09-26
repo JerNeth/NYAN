@@ -44,6 +44,9 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.depthTextureBinding {},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthImageBinding {},
+			.offsetBufferBinding {},
+			.fixedRayCount {parameters.fixedRayCount},
+			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.shadowBias {parameters.depthBias},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
@@ -53,6 +56,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
 			.useMoments {parameters.useMoments},
+			.relocationEnabled {parameters.relocationEnabled},
+			.classificationEnabled {parameters.classificationEnabled},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -174,6 +179,9 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.raysPerProbe != parameters.raysPerProbe ||
 			constDeviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
 			constDeviceVolume.depthProbeSize != parameters.depthProbeSize ||
+			constDeviceVolume.offsetBufferBinding == 0 || //Might not be ideal
+			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
+			constDeviceVolume.relocationBackfaceThreshold != parameters.relocationBackfaceThreshold ||
 			constDeviceVolume.shadowBias != parameters.depthBias ||
 			constDeviceVolume.maxRayDistance != parameters.maxRayDistance ||
 			constDeviceVolume.hysteresis != parameters.hysteresis ||
@@ -182,11 +190,14 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.visualizerRadius != parameters.visualizerRadius ||
 			(constDeviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
 			(constDeviceVolume.visualizeDirections != 0) != parameters.visualizeDirections ||
-			(constDeviceVolume.useMoments != 0) != parameters.useMoments)
+			(constDeviceVolume.useMoments != 0) != parameters.useMoments ||
+			(constDeviceVolume.relocationEnabled != 0) != parameters.relocationEnabled ||
+			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled )
 			parameters.dirty = true;
 
 		if (!parameters.dirty)
 			continue;
+
 
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
@@ -204,6 +215,8 @@ void nyan::DDGIManager::update()
 			.depthProbeSize {parameters.depthProbeSize},
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
+			.fixedRayCount {parameters.fixedRayCount},
+			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.shadowBias {parameters.depthBias},
 			.maxRayDistance {parameters.maxRayDistance},
 			.hysteresis {parameters.hysteresis},
@@ -214,11 +227,16 @@ void nyan::DDGIManager::update()
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
 			.useMoments {parameters.useMoments},
+			.relocationEnabled {parameters.relocationEnabled},
+			.classificationEnabled {parameters.classificationEnabled},
 		};
+		if (deviceVolume.fixedRayCount > deviceVolume.raysPerProbe)
+			deviceVolume.fixedRayCount = deviceVolume.raysPerProbe;
 		parameters.dirty = false;
 		update_spacing(deviceVolume);
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
+		update_offset_binding(parameters.ddgiVolume, deviceVolume);
 		if (parameters.depthResource) {
 			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
 			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
@@ -341,4 +359,26 @@ void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& vol
 	volume.irradianceTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.irradianceProbeSize);
 	volume.inverseIrradianceTextureSizeX = 1.0f / volume.irradianceTextureSizeX;
 	volume.inverseIrradianceTextureSizeY = 1.0f / volume.irradianceTextureSizeY;
+}
+
+void nyan::DDGIManager::update_offset_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume)
+{
+	if (m_offsets.size() <= volumeId)
+		m_offsets.resize(volumeId + 1ull);
+	
+	auto desiredSize = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+	if (!m_offsets[volumeId] || desiredSize < m_offsets[volumeId]->counts) {
+		vulkan::BufferInfo info{
+			.size {desiredSize * sizeof(float) * 3},
+			.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
+		};
+		m_offsets[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, {}, false), desiredSize);
+		volume.offsetBufferBinding = r_device.get_bindless_set().set_storage_buffer(
+			VkDescriptorBufferInfo{ 
+				.buffer {m_offsets[volumeId]->buffer->get_handle()},
+				.offset {0},
+				.range {info.size}
+			});
+	}
 }

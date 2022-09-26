@@ -1,8 +1,9 @@
 #ifndef DDGI_COMMON_GLSL
 #define DDGI_COMMON_GLSL
 #include "../structs.h"
+#include "../bindlessLayouts.glsl"
 
-uvec3 get_probe_index(uint probeIdx, DDGIVolume volume) 
+uvec3 get_probe_index(in uint probeIdx,in DDGIVolume volume) 
 {
 	const uint zStride = volume.probeCountX * volume.probeCountY;
 	const uint yStride = volume.probeCountX;
@@ -14,7 +15,7 @@ uvec3 get_probe_index(uint probeIdx, DDGIVolume volume)
 	return uvec3(x, y, z);
 }
 
-uint get_probe_index(uvec3 probeIdx, DDGIVolume volume) 
+uint get_probe_index(in uvec3 probeIdx, in DDGIVolume volume) 
 {
 	const uint zStride = volume.probeCountX * volume.probeCountY;
 	const uint yStride = volume.probeCountX;
@@ -31,10 +32,32 @@ vec3 get_volume_spacing(DDGIVolume volume)
 	return vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
 }
 
-vec3 get_probe_coordinates(uvec3 idx, DDGIVolume volume) 
+vec3 get_probe_offset(in uint probeIdx, in DDGIVolume volume) 
+{
+	return vec3(ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3],
+		ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1],
+		ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2]);
+}
+
+
+vec3 get_probe_offset(in uvec3 idx, in DDGIVolume volume) 
+{
+	uint probeIdx = get_probe_index(idx, volume);
+	return get_probe_offset(probeIdx, volume);
+}
+
+void set_probe_offset(in uint probeIdx, in DDGIVolume volume, in vec3 offset) 
+{
+	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3] = offset.x;
+	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1] = offset.y;
+	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2] = offset.z;
+}
+
+vec3 get_probe_coordinates(in uvec3 idx,in DDGIVolume volume)
 {
 	vec3 origin = get_volume_origin(volume);
 	vec3 spacing = get_volume_spacing(volume);
+	vec3 offset = get_probe_offset(idx, volume);
 	return origin + idx * spacing;
 }
 
@@ -62,9 +85,21 @@ vec3 spherical_fibonacci(float i, float n) {
 #undef madfrac
 }
 
-vec3 get_ray_direction(uint rayIdx, DDGIVolume volume)
+vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in DDGIVolume volume)
 {
-	return spherical_fibonacci(rayIdx, volume.raysPerProbe);
+	float maxCount = volume.raysPerProbe;
+	float idx = rayIdx;
+	bool fixedRay = false;
+	if(volume.relocationEnabled != 0 || volume.classificationEnabled != 0) {
+		fixedRay = rayIdx < volume.fixedRayCount;
+		idx = mix( idx - volume.fixedRayCount, idx, fixedRay);
+		maxCount = mix(maxCount - volume.fixedRayCount, volume.fixedRayCount, fixedRay);
+	}
+	vec3 dir = spherical_fibonacci(idx, maxCount);
+    if(fixedRay)
+		return dir;
+
+	return quaternion_rotate(randomRotation, dir);
 }
 
 vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels) 
