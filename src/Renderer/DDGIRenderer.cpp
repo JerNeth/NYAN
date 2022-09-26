@@ -65,9 +65,17 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
 
 
+	RelocatePipelineConfig relocateConfig{
+		.workSizeX {32},
+		.workSizeY {1},
+		.workSizeZ {1},
+	};
+	vulkan::PipelineId relocatePipelineId = create_relocate_pipeline(relocateConfig);
+
+
 	pass.add_renderfunction([this, irradianceColumnBorderPipelineId,
 		irradianceRowBorderPipelineId, depthColumnBorderPipelineId,
-		depthRowBorderPipelineId] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+		depthRowBorderPipelineId, relocatePipelineId, relocateConfig] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 			auto& renderGraph = r_renderManager.get_render_graph();
@@ -204,6 +212,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.filterIrradiance {false},
 				};
 				vulkan::PipelineId depthPipelineId = create_filter_pipeline(depthConfig);
+
 				
 				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
 				render_volume(rtPipelineBind, constants, volume.raysPerProbe, volume.probeCountX * volume.probeCountY * volume.probeCountZ);
@@ -214,6 +223,14 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				pipelineBind = cmd.bind_compute_pipeline(depthPipelineId);
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				cmd.barrier2(static_cast<uint32_t>(barriers.size()), barriers.data());
+
+				if (volume.relocationEnabled) {
+					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineId);
+					relocate_probes(pipelineBind, constants, 
+						(volume.probeCountX * volume.probeCountY * volume.probeCountZ + (relocateConfig.workSizeX - 1))
+						/ relocateConfig.workSizeX, 1, 1);
+				}
+
 
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
 				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, 1);
@@ -295,9 +312,24 @@ void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const 
 void nyan::DDGIRenderer::copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
-	bind.dispatch(static_cast<uint32_t>(std::ceil(probeCountX / static_cast<float>(m_borderSizeX))),
-		static_cast<uint32_t>(std::ceil(probeCountY / static_cast<float>(m_borderSizeY))),
-		probeCountZ);
+	auto groupCountX = static_cast<uint32_t>(std::ceil(probeCountX / static_cast<float>(m_borderSizeX)));
+	auto groupCountY = static_cast<uint32_t>(std::ceil(probeCountY / static_cast<float>(m_borderSizeY)));
+	auto groupCountZ = probeCountZ;
+	const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(groupCountX <= groupCountLimit[0]);
+	assert(groupCountY <= groupCountLimit[1]);
+	assert(groupCountZ <= groupCountLimit[2]);
+	bind.dispatch(groupCountX, groupCountY, groupCountZ);
+}
+
+void nyan::DDGIRenderer::relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+	bind.push_constants(constants);
+	const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(groupCountX <= groupCountLimit[0]);
+	assert(groupCountY <= groupCountLimit[1]);
+	assert(groupCountZ <= groupCountLimit[2]);
+	bind.dispatch(groupCountX, groupCountY, groupCountZ);
 }
 
 vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConfig& config)
@@ -340,6 +372,26 @@ vulkan::PipelineId nyan::DDGIRenderer::create_border_pipeline(const BorderPipeli
 		};
 		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
 		m_borderPipelines.emplace(config, pipelineId);
+	}
+	return pipelineId;
+}
+
+vulkan::PipelineId nyan::DDGIRenderer::create_relocate_pipeline(const RelocatePipelineConfig& config)
+{
+	vulkan::PipelineId pipelineId;
+	if (auto it = m_relocatePipelines.find(config); it != m_relocatePipelines.end()) {
+		pipelineId = it->second;
+	}
+	else {
+		vulkan::ComputePipelineConfig pipelineConfig{
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_relocate_comp",
+				config.workSizeX, config.workSizeY,
+				config.workSizeZ
+				)},
+				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
+		};
+		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+		m_relocatePipelines.emplace(config, pipelineId);
 	}
 	return pipelineId;
 }

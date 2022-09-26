@@ -60,6 +60,17 @@ namespace nyan {
 					lhs.filterIrradiance == rhs.filterIrradiance;
 			}
 		};
+		struct RelocatePipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			friend bool operator==(const RelocatePipelineConfig& lhs, const RelocatePipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ;
+			}
+		};
 	public:
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
@@ -67,8 +78,10 @@ namespace nyan {
 		void render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants, uint32_t numRays, uint32_t numProbes);
 		void filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
 		void copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
+		void relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
+		vulkan::PipelineId create_relocate_pipeline(const RelocatePipelineConfig& config);
 
 		vulkan::RaytracingPipelineConfig generate_config();
 
@@ -78,6 +91,7 @@ namespace nyan {
 		uint32_t m_borderSizeY{ 8 };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
+		std::unordered_map<RelocatePipelineConfig, vulkan::PipelineId, Utility::Hash<RelocatePipelineConfig>> m_relocatePipelines;
 		std::mt19937 m_generator{ 420 };
 		std::uniform_real_distribution<float> m_dist {0.f, 1.f};
 	};

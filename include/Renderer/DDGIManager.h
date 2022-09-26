@@ -53,6 +53,7 @@ namespace nyan {
 		struct Offsets {
 			vulkan::BufferHandle buffer;
 			uint32_t counts{ 0 };
+			uint32_t binding{ ~0 };
 		};
 	public:
 		DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry);

@@ -27,9 +27,9 @@ void main()
 {
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 
-	int probeIdx = gl_GlobalInvocationID.x;
-	int probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
-	if(probeIdx > probeCount)
+	int probeIdx = int(gl_GlobalInvocationID.x);
+	int probeCount = int(volume.probeCountX * volume.probeCountY * volume.probeCountZ);
+	if(probeIdx >= probeCount)
 		return;
 	vec3 offset = get_probe_offset(probeIdx, volume);
 
@@ -40,5 +40,5 @@ void main()
 	float closestFrontfaceDist = 1e27;
 	float furthestFrontfaceDist = 0.f;
 	float backfaceCount = 0.f;
-
+	set_probe_offset(probeIdx, volume, constants.randomRotation.xyz);
 }

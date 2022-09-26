@@ -373,12 +373,19 @@ void nyan::DDGIManager::update_offset_binding(uint32_t volumeId, nyan::shaders::
 			.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
+		uint32_t oldBinding{ ~0 };
+		if (m_offsets[volumeId])
+			oldBinding = m_offsets[volumeId]->binding;
 		m_offsets[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, {}, false), desiredSize);
-		volume.offsetBufferBinding = r_device.get_bindless_set().set_storage_buffer(
+		if (oldBinding == ~0)
+			oldBinding = r_device.get_bindless_set().reserve_storage_buffer();
+		m_offsets[volumeId]->binding = oldBinding;
+		r_device.get_bindless_set().set_storage_buffer(oldBinding,
 			VkDescriptorBufferInfo{ 
 				.buffer {m_offsets[volumeId]->buffer->get_handle()},
 				.offset {0},
 				.range {info.size}
 			});
 	}
+	volume.offsetBufferBinding = m_offsets[volumeId]->binding;
 }

@@ -163,8 +163,8 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 	const auto& attachment = std::get<ImageAttachment>(writeSpecular.attachment);
 	uint32_t width {0}, height {0};
 	if (attachment.size == ImageAttachment::Size::Swapchain) {
-		width = attachment.width * r_device.get_swapchain_width();
-		height = attachment.height * r_device.get_swapchain_height();
+		width = static_cast<uint32_t>(attachment.width * r_device.get_swapchain_width());
+		height = static_cast<uint32_t>(attachment.height * r_device.get_swapchain_height());
 	}
 	else {
 		width = static_cast<uint32_t>(attachment.width);
