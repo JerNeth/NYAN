@@ -58,7 +58,7 @@ vec3 get_probe_coordinates(in uvec3 idx,in DDGIVolume volume)
 	vec3 origin = get_volume_origin(volume);
 	vec3 spacing = get_volume_spacing(volume);
 	vec3 offset = get_probe_offset(idx, volume);
-	return origin + idx * spacing;
+	return origin + offset + idx * spacing;
 }
 
 
@@ -100,6 +100,11 @@ vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in DDGIVolume vol
 		return dir;
 
 	return quaternion_rotate(randomRotation, dir);
+}
+
+float get_volume_max_distance(in DDGIVolume volume)
+{
+	return length(get_volume_spacing(volume)) * 1.5f; //Get maximum possible distance
 }
 
 vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels) 

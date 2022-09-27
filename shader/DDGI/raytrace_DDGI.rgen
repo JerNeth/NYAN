@@ -4,6 +4,7 @@
 #include "../raycommon.glsl"
 #include "../bufferReferences.glsl"
 #include "../structs.h"
+#include "../formats.h"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
 #include "../lighting.glsl"
@@ -17,6 +18,7 @@ layout(location = 1) rayPayloadEXT float visibility;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
+layout(constant_id = 1) const uint renderTarget = R16G16B16A16F;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -134,7 +136,7 @@ void main()
 	vec3 probeCords = get_probe_coordinates(probeIdx, volume);
 	vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume);
 
-    uint  rayFlags = 0;
+    uint  rayFlags = gl_RayFlagsNoneEXT;
     float tMin     = 0.001;
     float tMax     = volume.maxRayDistance;
 	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
@@ -152,42 +154,43 @@ void main()
 	 Payload payload = unpack_payload(pld);
 
 	 vec3 diffuse = vec3(0.f);
-	 vec3 irradiance = vec3(0.f); //Indirect
 
 	 float hitDistance = payload.hitT;
 
-	 if(payload.hitkind == gl_HitKindBackFacingTriangleEXT) 
+	 if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
 	 {
 		hitDistance *= -0.2;
 	 }
-	 if(payload.hitkind == HitDDGIMiss) 
-	 {
-		diffuse = payload.albedo;
-		//If miss hitDist = 1e27f for 32-float, less for 16-float 65519, might reconsider 16-bit since rays are filtered
-		hitDistance = 65519.f; 
-	 } 
-	 else {
-        ShadingData shadingData;
-        shadingData.albedo = payload.albedo;
-        shadingData.alpha = payload.roughness * payload.roughness;
-        shadingData.outLightDir = -direction;
-        shadingData.metalness = payload.metallic;
-        shadingData.shadingNormal = payload.shadingNormal;
-        shadingData.worldPos = payload.worldPos;
-        //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
-        //Probable cause was loop end condition in an SSBO
-		diffuse += diffuse_direct_lighting(scene, shadingData);
-		diffuse += diffuse_indirect_lighting(volume, shadingData);
-     }
-
-    float maxRayDist = length(get_volume_spacing(volume)) * 2.f; //Get maximum possible distance
+     else {
+	     if(payload.hitkind == HitDDGIMiss) 
+	     {
+		    diffuse = payload.albedo;
+		    //If miss hitDist = 1e27f for 32-float, less for 16-float 65519, might reconsider 16-bit since rays are filtered
+		    hitDistance = 1e27f; 
+	     } 
+	     else {
+            ShadingData shadingData;
+            shadingData.albedo = payload.albedo;
+            shadingData.alpha = payload.roughness * payload.roughness;
+            shadingData.outLightDir = -direction;
+            shadingData.metalness = payload.metallic;
+            shadingData.shadingNormal = payload.shadingNormal;
+            shadingData.worldPos = payload.worldPos;
+            //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
+            //Probable cause was loop end condition in an SSBO
+		    diffuse += diffuse_direct_lighting(scene, shadingData);
+		    diffuse += diffuse_indirect_lighting(volume, shadingData);
+         }
+    }
+     
+	float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
     //hitDistance = clamp(hitDistance, -65504.f, 65504.f) ;
-    hitDistance = clamp(hitDistance / maxRayDist, -1.f, 1.f); //Normalize since moments need more accuracy and we have more accuracy in [0;1]
+    hitDistance = clamp(hitDistance / maxRayDist, -65504.f, 65504.f); //Normalize since moments need more accuracy and we have more accuracy in [0;1]
     //hitDistance = min(hitDistance, 65504.f);
 
-#ifdef DEBUG_COLORS
+    #ifdef DEBUG_COLORS
     diffuse = debugColors[probeIdx % debugColors.length()].xyz;
-#endif
-
+    #endif
+    
     imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

@@ -99,7 +99,7 @@ Payload unpack_payload(PackedPayload packed) {
 		payload.shadingNormal.z = tmp.x;
 		payload.roughness = tmp.y;
 	}
-	payload.hitkind = packed.packed1.z;
+	payload.hitkind = packed.packed1.w;
 	return payload;
 }
 
@@ -114,6 +114,7 @@ PackedPayload pack_payload(Payload payload) {
 	packed.packed1.x = packHalf2x16(payload.shadingNormal.xy);
 	packed.packed1.y = packHalf2x16(vec2(payload.shadingNormal.z, payload.roughness));
 	packed.packed1.z = payload.hitkind;
+	packed.packed1.w = payload.hitkind;
 
 	return packed;
 }

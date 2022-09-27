@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #include "../bufferReferences.glsl"
 #include "../structs.h"
+#include "../formats.h"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
 #include "../debug.glsl"
@@ -27,6 +28,10 @@ layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const uint rayCount = 64;
 layout(constant_id = 5) const bool filterIrradiance = false;
+layout(constant_id = 6) const uint renderTarget = R16G16B16A16F;
+layout(constant_id = 7) const uint depthFormat = R16G16B16A16F;
+layout(constant_id = 8) const uint irradianceFormat = R11G11B10F;
+
 //layout(local_size_x = 64) in;
 //layout(local_size_y = 1) in;
 //layout(local_size_z = 1) in;
@@ -64,7 +69,11 @@ void main()
 		if(rayIdx >= rayCount) break;
 		
 		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume);
-		vec4 data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		vec4 data = vec4(0);
+		//if(halfRenderTarget)
+		data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		//else
+		//	data = imageLoad(imagesRGBA32F[constants.renderTarget], ivec2(rayIdx, probeIdx));
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;
 		rayDistance[rayIdx] = data.w;// *maxRayDist;
@@ -89,7 +98,7 @@ void main()
 			resultWeight += weight;
 		}
 		else {
-			//rayDist = min(abs(rayDist), maxRayDist);
+			rayDist = min(abs(rayDist), 1);
 			const float rayDistSqarred = rayDist * rayDist;
 			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;
 			resultWeight += weight;
@@ -110,7 +119,7 @@ void main()
 	vec4 previous = vec4(0.f);
 	if(filterIrradiance) 
 		previous = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], texCoord);
-	else 
+	else
 		previous = imageLoad(imagesRGBA16F[volume.depthImageBinding], texCoord);
 	//	previous = imageLoad(imagesRGBA32F[volume.depthImageBinding], texCoord);
 

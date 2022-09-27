@@ -69,13 +69,16 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 		.workSizeX {32},
 		.workSizeY {1},
 		.workSizeZ {1},
+		.relocationEnabled {VK_FALSE}
 	};
-	vulkan::PipelineId relocatePipelineId = create_relocate_pipeline(relocateConfig);
+	vulkan::PipelineId relocatePipelineDisabledId = create_relocate_pipeline(relocateConfig);
+	relocateConfig.relocationEnabled =  VK_TRUE;
+	vulkan::PipelineId relocatePipelineEnabledId = create_relocate_pipeline(relocateConfig);
 
 
 	pass.add_renderfunction([this, irradianceColumnBorderPipelineId,
 		irradianceRowBorderPipelineId, depthColumnBorderPipelineId,
-		depthRowBorderPipelineId, relocatePipelineId, relocateConfig] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+		depthRowBorderPipelineId, relocatePipelineDisabledId, relocatePipelineEnabledId, relocateConfig] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 			auto& renderGraph = r_renderManager.get_render_graph();
@@ -224,12 +227,14 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				cmd.barrier2(static_cast<uint32_t>(barriers.size()), barriers.data());
 
-				if (volume.relocationEnabled) {
-					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineId);
-					relocate_probes(pipelineBind, constants, 
-						(volume.probeCountX * volume.probeCountY * volume.probeCountZ + (relocateConfig.workSizeX - 1))
-						/ relocateConfig.workSizeX, 1, 1);
-				}
+				
+				if (volume.relocationEnabled)
+					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineEnabledId);
+				else
+					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineDisabledId);
+				relocate_probes(pipelineBind, constants,
+					(volume.probeCountX* volume.probeCountY* volume.probeCountZ + (relocateConfig.workSizeX - 1))
+					/ relocateConfig.workSizeX, 1, 1);
 
 
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
@@ -292,8 +297,8 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 	bind.push_constants(constants);
 
 	assert(numRays * numRays <= r_device.get_physical_device().get_ray_tracing_pipeline_properties().maxRayDispatchInvocationCount);
-	const auto* const groupsSize = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize;
-	const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	[[maybe_unused]] const auto* const groupsSize = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize;
+	[[maybe_unused]] const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(numRays <= groupsSize[0] * groupsCount[0]);
 	assert(numProbes <= groupsSize[1] * groupsCount[1]);
 	bind.trace_rays(m_rtPipeline, numRays, numProbes, 1);
@@ -302,7 +307,7 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
 {
 	bind.push_constants(constants);
-	const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	[[maybe_unused]] const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(probeCountX <= groupsCount[0]);
 	assert(probeCountY <= groupsCount[1]);
 	assert(probeCountZ <= groupsCount[2]);
@@ -315,7 +320,7 @@ void nyan::DDGIRenderer::copy_borders(vulkan::ComputePipelineBind& bind, const P
 	auto groupCountX = static_cast<uint32_t>(std::ceil(probeCountX / static_cast<float>(m_borderSizeX)));
 	auto groupCountY = static_cast<uint32_t>(std::ceil(probeCountY / static_cast<float>(m_borderSizeY)));
 	auto groupCountZ = probeCountZ;
-	const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	[[maybe_unused]] const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(groupCountX <= groupCountLimit[0]);
 	assert(groupCountY <= groupCountLimit[1]);
 	assert(groupCountZ <= groupCountLimit[2]);
@@ -387,6 +392,7 @@ vulkan::PipelineId nyan::DDGIRenderer::create_relocate_pipeline(const RelocatePi
 				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_relocate_comp",
 				config.workSizeX, config.workSizeY,
 				config.workSizeZ
+				,vulkan::ShaderStorage::SpecializationConstant{RelocatePipelineConfig::relocationEnabledShaderName, config.relocationEnabled}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};

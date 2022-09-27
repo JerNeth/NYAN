@@ -85,7 +85,9 @@ namespace MM {
 		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32,"%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Fixed Ray Count", reinterpret_cast<int*>(&volume.fixedRayCount), 1, 0, volume.raysPerProbe, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Backface Threshold", reinterpret_cast<int*>(&volume.relocationBackfaceThreshold), 1, 0, volume.fixedRayCount, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp); ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Backface Threshold", &volume.relocationBackfaceThreshold, 0.001, 0, 1, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Min Front Face Distance", &volume.minFrontFaceDistance, 0.1, 0, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance, 1.f, 0.00001f, 100000.0f);
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
@@ -93,6 +95,7 @@ namespace MM {
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Use Moments", &volume.useMoments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
+		//ImGui::ListBox
 		ImGui::Checkbox("Visualization Enabled", &volume.visualization);
 		ImGui::Checkbox("Visualizate Depth", &volume.visualizeDepth);
 		ImGui::Checkbox("Visualizate Directions", &volume.visualizeDirections);

@@ -31,7 +31,8 @@ namespace nyan {
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
 			uint32_t fixedRayCount{ 32 };
-			uint32_t relocationBackfaceThreshold{ 16 };
+			float relocationBackfaceThreshold{ 0.25f };
+			float minFrontFaceDistance{ 1.f };
 			bool enabled{ true };
 			bool visualization{ true };
 			bool visualizeDepth{ false };
@@ -52,8 +53,8 @@ namespace nyan {
 		};
 		struct Offsets {
 			vulkan::BufferHandle buffer;
-			uint32_t counts{ 0 };
-			uint32_t binding{ ~0 };
+			uint32_t counts{ 0u };
+			uint32_t binding{ ~0u };
 		};
 	public:
 		DDGIManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry);

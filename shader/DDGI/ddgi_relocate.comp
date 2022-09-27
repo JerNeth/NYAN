@@ -22,6 +22,7 @@ layout(std430, push_constant) uniform PushConstants
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
+layout(constant_id = 4) const bool relocationEnabled = false;
 
 void main() 
 {
@@ -31,14 +32,85 @@ void main()
 	int probeCount = int(volume.probeCountX * volume.probeCountY * volume.probeCountZ);
 	if(probeIdx >= probeCount)
 		return;
+	if(!relocationEnabled) {		
+		set_probe_offset(probeIdx, volume, vec3(0.f));
+		return;
+	}
 	vec3 offset = get_probe_offset(probeIdx, volume);
+
 
 	int closestBackfaceIdx = -1;
 	int closestFrontfaceIdx = -1;
-	int furthestFrontfaceIdx = -1;
+	int farthestFrontfaceIdx = -1;
 	float closestBackfaceDist = 1e27;
 	float closestFrontfaceDist = 1e27;
-	float furthestFrontfaceDist = 0.f;
+	float farthestFrontfaceDist = 0.f;
 	float backfaceCount = 0.f;
-	set_probe_offset(probeIdx, volume, constants.randomRotation.xyz);
+
+	int rayCount = min(int(volume.raysPerProbe), int(volume.fixedRayCount));
+	
+	vec3 spacing = get_volume_spacing(volume);
+	float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
+	for(int rayIdx = 0; rayIdx < rayCount; rayIdx++)
+	{
+		float hitDistance =  imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx)).a * maxRayDist;
+		
+		if(hitDistance < 0.f)
+		{
+			backfaceCount++;
+			hitDistance *= -5.f;
+			if(hitDistance < closestBackfaceDist)
+			{
+				closestBackfaceDist = hitDistance;
+				closestBackfaceIdx = rayIdx;
+			}
+		}
+		else {
+			if(hitDistance < closestFrontfaceDist)
+			{
+				closestFrontfaceDist = hitDistance;
+				closestFrontfaceIdx = rayIdx;
+			}
+			else if(hitDistance > farthestFrontfaceDist)
+			{
+				farthestFrontfaceDist = hitDistance;
+				farthestFrontfaceIdx = rayIdx;
+			}
+		}
+	}
+	vec3 fullOffset = vec3(1e27f);
+
+	if((closestBackfaceIdx != -1) && ((backfaceCount / float(rayCount)) > volume.relocationBackfaceThreshold))
+	{
+		vec3 closestBackfaceDirection = get_ray_direction(constants.randomRotation, closestBackfaceIdx, volume);
+		fullOffset = offset + (closestBackfaceDirection * (closestBackfaceDist + volume.minFrontFaceDistance* 0.5f) );
+	}
+	else if(closestFrontfaceDist < volume.minFrontFaceDistance)
+	{
+		vec3 closestFrontfaceDirection = get_ray_direction(constants.randomRotation, closestFrontfaceIdx, volume);
+		vec3 farthestFrontfaceDirection = get_ray_direction(constants.randomRotation, farthestFrontfaceIdx, volume);
+		if(dot(closestFrontfaceDirection, farthestFrontfaceDirection) <= 0.f)
+		{
+			farthestFrontfaceDist *= min(farthestFrontfaceDist, 1.f);
+			fullOffset = offset + farthestFrontfaceDirection;
+		}
+	}
+	else if(closestFrontfaceDist > volume.minFrontFaceDistance)
+	{
+		float moveBackMargin = min(closestFrontfaceDist - volume.minFrontFaceDistance, length(offset));
+		vec3 moveBackDirection = normalize(-offset);
+		fullOffset = offset + (moveBackMargin * moveBackDirection);
+
+	}
+
+    // Absolute maximum distance that probe could be moved should satisfy ellipsoid equation:
+    // x^2 / probeGridSpacing.x^2 + y^2 / probeGridSpacing.y^2 + z^2 / probeGridSpacing.y^2 < (0.5)^2
+    // Clamp to less than maximum distance to avoid degenerate cases
+
+	vec3 normalizedOffset = fullOffset / spacing;
+	if(dot(normalizedOffset, normalizedOffset) < 0.2025f)
+	{
+		offset = fullOffset;
+	}
+	set_probe_offset(probeIdx, volume, offset);
 }

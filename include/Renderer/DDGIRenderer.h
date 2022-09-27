@@ -65,10 +65,13 @@ namespace nyan {
 			uint32_t workSizeX;
 			uint32_t workSizeY;
 			uint32_t workSizeZ;
+			VkBool32 relocationEnabled;
+			static constexpr const char* relocationEnabledShaderName{ "relocationEnabled" };
 			friend bool operator==(const RelocatePipelineConfig& lhs, const RelocatePipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
-					lhs.workSizeZ == rhs.workSizeZ;
+					lhs.workSizeZ == rhs.workSizeZ &&
+					lhs.relocationEnabled == rhs.relocationEnabled;
 			}
 		};
 	public:

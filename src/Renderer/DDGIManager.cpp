@@ -47,6 +47,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.offsetBufferBinding {},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
+			.minFrontFaceDistance {parameters.minFrontFaceDistance},
 			.shadowBias {parameters.depthBias},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
@@ -182,6 +183,7 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.offsetBufferBinding == 0 || //Might not be ideal
 			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
 			constDeviceVolume.relocationBackfaceThreshold != parameters.relocationBackfaceThreshold ||
+			constDeviceVolume.minFrontFaceDistance != parameters.minFrontFaceDistance ||
 			constDeviceVolume.shadowBias != parameters.depthBias ||
 			constDeviceVolume.maxRayDistance != parameters.maxRayDistance ||
 			constDeviceVolume.hysteresis != parameters.hysteresis ||
@@ -217,6 +219,7 @@ void nyan::DDGIManager::update()
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
+			.minFrontFaceDistance {parameters.minFrontFaceDistance},
 			.shadowBias {parameters.depthBias},
 			.maxRayDistance {parameters.maxRayDistance},
 			.hysteresis {parameters.hysteresis},
@@ -364,16 +367,16 @@ void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& vol
 void nyan::DDGIManager::update_offset_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume)
 {
 	if (m_offsets.size() <= volumeId)
-		m_offsets.resize(volumeId + 1ull);
+		m_offsets.resize(volumeId + 1ull);	
 	
 	auto desiredSize = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
-	if (!m_offsets[volumeId] || desiredSize < m_offsets[volumeId]->counts) {
+	if (!m_offsets[volumeId] || desiredSize > m_offsets[volumeId]->counts) {
 		vulkan::BufferInfo info{
 			.size {desiredSize * sizeof(float) * 3},
 			.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
-		uint32_t oldBinding{ ~0 };
+		uint32_t oldBinding{ ~0u };
 		if (m_offsets[volumeId])
 			oldBinding = m_offsets[volumeId]->binding;
 		m_offsets[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, {}, false), desiredSize);

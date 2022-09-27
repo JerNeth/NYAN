@@ -1,0 +1,11 @@
+#ifndef FORMATS_H
+#define FORMATS_H
+
+const uint R11G11B10F = 0;
+const uint R16G16B16F = R11G11B10F + 1;
+const uint R16G16B16A16F = R16G16B16F + 1;
+const uint R32G32B32F = R16G16B16A16F + 1;
+const uint R32G32B32A32F = R32G32B32F + 1;
+const uint E5B9G9R9F = R32G32B32A32F + 1;
+
+#endif
