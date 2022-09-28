@@ -37,6 +37,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.irradianceTextureBinding {},
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.irradianceImageBinding {},
+			.irradianceImageFormat{parameters.irradianceImageFormat},
 			.depthTextureSizeX {},
 			.depthTextureSizeY {},
 			.inverseDepthTextureSizeX {},
@@ -44,6 +45,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.depthTextureBinding {},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthImageBinding {},
+			.depthImageFormat {parameters.depthImageFormat},
+			.renderTargetImageFormat {parameters.renderTargetImageFormat},
 			.offsetBufferBinding {},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
@@ -179,6 +182,9 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.probeCountZ != parameters.probeCount[2] ||
 			constDeviceVolume.raysPerProbe != parameters.raysPerProbe ||
 			constDeviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
+			constDeviceVolume.irradianceImageFormat != parameters.irradianceImageFormat ||
+			constDeviceVolume.depthImageFormat != parameters.depthImageFormat ||
+			constDeviceVolume.renderTargetImageFormat != parameters.renderTargetImageFormat ||
 			constDeviceVolume.depthProbeSize != parameters.depthProbeSize ||
 			constDeviceVolume.offsetBufferBinding == 0 || //Might not be ideal
 			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
@@ -216,7 +222,10 @@ void nyan::DDGIManager::update()
 			.irradianceProbeSize {parameters.irradianceProbeSize},
 			.depthProbeSize {parameters.depthProbeSize},
 			.irradianceTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
+			.irradianceImageFormat {parameters.irradianceImageFormat},
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
+			.depthImageFormat {parameters.depthImageFormat},
+			.renderTargetImageFormat {parameters.renderTargetImageFormat},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
@@ -240,16 +249,32 @@ void nyan::DDGIManager::update()
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
 		update_offset_binding(parameters.ddgiVolume, deviceVolume);
+
+
+		VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
+		switch (deviceVolume.depthImageFormat) {
+		case nyan::shaders::R32G32B32A32F:
+			depthFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+			break;
+		default:
+			assert(false);
+			[[fallthrough]];
+		case nyan::shaders::R16G16B16A16F:
+			depthFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+			break;
+		}
 		if (parameters.depthResource) {
 			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
 			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
 			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
 			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
 			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+			imageAttachment.format = depthFormat;
 		}
 		else {
 			parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
-				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.format{depthFormat},
+				//VK_FORMAT_R16G16B16A16_SFLOAT},
 				//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
 				.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
@@ -264,16 +289,36 @@ void nyan::DDGIManager::update()
 				pass.add_write(parameters.depthResource, type);
 			}
 		}
+		VkFormat irradianceFormat{ VK_FORMAT_UNDEFINED };
+		switch (deviceVolume.irradianceImageFormat) {
+		//case nyan::shaders::E5B9G9R9F: //No image load store specificlly, would need extra implementation
+		//	irradianceFormat = VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+		//	break;
+		case nyan::shaders::R10G10B10A2F:
+			irradianceFormat = VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+			break;
+		case nyan::shaders::R16G16B16A16F:
+			irradianceFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+			break;
+		default:
+			assert(false);
+			[[fallthrough]];
+		case nyan::shaders::R11G11B10F:
+			irradianceFormat = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+			break;
+		}
 		if (parameters.irradianceResource) {
 			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
 			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
 			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
 			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
 			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			imageAttachment.format = irradianceFormat;
 		}
 		else {
 			parameters.irradianceResource = r_rendergraph.add_ressource(std::format("DDGI_Irradiance_{}", parameters.ddgiVolume), nyan::ImageAttachment{
-				.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+				.format{irradianceFormat},
+				//VK_FORMAT_B10G11R11_UFLOAT_PACK32},
 				//VK_FORMAT_E5B9G9R9_UFLOAT_PACK32
 				//VK_FORMAT_R16G16B16_SFLOAT
 				.size{nyan::ImageAttachment::Size::Absolute},

@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #include "../bufferReferences.glsl"
 #include "../structs.h"
+#include "../formats.h"
 #include "../bindlessLayouts.glsl"
 #include "../common.glsl"
 #include "ddgi_common.glsl"
@@ -24,6 +25,7 @@ layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const bool columns = false;
 layout(constant_id = 5) const bool filterIrradiance = false;
+layout(constant_id = 6) const uint imageFormat = R16G16B16A16F;
 
 
 //struct DDGIVolume {
@@ -74,21 +76,21 @@ layout(constant_id = 5) const bool filterIrradiance = false;
 //};
 void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	ivec2 maxSize = ivec2(0);
-	
-	if(filterIrradiance) {
-		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
-	}
-	else {
-		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
-	}
-
 	int probeSize = 2;
+	uint imageBinding = 0;
+
 	if(filterIrradiance) {
+		imageBinding = volume.irradianceImageBinding;
+		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
 		probeSize += int(volume.irradianceProbeSize);
 	}
 	else {
+		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
 		probeSize += int(volume.depthProbeSize);
+		imageBinding = volume.depthImageBinding;
 	}
+
+
 	int probeSizeMinusOne = probeSize - 1;
 	ivec2 texelCoord = ivec2(globalId.xy);
 	texelCoord.y *= probeSize;
@@ -104,47 +106,56 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	ivec2 copyLoad = ivec2(probeStart + offset, texelCoord.y +1);
 	
 
-	if(filterIrradiance) {
-		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
-	}
-	else {
-		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
-	}
+
+	if(imageFormat == R11G11B10F)
+		imageStore(imagesR11G11B10F[imageBinding], texelCoord, 
+			imageLoad(imagesR11G11B10F[imageBinding], copyLoad));
+	else if(imageFormat == R10G10B10A2F)
+		imageStore(imagesRGB10_A2[imageBinding], texelCoord, 
+			imageLoad(imagesRGB10_A2[imageBinding], copyLoad));
+	else if(imageFormat == R16G16B16A16F)
+		imageStore(imagesRGBA16F[imageBinding], texelCoord, 
+			imageLoad(imagesRGBA16F[imageBinding], copyLoad));
+	else if(imageFormat == R32G32B32A32F)
+		imageStore(imagesRGBA32F[imageBinding], texelCoord, 
+			imageLoad(imagesRGBA32F[imageBinding], copyLoad));
+
 	
 	texelCoord.y += probeSizeMinusOne;
 	copyLoad = ivec2(probeStart + offset, texelCoord.y - 1);
 	
-	if(filterIrradiance) {
-		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoad);
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoord, value);
-	}
-	else {
-		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoad);
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoord, value);
-	}
+	if(imageFormat == R11G11B10F)
+		imageStore(imagesR11G11B10F[imageBinding], texelCoord, 
+			imageLoad(imagesR11G11B10F[imageBinding], copyLoad));
+	else if(imageFormat == R10G10B10A2F)
+		imageStore(imagesRGB10_A2[imageBinding], texelCoord, 
+			imageLoad(imagesRGB10_A2[imageBinding], copyLoad));
+	else if(imageFormat == R16G16B16A16F)
+		imageStore(imagesRGBA16F[imageBinding], texelCoord, 
+			imageLoad(imagesRGBA16F[imageBinding], copyLoad));
+	else if(imageFormat == R32G32B32A32F)
+		imageStore(imagesRGBA32F[imageBinding], texelCoord, 
+			imageLoad(imagesRGBA32F[imageBinding], copyLoad));
 
 }
 
 void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
-	
 	ivec2 maxSize = ivec2(0);
-	
-	if(filterIrradiance) {
-		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
-	}
-	else {
-		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
-	}
-
 	int probeSize = 2;
+	uint imageBinding = 0;
+
 	if(filterIrradiance) {
+		imageBinding = volume.irradianceImageBinding;
+		maxSize = ivec2(volume.irradianceTextureSizeX, volume.irradianceTextureSizeY);
 		probeSize += int(volume.irradianceProbeSize);
 	}
 	else {
+		imageBinding = volume.depthImageBinding;
+		maxSize = ivec2(volume.depthTextureSizeX, volume.depthTextureSizeY) ;
 		probeSize += int(volume.depthProbeSize);
 	}
+
+
 	int probeSizeMinusOne = probeSize - 1;
 	ivec2 texelCoordFirst = ivec2(globalId.xy);
 	texelCoordFirst.x *= probeSize;
@@ -174,21 +185,29 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 	}
 	
 
-	if(filterIrradiance) {
-		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadFirst);
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordFirst, value);
+	if(imageFormat == R11G11B10F) {
+		imageStore(imagesR11G11B10F[imageBinding], texelCoordFirst, 
+			imageLoad(imagesR11G11B10F[imageBinding], copyLoadFirst));
+		imageStore(imagesR11G11B10F[imageBinding], texelCoordSecond, 
+			imageLoad(imagesR11G11B10F[imageBinding], copyLoadSecond));
 	}
-	else {
-		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadFirst);
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordFirst, value);
+	else if(imageFormat == R10G10B10A2F) {			
+		imageStore(imagesRGB10_A2[imageBinding], texelCoordFirst, 
+			imageLoad(imagesRGB10_A2[imageBinding], copyLoadFirst));
+		imageStore(imagesRGB10_A2[imageBinding], texelCoordSecond, 
+			imageLoad(imagesRGB10_A2[imageBinding], copyLoadSecond));
 	}
-	if(filterIrradiance) {
-		vec4 value = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], copyLoadSecond);
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texelCoordSecond, value);
+	else if(imageFormat == R16G16B16A16F) {
+		imageStore(imagesRGBA16F[imageBinding], texelCoordFirst, 
+			imageLoad(imagesRGBA16F[imageBinding], copyLoadFirst));
+		imageStore(imagesRGBA16F[imageBinding], texelCoordSecond, 
+			imageLoad(imagesRGBA16F[imageBinding], copyLoadSecond));
 	}
-	else {
-		vec4 value = imageLoad(imagesRGBA16F[volume.depthImageBinding], copyLoadSecond);
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texelCoordSecond, value);
+	else if(imageFormat == R32G32B32A32F) {			
+		imageStore(imagesRGBA32F[imageBinding], texelCoordFirst, 
+			imageLoad(imagesRGBA32F[imageBinding], copyLoadFirst));
+		imageStore(imagesRGBA32F[imageBinding], texelCoordSecond, 
+			imageLoad(imagesRGBA32F[imageBinding], copyLoadSecond));
 	}
 	
 }

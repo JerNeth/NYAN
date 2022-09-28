@@ -32,15 +32,21 @@ namespace nyan {
 			uint32_t workSizeZ;
 			uint32_t rayCount;
 			VkBool32 filterIrradiance;
+			uint32_t renderTargetImageFormat;
+			uint32_t imageFormat;
 			static constexpr const char* rayCountShaderName{ "rayCount" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
+			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
+			static constexpr const char* imageFormatShaderName{ "imageFormat" };
 			friend bool operator==(const PipelineConfig& lhs, const PipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
 					lhs.workSizeZ == rhs.workSizeZ &&
 					lhs.rayCount == rhs.rayCount &&
 					//lhs.probeSize == rhs.probeSize &&
-					lhs.filterIrradiance == rhs.filterIrradiance;
+					lhs.filterIrradiance == rhs.filterIrradiance &&
+					lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
+					lhs.imageFormat == rhs.imageFormat;
 			}
 		};
 		struct BorderPipelineConfig
@@ -50,14 +56,17 @@ namespace nyan {
 			uint32_t workSizeZ;
 			VkBool32 columns;
 			VkBool32 filterIrradiance;
+			uint32_t imageFormat;
 			static constexpr const char* columnsShaderName{ "columns" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
+			static constexpr const char* imageFormatShaderName{ "imageFormat" };
 			friend bool operator==(const BorderPipelineConfig& lhs, const BorderPipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
 					lhs.workSizeZ == rhs.workSizeZ &&
 					lhs.columns == rhs.columns &&
-					lhs.filterIrradiance == rhs.filterIrradiance;
+					lhs.filterIrradiance == rhs.filterIrradiance &&
+					lhs.imageFormat == rhs.imageFormat;
 			}
 		};
 		struct RelocatePipelineConfig
@@ -66,12 +75,23 @@ namespace nyan {
 			uint32_t workSizeY;
 			uint32_t workSizeZ;
 			VkBool32 relocationEnabled;
+			uint32_t renderTargetImageFormat;
 			static constexpr const char* relocationEnabledShaderName{ "relocationEnabled" };
+			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
 			friend bool operator==(const RelocatePipelineConfig& lhs, const RelocatePipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
 					lhs.workSizeZ == rhs.workSizeZ &&
-					lhs.relocationEnabled == rhs.relocationEnabled;
+					lhs.relocationEnabled == rhs.relocationEnabled &&
+					lhs.renderTargetImageFormat == rhs.renderTargetImageFormat;
+			}
+		};
+		struct RTConfig
+		{
+			uint32_t renderTargetImageFormat;
+			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
+			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
+				return lhs.renderTargetImageFormat == rhs.renderTargetImageFormat;
 			}
 		};
 	public:
@@ -86,7 +106,7 @@ namespace nyan {
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
 		vulkan::PipelineId create_relocate_pipeline(const RelocatePipelineConfig& config);
 
-		vulkan::RaytracingPipelineConfig generate_config();
+		vulkan::RaytracingPipelineConfig generate_config(const RTConfig& config);
 
 		vulkan::RTPipeline m_rtPipeline;
 		nyan::RenderResource::Id m_renderTarget;

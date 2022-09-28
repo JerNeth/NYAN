@@ -28,9 +28,8 @@ layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const uint rayCount = 64;
 layout(constant_id = 5) const bool filterIrradiance = false;
-layout(constant_id = 6) const uint renderTarget = R16G16B16A16F;
-layout(constant_id = 7) const uint depthFormat = R16G16B16A16F;
-layout(constant_id = 8) const uint irradianceFormat = R11G11B10F;
+layout(constant_id = 6) const uint renderTargetImageFormat = R16G16B16A16F;
+layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 
 //layout(local_size_x = 64) in;
 //layout(local_size_y = 1) in;
@@ -70,10 +69,12 @@ void main()
 		
 		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume);
 		vec4 data = vec4(0);
-		//if(halfRenderTarget)
-		data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
-		//else
-		//	data = imageLoad(imagesRGBA32F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		
+		if(renderTargetImageFormat == R16G16B16A16F)
+			data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		else if(renderTargetImageFormat == R32G32B32A32F)
+			data = imageLoad(imagesRGBA32F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+		
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;
 		rayDistance[rayIdx] = data.w;// *maxRayDist;
@@ -117,11 +118,20 @@ void main()
 	result *= weightNormalization;
 
 	vec4 previous = vec4(0.f);
-	if(filterIrradiance) 
-		previous = imageLoad(imagesR11G11B10F[volume.irradianceImageBinding], texCoord);
+	uint imageBinding = 0;
+	if(filterIrradiance)
+		imageBinding = volume.irradianceImageBinding;
 	else
-		previous = imageLoad(imagesRGBA16F[volume.depthImageBinding], texCoord);
-	//	previous = imageLoad(imagesRGBA32F[volume.depthImageBinding], texCoord);
+		imageBinding = volume.depthImageBinding;
+			
+	if(imageFormat == R11G11B10F)
+		previous = imageLoad(imagesR11G11B10F[imageBinding], texCoord);
+	else if(imageFormat == R10G10B10A2F)
+		previous = imageLoad(imagesRGB10_A2[imageBinding], texCoord);
+	else if(imageFormat == R16G16B16A16F)
+		previous = imageLoad(imagesRGBA16F[imageBinding], texCoord);
+	else if(imageFormat == R32G32B32A32F)
+		previous = imageLoad(imagesRGBA32F[imageBinding], texCoord);
 
 	if(dot(previous, previous) == 0)
 		hysteresis = 0.f;
@@ -157,12 +167,20 @@ void main()
 #ifdef DEBUG_COLORS
 		result = debugColors[probeIdx % debugColors.length()];
 #endif
-		imageStore(imagesR11G11B10F[volume.irradianceImageBinding], texCoord, result);
+
+		result = vec4(mix(result, previous, hysteresis));
 	}
 	else {
 		result = vec4(mix(result, previous, hysteresis));
-		imageStore(imagesRGBA16F[volume.depthImageBinding], texCoord, result);
-		//imageStore(imagesRGBA32F[volume.depthImageBinding], texCoord, result);
 	}
+	
+	if(imageFormat == R11G11B10F)
+		imageStore(imagesR11G11B10F[imageBinding], texCoord, result);
+	else if(imageFormat == R10G10B10A2F)
+		imageStore(imagesRGB10_A2[imageBinding], texCoord, result);
+	else if(imageFormat == R16G16B16A16F)
+		imageStore(imagesRGBA16F[imageBinding], texCoord, result);
+	else if(imageFormat == R32G32B32A32F)
+		imageStore(imagesRGBA32F[imageBinding], texCoord, result);
 	
 }

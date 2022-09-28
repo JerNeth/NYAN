@@ -18,7 +18,7 @@ layout(location = 1) rayPayloadEXT float visibility;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-layout(constant_id = 1) const uint renderTarget = R16G16B16A16F;
+layout(constant_id = 1) const uint renderTargetImageFormat = R16G16B16A16F;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -192,5 +192,8 @@ void main()
     diffuse = debugColors[probeIdx % debugColors.length()].xyz;
     #endif
     
-    imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
+	if(volume.renderTargetImageFormat == R16G16B16A16F)
+        imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
+	else if(volume.renderTargetImageFormat == R32G32B32A32F)
+        imageStore(imagesRGBA32F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

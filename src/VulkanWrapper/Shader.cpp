@@ -156,14 +156,14 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 			const auto& type = comp.get_type(constant.constant_type);
 			m_specilizationConstants.emplace("local_size_z", SpecializationConstantId{ convertType(type.basetype), z.constant_id });
 		}
-		auto specs = comp.get_specialization_constants();
-		for (auto& spec : specs) {
-			const auto& name = comp.get_name(spec.id);
-			if (!name.empty()) {
-				const auto& constant = comp.get_constant(spec.id);
-				const auto& type = comp.get_type(constant.constant_type);
-				m_specilizationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
-			}
+	}
+	auto specs = comp.get_specialization_constants();
+	for (auto& spec : specs) {
+		const auto& name = comp.get_name(spec.id);
+		if (!name.empty()) {
+			const auto& constant = comp.get_constant(spec.id);
+			const auto& type = comp.get_type(constant.constant_type);
+			m_specilizationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
 		}
 	}
 	//auto specs = comp.get_specialization_constants();

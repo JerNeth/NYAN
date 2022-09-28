@@ -40,6 +40,7 @@
 namespace nyan {
 	namespace shaders {
 		#include "../../shader/structs.h"
+		#include "../../shader/formats.h"
 	}
 }
 

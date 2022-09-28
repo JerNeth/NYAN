@@ -40,6 +40,9 @@ namespace nyan {
 			bool useMoments{ false };
 			bool relocationEnabled{ false };
 			bool classificationEnabled{ false };
+			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
+			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
+			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
 
 
 			uint32_t ddgiVolume {nyan::InvalidBinding};

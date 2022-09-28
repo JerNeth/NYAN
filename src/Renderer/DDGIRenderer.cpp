@@ -12,7 +12,7 @@
 
 nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	Renderer(device, registry, renderManager, pass),
-	m_rtPipeline(device, generate_config())
+	m_rtPipeline(device, generate_config(RTConfig{ .renderTargetImageFormat {DDGIManager::DDGIManager::DDGIVolumeParameters{}.renderTargetImageFormat} })) //Hack to use default rt Image Format
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
@@ -40,45 +40,9 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	//	}, nyan::Renderpass::Write::Type::Compute);
 
 
-	BorderPipelineConfig irradianceBorderConfig{
-		.workSizeX {m_borderSizeX},
-		.workSizeY {m_borderSizeY},
-		.workSizeZ {1},
-		.columns {true},
-		.filterIrradiance {true},
-	};
-
-	vulkan::PipelineId irradianceColumnBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
-	irradianceBorderConfig.columns = false;
-	vulkan::PipelineId irradianceRowBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
-
-	BorderPipelineConfig depthBorderConfig{
-		.workSizeX {m_borderSizeX},
-		.workSizeY {m_borderSizeY},
-		.workSizeZ {1},
-		.columns {true},
-		.filterIrradiance {false},
-	};
-
-	vulkan::PipelineId depthColumnBorderPipelineId = create_border_pipeline(depthBorderConfig);
-	depthBorderConfig.columns = false;
-	vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
 
 
-	RelocatePipelineConfig relocateConfig{
-		.workSizeX {32},
-		.workSizeY {1},
-		.workSizeZ {1},
-		.relocationEnabled {VK_FALSE}
-	};
-	vulkan::PipelineId relocatePipelineDisabledId = create_relocate_pipeline(relocateConfig);
-	relocateConfig.relocationEnabled =  VK_TRUE;
-	vulkan::PipelineId relocatePipelineEnabledId = create_relocate_pipeline(relocateConfig);
-
-
-	pass.add_renderfunction([this, irradianceColumnBorderPipelineId,
-		irradianceRowBorderPipelineId, depthColumnBorderPipelineId,
-		depthRowBorderPipelineId, relocatePipelineDisabledId, relocatePipelineEnabledId, relocateConfig] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+	pass.add_renderfunction([this] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 			auto& renderGraph = r_renderManager.get_render_graph();
@@ -201,8 +165,9 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.workSizeY {volume.irradianceProbeSize},
 					.workSizeZ {1},
 					.rayCount {volume.raysPerProbe},
-					//.probeSize {volume.raysPerProbe},
 					.filterIrradiance {true},
+					.renderTargetImageFormat {volume.renderTargetImageFormat},
+					.imageFormat {volume.irradianceImageFormat}
 				};
 				vulkan::PipelineId irradiancePipelineId = create_filter_pipeline(irradianceConfig);
 
@@ -211,10 +176,49 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.workSizeY {volume.depthProbeSize},
 					.workSizeZ {1},
 					.rayCount {volume.raysPerProbe},
-					//.probeSize {volume.raysPerProbe},
 					.filterIrradiance {false},
+					.renderTargetImageFormat {volume.renderTargetImageFormat},
+					.imageFormat {volume.depthImageFormat}
 				};
 				vulkan::PipelineId depthPipelineId = create_filter_pipeline(depthConfig);
+
+				BorderPipelineConfig irradianceBorderConfig{
+					.workSizeX {m_borderSizeX},
+					.workSizeY {m_borderSizeY},
+					.workSizeZ {1},
+					.columns {true},
+					.filterIrradiance {true},
+					.imageFormat{volume.irradianceImageFormat}
+				};
+
+				vulkan::PipelineId irradianceColumnBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
+				irradianceBorderConfig.columns = false;
+				vulkan::PipelineId irradianceRowBorderPipelineId = create_border_pipeline(irradianceBorderConfig);
+
+				BorderPipelineConfig depthBorderConfig{
+					.workSizeX {m_borderSizeX},
+					.workSizeY {m_borderSizeY},
+					.workSizeZ {1},
+					.columns {true},
+					.filterIrradiance {false},
+					.imageFormat{volume.depthImageFormat}
+				};
+
+				vulkan::PipelineId depthColumnBorderPipelineId = create_border_pipeline(depthBorderConfig);
+				depthBorderConfig.columns = false;
+				vulkan::PipelineId depthRowBorderPipelineId = create_border_pipeline(depthBorderConfig);
+
+
+				RelocatePipelineConfig relocateConfig{
+					.workSizeX {32},
+					.workSizeY {1},
+					.workSizeZ {1},
+					.relocationEnabled {VK_FALSE},
+					.renderTargetImageFormat {volume.renderTargetImageFormat}
+				};
+				vulkan::PipelineId relocatePipelineDisabledId = create_relocate_pipeline(relocateConfig);
+				relocateConfig.relocationEnabled = VK_TRUE;
+				vulkan::PipelineId relocatePipelineEnabledId = create_relocate_pipeline(relocateConfig);
 
 				
 				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
@@ -255,6 +259,7 @@ void nyan::DDGIRenderer::begin_frame()
 {
 	uint32_t maxRays = 0;
 	uint32_t maxProbes = 0;
+	VkFormat renderTargetFormat{ VK_FORMAT_UNDEFINED };
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	for (uint32_t i = 0; i < ddgiManager.slot_count(); ++i) {
 		const auto& volume = ddgiManager.get(i);
@@ -264,13 +269,24 @@ void nyan::DDGIRenderer::begin_frame()
 			maxRays = rayCount;
 		if (probeCount > maxProbes)
 			maxProbes = probeCount;
+		switch (volume.renderTargetImageFormat) {
+		case nyan::shaders::R32G32B32A32F:
+			renderTargetFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+			break;
+		default:
+			assert(false);
+			[[fallthrough]];
+		case nyan::shaders::R16G16B16A16F:
+			renderTargetFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+			break;
+		}
 	}
 
 	auto& renderGraph = r_renderManager.get_render_graph();
 	if (!m_renderTarget) {
 		m_renderTarget = renderGraph.add_ressource("DDGI_RenderTarget", nyan::ImageAttachment
 			{
-				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.format{renderTargetFormat},//VK_FORMAT_R16G16B16A16_SFLOAT},
 				.size {ImageAttachment::Size::Absolute},
 				.width { static_cast<float>(maxRays)},
 				.height { static_cast<float>(maxProbes)},
@@ -283,6 +299,7 @@ void nyan::DDGIRenderer::begin_frame()
 		auto& image = std::get<nyan::ImageAttachment>(resource.attachment);
 		image.width = static_cast<float>(maxRays);
 		image.height = static_cast<float>(maxProbes);
+		image.format = renderTargetFormat;
 
 	}
 }
@@ -347,9 +364,11 @@ vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConf
 		vulkan::ComputePipelineConfig pipelineConfig{
 			.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_comp",
 			config.workSizeX, config.workSizeY,
-			config.workSizeZ, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount}
-			//, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::probeSizeShaderName, config.probeSize}
-			, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance})},
+			config.workSizeZ, vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount},
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance},
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat},
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::imageFormatShaderName, config.imageFormat })
+			},
 			.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
 		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
@@ -368,10 +387,10 @@ vulkan::PipelineId nyan::DDGIRenderer::create_border_pipeline(const BorderPipeli
 		vulkan::ComputePipelineConfig pipelineConfig{
 				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_borders_comp",
 				config.workSizeX, config.workSizeY,
-				config.workSizeZ
-				// ,vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::rayCountShaderName, config.rayCount},
-				,vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::columnsShaderName, config.columns}
-				,vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::filterIrradianceShaderName, config.filterIrradiance}
+				config.workSizeZ,
+				vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::columnsShaderName, config.columns},
+				vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::filterIrradianceShaderName, config.filterIrradiance},
+				vulkan::ShaderStorage::SpecializationConstant{BorderPipelineConfig::imageFormatShaderName, config.imageFormat}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -391,8 +410,9 @@ vulkan::PipelineId nyan::DDGIRenderer::create_relocate_pipeline(const RelocatePi
 		vulkan::ComputePipelineConfig pipelineConfig{
 				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_relocate_comp",
 				config.workSizeX, config.workSizeY,
-				config.workSizeZ
-				,vulkan::ShaderStorage::SpecializationConstant{RelocatePipelineConfig::relocationEnabledShaderName, config.relocationEnabled}
+				config.workSizeZ,
+				vulkan::ShaderStorage::SpecializationConstant{RelocatePipelineConfig::relocationEnabledShaderName, config.relocationEnabled},
+				vulkan::ShaderStorage::SpecializationConstant{RelocatePipelineConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -402,14 +422,15 @@ vulkan::PipelineId nyan::DDGIRenderer::create_relocate_pipeline(const RelocatePi
 	return pipelineId;
 }
 
-vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config()
+vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTConfig& config)
 {
 
 	return vulkan::RaytracingPipelineConfig{
 		.rgenGroups {
 			vulkan::Group
 			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rgen")},
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rgen"
+				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat})},
 			},
 		},
 		.hitGroups {

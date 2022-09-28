@@ -110,6 +110,7 @@ struct DDGIVolume {
 	uint irradianceTextureBinding;
 	uint irradianceTextureSampler;
 	uint irradianceImageBinding;
+	uint irradianceImageFormat;
 
 	uint depthTextureSizeX;
 	uint depthTextureSizeY;
@@ -118,6 +119,9 @@ struct DDGIVolume {
 	uint depthTextureBinding;
 	uint depthTextureSampler;
 	uint depthImageBinding;
+	uint depthImageFormat;
+
+	uint renderTargetImageFormat;
 
 	uint offsetBufferBinding;
 	uint fixedRayCount;
