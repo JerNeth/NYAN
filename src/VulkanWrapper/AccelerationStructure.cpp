@@ -167,6 +167,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 	VkDeviceSize totalSize{0};
 	VkDeviceSize maxScratchSize{0};
 	uint32_t compactionCount{0};
+	auto scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
 	for (auto& build : m_pendingBuilds) {
 		build.buildInfo = VkAccelerationStructureBuildGeometryInfoKHR {
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
@@ -181,7 +182,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 			VkAccelerationStructureBuildTypeKHR::VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
 			&build.buildInfo, &build.buildRange.primitiveCount, &build.sizeInfo);
 		totalSize += build.sizeInfo.accelerationStructureSize;
-		maxScratchSize = Math::max(maxScratchSize, build.sizeInfo.buildScratchSize);
+		maxScratchSize = Math::max(maxScratchSize, build.sizeInfo.buildScratchSize + scratchAlignment);
 		compactionCount += (build.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR) == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
 	}
 	if (!m_scratch || (*m_scratch)->get_size() < maxScratchSize)
@@ -192,6 +193,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
 	
 	auto scratchAddress = (*m_scratch)->get_address();
+	scratchAddress += scratchAddress % scratchAlignment;
 	VkQueryPool queryPool{ VK_NULL_HANDLE };
 	if (compactionCount) {
 		assert(compactionCount == m_pendingBuilds.size() && "No mixing of compacted/uncompacted AS in one batch allowed");
@@ -375,17 +377,20 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	vkCreateAccelerationStructureKHR(r_device, &createInfo, r_device.get_allocator(), &accelHandle);
 	auto tlas = m_acclerationStructurePool.emplace(r_device, accelHandle, accelBuffer, createInfo);
 
+	auto scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
 	BufferInfo scratchInfo{
-		.size = sizeInfo.buildScratchSize,
+		.size = sizeInfo.buildScratchSize + scratchAlignment,
 		.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		.offset = 0,
 		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
 	};
 	auto scratchBuffer = r_device.create_buffer(scratchInfo, {});
 
-	addressInfo.buffer = *scratchBuffer;
+	auto scratchAddress = scratchBuffer->get_address();
+	scratchAddress += scratchAddress % scratchAlignment;
+
 	buildInfo.dstAccelerationStructure = accelHandle;
-	buildInfo.scratchData.deviceAddress = vkGetBufferDeviceAddress(r_device, &addressInfo);
+	buildInfo.scratchData.deviceAddress = scratchAddress;
 	VkAccelerationStructureBuildRangeInfoKHR buildRange{
 		.primitiveCount = instanceCount,
 		.primitiveOffset = 0,

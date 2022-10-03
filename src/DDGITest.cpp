@@ -54,15 +54,26 @@ int main() {
 	//	});
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{0.f, 10.f,  5.f},
+			.position{700.f, 1160.f,-1570.f},
 			.scale{1.f},
-			.orientation{14.f, -145.f, 0.f}, //Cathedral
+			.orientation{16.4f, -20.f, 0.f}, //Cathedral
 		});
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{0.f, 10.f,  5.f},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
 
 	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
-			.spacing {500.f, 500.f, 500.f},
-			.origin {-2000.f, 0.f, -7500.f },
-			.probeCount {12, 4, 18},
+			.spacing {250.f, 250.f, 250.f},
+			.origin {-2500.f, -200.f, -2400.f },
+			.probeCount {20, 12, 40},
+			.raysPerProbe {192},
+			.depthBias {10},
+			.visualizerRadius {10},
+			.minFrontFaceDistance {100},
+			
 		});
 	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
 	//		.spacing {57.5f, 25.f, 57.5f},

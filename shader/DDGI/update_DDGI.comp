@@ -143,6 +143,8 @@ void main()
 		{
 			hysteresis = max(0.f, hysteresis - 0.75f);
 		}
+
+
 		if(length(delta) > volume.lightToDarkThreshold)
 		{
 			result.rgb = previous.xyz + (delta * 0.25f);

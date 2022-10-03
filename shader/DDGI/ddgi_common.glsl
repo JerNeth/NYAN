@@ -27,6 +27,11 @@ vec3 get_volume_origin(DDGIVolume volume)
 	return vec3(volume.gridOriginX, volume.gridOriginY, volume.gridOriginZ);
 }
 
+vec3 get_volume_inverse_spacing(DDGIVolume volume) 
+{
+	return vec3(volume.inverseSpacingX, volume.inverseSpacingY, volume.inverseSpacingZ);
+}
+
 vec3 get_volume_spacing(DDGIVolume volume) 
 {
 	return vec3(volume.spacingX, volume.spacingY, volume.spacingZ);

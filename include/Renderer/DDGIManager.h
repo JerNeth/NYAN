@@ -24,7 +24,7 @@ namespace nyan {
 			uint32_t depthProbeSize{ 16 };
 			float depthBias{ 1e-2f };
 			float maxRayDistance{5000.f};
-			float hysteresis{ 9e-1f };
+			float hysteresis{ 9.5e-1f };
 			float irradianceThreshold{0.25f};
 			float lightToDarkThreshold{ 0.8f };
 			float visualizerRadius{ 1.0f };

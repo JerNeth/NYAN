@@ -58,10 +58,10 @@ float get_volume_weight(vec3 worldPos, DDGIVolume volume) {
 
 ivec3 get_volume_base_probe(vec3 worldPos, DDGIVolume volume) {
 	vec3 position = worldPos - get_volume_origin(volume);
-	vec3 spacing = get_volume_spacing(volume);
+	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
 
-	ivec3 probeIdx = ivec3(position / spacing);
+	ivec3 probeIdx = ivec3(position * inverseSpacing);
 
 	probeIdx = clamp(probeIdx, ivec3(0), probeCountsMinusOne);
 
@@ -81,21 +81,19 @@ vec3 sample_ddgi(vec3 worldPos,
 
 	vec3 biasedWorldPos = worldPos + bias * volume.shadowBias;
 	
-	vec3 spacing = vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
+	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
 	ivec3 baseProbeIdx = get_volume_base_probe(biasedWorldPos, volume);
 	
 	vec3 baseProbeWorldPos = get_probe_coordinates(baseProbeIdx, volume) ;
 
 	vec3 delta = biasedWorldPos - baseProbeWorldPos;
-	vec3 alpha = clamp( delta / spacing,vec3(0.f), vec3(1.f));
-	#ifdef SAMPLE_IRRADIANCE_NEAREST
-	float closestDist = 1e16;
-	vec3 closestIrradiance = vec3(0);
-	#endif
+	vec3 alpha = clamp( delta * inverseSpacing,vec3(0.f), vec3(1.f));
+
+
 	for(int probeIndex = 0; probeIndex < 8; probeIndex++)
 	{
-		ivec3 adjacentProbeIdxOffset = ivec3(probeIndex, probeIndex >> 1, probeIndex >> 2) & ivec3(1, 1, 1);
+		ivec3 adjacentProbeIdxOffset = ivec3(probeIndex, probeIndex >> 1, probeIndex >> 2) & ivec3(1);
 		ivec3 adjacentProbeIdx = clamp(baseProbeIdx + adjacentProbeIdxOffset, ivec3(0), probeCountsMinusOne);
 
 		vec3 adjacentProbeWorldPos = get_probe_coordinates(adjacentProbeIdx, volume);
@@ -124,7 +122,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		octCoords = get_octahedral_coords(direction);
 		vec2 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
 
-		
+
 		vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
 
 		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
@@ -161,16 +159,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		irradiance += weight * probeIrradiance;
 		weightSum += weight;
 
-	#ifdef SAMPLE_IRRADIANCE_NEAREST
-		if(closestDist > biasedWorldPosToAdjacentProbeDist) {
-			closestDist = biasedWorldPosToAdjacentProbeDist;
-			closestIrradiance = probeIrradiance;
-		}
-		#endif
 	}
-	#ifdef SAMPLE_IRRADIANCE_NEAREST
-	return closestIrradiance;
-	#endif
 	if(weightSum == 0.f) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize

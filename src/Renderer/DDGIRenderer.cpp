@@ -11,36 +11,10 @@
 
 
 nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	Renderer(device, registry, renderManager, pass),
-	m_rtPipeline(device, generate_config(RTConfig{ .renderTargetImageFormat {DDGIManager::DDGIManager::DDGIVolumeParameters{}.renderTargetImageFormat} })) //Hack to use default rt Image Format
+	Renderer(device, registry, renderManager, pass)
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
-	//For now limit adding ddgi volumes to not allow adding any after render graph build
-	//This holds until render graph refactor in regards to modification or rebuild is done
-	//Also limit to one ddgi volume for now
-	//pass.add_write("DDGI_Rays", nyan::ImageAttachment
-	//		{
-	//			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-	//			.size {ImageAttachment::Size::Absolute},
-	//			.width { 2048},
-	//			.height { 2048},
-	//			.clearColor{0.f, 0.f, 0.f, 0.f},
-	//		}, nyan::Renderpass::Write::Type::Compute);
-	//pass.add_write("DDGI_Irradiance", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
-	//		.clearColor{0.f, 0.f, 0.f, 0.f},
-	//	}, nyan::Renderpass::Write::Type::Compute);
-
-	//pass.add_write("DDGI_Depth", nyan::ImageAttachment
-	//	{
-	//		.format{VK_FORMAT_R16G16B16A16_SFLOAT},
-	//		.clearColor{0.f, 0.f, 0.f, 0.f},
-	//	}, nyan::Renderpass::Write::Type::Compute);
-
-
-
 
 	pass.add_renderfunction([this] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
@@ -139,7 +113,9 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 				.ddgiIndex {0},
 				.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)},
-				.col { 0.4f, 0.6f, 0.8f, 1.0f },
+				//.col { 0.4f, 0.6f, 0.8f, 1.0f },
+				//.col { 0.04f, 0.06f, 0.08f, 1.f },
+				.col { 0.f, 0.f, 0.f, 0.f },
 				.randomRotation {sqrt(1- u) * sin(Math::pi_2 * v), sqrt(1-u) * cos(Math::pi_2 * v),
 									sqrt(u) * sin(Math::pi_2*w), sqrt(u) * cos(Math::pi_2 * w)}
 			};
@@ -220,9 +196,12 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				relocateConfig.relocationEnabled = VK_TRUE;
 				vulkan::PipelineId relocatePipelineEnabledId = create_relocate_pipeline(relocateConfig);
 
-				
-				auto rtPipelineBind = cmd.bind_raytracing_pipeline(m_rtPipeline);
-				render_volume(rtPipelineBind, constants, volume.raysPerProbe, volume.probeCountX * volume.probeCountY * volume.probeCountZ);
+				RTConfig rtConfig{
+					.renderTargetImageFormat {volume.renderTargetImageFormat}
+				};
+				auto& rtPipeline = get_rt_pipeline(rtConfig);
+				auto rtPipelineBind = cmd.bind_raytracing_pipeline(rtPipeline);
+				render_volume(rtPipelineBind, rtPipeline, constants, volume.raysPerProbe, volume.probeCountX * volume.probeCountY * volume.probeCountZ);
 				cmd.barrier2(1, &writeBarrier);
 
 				auto pipelineBind = cmd.bind_compute_pipeline(irradiancePipelineId);
@@ -304,7 +283,7 @@ void nyan::DDGIRenderer::begin_frame()
 	}
 }
 
-void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants, uint32_t numRays, uint32_t numProbes)
+void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t numRays, uint32_t numProbes)
 {
 	//auto writeBind = r_pass.get_write_bind("swap", nyan::Renderpass::Write::Type::Compute);
 	//assert(writeBind != InvalidResourceId);
@@ -318,7 +297,7 @@ void nyan::DDGIRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, con
 	[[maybe_unused]] const auto* const groupsCount = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
 	assert(numRays <= groupsSize[0] * groupsCount[0]);
 	assert(numProbes <= groupsSize[1] * groupsCount[1]);
-	bind.trace_rays(m_rtPipeline, numRays, numProbes, 1);
+	bind.trace_rays(pipeline, numRays, numProbes, 1);
 }
 
 void nyan::DDGIRenderer::filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ)
@@ -420,6 +399,16 @@ vulkan::PipelineId nyan::DDGIRenderer::create_relocate_pipeline(const RelocatePi
 		m_relocatePipelines.emplace(config, pipelineId);
 	}
 	return pipelineId;
+}
+vulkan::RTPipeline& nyan::DDGIRenderer::get_rt_pipeline(const RTConfig& config)
+{
+	if (auto it = m_rtPipelines.find(config); it != m_rtPipelines.end()) {
+		assert(it->second);
+		return *it->second;
+	}
+	else {
+		return *m_rtPipelines.emplace(config, std::make_unique< vulkan::RTPipeline>(r_device, generate_config(config))).first->second;
+	}
 }
 
 vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTConfig& config)

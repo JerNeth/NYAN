@@ -98,23 +98,25 @@ namespace nyan {
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
 	private:
-		void render_volume(vulkan::RaytracingPipelineBind& bind, const PushConstants& constants, uint32_t numRays, uint32_t numProbes);
+		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t numRays, uint32_t numProbes);
 		void filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
 		void copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
 		void relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
 		vulkan::PipelineId create_relocate_pipeline(const RelocatePipelineConfig& config);
+		vulkan::RTPipeline& get_rt_pipeline(const RTConfig& config);
 
 		vulkan::RaytracingPipelineConfig generate_config(const RTConfig& config);
 
-		vulkan::RTPipeline m_rtPipeline;
+		//vulkan::RTPipeline m_rtPipeline;
 		nyan::RenderResource::Id m_renderTarget;
 		uint32_t m_borderSizeX{ 8 };
 		uint32_t m_borderSizeY{ 8 };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
 		std::unordered_map<RelocatePipelineConfig, vulkan::PipelineId, Utility::Hash<RelocatePipelineConfig>> m_relocatePipelines;
+		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_rtPipelines;
 		std::mt19937 m_generator{ 420 };
 		std::uniform_real_distribution<float> m_dist {0.f, 1.f};
 	};

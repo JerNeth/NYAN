@@ -81,7 +81,7 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
         lightData.dir = lightDir;
         lightData.intensity = light.intensity * falloff;
         lightData.color = light.color.rgb;
-        diffuse += diffuse_light(lightData, shadingData) ;
+        diffuse += diffuse_light(lightData, shadingData);
         
     }
     return diffuse;
@@ -185,7 +185,9 @@ void main()
      
 	float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
     //hitDistance = clamp(hitDistance, -65504.f, 65504.f) ;
-    hitDistance = clamp(hitDistance / maxRayDist, -65504.f, 65504.f); //Normalize since moments need more accuracy and we have more accuracy in [0;1]
+    hitDistance = hitDistance / maxRayDist;//Normalize since moments need more accuracy and we have more accuracy in [0;1]
+    if(renderTargetImageFormat == R16G16B16A16F) //Not sure if necessary or it gets clamped anyways
+        hitDistance = clamp(hitDistance, -65504.f, 65504.f);
     //hitDistance = min(hitDistance, 65504.f);
 
     #ifdef DEBUG_COLORS
