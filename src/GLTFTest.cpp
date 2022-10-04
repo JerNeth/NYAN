@@ -39,15 +39,20 @@ int main() {
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
-	std::filesystem::path file = "sponza-gltf-pbr/sponza.glb";
+	std::filesystem::path file = directory/ "sponza-gltf-pbr/sponza.glb";
 	bool ret = false;
 
 	if(file.extension() == ".glb")
 		ret = loader.LoadBinaryFromFile(&model, &err, &warn, file.string());
 	else if(file.extension() == ".gltf")
 		ret = loader.LoadASCIIFromFile(&model, &err, &warn, file.string());
-	//model.meshes[0].
-	//model.nodes[0].
+
+	if (!warn.empty())
+		Utility::log_warning(warn);
+
+	if (!err.empty())
+		Utility::log_warning(err);
+
 	if (ret) {
 		for (const auto& image : model.images) {
 
@@ -84,7 +89,7 @@ int main() {
 	renderManager.add_materials(materials);
 
 	auto parent = registry.create();
-	;
+	
 	registry.emplace<Transform>(parent,
 		Transform{
 			.position{0.f, 0.f, 0.f},

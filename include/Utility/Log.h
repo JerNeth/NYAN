@@ -12,6 +12,7 @@ namespace Utility {
 	public:
 		enum class Type {
 			Info,
+			Warn,
 			Error
 		};
 		constexpr Logger(Type type = Type::Info) : m_type(type) {
@@ -23,12 +24,12 @@ namespace Utility {
 		constexpr Logger(Logger&& other) noexcept : m_type(other.m_type), m_newLine(other.m_newLine) {
 			other.m_newLine = false;
 		}
-		Logger& operator=(const Logger& other) {
+		constexpr Logger& operator=(const Logger& other) {
 			m_type = other.m_type;
 			m_newLine = other.m_newLine;
 			return *this;
 		}
-		Logger& operator=(Logger&& other) noexcept {
+		constexpr Logger& operator=(Logger&& other) noexcept {
 			if (this != &other) {
 				m_type = other.m_type;
 				m_newLine = other.m_newLine;
@@ -41,12 +42,15 @@ namespace Utility {
 				return;
 			stream() << '\n';
 		}
-		const Logger& message(const std::string_view message) const {
+		const Logger& message(const std::string_view message) const& {
 			stream() << message;
 			return *this;
 		}
-		//Logger& location() {
-		const Logger& location(const std::source_location location = std::source_location::current()) const {
+		const Logger&& message(const std::string_view message) const && {
+			stream() << message;
+			return std::move(*this);
+		}
+		const Logger& location(const std::source_location location = std::source_location::current()) const & {
 			stream() << "file: "
 				<< location.file_name() << "("
 				<< location.line() << ":"
@@ -55,11 +59,26 @@ namespace Utility {
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
 		}
+		const Logger& location(const std::source_location location = std::source_location::current()) const && {
+			stream() << "file: "
+				<< location.file_name() << "("
+				<< location.line() << ":"
+				<< location.column() << ") `"
+				<< location.function_name() << "`: ";
+			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
+			return std::move(*this);
+		}
 		template<typename ...Args>
-		const Logger& format(std::string_view view, Args&&... args) const {
+		const Logger& format(std::string_view view, Args&&... args) const & {
 			stream() << std::vformat(view, std::make_format_args(args...));
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
+		}
+		template<typename ...Args>
+		const Logger&& format(std::string_view view, Args&&... args) const && {
+			stream() << std::vformat(view, std::make_format_args(args...));
+			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
+			return std::move(*this);
 		}
 	private:
 		std::ostream& stream() const {
@@ -78,6 +97,10 @@ namespace Utility {
 	{
 		return Logger{};
 	}
+	inline Logger log_warning()
+	{
+		return Logger{ Logger::Type::Warn };
+	}
 	inline Logger log_error()
 	{
 		return Logger{ Logger::Type::Error };
@@ -85,6 +108,10 @@ namespace Utility {
 	inline Logger log(const std::string_view message)
 	{
 		return Logger().message(message);
+	}
+	inline Logger log_warning(const std::string_view message)
+	{
+		return Logger{ Logger::Type::Warn }.message(message);
 	}
 	inline Logger log_error(const std::string_view message)
 	{
