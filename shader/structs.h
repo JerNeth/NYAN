@@ -16,21 +16,24 @@ struct Material {
 	uint albedoSampler;
 	uint normalTexId;
 	uint normalSampler;
+
 	uint pbrTexId;
 	uint pbrSampler;
 	float albedo_R;
 	float albedo_G;
+
 	float albedo_B;
 	float albedo_A;
 	float metalness;
 	float roughness;
+
 	float anisotropy;
 	//float IoR;
 	//float F0_R;
 	//float F0_G;
 	//float F0_B;
 	float alphaDiscard;
-
+	uint flags;
 };
 
 struct DirectionalLight {

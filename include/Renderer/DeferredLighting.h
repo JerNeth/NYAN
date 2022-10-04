@@ -77,7 +77,7 @@ namespace nyan {
 		Lighting m_lighting;
 	};
 
-	class LightComposite : Renderer{
+	class LightComposite : Renderer {
 		struct PushConstants {
 			uint32_t specularBinding;
 			uint32_t specularSampler;

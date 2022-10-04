@@ -95,7 +95,80 @@ namespace MM {
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Use Moments", &volume.useMoments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
-		//ImGui::ListBox
+
+		{
+			static constexpr const char* renderTargetFormats[] = { "R16G16B16A16F", "R32G32B32A32F" };
+			static const char* currentRenderTargetFormat = renderTargetFormats[0];
+			if (ImGui::BeginCombo("##Render Target Format", currentRenderTargetFormat))
+			{
+				for (const auto& format : renderTargetFormats) {
+					bool selected = (format == currentRenderTargetFormat);
+					if (ImGui::Selectable(format, selected))
+						currentRenderTargetFormat = format;
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			if (currentRenderTargetFormat == renderTargetFormats[0]) {
+				volume.renderTargetImageFormat = nyan::shaders::R16G16B16A16F;
+			}
+			else if (currentRenderTargetFormat == renderTargetFormats[1]) {
+				volume.renderTargetImageFormat = nyan::shaders::R32G32B32A32F;
+			}
+			ImGui::SameLine();
+			ImGui::Text("Render Target Format");
+		}
+
+		{
+			static constexpr const char* irradianceFormats[] = {"R10G10B10A2F", "R16G16B16A16F", "R11G11B10F" };
+			static const char* currentIrradianceFormat = irradianceFormats[0];
+			if (ImGui::BeginCombo("##Irradiance Format", currentIrradianceFormat))
+			{
+				for (const auto& format : irradianceFormats) {
+					bool selected = (format == currentIrradianceFormat);
+					if (ImGui::Selectable(format, selected))
+						currentIrradianceFormat = format;
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			if (currentIrradianceFormat == irradianceFormats[0]) {
+				volume.irradianceImageFormat = nyan::shaders::R10G10B10A2F;
+			}
+			else if (currentIrradianceFormat == irradianceFormats[1]) {
+				volume.irradianceImageFormat = nyan::shaders::R16G16B16A16F;
+			}
+			else if (currentIrradianceFormat == irradianceFormats[2]) {
+				volume.irradianceImageFormat = nyan::shaders::R11G11B10F;
+			}
+			ImGui::SameLine();
+			ImGui::Text("Irradiance Format");
+		}
+		{
+			static constexpr const char* depthFormats[] = { "R16G16B16A16F", "R32G32B32A32F" };
+			static const char* currentDepthFormat = depthFormats[1];
+			if (ImGui::BeginCombo("##Depth Format", currentDepthFormat))
+			{
+				for (const auto& format : depthFormats) {
+					bool selected = (format == currentDepthFormat);
+					if (ImGui::Selectable(format, selected))
+						currentDepthFormat = format;
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			if (currentDepthFormat == depthFormats[0]) {
+				volume.depthImageFormat = nyan::shaders::R16G16B16A16F;
+			}
+			else if (currentDepthFormat == depthFormats[1]) {
+				volume.depthImageFormat = nyan::shaders::R32G32B32A32F;
+			}
+			ImGui::SameLine();
+			ImGui::Text("Depth Format");
+		}
 		ImGui::Checkbox("Visualization Enabled", &volume.visualization);
 		ImGui::Checkbox("Visualizate Depth", &volume.visualizeDepth);
 		ImGui::Checkbox("Visualizate Directions", &volume.visualizeDirections);

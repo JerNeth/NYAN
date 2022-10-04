@@ -26,34 +26,39 @@ layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec4 outPBR;
 
 
+void flip_backfacing_normal(inout MaterialData materialData, in VertexData vertexData, in Scene scene) 
+{
+    vec3 viewPos = get_viewer_pos(scene);
+    vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
+
+    if(dot(materialData.shadingNormal, viewVec) < 0) {
+        materialData.shadingNormal = -materialData.shadingNormal;
+    }
+}
+
 void main() {
+   
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
     uint meshId = instance.meshId & 0x00FFFFFF;
 	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
-    vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
-    albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
-    if(albedo.w <= material.alphaDiscard)
+    Scene scene = scenes[constants.sceneBinding].scene;
+    VertexData vertexData;
+    vertexData.normal = fragNormal;
+    vertexData.tangent = fragTangent.xyz;
+    vertexData.bitangent = cross(fragNormal, fragTangent.xyz) * fragTangent.w;
+    vertexData.worldPos = fragWorldPos;
+    vertexData.uv = fragTexCoord;
+    MaterialData materialData = get_material_data(material, vertexData);
+    if(materialData.opacity <= material.alphaDiscard)
         discard;
-    vec2 normalSample = texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg;
-    vec3 normal = computeTangentSpaceNormal(normalSample,fragNormal, fragTangent);
+    if((material.flags & 0x1) == 0x1)
+        flip_backfacing_normal(materialData, vertexData, scene);
 
-//    vec3 position = gl_FragCoord.xyz / gl_FragCoord.w;
-//    vec3 tmpNormal = fragNormal;
-//    vec3 tmpBitangent;
-//    vec3 tmpTangent;
-//    calculateTBN(tmpTangent, tmpBitangent, tmpNormal, position, fragTexCoord);
-//    vec3 normal = tangentSpaceNormal(normalSample, tmpNormal, tmpBitangent, tmpTangent);
-    normal = pack1212(encodeOctahedronMapping(normalize(normal)));
-    //vec3 normal = normalize(fragTangent.xyz);
-    //vec3 normal = pack1212(encodeOctahedronMapping(normalize(fragNormal)));
-    //normal.xy = encodeOctahedronMapping(normal);
 
-    outAlbedo = albedo;
-    outNormal = vec4(normal.xyz, material.roughness);
+    outAlbedo = vec4(materialData.albedo, materialData.opacity);
+    outNormal = vec4(pack1212(encodeOctahedronMapping(normalize(materialData.shadingNormal))), material.roughness);
     //outNormal = normal.xy;
-    outPBR = vec4(material.metalness,0, 0,0 );
-    outPBR.yzw -= vec3(0.022, 0.022, 0.022);
-    //outColor = vec4(0.2,0.6,0.5,1.0);
+    outPBR = vec4(material.metalness, 0, 0, 0);
 }
 

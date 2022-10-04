@@ -199,25 +199,25 @@ int main() {
 
 
 	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic));
+	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
-	
+	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
+
 	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
+	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 
 	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
+	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	nyan::DDGIVisualizer ddgiVisualizer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
 
 	auto& compositePass = rendergraph.get_pass(rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic));
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 
 
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
-
-	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
-	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
-	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
-	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
-	nyan::DDGIVisualizer ddgiVisualizer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
-	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
-	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+
 	rendergraph.build();
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
@@ -248,8 +248,6 @@ int main() {
 		{
 			renderManager.end_frame();
 			rendergraph.end_frame();
-			//device.wait_idle(); //Brute forcing synchronization, currently 2 Frames in flight and I think the view matrix update gets mangled into the frame
-			//					//Potential solution, use staging buffer for rendermanager updates and synchronize via semaphores and barriers
 		});
 	application.main_loop();
 

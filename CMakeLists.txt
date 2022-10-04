@@ -69,7 +69,7 @@ include("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor.cmake")
 # Optick
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")
 
-# Optick
+# TinyGLTF
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyGLTF")
 
 # ---------------------------------------------------------------------------

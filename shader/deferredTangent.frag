@@ -51,7 +51,8 @@ void main() {
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
     MaterialData materialData = get_material_data(material, vertexData);
-    flip_backfacing_normal(materialData, vertexData, scene);
+    if((material.flags & 0x1) == 0x1)
+        flip_backfacing_normal(materialData, vertexData, scene);
 
 
     outAlbedo = vec4(materialData.albedo, materialData.opacity);
