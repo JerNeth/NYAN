@@ -2,6 +2,7 @@
 #define VECTOR_H
 #pragma once
 #include <string>
+#include <vector>
 #include <cmath>
 #include <cassert>
 #include "Util.h"
@@ -61,6 +62,13 @@ namespace Math {
 		constexpr explicit Vec(const Scalar(&list)[Size]) : m_data() {
 			for (size_t i = 0; i < Size; i++)
 				m_data[i] = list[i];
+		}
+		template<ScalarT OtherScalar>
+		constexpr explicit Vec(const std::vector<OtherScalar>& data) noexcept : m_data() {
+			for (size_t i = 0; i < min(Size, data.size()); i++)
+				m_data[i] = data[i];
+			for (size_t i = min(Size, data.size()); i < Size; i++)
+				m_data[i] = Scalar(0);
 		}
 		constexpr friend inline bool operator==(const Vec& lhs, const Vec& rhs) noexcept {
 			for (size_t i = 0; i < Size; i++)
@@ -376,6 +384,38 @@ namespace Math {
 			return m_data[2];
 		}
 		constexpr inline Scalar& a() noexcept {
+			assert(("Vector too small", Size > 3));
+			return m_data[3];
+		}
+		constexpr inline const Scalar& x() const noexcept  {
+			assert(("Vector too small", Size > 0));
+			return m_data[0];
+		}
+		constexpr inline const Scalar& y() const noexcept  {
+			assert(("Vector too small", Size > 1));
+			return m_data[1];
+		}
+		constexpr inline const Scalar& z() const noexcept {
+			assert(("Vector too small", Size > 2));
+			return m_data[2];
+		}
+		constexpr inline const Scalar& w() const noexcept {
+			assert(("Vector too small", Size > 3));
+			return m_data[3];
+		}
+		constexpr inline const Scalar& r() const noexcept {
+			assert(("Vector too small", Size > 0));
+			return m_data[0];
+		}
+		constexpr inline const Scalar& g() const noexcept {
+			assert(("Vector too small", Size > 1));
+			return m_data[1];
+		}
+		constexpr inline const Scalar& b() const noexcept {
+			assert(("Vector too small", Size > 2));
+			return m_data[2];
+		}
+		constexpr inline const Scalar& a() const noexcept {
 			assert(("Vector too small", Size > 3));
 			return m_data[3];
 		}

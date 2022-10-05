@@ -37,7 +37,6 @@ void flip_backfacing_normal(inout MaterialData materialData, in VertexData verte
     }
 }
 
-
 void main() {
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
     uint meshId = instance.meshId & 0x00FFFFFF;
@@ -51,14 +50,14 @@ void main() {
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
     MaterialData materialData = get_material_data(material, vertexData);
-    if((material.flags & 0x1) == 0x1)
+    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
         flip_backfacing_normal(materialData, vertexData, scene);
 
 
     outAlbedo = vec4(materialData.albedo, materialData.opacity);
-    outNormal = vec4(pack1212(encodeOctahedronMapping(normalize(materialData.shadingNormal))), material.roughness);
+    outNormal = vec4(pack1212(encodeOctahedronMapping(normalize(materialData.shadingNormal))), materialData.roughness);
     //outNormal = normal.xy;
-    outPBR = vec4(material.metalness, 0, 0, 0);
+    outPBR = vec4(materialData.metalness, materialData.emissive.xyz);
     //outColor = vec4(0.2,0.6,0.5,1.0);
 }
 

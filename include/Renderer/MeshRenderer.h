@@ -20,6 +20,8 @@ namespace nyan {
 	//};
 	struct Deferred {};
 	struct DeferredAlphaTest {};
+	struct DeferredDoubleSided {};
+	struct DeferredDoubleSidedAlphaTest {};
 	struct Forward {};
 	struct ForwardTransparent {};
 	struct RayTraced {};

@@ -52,7 +52,7 @@ void main() {
     MaterialData materialData = get_material_data(material, vertexData);
     if(materialData.opacity <= material.alphaDiscard)
         discard;
-    if((material.flags & 0x1) == 0x1)
+    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
         flip_backfacing_normal(materialData, vertexData, scene);
 
 

@@ -18,6 +18,7 @@ namespace nyan {
 	public:
 		TextureManager(vulkan::LogicalDevice& device, bool streaming = false, const std::filesystem::path& folder = std::filesystem::current_path());
 		vulkan::Image* request_texture(const std::string& name);
+		vulkan::Image* request_texture(const std::filesystem::path& file);
 		uint32_t get_texture_idx(const std::string& name, const std::string& defaultTex = "white.png");
 		void change_mip(const std::string& name, uint32_t targetMip);
 		void set_minimum_mip_level(uint32_t mipLevel) {

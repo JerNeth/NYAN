@@ -50,11 +50,52 @@ namespace MM {
 	{
 		auto& t = reg.get<nyan::MaterialId>(e);
 		auto& mat = manager->get_material(t);
-		ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+		if (mat.albedoTexId != nyan::shaders::INVALID_BINDING) {
+			ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(512, 512));
+				ImGui::EndTooltip();
+			}
+			ImGui::SameLine();
+			ImGui::Text("Albedo Texture");
+		}
+		if (mat.emissiveTexId != nyan::shaders::INVALID_BINDING) {
+			ImGui::Image(static_cast<ImTextureID>(mat.emissiveTexId + 1), ImVec2(64, 64));
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Image(static_cast<ImTextureID>(mat.emissiveTexId + 1), ImVec2(512, 512));
+				ImGui::EndTooltip();
+			}
+			ImGui::SameLine();
+			ImGui::Text("Emissive Texture");
+		}
+		if (mat.normalTexId != nyan::shaders::INVALID_BINDING) {
+			ImGui::Image(static_cast<ImTextureID>(mat.normalTexId + 1), ImVec2(64, 64));
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Image(static_cast<ImTextureID>(mat.normalTexId + 1), ImVec2(512, 512));
+				ImGui::EndTooltip();
+			}
+			ImGui::SameLine();
+			ImGui::Text("Normal Texture");
+		}
+		if (mat.pbrTexId != nyan::shaders::INVALID_BINDING) {
+			ImGui::Image(static_cast<ImTextureID>(mat.pbrTexId + 1), ImVec2(64, 64));
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Image(static_cast<ImTextureID>(mat.pbrTexId + 1), ImVec2(512, 512));
+				ImGui::EndTooltip();
+			}
+			ImGui::SameLine();
+			ImGui::Text("PBR Texture");
+		}
 		ImGui::DragFloat("roughness", &mat.roughness, 0.001f, 0, 1);
 		ImGui::DragFloat("metalness", &mat.metalness, 0.001f, 0, 1);
+		ImGui::DragFloat("alpha discard", &mat.alphaDiscard, 0.001f, 0, 1);
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
 		ImGui::ColorEdit4("albedo", &mat.albedo_R);
+		ImGui::ColorEdit3("emissive", &mat.emissive_R);
 	}
 	template <>
 	void ComponentEditorWidget<nyan::Deferred>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
@@ -181,10 +222,21 @@ namespace MM {
 			ImGui::Text("Depth Texture");
 			if (devvolume.irradianceTextureBinding != ~0) {
 				ImGui::Image(static_cast<ImTextureID>(devvolume.irradianceTextureBinding + 1), ImVec2(128, 256));
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+					ImGui::Image(static_cast<ImTextureID>(devvolume.irradianceTextureBinding + 1), ImVec2(512, 1024));
+					ImGui::EndTooltip();
+				}
 			}
 			if (devvolume.depthTextureBinding != ~0) {
 				ImGui::SameLine();
 				ImGui::Image(static_cast<ImTextureID>(devvolume.depthTextureBinding + 1), ImVec2(128, 256));
+
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+					ImGui::Image(static_cast<ImTextureID>(devvolume.depthTextureBinding + 1), ImVec2(512, 1024));
+					ImGui::EndTooltip();
+				}
 			}
 		}
 		//ImGui::ColorEdit3("F0", &mat.F0_R);

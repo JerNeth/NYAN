@@ -16,6 +16,25 @@ namespace nyan {
 		float shininessFactor;
 		float transparendyFactor;
 	};
+	enum class AlphaMode : uint32_t {
+		Opaque,
+		AlphaTest,
+		AlphaBlend
+	};
+	struct PBRMaterialData {
+		std::string name;
+		std::string albedoTex;
+		std::string emissiveTex;
+		std::string roughnessMetalnessTex;
+		std::string normalTex;
+		Math::vec4 albedoFactor{ 1.f, 1.f, 1.f, 1.f };
+		Math::vec3 emissiveFactor{ 0.f, 0.f, 0.f };
+		AlphaMode alphaMode{ AlphaMode::Opaque };
+		float alphaCutoff{ 0.5f };
+		bool doubleSided{ false };
+		float metallicFactor{ 1.f };
+		float roughnessFactor{ 1.f };
+	};
 }
 
 #endif !RDMATERIAL_H

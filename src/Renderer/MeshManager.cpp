@@ -82,7 +82,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 
 	auto id = add(nyan::shaders::Mesh {
 		.materialBinding { r_materialManager.get_binding() },
-		.materialId { r_materialManager.get_material(data.material) },
+		.materialId {(data.materialBinding == nyan::shaders::INVALID_BINDING) ? r_materialManager.get_material(data.material) : data.materialBinding },
 		.indicesAddress { addr + mesh.mesh.indexOffset },
 		.positionsAddress { addr + mesh.mesh.vertexOffsets.positionOffset },
 		.uvsAddress { addr + mesh.mesh.vertexOffsets.texCoordOffset },
@@ -132,20 +132,24 @@ void nyan::MeshManager::build()
 		m_pendingAccBuildIndex.clear();
 	}
 }
-const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx)
+const nyan::shaders::Mesh& nyan::MeshManager::get_shader_mesh(MeshID idx) const
+{
+	return get(idx);
+}
+const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(MeshID idx) const
 {
 	assert(m_staticTangentMeshes.find(idx) != m_staticTangentMeshes.end());
 	return m_staticTangentMeshes.find(idx)->second.mesh;
 }
 
-const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const std::string& name)
+const StaticTangentVulkanMesh& nyan::MeshManager::get_static_tangent_mesh(const std::string& name) const
 {
 	assert(m_meshIndex.find(name) != m_meshIndex.end());
 	assert(m_staticTangentMeshes.find(m_meshIndex.find(name)->second) != m_staticTangentMeshes.end());
 	return m_staticTangentMeshes.find(m_meshIndex.find(name)->second)->second.mesh;
 }
 
-std::optional<vulkan::AccelerationStructureHandle> nyan::MeshManager::get_acceleration_structure(MeshID idx)
+std::optional<vulkan::AccelerationStructureHandle> nyan::MeshManager::get_acceleration_structure(MeshID idx) 
 {
 	assert(m_staticTangentMeshes.find(idx) != m_staticTangentMeshes.end());
 	return m_staticTangentMeshes.find(idx)->second.accStructure;

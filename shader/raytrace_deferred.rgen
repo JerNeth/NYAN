@@ -94,7 +94,6 @@ void direct_lighting(in Scene scene, in ShadingData shadingData, out vec3 diffus
     if(scene.dirLight.enabled > 0) 
     {
         float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
-        //float lightShadow = 1;
         if(lightShadow > minLight) {
             LightData lightData;
             lightData.dir = -scene.dirLight.dir;
@@ -128,7 +127,6 @@ void main()
         vec3 normal = decodeOctahedronMapping(unpack1212(normalTexVal.xyz));
 
         float metalness = pbr.x;
-        vec3 F0 = pbr.yzw + vec3(0.022, 0.022, 0.022); //Add 0.022 for e.g. gold
         float roughness = normalTexVal.w;
         vec4 clipSpacePos = vec4(inUV * 2.0 - 1.0, depth, 1.0);
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
@@ -151,7 +149,7 @@ void main()
             vec3 radiance = albedo.xyz * irradiance * (1.f - metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
             diffuseAccum.xyz += radiance;
         }
-        
+        specularAccum.xyz += pbr.yzw;
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
     } else {

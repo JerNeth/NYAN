@@ -30,18 +30,13 @@ int main() {
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
 
-	std::vector<nyan::Mesh> meshes;
-	std::vector<nyan::MaterialData> materials;
-	std::vector<nyan::LightParameters> lights;
-
-
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
-	std::filesystem::path file = directory/ "sponza-gltf-pbr/sponza.glb";
+	std::filesystem::path file = directory / "sponza-gltf-pbr/sponza.glb";
 	bool ret = false;
-
+	
 	if(file.extension() == ".glb")
 		ret = loader.LoadBinaryFromFile(&model, &err, &warn, file.string());
 	else if(file.extension() == ".gltf")
@@ -53,40 +48,295 @@ int main() {
 	if (!err.empty())
 		Utility::log_warning(err);
 
+	auto& textureManager = renderManager.get_texture_manager();
+
 	if (ret) {
-		for (const auto& image : model.images) {
-
-		}
 		for (const auto& sampler : model.samplers) {
-
+			//Ignore for now
 		}
 		for (const auto& light : model.lights) {
-
-		}
-		for (const auto& scenes : model.scenes) {
-
 		}
 		for (const auto& node : model.nodes) {
 		}
+		std::vector<std::string> textureMap;
 		for (const auto& texture : model.textures) {
-
-		}
-		for (const auto& material : model.materials) {
-
-		}
-		for (const auto& mesh : model.meshes) {
-			for (const auto& primitive : mesh.primitives) {
-				for (const auto& [attribute, accessor]: primitive.attributes) {
-					auto bufferView = model.accessors[accessor].bufferView;
-					auto buffer = model.bufferViews[bufferView].buffer;
-					model.buffers[buffer].uri;
-					model.buffers[buffer].data;
+			if (texture.source != -1) {
+				auto& image = model.images[texture.source];
+				if (!image.uri.empty()) {
+					textureManager.request_texture(file.parent_path() / image.uri);
+					textureMap.push_back(image.uri);
 				}
+				else {
+					textureMap.push_back(image.name);
+					assert(false);
+				}
+			}
+
+		}
+		auto texResolve = [&](int idx) {return (idx != -1) ? textureMap[idx] : ""; };
+		auto alphaModeResolve = [&](const std::string& mode) {
+			if (mode == "OPAQUE") return AlphaMode::Opaque;
+			if (mode == "MASK") return AlphaMode::AlphaTest;
+			assert(false);
+		};
+		std::vector<nyan::MaterialId> materialMap;
+		for (const auto& material : model.materials) {
+			nyan::PBRMaterialData materialData{
+				.name{material.name},
+				.albedoTex{texResolve(material.pbrMetallicRoughness.baseColorTexture.index)},
+				.emissiveTex {texResolve(material.emissiveTexture.index)},
+				.roughnessMetalnessTex {texResolve(material.pbrMetallicRoughness.metallicRoughnessTexture.index)},
+				.normalTex {texResolve(material.normalTexture.index)},
+				.albedoFactor{material.pbrMetallicRoughness.baseColorFactor},
+				.emissiveFactor {material.emissiveFactor},
+				.alphaMode {alphaModeResolve(material.alphaMode)},
+				.alphaCutoff {static_cast<float>(material.alphaCutoff)},
+				.doubleSided {material.doubleSided},
+				.metallicFactor {static_cast<float>(material.pbrMetallicRoughness.metallicFactor)},
+				.roughnessFactor {static_cast<float>(material.pbrMetallicRoughness.roughnessFactor)}
+			};
+			materialMap.push_back(renderManager.get_material_manager().add_material(materialData));
+		}
+		auto test = [](uint32_t flags, uint32_t flag) {return (flags & flag) == flag; };
+		std::vector<std::vector<nyan::MeshID>> meshMap;
+		for (const auto& mesh : model.meshes) {
+			size_t idx{ 0 };
+			meshMap.emplace_back();
+			auto& map = meshMap.back();
+			for (const auto& primitive : mesh.primitives) {
+				assert(primitive.mode == TINYGLTF_MODE_TRIANGLES);
+				nyan::Mesh nMesh{
+					.type {nyan::Mesh::RenderType::Opaque},
+					.name {mesh.name + std::to_string(idx++)},
+					.materialBinding {materialMap[primitive.material]},
+				};
+				{
+					auto accessorId = primitive.indices;
+					auto accessor = model.accessors[accessorId];
+					auto bufferView = model.bufferViews[accessor.bufferView];
+					assert(bufferView.buffer != -1);
+					auto buffer = model.buffers[bufferView.buffer];
+					assert(!accessor.sparse.isSparse);
+					assert(bufferView.byteLength);
+					std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
+					auto stride = bufferView.byteStride;
+					auto numComponents = tinygltf::GetNumComponentsInType(accessor.type);
+					auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
+					if (!stride)
+						stride = numComponents * componentByteSize;
+					else
+						assert(false);
+					nMesh.indices.reserve(accessor.count);
+					assert(numComponents == 1);
+					size_t offset{ 0 };
+					for (size_t i{ 0 }; i < accessor.count; ++i) {
+						auto* ptr = data + offset;
+						if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+							nMesh.indices.push_back(*reinterpret_cast<uint8_t*>(ptr));
+						else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+							nMesh.indices.push_back(*reinterpret_cast<uint16_t*>(ptr));
+						else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+							nMesh.indices.push_back(*reinterpret_cast<uint32_t*>(ptr));
+						else
+							assert(false);
+						offset += stride;
+						assert(offset <= bufferView.byteLength);
+					}
+				}
+
+				for (const auto& [attribute, accessorId]: primitive.attributes) {
+
+					auto accessor = model.accessors[accessorId];
+					auto bufferView = model.bufferViews[accessor.bufferView];
+					assert(bufferView.buffer != -1);
+					auto buffer = model.buffers[bufferView.buffer];
+					assert(!accessor.sparse.isSparse);
+					assert(bufferView.byteLength);
+					std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
+					auto stride = bufferView.byteStride;
+					auto numComponents = tinygltf::GetNumComponentsInType(accessor.type);
+					auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
+					if (!stride)
+						stride = numComponents * componentByteSize;
+					else
+						assert(false);
+
+					size_t offset{ 0 };
+					if (attribute == "POSITION") {
+						decltype(nMesh.positions)::value_type position;
+
+						nMesh.positions.reserve(accessor.count);
+						for (size_t i{ 0 }; i < accessor.count; ++i) {
+							auto* ptr = data + offset;
+							for (size_t j{ 0 }; j < numComponents; ++j) {
+								if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+									auto* fPtr = reinterpret_cast<float*>(ptr) + j;
+									position[j] = *fPtr;
+								}
+								else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
+									auto* dPtr = reinterpret_cast<double*>(ptr) + j;
+									position[j] = *dPtr;
+								}
+								else
+									assert(false);
+							}
+							nMesh.positions.push_back(position);
+							offset += stride;
+							assert(offset <= bufferView.byteLength);
+						}
+					} else if (attribute == "NORMAL") {
+						decltype(nMesh.normals)::value_type normal;
+
+						nMesh.normals.reserve(accessor.count);
+						for (size_t i{ 0 }; i < accessor.count; ++i) {
+							auto* ptr = data + offset;
+							for (size_t j{ 0 }; j < numComponents; ++j) {
+								if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+									auto* fPtr = reinterpret_cast<float*>(ptr) + j;
+									normal[j] = *fPtr;
+								}
+								else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
+									auto* dPtr = reinterpret_cast<double*>(ptr) + j;
+									normal[j] = *dPtr;
+								}
+								else
+									assert(false);
+							}
+							nMesh.normals.push_back(normal);
+							offset += stride;
+							assert(offset <= bufferView.byteLength);
+						}
+					} else if (attribute == "TANGENT") {
+						decltype(nMesh.tangents)::value_type tangent;
+
+						nMesh.tangents.reserve(accessor.count);
+						for (size_t i{ 0 }; i < accessor.count; ++i) {
+							auto* ptr = data + offset;
+							for (size_t j{ 0 }; j < numComponents; ++j) {
+								if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+									auto* fPtr = reinterpret_cast<float*>(ptr) + j;
+									tangent[j] = *fPtr;
+								}
+								else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
+									auto* dPtr = reinterpret_cast<double*>(ptr) + j;
+									tangent[j] = *dPtr;
+								}
+								else
+									assert(false);
+							}
+							nMesh.tangents.push_back(tangent);
+							offset += stride;
+							assert(offset <= bufferView.byteLength);
+						}
+					} else if (attribute == "TEXCOORD_0") {
+						decltype(nMesh.uvs)::value_type uv;
+
+						nMesh.uvs.reserve(accessor.count);
+						for (size_t i{ 0 }; i < accessor.count; ++i) {
+							auto* ptr = data + offset;
+							for (size_t j{ 0 }; j < numComponents; ++j) {
+								if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+									auto* fPtr = reinterpret_cast<float*>(ptr) + j;
+									uv[j] = *fPtr;
+								}
+								else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
+									auto* dPtr = reinterpret_cast<double*>(ptr) + j;
+									uv[j] = *dPtr;
+								}
+								else
+									assert(false);
+							}
+							nMesh.uvs.push_back(uv);
+							offset += stride;
+							assert(offset <= bufferView.byteLength);
+						}
+					}
+					else {
+						assert(false && "unsupported attribute");
+					}
+
+				}
+				auto &material = renderManager.get_material_manager().get_material(materialMap[primitive.material]);
+				if (nMesh.tangents.empty()) {
+					Utility::log_warning().format("{}: has no tangents, skipping mesh", nMesh.name);
+					continue;
+				}
+				if (nMesh.uvs.empty()) {
+					Utility::log_warning().format("{}: has no uvs, skipping mesh", nMesh.name);
+					continue;
+				}
+				if (nMesh.normals.empty()) {
+					Utility::log_warning().format("{}: has no normals, skipping mesh", nMesh.name);
+					continue;
+				}
+				if (nMesh.positions.empty()) {
+					Utility::log_warning().format("{}: has no positions, skipping mesh", nMesh.name);
+					continue;
+				}
+
+				if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
+					nMesh.type = nyan::Mesh::RenderType::AlphaTest;
+				else if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_BLEND_FLAG))
+					nMesh.type = nyan::Mesh::RenderType::AlphaBlend;
+
+				map.emplace_back(renderManager.get_mesh_manager().add_mesh(nMesh));
+			}
+		}
+
+		for (const auto& scene : model.scenes) {
+			for (const auto nodeId : scene.nodes) {
+				const auto& node = model.nodes[nodeId];
+				//node.
+				auto entity = registry.create();
+				registry.emplace<Transform>(entity,
+					Transform{
+						.position{node.translation},
+						.scale{node.scale},
+						.orientation{Math::quat(Math::vec4(node.rotation)).to_euler_angles()},
+					});
+				if (node.mesh != -1) {
+					for (auto meshId : meshMap[node.mesh]) {
+						auto meshEntity = registry.create();
+						const auto& mesh = renderManager.get_mesh_manager().get_shader_mesh(meshId);
+						const auto& material = renderManager.get_material_manager().get_material(mesh.materialId);
+						registry.emplace<MeshID>(meshEntity, meshId);
+						registry.emplace<MaterialId>(meshEntity, mesh.materialId);
+						auto instance = InstanceData{
+								.transform{
+									.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+								}
+						};
+						instance.instance.instanceCustomIndex = meshId;
+						registry.emplace<InstanceId>(meshEntity, renderManager.get_instance_manager().add_instance(instance));
+						registry.emplace<Transform>(meshEntity,
+							Transform{
+								.position{},
+								.scale{},
+								.orientation{},
+							});
+
+						registry.emplace<Parent>(meshEntity,
+							Parent{
+								.parent {entity},
+							});
+						if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
+							if (test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
+								registry.emplace<DeferredDoubleSidedAlphaTest>(meshEntity);
+							else
+								registry.emplace<DeferredAlphaTest>(meshEntity);
+						else if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_BLEND_FLAG))
+							registry.emplace<ForwardTransparent>(meshEntity);
+						else
+							if(test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
+								registry.emplace<DeferredDoubleSided>(meshEntity);
+							else
+								registry.emplace<Deferred>(meshEntity);
+					}
+				}
+
 			}
 		}
 	}
-
-	renderManager.add_materials(materials);
 
 	auto parent = registry.create();
 	
@@ -105,6 +355,16 @@ int main() {
 		});
 
 	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{});
+
+	registry.emplace<Directionallight>(parent, Directionallight
+		{
+			.enabled {true},
+			.shadows{ true },
+			.color {0.4f, 0.2f, 0.1f},
+			//.intensity {light.intensity},
+			.intensity {1},
+			.direction {-0.577f, -0.577f, -0.577f},
+		});
 
 	registry.emplace<PerspectiveCamera>(camera,
 		PerspectiveCamera{

@@ -79,8 +79,9 @@ namespace nyan {
 		MeshID add_mesh(const nyan::Mesh& data);
 		MeshID get_mesh(const std::string& name);
 		void build();
-		const StaticTangentVulkanMesh& get_static_tangent_mesh(MeshID idx);
-		const StaticTangentVulkanMesh& get_static_tangent_mesh(const std::string& name);
+		const nyan::shaders::Mesh& get_shader_mesh(MeshID idx) const;
+		const StaticTangentVulkanMesh& get_static_tangent_mesh(MeshID idx) const;
+		const StaticTangentVulkanMesh& get_static_tangent_mesh(const std::string& name) const;
 		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(MeshID idx);
 		std::optional<vulkan::AccelerationStructureHandle> get_acceleration_structure(const std::string& name);
 	private:

@@ -17,6 +17,10 @@ nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streami
 ::vulkan::Image* nyan::TextureManager::request_texture(const std::string& name)
 {
 	std::filesystem::path path{ name };
+	return request_texture(path);
+}
+vulkan::Image* nyan::TextureManager::request_texture(const std::filesystem::path& path)
+{
 	if (const auto& res = m_textureIndex.find(path.filename().string()); res != m_textureIndex.end()) {
 		assert(m_usedTextures.find(res->second) != m_usedTextures.end());
 		return m_usedTextures.find(res->second)->second.handle;
@@ -73,10 +77,13 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 
 vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::path& file, uint32_t mipLevel)
 {
+	std::filesystem::path path = file;
+	if (path.is_relative())
+		path = m_directory / path;
 	if (!file.extension().compare(".dds"))
-		return create_dds_image(m_directory / file, mipLevel);
+		return create_dds_image(path, mipLevel);
 	
-	auto [data, texInfo] = Utility::ImageReader::read_image_file(m_directory / file);
+	auto [data, texInfo] = Utility::ImageReader::read_image_file(path);
 
 
 	vulkan::ImageInfo info{
@@ -102,7 +109,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 		r_device.wait_idle();
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.filename().string(), idx);
+		m_textureIndex.emplace(path.filename().string(), idx);
 		Utility::ImageReader::free_image(data.data);
 		return image;
 	}
@@ -113,7 +120,7 @@ vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::pa
 
 		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = info.layout });
 		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
-		m_textureIndex.emplace(file.filename().string(), idx);
+		m_textureIndex.emplace(path.filename().string(), idx);
 		Utility::ImageReader::free_image(data.data);
 			
 		return image;

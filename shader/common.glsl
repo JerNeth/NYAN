@@ -92,7 +92,7 @@ vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal,in vec3 bitangen
     vec3 tmpBitangent = bitangent;
     orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
 	mat3 tangentFrame = mat3(tmpTangent , tmpBitangent , tmpNormal);
-    //return tangentFrame * tangentNormal;
+   // return tangentFrame * tangentNormal;
 
 
     return normalize(normal);

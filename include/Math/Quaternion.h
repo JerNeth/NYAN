@@ -21,6 +21,12 @@ namespace Math {
 		constexpr explicit Quaternion(Scalar real, Scalar imaginary1, Scalar imaginary2, Scalar imaginary3) : m_real(real), m_imaginary({ imaginary1 , imaginary2 , imaginary3 }) {
 
 		}
+		constexpr explicit Quaternion(const Vec<Scalar, 4>& vec) noexcept {
+			m_real = vec[0];
+			m_imaginary[0] = vec[1];
+			m_imaginary[1] = vec[2];
+			m_imaginary[2] = vec[3];
+		}
 		constexpr Scalar get_real() const {
 			return m_real;
 		}

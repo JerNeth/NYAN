@@ -33,10 +33,20 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.instanceId {0},
 				.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 			};
-			auto view = r_registry.view<const MeshID, const InstanceId, const Deferred>();
-			for (const auto& [entity, meshID, instanceId] : view.each()) {
-				instance.instanceId = instanceId;
-				render(pipelineBind, meshID, instance);
+			{
+				auto view = r_registry.view<const MeshID, const InstanceId, const Deferred>();
+				for (const auto& [entity, meshID, instanceId] : view.each()) {
+					instance.instanceId = instanceId;
+					render(pipelineBind, meshID, instance);
+				}
+			}
+			{
+				pipelineBind.set_cull_mode(VK_CULL_MODE_NONE);
+				auto view = r_registry.view<const MeshID, const InstanceId, const DeferredDoubleSided>();
+				for (const auto& [entity, meshID, instanceId] : view.each()) {
+					instance.instanceId = instanceId;
+					render(pipelineBind, meshID, instance);
+				}
 			}
 		}
 		{
@@ -52,10 +62,20 @@ nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.instanceId {0},
 				.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 			};
-			auto view = r_registry.view<const MeshID, const InstanceId, const DeferredAlphaTest>();
-			for (const auto& [entity, meshID, instanceId] : view.each()) {
-				instance.instanceId = instanceId;
-				render(pipelineBind, meshID, instance);
+			{
+				auto view = r_registry.view<const MeshID, const InstanceId, const DeferredAlphaTest>();
+				for (const auto& [entity, meshID, instanceId] : view.each()) {
+					instance.instanceId = instanceId;
+					render(pipelineBind, meshID, instance);
+				}
+			}
+			{
+				pipelineBind.set_cull_mode(VK_CULL_MODE_NONE);
+				auto view = r_registry.view<const MeshID, const InstanceId, const DeferredDoubleSidedAlphaTest>();
+				for (const auto& [entity, meshID, instanceId] : view.each()) {
+					instance.instanceId = instanceId;
+					render(pipelineBind, meshID, instance);
+				}
 			}
 		}
 	}, true);
@@ -116,7 +136,6 @@ void nyan::MeshRenderer::create_pipeline()
 	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
-	staticTangentConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
 
 	staticTangentConfig.shaderInstances[1] = r_renderManager.get_shader_manager().get_shader_instance_id("deferredTangentAlphaDiscard_frag");
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentAlphaDiscardPipeline);

@@ -86,28 +86,38 @@ struct MaterialData
     vec3 albedo;
     float opacity;
     vec3 shadingNormal;
+    vec3 emissive;
 
 };
 
 MaterialData get_material_data(in Material material, in VertexData vertexData) 
 {
     MaterialData materialData;
-
     
-    vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
+    vec4 albedo = vec4(1.f);
+    if(material.albedoTexId != INVALID_BINDING) 
+        albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
     albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;
     
-    vec4 pbrData = textureLod(sampler2D(textures2D[nonuniformEXT(material.pbrTexId)], samplers[nonuniformEXT(material.pbrSampler)]), vertexData.uv, 0);
+    vec4 pbrData = vec4(1.f, 1.f, 0.f, 0.f);
+    if(material.pbrTexId != INVALID_BINDING)
+        pbrData = textureLod(sampler2D(textures2D[nonuniformEXT(material.pbrTexId)], samplers[nonuniformEXT(material.pbrSampler)]), vertexData.uv, 0);
     pbrData *= vec4(material.metalness, material.roughness, material.anisotropy, 0);
     materialData.metalness = pbrData.x;
     materialData.roughness = pbrData.y;
 
-    vec2 normalSample = textureLod(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), vertexData.uv, 0).rg;
-    
+    vec2 normalSample = vec2(0.f);
+    if(material.normalTexId != INVALID_BINDING)
+        normalSample = textureLod(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), vertexData.uv, 0).rg;
     materialData.shadingNormal = tangentSpaceNormal(normalSample, vertexData.normal, vertexData.bitangent, vertexData.tangent);
 
+    vec3 emissive = vec3(0.f);
+    if(material.emissiveTexId != INVALID_BINDING)
+        emissive = textureLod(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv, 0).rgb;
+    emissive *= vec3(material.emissive_R, material.emissive_G, material.emissive_B);
+    materialData.emissive = emissive;
     return materialData;
 }
 
@@ -116,7 +126,9 @@ MaterialData get_albedo_data(in Material material, in VertexData vertexData)
     MaterialData materialData;
 
     
-    vec4 albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
+    vec4 albedo = vec4(1.f);
+    if(material.albedoTexId != INVALID_BINDING) 
+        albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
     albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;

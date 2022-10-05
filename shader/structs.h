@@ -1,6 +1,7 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
+const uint INVALID_BINDING = 4294967295u;
 struct Mesh {
 	uint materialBinding;
 	uint materialId;
@@ -11,6 +12,10 @@ struct Mesh {
 	uint64_t tangentsAddress;
 };
 
+const uint MATERIAL_DOUBLE_SIDED_FLAG = 0x1u << 0;
+const uint MATERIAL_ALPHA_TEST_FLAG = 0x1u << 1;
+const uint MATERIAL_ALPHA_BLEND_FLAG = 0x1u << 2;
+
 struct Material {
 	uint albedoTexId;
 	uint albedoSampler;
@@ -19,19 +24,21 @@ struct Material {
 
 	uint pbrTexId;
 	uint pbrSampler;
-	float albedo_R;
-	float albedo_G;
+	uint emissiveTexId;
+	uint emissiveSampler;
 
+	float emissive_R;
+	float emissive_G;
+	float emissive_B;
+	float albedo_R;
+
+	float albedo_G;
 	float albedo_B;
 	float albedo_A;
 	float metalness;
-	float roughness;
 
+	float roughness;
 	float anisotropy;
-	//float IoR;
-	//float F0_R;
-	//float F0_G;
-	//float F0_B;
 	float alphaDiscard;
 	uint flags;
 };

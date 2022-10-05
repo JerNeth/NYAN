@@ -14,6 +14,7 @@ namespace nyan {
 		} type{ RenderType::Opaque };
 		std::string name;
 		std::string material;
+		nyan::MaterialId materialBinding{ nyan::shaders::INVALID_BINDING };
 		Math::vec3 translate;
 		Math::vec3 rotate;
 		Math::vec3 scale;
