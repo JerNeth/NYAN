@@ -37,6 +37,16 @@ vec3 get_volume_spacing(DDGIVolume volume)
 	return vec3(volume.spacingX, volume.spacingY, volume.spacingZ);
 }
 
+uvec3 get_volume_probe_count(DDGIVolume volume) 
+{
+	return uvec3(volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+}
+
+ivec3 get_volume_probe_count_minus_one(DDGIVolume volume) 
+{
+	return ivec3(volume.probeCountX- 1, volume.probeCountY- 1, volume.probeCountZ- 1);
+}
+
 vec3 get_probe_offset(in uint probeIdx, in DDGIVolume volume) 
 {
 	return vec3(ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3],

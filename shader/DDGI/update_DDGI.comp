@@ -148,7 +148,6 @@ void main()
 		hysteresis = 0.f;
 
 	if(filterIrradiance) {
-
 		vec3 delta = result.xyz - previous.xyz;
 		if(max_component(-delta) > volume.irradianceThreshold)
 		{
@@ -181,7 +180,6 @@ void main()
 		result = debugColors[probeIdx % debugColors.length()];
 #endif
 
-		result = vec4(mix(result, previous, hysteresis));
 	}
 	else {
 		result = vec4(mix(result, previous, hysteresis));

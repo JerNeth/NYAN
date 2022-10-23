@@ -2,6 +2,7 @@
 #include "VulkanWrapper/Image.h"
 #include "Utility/ImageReader.h"
 #include "Utility/Exceptions.h"
+#include "Renderer/ShaderInterface.h"
 
 nyan::TextureManager::TextureManager(vulkan::LogicalDevice& device, bool streaming, const std::filesystem::path& folder) :
 	r_device(device),
@@ -33,14 +34,24 @@ uint32_t nyan::TextureManager::get_texture_idx(const std::string& name, const st
 	if (const auto& res = m_textureIndex.find(path.filename().string()); res != m_textureIndex.end())
 		return res->second;
 
-	Utility::log().format("Couldn't load \"{}\" using \"{}\" instead", name, defaultTex);
+	Utility::log_warning().format("Couldn't load \"{}\" using \"{}\" instead", name, defaultTex);
 
 	if (const auto& res = m_textureIndex.find(defaultTex); res != m_textureIndex.end())
 		return res->second;
 
-	Utility::log().format("Couldn't load \"{}\"", defaultTex);
+	Utility::log_warning().format("Couldn't load \"{}\"", defaultTex);
 
-	return 0;
+	return nyan::shaders::INVALID_BINDING;
+}
+uint32_t nyan::TextureManager::get_texture_idx(const std::string& name)
+{
+	std::filesystem::path path{ name };
+	if (const auto& res = m_textureIndex.find(path.filename().string()); res != m_textureIndex.end())
+		return res->second;
+
+	Utility::log_warning().format("Couldn't load \"{}\"", name);
+
+	return nyan::shaders::INVALID_BINDING;
 }
 void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMip)
 {

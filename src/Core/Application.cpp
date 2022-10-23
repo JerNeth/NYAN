@@ -5,10 +5,10 @@
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
 	vulkan::Instance::Validation validation{
-		.enabled {debug},
-		.createCallback {debug},
-		//.enabled {false},
-		//.createCallback {false},
+		//.enabled {debug},
+		//.createCallback {debug},
+		.enabled {false},
+		.createCallback {false},
 		.gpuAssisted { false },
 		.gpuAssistedReserveBindingSlot { false },
 		.bestPractices { false },

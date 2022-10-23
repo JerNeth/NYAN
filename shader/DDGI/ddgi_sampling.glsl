@@ -50,16 +50,30 @@
 //	float irradianceThreshold;
 //	float lightToDarkThreshold;
 //};
-
-
-float get_volume_weight(vec3 worldPos, DDGIVolume volume) {
-	return 1.0f;
+vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volume) 
+{
+	return (normal * volume.shadowNormalBias) + (-camDir * volume.shadowViewBias);
 }
 
-ivec3 get_volume_base_probe(vec3 worldPos, DDGIVolume volume) {
+float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
+	vec3 origin = get_volume_origin(volume);
+	vec3 extent = (get_volume_spacing(volume) * get_volume_probe_count_minus_one(volume)) * 0.5f;
+
+	vec3 relativePosition = abs(worldPos - (origin+ extent));
+	vec3 delta = relativePosition - extent;
+	if(all(lessThan(delta, vec3(0)))) return 1.f;
+	float weight = 1.f;
+	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
+	weight *= 1.f - clamp(delta.x * inverseSpacing.x, 0.f, 1.f);
+	weight *= 1.f - clamp(delta.y * inverseSpacing.y, 0.f, 1.f);
+	weight *= 1.f - clamp(delta.z * inverseSpacing.z, 0.f, 1.f);
+	return weight;
+}
+
+ivec3 get_volume_base_probe(in vec3 worldPos,in  DDGIVolume volume) {
 	vec3 position = worldPos - get_volume_origin(volume);
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
-	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
+	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
 
 	ivec3 probeIdx = ivec3(position * inverseSpacing);
 
@@ -69,17 +83,16 @@ ivec3 get_volume_base_probe(vec3 worldPos, DDGIVolume volume) {
 }
 //#define SAMPLE_IRRADIANCE_NEAREST
 
-vec3 sample_ddgi(vec3 worldPos, 
-				vec3 bias,
-				vec3 direction, 
-				DDGIVolume volume) {
-
+vec3 sample_ddgi(in vec3 worldPos, 
+				in vec3 bias,
+				in vec3 direction, 
+				in DDGIVolume volume) {
 	vec3 irradiance = vec3(0.f);
 	if(volume.enabled == 0)
 		return vec3(0.05f);
 	float weightSum = 0.f;
 
-	vec3 biasedWorldPos = worldPos + bias * volume.shadowBias;
+	vec3 biasedWorldPos = worldPos + bias * volume.shadowNormalBias;
 	
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
@@ -130,7 +143,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		if(volume.useMoments != 0) {
 			vec4 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rgba;
 			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
-			weight *= max(0.02f, shadowValue);
+			weight *= max(0.05f, shadowValue);
 		}
 		else {
 			vec2 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rg;
@@ -142,7 +155,7 @@ vec3 sample_ddgi(vec3 worldPos,
 				//Pretty sure we don't need max here since variance is positive and v² is also positive
 				chebyshev = chebyshev * chebyshev * chebyshev;
 			}
-			weight *= max(0.02f, chebyshev);
+			weight *= max(0.05f, chebyshev);
 		}
 
 		weight = max(1e-6f, weight);
@@ -153,7 +166,7 @@ vec3 sample_ddgi(vec3 worldPos,
 		{
 			weight *= weight * weight * (1.f / (threshold * threshold));
 		}
-
+		probeIrradiance = sqrt(probeIrradiance);
 		weight *= trilinearWeight;
 		//TODO maybe do gamma
 		irradiance += weight * probeIrradiance;
@@ -163,6 +176,7 @@ vec3 sample_ddgi(vec3 worldPos,
 	if(weightSum == 0.f) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize
+	irradiance *= irradiance; //sRGB blending, I don't like it
 	irradiance *= 3.14159265359 * 2;
 
 	return irradiance;

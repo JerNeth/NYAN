@@ -114,9 +114,10 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
 vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
 {
 //#ifdef SAMPLE_DDGI
-    if(shadingData.metalness < 1.f) {
+    float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
+    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
         vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
-        vec3 radiance = shadingData.albedo.xyz * irradiance * (1.f - shadingData.metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+        vec3 radiance = shadingData.albedo.xyz * irradiance * ((1.f - shadingData.metalness) * brdf_lambert() * volumeWeight); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
         return radiance;
     }
 //#endif

@@ -426,7 +426,16 @@ int main() {
 			.spacing {1.02f, 0.5f, 0.45f},
 			.origin {-0.4f - 11.f * 1.02f, 5.4f - 0.5f * 11.f, -0.25f - 0.45f * 11.f},
 			.probeCount {22, 22, 22},
-			.visualization {false}
+			.raysPerProbe {256},
+			.depthBias {0.1},
+			.depthViewBias {0.3},
+			.hysteresis {0.97},
+			.irradianceThreshold {0.2},
+			.lightToDarkThreshold {2.0},
+			.visualizerRadius {0.1},
+			.minFrontFaceDistance {0.3},
+			.visualization {false},
+			.relocationEnabled {true},
 		}); //Sponza
 
 	registry.emplace<Directionallight>(parent, Directionallight
@@ -442,7 +451,8 @@ int main() {
 	registry.emplace<SkyLight>(parent, SkyLight
 		{
 			.color {1.f, 1.f, 1.f},
-			.intensity {1.0},
+			.intensity {0.1},
+			//.intensity {5.1},
 		});
 
 	registry.emplace<PerspectiveCamera>(camera,

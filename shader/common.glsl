@@ -162,4 +162,26 @@ float hash_vec3(in vec3 seed) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
+
+struct VertexData
+{
+    vec3 tangent;
+    vec3 normal;
+    vec3 bitangent;
+    vec3 worldPos;
+    vec2 uv;
+};
+
+
+struct MaterialData
+{
+    float metalness;
+    float roughness;
+    vec3 albedo;
+    float opacity;
+    vec3 shadingNormal;
+    vec3 emissive;
+
+};
+
 #endif

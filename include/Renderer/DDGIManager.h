@@ -22,7 +22,8 @@ namespace nyan {
 			uint32_t raysPerProbe{ 128 };
 			uint32_t irradianceProbeSize{ 8 };
 			uint32_t depthProbeSize{ 16 };
-			float depthBias{ 1e-2f };
+			float depthBias{ 1e-21f };
+			float depthViewBias{ 1e-2f };
 			float maxRayDistance{5000.f};
 			float hysteresis{ 9.5e-1f };
 			float irradianceThreshold{0.25f};
@@ -73,6 +74,7 @@ namespace nyan {
 		void set_depth_probe_size(uint32_t id, uint32_t probeSize);
 		void set_rays_per_probe(uint32_t id, uint32_t rayCount);
 		void set_depth_bias(uint32_t id, float depthBias);
+		void set_view_bias(uint32_t id, float viewBias);
 		void set_max_ray_distance(uint32_t id, float maxRayDistance);
 		const nyan::shaders::DDGIVolume& get(uint32_t id) const;
 

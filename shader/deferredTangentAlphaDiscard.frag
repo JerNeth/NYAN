@@ -6,6 +6,7 @@
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
 #include "extracts.glsl"
+#include "gbuffer.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -36,14 +37,6 @@ layout(location = 2) out vec4 outPBR;
 //    }
 //}
 //
-void flip_backfacing_normal(inout VertexData vertexData) 
-{
-    if(!gl_FrontFacing) {
-        vertexData.normal = -vertexData.normal;
-        vertexData.tangent = -vertexData.tangent;
-        vertexData.bitangent = -vertexData.bitangent;
-    }
-}
 void main() {
    
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
@@ -52,25 +45,26 @@ void main() {
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
     Scene scene = scenes[constants.sceneBinding].scene;
     VertexData vertexData;
-    vertexData.normal = normalize(fragNormal);
+    vertexData.normal = fragNormal;
     vertexData.tangent = fragTangent.xyz;
     orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
+    vertexData.bitangent *= fragTangent.w;
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
 
-    computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
+    //computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
 
 
     if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-        flip_backfacing_normal(vertexData);
+        flip_backfacing_normal(vertexData, !gl_FrontFacing);
+
     MaterialData materialData = get_material_data(material, vertexData);
     if(materialData.opacity <= material.alphaDiscard)
         discard;
-
-
-    outAlbedo = vec4(materialData.albedo, materialData.opacity);
-    outNormal = vec4(pack1212(zero_to_one(get_octahedral_coords(normalize(materialData.shadingNormal)))), materialData.roughness);
-    //outNormal = normal.xy;
-    outPBR = vec4(material.metalness, 0, 0, 0);
+    GBufferData gbuffer = encode_gbuffer_data(materialData);
+        
+    outAlbedo = gbuffer.data0;
+    outNormal = gbuffer.data1;
+    outPBR = gbuffer.data2;
 }
 

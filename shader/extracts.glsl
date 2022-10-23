@@ -16,14 +16,15 @@ mat4x3 fetchTransformMatrix(Instance instance) {
                         instance.modelRow3);
 }
 
-struct VertexData
+
+void flip_backfacing_normal(inout VertexData vertexData, in bool backFacing) 
 {
-    vec3 tangent;
-    vec3 normal;
-    vec3 bitangent;
-    vec3 worldPos;
-    vec2 uv;
-};
+    if(backFacing) {
+        vertexData.normal = -vertexData.normal;
+        vertexData.tangent = -vertexData.tangent;
+        vertexData.bitangent = -vertexData.bitangent;
+    }
+}
 
 VertexData get_vertex_data(in Mesh mesh, in vec2 barycentricCoords, in uint primitiveId, in mat4x3 objectToWorld) 
 {
@@ -79,18 +80,6 @@ VertexData get_uv_data(in Mesh mesh, in vec2 barycentricCoords, in uint primitiv
 
     return vertexData;
 }
-
-struct MaterialData
-{
-    float metalness;
-    float roughness;
-    vec3 albedo;
-    float opacity;
-    vec3 shadingNormal;
-    vec3 emissive;
-
-};
-
 MaterialData get_material_data(in Material material, in VertexData vertexData) 
 {
     MaterialData materialData;
@@ -103,20 +92,20 @@ MaterialData get_material_data(in Material material, in VertexData vertexData)
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;
     
-    vec4 pbrData = vec4(1.f, 1.f, 0.f, 0.f);
+    vec4 pbrData = vec4(0.f, 1.f, 1.f, 0.f);
     if(material.pbrTexId != INVALID_BINDING)
         pbrData = pow(texture(sampler2D(textures2D[nonuniformEXT(material.pbrTexId)], samplers[nonuniformEXT(material.pbrSampler)]), vertexData.uv), vec4(1.f /2.2));
         //pbrData = pow(textureLod(sampler2D(textures2D[nonuniformEXT(material.pbrTexId)], samplers[nonuniformEXT(material.pbrSampler)]), vertexData.uv, 0), vec4(1.f /2.2));
-    pbrData *= vec4(material.metalness, material.roughness, material.anisotropy, 0);
-    materialData.metalness = pbrData.x;
-    materialData.roughness = pbrData.y;
+    materialData.roughness = pbrData.g * material.roughness;
+    materialData.metalness = pbrData.b * material.metalness;
 
+    materialData.shadingNormal = vertexData.normal;
     vec2 normalSample = vec2(0.5f);
-    if(material.normalTexId != INVALID_BINDING)
+    if(material.normalTexId != INVALID_BINDING) {
         normalSample =  pow(texture(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), vertexData.uv).xy, vec2(1.f /2.2f)); 
         //normalSample =  pow(textureLod(sampler2D(textures2D[nonuniformEXT(material.normalTexId)], samplers[nonuniformEXT(material.normalSampler)]), vertexData.uv, 0).xy, vec2(1.f /1.0)); 
-    //Temporary fix for wrong sampling of linear textures
-    materialData.shadingNormal = tangentSpaceNormal(normalSample, vertexData.normal, vertexData.tangent, vertexData.bitangent);
+        materialData.shadingNormal = tangentSpaceNormal(normalSample, vertexData.normal, vertexData.tangent, vertexData.bitangent);
+    }//Temporary fix for wrong sampling of linear textures
 
     vec3 emissive = vec3(0.f);
     if(material.emissiveTexId != INVALID_BINDING)

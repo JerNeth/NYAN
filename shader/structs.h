@@ -146,7 +146,8 @@ struct DDGIVolume {
 	float relocationBackfaceThreshold;
 	float minFrontFaceDistance;
 
-	float shadowBias;
+	float shadowNormalBias;
+	float shadowViewBias;
 	float maxRayDistance;
 	float hysteresis;
 	float irradianceThreshold;

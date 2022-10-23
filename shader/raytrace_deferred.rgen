@@ -9,6 +9,7 @@
 #include "extracts.glsl"
 #include "lighting.glsl"
 #include "DDGI/ddgi_sampling.glsl"
+#include "gbuffer.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -120,15 +121,16 @@ void main()
     uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_LaunchIDEXT.xy), 0).x;
 
     if(stencil != 0) {
-        vec4 normalTexVal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inUV);
+        GBufferData gBufferData;
+        
+        gBufferData.data0 = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inUV);
+        gBufferData.data1 = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inUV);
+        gBufferData.data2 = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inUV);
     #ifndef SHOW_NORMALS
-        vec4 pbr = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inUV);
-        vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inUV);
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inUV).x;
-        vec3 normal = get_octahedral_direction(one_to_minus_one(unpack1212(normalTexVal.xyz)));
 
-        float metalness = pbr.x;
-        float roughness = normalTexVal.w;
+        MaterialData materialData = decode_gbuffer_data(gBufferData);
+
         vec4 clipSpacePos = vec4(inUV * 2.0 - 1.0, depth, 1.0);
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
@@ -137,20 +139,21 @@ void main()
         vec4 diffuseAccum  = vec4(0.0);
         vec4 specularAccum = vec4(0.0);
         ShadingData shadingData;
-        shadingData.albedo = albedo.xyz;
-        shadingData.alpha = roughness * roughness;
+        shadingData.albedo = materialData.albedo.xyz;
+        shadingData.alpha = materialData.roughness * materialData.roughness;
         shadingData.outLightDir = normalize(get_viewer_pos(scene) - worldSpacePos.xyz);
-        shadingData.metalness = metalness;
-        shadingData.shadingNormal = normal;
+        shadingData.metalness = materialData.metalness;
+        shadingData.shadingNormal = materialData.shadingNormal;
         shadingData.worldPos = worldSpacePos.xyz;
-        direct_lighting(scene,shadingData, diffuseAccum.xyz, specularAccum.xyz);
+        direct_lighting(scene, shadingData, diffuseAccum.xyz, specularAccum.xyz);
         
-        if(metalness < 1.f) {
-            vec3 irradiance = sample_ddgi(worldSpacePos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
-            vec3 radiance = albedo.xyz * irradiance * (1.f - metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+        float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
+        if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+            vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
+            vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
             diffuseAccum.xyz += radiance;
         }
-        specularAccum.xyz += pbr.yzw;
+        specularAccum.xyz += materialData.emissive.xyz;
 
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);

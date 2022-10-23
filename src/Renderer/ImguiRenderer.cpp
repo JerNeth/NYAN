@@ -132,6 +132,7 @@ namespace MM {
 		ImGui::DragFloat("Backface Threshold", &volume.relocationBackfaceThreshold, 0.001, 0, 1, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Min Front Face Distance", &volume.minFrontFaceDistance, 0.1, 0, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("View Bias", &volume.depthViewBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance, 1.f, 0.00001f, 100000.0f);
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
@@ -165,7 +166,7 @@ namespace MM {
 		}
 
 		{
-			static constexpr const char* irradianceFormats[] = {"R10G10B10A2F", "R16G16B16A16F", "R11G11B10F" };
+			static constexpr const char* irradianceFormats[] = {"R16G16B16A16F", "R10G10B10A2F", "R11G11B10F" };
 			static const char* currentIrradianceFormat = irradianceFormats[0];
 			if (ImGui::BeginCombo("##Irradiance Format", currentIrradianceFormat))
 			{
@@ -179,10 +180,10 @@ namespace MM {
 				ImGui::EndCombo();
 			}
 			if (currentIrradianceFormat == irradianceFormats[0]) {
-				volume.irradianceImageFormat = nyan::shaders::R10G10B10A2F;
+				volume.irradianceImageFormat = nyan::shaders::R16G16B16A16F;
 			}
 			else if (currentIrradianceFormat == irradianceFormats[1]) {
-				volume.irradianceImageFormat = nyan::shaders::R16G16B16A16F;
+				volume.irradianceImageFormat = nyan::shaders::R10G10B10A2F;
 			}
 			else if (currentIrradianceFormat == irradianceFormats[2]) {
 				volume.irradianceImageFormat = nyan::shaders::R11G11B10F;

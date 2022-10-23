@@ -51,7 +51,8 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
-			.shadowBias {parameters.depthBias},
+			.shadowNormalBias {parameters.depthBias},
+			.shadowViewBias {parameters.depthViewBias},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
@@ -144,7 +145,13 @@ void nyan::DDGIManager::set_rays_per_probe(uint32_t id, uint32_t rayCount)
 void nyan::DDGIManager::set_depth_bias(uint32_t id, float depthBias)
 {
 	auto& volume = DataManager<nyan::shaders::DDGIVolume>::get(id);
-	volume.shadowBias = depthBias;
+	volume.shadowNormalBias = depthBias;
+}
+
+void nyan::DDGIManager::set_view_bias(uint32_t id, float viewBias)
+{
+	auto& volume = DataManager<nyan::shaders::DDGIVolume>::get(id);
+	volume.shadowViewBias = viewBias;
 }
 
 void nyan::DDGIManager::set_max_ray_distance(uint32_t id, float maxRayDistance)
@@ -190,7 +197,8 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
 			constDeviceVolume.relocationBackfaceThreshold != parameters.relocationBackfaceThreshold ||
 			constDeviceVolume.minFrontFaceDistance != parameters.minFrontFaceDistance ||
-			constDeviceVolume.shadowBias != parameters.depthBias ||
+			constDeviceVolume.shadowNormalBias != parameters.depthBias ||
+			constDeviceVolume.shadowViewBias != parameters.depthViewBias ||
 			constDeviceVolume.maxRayDistance != parameters.maxRayDistance ||
 			constDeviceVolume.hysteresis != parameters.hysteresis ||
 			constDeviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
@@ -229,7 +237,8 @@ void nyan::DDGIManager::update()
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
-			.shadowBias {parameters.depthBias},
+			.shadowNormalBias {parameters.depthBias},
+			.shadowViewBias {parameters.depthViewBias},
 			.maxRayDistance {parameters.maxRayDistance},
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},

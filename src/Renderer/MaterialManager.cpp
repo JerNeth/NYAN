@@ -63,13 +63,13 @@ nyan::MaterialId nyan::MaterialManager::add_material(const nyan::MaterialData& d
 nyan::MaterialId nyan::MaterialManager::add_material(const PBRMaterialData& data)
 {
 	auto binding = add(nyan::shaders::Material{
-		.albedoTexId {r_textureManager.get_texture_idx(data.albedoTex, "white.png")},
+		.albedoTexId {r_textureManager.get_texture_idx(data.albedoTex)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
-		.normalTexId {r_textureManager.get_texture_idx(data.normalTex, "normal.png")},
+		.normalTexId {r_textureManager.get_texture_idx(data.normalTex)},
 		.normalSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
-		.pbrTexId {r_textureManager.get_texture_idx(data.roughnessMetalnessTex, "white.png")},
+		.pbrTexId {r_textureManager.get_texture_idx(data.roughnessMetalnessTex)},
 		.pbrSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
-		.emissiveTexId {r_textureManager.get_texture_idx(data.emissiveTex, "black.png")},
+		.emissiveTexId {r_textureManager.get_texture_idx(data.emissiveTex)},
 		.emissiveSampler {static_cast<uint32_t>(vulkan::DefaultSampler::TrilinearWrap)},
 		.emissive_R {data.emissiveFactor.x()},
 		.emissive_G {data.emissiveFactor.y()},
