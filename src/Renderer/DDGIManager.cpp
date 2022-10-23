@@ -50,6 +50,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.offsetBufferBinding {},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
+			.backfaceThreshold {parameters.backfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
 			.shadowNormalBias {parameters.depthBias},
 			.shadowViewBias {parameters.depthViewBias},
@@ -196,6 +197,7 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.offsetBufferBinding == 0 || //Might not be ideal
 			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
 			constDeviceVolume.relocationBackfaceThreshold != parameters.relocationBackfaceThreshold ||
+			constDeviceVolume.backfaceThreshold != parameters.backfaceThreshold ||
 			constDeviceVolume.minFrontFaceDistance != parameters.minFrontFaceDistance ||
 			constDeviceVolume.shadowNormalBias != parameters.depthBias ||
 			constDeviceVolume.shadowViewBias != parameters.depthViewBias ||
@@ -236,6 +238,7 @@ void nyan::DDGIManager::update()
 			.renderTargetImageFormat {parameters.renderTargetImageFormat},
 			.fixedRayCount {parameters.fixedRayCount},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
+			.backfaceThreshold {parameters.backfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
 			.shadowNormalBias {parameters.depthBias},
 			.shadowViewBias {parameters.depthViewBias},

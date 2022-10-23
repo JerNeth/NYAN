@@ -33,6 +33,7 @@ namespace nyan {
 			RenderResource::Id irradianceResource{};
 			uint32_t fixedRayCount{ 32 };
 			float relocationBackfaceThreshold{ 0.25f };
+			float backfaceThreshold{ 0.1f };
 			float minFrontFaceDistance{ 1.f };
 			bool enabled{ true };
 			bool visualization{ true };

@@ -37,7 +37,7 @@ layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 //layout(local_size_x = GroupSizeX, local_size_y = GroupSizeY, local_size_z = GroupSizeZ) in; 
 
 shared vec3 rayDirection[rayCount];
-shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are not valid SPIR-V
+shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
 shared float rayDistance[rayCount];
 
 
@@ -90,13 +90,14 @@ void main()
     }
 
 	uint backfaceCount = 0;
-	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.relocationBackfaceThreshold);
+	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.backfaceThreshold);
 	for(; rayIdx < rayCount; rayIdx++) {
 
 		vec3 rayDir = rayDirection[rayIdx];
 		float rayDist = rayDistance[rayIdx];
 
 		float weight = max(0.f, dot(rayDir, texelDir));
+		resultWeight += weight;
 
 		if(filterIrradiance) {
 			if(rayDist < 0.f){
@@ -107,19 +108,17 @@ void main()
 			}
 			vec3 rayRadiance = rayRadiance[rayIdx];
 			result += vec4(rayRadiance * weight, 0.f);
-			resultWeight += weight;
 		}
 		else {
 			rayDist = min(abs(rayDist), 1);
 			const float rayDistSqarred = rayDist * rayDist;
 			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;
-			resultWeight += weight;
 		}
 	}
 	float epsilon = float(rayCount) * 1e-9f;
 	float hysteresis = volume.hysteresis;
 
-	ivec2 texCoord = ivec2(gl_LocalInvocationID.xy + get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), int(gl_WorkGroupSize.x), volume));
+	ivec2 texCoord = ivec2(gl_LocalInvocationID.xy + get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), ivec2(gl_WorkGroupSize.xy), volume));
 
 	float weightNormalization = 1.f/ (max(resultWeight, epsilon));
 

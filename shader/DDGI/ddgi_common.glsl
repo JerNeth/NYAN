@@ -133,14 +133,14 @@ vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels)
 	return uv;
 }
 
-ivec2 get_probe_texel_coords(ivec3 probeIdx, in int probeTexelSize, in DDGIVolume volume) {
+ivec2 get_probe_texel_coords(ivec3 probeIdx, in ivec2 probeTexelSize, in DDGIVolume volume) {
 	probeIdx.y += int(volume.probeCountY) * probeIdx.z;
-	return 1 + probeIdx.xy *  ivec2(2+ probeTexelSize);
+	return 1 + probeIdx.xy *  (2+ probeTexelSize);
 }
 
 vec2 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexelSize, in DDGIVolume volume)
 {
-	ivec2 texelCoords = get_probe_texel_coords(probeIdx, int(probeTexelSize), volume);
+	ivec2 texelCoords = get_probe_texel_coords(probeIdx, ivec2(probeTexelSize), volume);
 
 	vec2 uv = texelCoords + (octahedralCoords * 0.5 + 0.5) * probeTexelSize;
 	vec2 texSize = vec2(volume.probeCountX, volume.probeCountY * volume.probeCountZ) * (probeTexelSize + 2);

@@ -144,6 +144,7 @@ struct DDGIVolume {
 	uint offsetBufferBinding;
 	uint fixedRayCount;
 	float relocationBackfaceThreshold;
+	float backfaceThreshold;
 	float minFrontFaceDistance;
 
 	float shadowNormalBias;
