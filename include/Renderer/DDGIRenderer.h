@@ -22,7 +22,6 @@ namespace nyan {
 			uint32_t ddgiCount;
 			uint32_t ddgiIndex;
 			uint32_t renderTarget;
-			Math::vec4 col{ 0.4f, 0.3f, 0.8f, 1.0f };
 			Math::vec4 randomRotation{ 0.4f, 0.6f, 0.8f, 1.f };
 		};
 		struct PipelineConfig

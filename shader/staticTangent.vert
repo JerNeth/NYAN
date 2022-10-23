@@ -36,7 +36,8 @@ void main() {
 	//gl_Position = scene.proj * vec4(mat3(scene.view) * fragWorldPos , 1.0);
     fragWorldPos = model * vec4( inPosition, 1.0);
 	gl_Position = scene.proj * scene.view * vec4(fragWorldPos, 1.0);
-    vec3 tangent =  inTangent.xyz * modelS;
+    fragWorldPos = modelS * inPosition;
+    vec3 tangent =  modelS * inTangent.xyz;
     vec3 normal = modelS *  inNormal.xyz;
     //tangent = normalize(tangent - dot(tangent, normal) * normal);
 //    Uvs uvs = Uvs(mesh.uvs);

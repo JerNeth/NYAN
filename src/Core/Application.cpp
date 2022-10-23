@@ -7,6 +7,8 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 	vulkan::Instance::Validation validation{
 		.enabled {debug},
 		.createCallback {debug},
+		//.enabled {false},
+		//.createCallback {false},
 		.gpuAssisted { false },
 		.gpuAssistedReserveBindingSlot { false },
 		.bestPractices { false },

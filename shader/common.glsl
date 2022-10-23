@@ -29,19 +29,39 @@ vec4 fromSRGB(vec4 sRGB)
     return vec4(fromSRGB(sRGB.xyz), sRGB.a);
 }
 
-vec2 encodeOctahedronMapping(vec3 n) 
+vec2 sign_not_zero(in vec2 v)
 {
-    n *=  1.f / dot(abs(n), vec3(1));
-    n.xy = mix(n.xy, (1.0 - abs(n.yx)) * fma(step(vec2(0.0), n.xy), vec2(2.0), vec2(-1.0)), step(n.z, 0.0));
-    return n.xy * 0.5 + 0.5;
+	return fma(step(0, v),vec2(2.f),vec2(-1.f));
 }
 
-vec3 decodeOctahedronMapping(vec2 octahedron)
+float sign_not_zero(in float v)
 {
-    octahedron = octahedron * 2.0 - 1.0;
-    vec3 n = vec3(octahedron.xy, 1.0 - abs(octahedron.x) - abs(octahedron.y));
-    n.xy = mix(n.xy, (1.0-abs(n.yx)) * fma(step(vec2(0.0), n.xy), vec2(2.0), vec2(-1.0)),step(n.z, 0));
+	return fma(step(0, v),2.f, -1.f);
+}
+
+vec2 one_to_minus_one(in vec2 value) 
+{
+    return fma(value, vec2(2.0f), vec2(-1.f));
+}
+
+vec2 zero_to_one(in vec2 value) 
+{
+    return fma(value, vec2(0.5f), vec2(0.5f));
+}
+
+//[-1, 1] domain
+vec3 get_octahedral_direction(in vec2 uv) 
+{
+    vec3 n = vec3(uv.xy, 1.0 - abs(uv.x) - abs(uv.y));
+    n.xy = mix((1.0-abs(n.yx)) * sign_not_zero(n.xy), n.xy, step(0.0, n.z));
     return normalize(n);
+}
+//[-1, 1] domain
+vec2 get_octahedral_coords(in vec3 direction)
+{
+    vec2 uv= direction.xy *  (1.f / dot(abs(direction), vec3(1.f)));
+    uv = mix((1.0 - abs(uv.yx)) * sign_not_zero(uv), uv, step(0.0, direction.z));
+	return uv;
 }
 
 vec3 pack1212(vec2 val) 
@@ -71,28 +91,24 @@ vec2 unpack1212(vec3 val)
 //	bitangent = -normalize(cross(normal, tangent));
 //}
 
-void orthonormalize(inout vec3 normal,inout vec3 tangent, inout vec3 bitangent) {
+void orthonormalize(inout vec3 normal, inout vec3 tangent, out vec3 bitangent) {
     //normal = normalize(normal);
     //tangent = normalize(tangent - dot(normal, tangent) * normal);
     //bitangent = normalize(bitangent - dot(normal, bitangent) * normal - dot(tangent, bitangent) * tangent);
     normal = normalize(normal);
     tangent = normalize(tangent);
     tangent = normalize(tangent - dot(tangent, normal) * normal);
-    bitangent = normalize(cross(normal , tangent));
-    // normal = normalize(cross(tangent, bitangent));
+    bitangent = normalize(cross(normal, tangent));
 }
 
-vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal,in vec3 bitangent, in vec3 tangent)
+vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec3 tangent, in vec3 bitangent)
 {
     //Currently disabled because it produces bogus
     vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
     vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
-    vec3 tmpNormal = normal;
-    vec3 tmpTangent = tangent;
-    vec3 tmpBitangent = bitangent;
-    orthonormalize(tmpNormal, tmpTangent, tmpBitangent);
-	mat3 tangentFrame = mat3(tmpTangent , tmpBitangent , tmpNormal);
-   // return tangentFrame * tangentNormal;
+
+	mat3 tangentFrame = mat3(tangent , bitangent , normal);
+    return tangentFrame * tangentNormal;
 
 
     return normalize(normal);

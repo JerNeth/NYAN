@@ -145,7 +145,8 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 			for (auto parent = entity; parent != entt::null; parent = m_registry.all_of<Parent>(parent) ? m_registry.get<Parent>(parent).parent : entt::null) {
 				if (m_registry.all_of<Transform>(parent)) {
 					const auto& parentTransform = m_registry.get<Transform>(parent);
-					transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position) * transformMatrix;
+					transformMatrix = Math::Mat<float, 4, 4, false>::affine_transformation_matrix(parentTransform.orientation, parentTransform.position, parentTransform.scale) * transformMatrix;
+
 				}
 			}
 
@@ -211,8 +212,17 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 				light.enabled = dirLight.enabled;
 				light.color = dirLight.color;
 				light.intensity = dirLight.intensity;
-				light.dir = dirLight.direction;
+				light.dir = dirLight.direction.normalized();
 				m_sceneManager.set_dirlight(light);
+			}
+		}
+		{
+			auto view = m_registry.view<const SkyLight>();
+			for (const auto& [entity, skyLight] : view.each()) {
+				nyan::shaders::SkyLight light;
+				light.color = skyLight.color;
+				light.intensity = skyLight.intensity;
+				m_sceneManager.set_sky_light(light);
 			}
 		}
 		{

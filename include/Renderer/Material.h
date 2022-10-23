@@ -4,6 +4,14 @@
 #include "LinAlg.h"
 #include <string>
 namespace nyan {
+	struct MaterialId {
+		uint32_t id;
+		MaterialId() : id(0) {}
+		MaterialId(uint32_t id) : id(id) {}
+		operator uint32_t() const {
+			return id;
+		}
+	};
 	using MaterialID = uint32_t;
 	struct MaterialData {
 		std::string name;

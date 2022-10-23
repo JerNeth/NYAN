@@ -7,14 +7,14 @@ nyan::Input::Input(glfww::Window& window) :
 	m_axisMapping()
 {
 
-	set_axis_mapping(Input::Inputs::W, Input::Axis::MoveForward, 1.f);
-	set_axis_mapping(Input::Inputs::S, Input::Axis::MoveForward, -1.f);
+	set_axis_mapping(Input::Inputs::W, Input::Axis::MoveForward, -1.f);
+	set_axis_mapping(Input::Inputs::S, Input::Axis::MoveForward, 1.f);
 	set_axis_mapping(Input::Inputs::D, Input::Axis::MoveRight, 1.f);
 	set_axis_mapping(Input::Inputs::A, Input::Axis::MoveRight, -1.f);
-	set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, -1.f);
-	set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, 1.f);
-	set_axis_mapping(Input::Inputs::Right, Input::Axis::LookRight, 1.f);
-	set_axis_mapping(Input::Inputs::Left, Input::Axis::LookRight, -1.f);
+	set_axis_mapping(Input::Inputs::Up, Input::Axis::LookUp, 1.f);
+	set_axis_mapping(Input::Inputs::Down, Input::Axis::LookUp, -1.f);
+	set_axis_mapping(Input::Inputs::Right, Input::Axis::LookRight, -1.f);
+	set_axis_mapping(Input::Inputs::Left, Input::Axis::LookRight, 1.f);
 }
 
 void nyan::Input::set_axis_mapping(Inputs input, Axis axis, float scale)

@@ -23,6 +23,9 @@ namespace MM {
 		ImGui::DragFloat("x", &t.position.x(), 0.1f);
 		ImGui::DragFloat("y", &t.position.y(), 0.1f);
 		ImGui::DragFloat("z", &t.position.z(), 0.1f);
+		ImGui::DragFloat("scale x", &t.scale.x(), 0.1f, 0.00001f);
+		ImGui::DragFloat("scale y", &t.scale.y(), 0.1f, 0.00001f);
+		ImGui::DragFloat("scale z", &t.scale.z(), 0.1f, 0.00001f);
 		ImGui::DragFloat("pitch", &t.orientation.x(), 0.1f);
 		ImGui::DragFloat("yaw", &t.orientation.y(), 0.1f);
 		ImGui::DragFloat("roll", &t.orientation.z(), 0.1f);
@@ -97,22 +100,22 @@ namespace MM {
 		ImGui::ColorEdit4("albedo", &mat.albedo_R);
 		ImGui::ColorEdit3("emissive", &mat.emissive_R);
 	}
-	template <>
-	void ComponentEditorWidget<nyan::Deferred>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
-	{
-	}
-	template <>
-	void ComponentEditorWidget<nyan::DeferredAlphaTest>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
-	{
-	}
-	template <>
-	void ComponentEditorWidget<nyan::Forward>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
-	{
-	}
-	template <>
-	void ComponentEditorWidget<nyan::ForwardTransparent>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
-	{
-	}
+	//template <>
+	//void ComponentEditorWidget<nyan::Deferred>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	//{
+	//}
+	//template <>
+	//void ComponentEditorWidget<nyan::DeferredAlphaTest>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	//{
+	//}
+	//template <>
+	//void ComponentEditorWidget<nyan::Forward>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	//{
+	//}
+	//template <>
+	//void ComponentEditorWidget<nyan::ForwardTransparent>([[maybe_unused]] entt::registry& reg, [[maybe_unused]] entt::registry::entity_type e)
+	//{
+	//}
 	template <>
 	void ComponentEditorWidget<nyan::DDGIManager::DDGIVolumeParameters>(entt::registry& reg, entt::registry::entity_type e)
 	{
@@ -268,6 +271,13 @@ namespace MM {
 		ImGui::DragFloat("Intensity", &light.intensity);
 		ImGui::DragFloat("Attenuation", &light.attenuation);
 	}
+	template <>
+	void ComponentEditorWidget<nyan::SkyLight>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& light = reg.get<nyan::SkyLight>(e);
+		ImGui::ColorEdit3("Color", &light.color.x());
+		ImGui::DragFloat("Intensity", &light.intensity);
+	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :
 	r_device(device),
@@ -309,6 +319,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<CameraMovement>("Camera Controller");
 	m_editor.registerComponent<Directionallight>("Directional Light");
 	m_editor.registerComponent<Pointlight>("Point Light");
+	m_editor.registerComponent<SkyLight>("Sky Light");
 	//if (r_registry.data()) {
 	//	m_entity = *r_registry.data();
 	//}

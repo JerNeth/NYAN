@@ -48,8 +48,8 @@ namespace vulkan {
 		.stencil_back_compare_op {},
 
 		.cull_mode {VK_CULL_MODE_BACK_BIT},
-		//.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
-		.front_face {VK_FRONT_FACE_CLOCKWISE},
+		.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
+		//.front_face {VK_FRONT_FACE_CLOCKWISE},
 		.primitive_restart_enable {VK_FALSE},
 		.rasterizer_discard_enable {VK_FALSE},
 		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},

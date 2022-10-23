@@ -70,14 +70,9 @@ void nyan::Renderpass::add_swapchain_attachment(Math::vec4 clearColor, bool clea
 	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
 
-	if (r_graph.m_swapchainResource == InvalidResourceId) {
-		nyan::ImageAttachment swap;
-		swap.clearColor = clearColor;
-		swap.format = r_graph.r_device.get_swapchain_image_view()->get_format();
-		r_graph.m_swapchainResource = r_graph.add_ressource("swapchain", swap);
-	}
-	assert(r_graph.resource_exists(r_graph.m_swapchainResource));
-	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
+	assert(r_graph.resource_exists(r_graph.get_swapchain_resource()));
+	auto& resource = r_graph.get_resource(r_graph.get_swapchain_resource());
+	std::get<nyan::ImageAttachment>(resource.attachment).clearColor = clearColor;
 
 	if (std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) != m_attachments.end()) {
 		return;
@@ -169,21 +164,17 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType, bool clear)
 {
-	if (r_graph.m_swapchainResource == InvalidResourceId) {
-		nyan::ImageAttachment swap;
-		swap.clearColor = clearColor;
-		swap.format = r_graph.r_device.get_swapchain_image_view()->get_format();
-		r_graph.m_swapchainResource = r_graph.add_ressource("swapchain", swap);
-	}
+
 	assert(r_graph.resource_exists(r_graph.m_swapchainResource));
+	auto& resource = r_graph.get_resource(r_graph.get_swapchain_resource());
+	std::get<nyan::ImageAttachment>(resource.attachment).clearColor = clearColor;
+
 	if (std::find_if(m_writes.cbegin(), m_writes.cend(), [id = r_graph.m_swapchainResource, writeType](const auto& write) { return write.id == id && writeType == write.type; }) != m_writes.cend())
 		return;
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	assert(m_type == Renderpass::Type::Generic);
 	//Currently only support hybrid queue for swapchain Synchronization
-
-	auto& resource = r_graph.get_resource(r_graph.m_swapchainResource);
 
 	if (resource.uses.size() <= m_id.id)
 		resource.uses.resize(m_id.id + 1ull);
@@ -917,6 +908,15 @@ Lighting nyan::Rendergraph::add_lighting(const std::string& name)
 			.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 		})}
 	};
+}
+RenderResource::Id nyan::Rendergraph::get_swapchain_resource() 
+{
+	if (m_swapchainResource == InvalidResourceId) {
+		nyan::ImageAttachment swap;
+		swap.format = r_device.get_swapchain_image_view()->get_format();
+		m_swapchainResource = add_ressource("swapchain", swap);
+	}
+	return m_swapchainResource;
 }
 
 RenderResource::Id nyan::Rendergraph::add_ressource(const std::string& name, Attachment attachment)

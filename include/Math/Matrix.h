@@ -4,6 +4,7 @@
 #include "Util.h"
 #include "Constants.h"
 #include <string>
+#include <vector>
 #include <optional>
 #include <cmath>
 #include <cassert>
@@ -31,7 +32,22 @@ namespace Math {
 			for (size_t y = 0; y < Size_y; y++) {
 				for (size_t x = 0; x < Size_x; x++) {
 					//Memory layout differs from user expectation
-					at(x, y) = Scalar(list[Math::at<Size_x, false>(x, y)]);
+					if constexpr (column_major)
+						at(x, y) = Scalar(list[Math::at<Size_y, column_major>(x, y)]);
+					else
+						at(x, y) = Scalar(list[Math::at<Size_x, column_major>(x, y)]);
+				}
+			}
+		}
+		template<typename T>
+		constexpr explicit Mat(const std::vector<T> & vec) : m_data() {
+			for (size_t y = 0; y < Size_y; y++) {
+				for (size_t x = 0; x < Size_x; x++) {
+					//Memory layout differs from user expectation
+					if constexpr (column_major)
+						at(x, y) = Scalar(vec[Math::at<Size_y, column_major>(x, y)]);
+					else
+						at(x, y) = Scalar(vec[Math::at<Size_x, column_major>(x, y)]);
 				}
 			}
 		}
@@ -201,6 +217,9 @@ namespace Math {
 		*/
 		static Mat<Scalar, 3, 3, column_major> rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw);
 		static Mat<Scalar, 4, 4, column_major> affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector);
+		static Mat<Scalar, 4, 4, column_major> affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector, Vec<Scalar, 3>  scale);
+		static Mat<Scalar, 4, 4, column_major> affine_transformation_matrix(Quaternion<Scalar>  orientation, Vec<Scalar, 3>  translation_vector);
+		static Mat<Scalar, 4, 4, column_major> affine_transformation_matrix(Quaternion<Scalar>  orientation, Vec<Scalar, 3>  translation_vector, Vec<Scalar, 3>  scale);
 		inline Mat<Scalar, Size_y, Size_x, column_major> inverse_affine_transformation_matrix();
 		static Mat<Scalar, 3, 3, column_major> rotation_matrix(Vec<Scalar, 3>  roll_pitch_yaw);
 		static Mat<Scalar, 4, 4, column_major> translation_matrix(Vec<Scalar, 3>  translation_vector);

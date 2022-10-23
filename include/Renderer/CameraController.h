@@ -6,7 +6,7 @@
 
 namespace nyan {
 	struct CameraMovement {
-		float speed{ 500.f };
+		float speed{ 10.f };
 		float rotationalSpeed{90.f};
 	};
 	class RenderManager;

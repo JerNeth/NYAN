@@ -128,31 +128,6 @@ ivec2 get_probe_texel_coords(ivec3 probeIdx, in int probeTexelSize, in DDGIVolum
 	return 1 + probeIdx.xy *  ivec2(2+ probeTexelSize);
 }
 
-
-vec2 sign_not_zero(in vec2 v)
-{
-	return fma(step(0, v),vec2(2.f),vec2(-1.f));
-}
-
-//[-1, 1] domain
-vec3 get_octahedral_direction(in vec2 uv) 
-{
-	vec3 direction = vec3(uv.xy, 1.f - abs(uv.x) - abs(uv.y));
-	if(direction.z < 0.f)
-	{
-		direction.xy = (vec2(1.f) - abs(uv.yx)) * sign_not_zero(direction.xy);
-	}
-	return normalize(direction);
-}
-//[-1, 1] domain
-vec2 get_octahedral_coords(in vec3 direction)
-{
-    vec2 uv= direction.xy *  (1.f / dot(abs(direction), vec3(1.f)));
-    uv = mix(uv, (1.0 - abs(uv.yx)) * sign_not_zero(uv), step(direction.z, 0.0));
-	return uv;
-
-}
-
 vec2 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexelSize, in DDGIVolume volume)
 {
 	ivec2 texelCoords = get_probe_texel_coords(probeIdx, int(probeTexelSize), volume);

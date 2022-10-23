@@ -3,8 +3,9 @@
 
 namespace nyan {
 	struct Transform {
-		Math::vec3 position;
-		Math::vec3 scale;
-		Math::vec3 orientation;
+		Math::vec3 position {0.f};
+		Math::vec3 scale {1.f};
+		Math::vec3 orientation{ 0.f };
+		//Math::quat orientation {};
 	};
 }

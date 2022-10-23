@@ -29,7 +29,6 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiCount;
 	uint ddgiIndex;
 	uint renderTarget;
-	vec4 col;
 	vec4 randomRotation;
 } constants;
 
@@ -111,16 +110,16 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     return diffuse;
 }
-#define SAMPLE_DDGI
+//#define SAMPLE_DDGI
 vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
 {
-#ifdef SAMPLE_DDGI
+//#ifdef SAMPLE_DDGI
     if(shadingData.metalness < 1.f) {
         vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
         vec3 radiance = shadingData.albedo.xyz * irradiance * (1.f - shadingData.metalness)*brdf_lambert(); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
         return radiance;
     }
-#endif
+//#endif
     return vec3(0.f);
 }
 

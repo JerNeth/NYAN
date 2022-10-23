@@ -57,6 +57,12 @@ struct PointLight {
 	float attenuationDistance;
 };
 const uint maxNumPointLights = 12;
+
+struct SkyLight {
+	vec3 color;
+	float intensity;
+};
+
 struct Scene {
 	mat4 view;
 	mat4 proj;
@@ -75,6 +81,8 @@ struct Scene {
 	float cameraUpY;
 	float cameraUpZ;
 	float pad0;
+
+	SkyLight skyLight;
 
 	PointLight pointLights[maxNumPointLights];
 };

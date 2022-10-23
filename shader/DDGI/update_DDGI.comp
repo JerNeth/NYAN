@@ -18,7 +18,6 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiCount;
 	uint ddgiIndex;
 	uint renderTarget;
-	vec4 col; //Unused here
 	vec4 randomRotation;
 } constants;
 
@@ -38,7 +37,7 @@ layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 //layout(local_size_x = GroupSizeX, local_size_y = GroupSizeY, local_size_z = GroupSizeZ) in; 
 
 shared vec3 rayDirection[rayCount];
-shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + 1]; //zero sized arrays are not valid SPIR-V
+shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are not valid SPIR-V
 shared float rayDistance[rayCount];
 
 
@@ -63,7 +62,7 @@ void main()
 	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
 	//float maxRayDist = length(get_volume_spacing(volume)) * 2.f;
-	for(int i = 0; i <iMax;i++) {
+	for(int i = 0; i < iMax;i++) {
 		const int rayIdx = offset + i;
 		if(rayIdx >= rayCount) break;
 		
@@ -83,7 +82,16 @@ void main()
 
 	vec4 result = vec4(0.f);
 	float resultWeight = 0.f;
-	for(int rayIdx = 0; rayIdx < rayCount; rayIdx++) {
+	
+	int rayIdx = 0;
+	if (volume.relocationEnabled != 0 || volume.classificationEnabled != 0)
+    {
+        rayIdx = int(volume.fixedRayCount);
+    }
+
+	uint backfaceCount = 0;
+	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.relocationBackfaceThreshold);
+	for(; rayIdx < rayCount; rayIdx++) {
 
 		vec3 rayDir = rayDirection[rayIdx];
 		float rayDist = rayDistance[rayIdx];
@@ -92,6 +100,9 @@ void main()
 
 		if(filterIrradiance) {
 			if(rayDist < 0.f){
+				backfaceCount++;
+				if( backfaceCount > backfaceThreshold)
+					return;
 				continue;
 			}
 			vec3 rayRadiance = rayRadiance[rayIdx];

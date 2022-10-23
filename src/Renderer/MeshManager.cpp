@@ -363,6 +363,17 @@ void nyan::SceneManager::set_dirlight(const nyan::shaders::DirectionalLight& lig
 	get(0).dirLight = light;
 }
 
+void nyan::SceneManager::set_sky_light(const nyan::shaders::SkyLight& light)
+{
+	{
+		const auto& scene = get(0);
+		if (scene.skyLight.color == light.color &&
+			scene.skyLight.intensity == light.intensity)
+			return;
+	}
+	get(0).skyLight = light;
+}
+
 void nyan::SceneManager::set_view_pos(const Math::vec3& pos)
 {
 	get(0).viewerPosX = pos[0];

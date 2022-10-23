@@ -67,10 +67,10 @@ namespace nyan {
 
 		struct PushConstants
 		{
-			uint32_t imageBinding;
 			uint32_t accBinding;
 			uint32_t sceneBinding;
 			uint32_t meshBinding;
+			uint32_t imageBinding;
 			Math::vec4 col{ 0.4f, 0.3f, 0.8f, 1.0f };
 			Math::vec4 col2{ 0.4f, 0.6f, 0.8f, 1.f };
 		};

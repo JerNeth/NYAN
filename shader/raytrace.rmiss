@@ -12,10 +12,10 @@ layout(location = 0) rayPayloadInEXT hitPayload hitValue;
 
 layout(std430, push_constant) uniform PushConstants
 {
-    uint imageBinding;
     uint accBinding;
     uint sceneBinding;
     uint meshBinding;
+    uint imageBinding;
 	vec4 col;
 	vec4 col2;
 } constants;

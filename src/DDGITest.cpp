@@ -3,6 +3,7 @@
 #include <Util>
 #include "Application.h"
 #include "Input.h"
+#include "Renderer/ShaderInterface.h"
 #include "FBXReader/FBXReader.h"
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/DDGIRenderer.h"
@@ -10,6 +11,7 @@
 #include "Renderer/DeferredLighting.h"
 #include "VulkanWrapper/Shader.h"
 using namespace nyan;
+
 
 int main() {
 	auto name = "Demo";
@@ -106,6 +108,11 @@ int main() {
 			.up {0.f, 1.f ,0.f},
 			.right {1.f, 0.f ,0.f},
 		});
+	registry.emplace< CameraMovement>(camera,
+		CameraMovement{
+			.speed {500}
+		});
+
 	renderManager.set_primary_camera(camera);
 	for (auto& a : meshes) {
 		bool opaque = !(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos);
@@ -141,7 +148,7 @@ int main() {
 		if(a.type == nyan::Mesh::RenderType::Opaque)
 			registry.emplace<Deferred>(entity);
 		else if (a.type == nyan::Mesh::RenderType::AlphaTest)
-			registry.emplace<DeferredAlphaTest>(entity);
+			registry.emplace<DeferredDoubleSidedAlphaTest>(entity);
 		else if (a.type == nyan::Mesh::RenderType::AlphaBlend)
 			registry.emplace<ForwardTransparent>(entity);
 
@@ -194,28 +201,29 @@ int main() {
 	auto& rendergraph {renderManager.get_render_graph()};
 
 	
+
 	auto gbuffer = rendergraph.add_gbuffer("gbuffer");
 	auto lighting = rendergraph.add_lighting("lighting");
 
 
 	auto& ddgiPass = rendergraph.get_pass(rendergraph.add_pass("DDGI-Pass", nyan::Renderpass::Type::Generic));
-	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
-	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
 
 	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
-	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
-	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 
 	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
-	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
-	nyan::DDGIVisualizer ddgiVisualizer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
 
 	auto& compositePass = rendergraph.get_pass(rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic));
-	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
-
 
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
+
+	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
+	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
+	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	nyan::DDGIVisualizer ddgiVisualizer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
+	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
+	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 
 	rendergraph.build();

@@ -242,10 +242,10 @@ void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
 	auto writeBind = r_pass.get_write_bind(m_rendertarget, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBind != InvalidBinding);
 	PushConstants constants{
-		.imageBinding {writeBind}, //0
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
 		.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
+		.imageBinding {writeBind}, //0
 	};
 	bind.push_constants(constants);
 	bind.trace_rays(m_pipeline, 1920, 1080, 1);
@@ -257,13 +257,14 @@ vulkan::RaytracingPipelineConfig nyan::RTMeshRenderer::generate_config()
 		.rgenGroups {
 			vulkan::Group
 			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI")},
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rgen")},
 			},
 		},
 		.hitGroups {
 			vulkan::Group
 			{
 				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rchit")},
+				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
 			},
 		},
 		.missGroups {

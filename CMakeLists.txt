@@ -64,7 +64,7 @@ include("${CMAKE_SOURCE_DIR}/vendor/STB.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/EnTT.cmake")
 
 # ENTT Editor
-include("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor.cmake")
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor")
 
 # Optick
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")

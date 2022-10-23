@@ -121,10 +121,11 @@ void main()
 
     if(stencil != 0) {
         vec4 normalTexVal = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inUV);
+    #ifndef SHOW_NORMALS
         vec4 pbr = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inUV);
         vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inUV);
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inUV).x;
-        vec3 normal = decodeOctahedronMapping(unpack1212(normalTexVal.xyz));
+        vec3 normal = get_octahedral_direction(one_to_minus_one(unpack1212(normalTexVal.xyz)));
 
         float metalness = pbr.x;
         float roughness = normalTexVal.w;
@@ -150,8 +151,14 @@ void main()
             diffuseAccum.xyz += radiance;
         }
         specularAccum.xyz += pbr.yzw;
+
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
+    #else
+        vec3 normal = get_octahedral_direction(one_to_minus_one(unpack1212(normalTexVal.xyz)));
+        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(normal, 1.f));
+        imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0));
+    #endif
     } else {
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0));
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0.2, 0.3, 0.6, 1.0));

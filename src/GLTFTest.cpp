@@ -34,13 +34,22 @@ int main() {
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
-	std::filesystem::path file = directory / "sponza-gltf-pbr/sponza.glb";
+	std::filesystem::path file;
+	file = "sponza-gltf-pbr/sponza.glb";
+	//file = "glTF-Sample-Models/2.0/NormalTangentMirrorTest/glTF/NormalTangentMirrorTest.gltf";
+	std::filesystem::path dir = "glTF-Sample-Models/2.0";
+	//file = dir / "OrientationTest/glTF/OrientationTest.gltf";
+	//file = dir / "BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
+	//file = "coord.glb";
+	//file = "sphere.glb";
+	//file = "cornellFixed.gltf";
+	std::filesystem::path path = directory / file;
 	bool ret = false;
 	
 	if(file.extension() == ".glb")
-		ret = loader.LoadBinaryFromFile(&model, &err, &warn, file.string());
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
 	else if(file.extension() == ".gltf")
-		ret = loader.LoadASCIIFromFile(&model, &err, &warn, file.string());
+		ret = loader.LoadASCIIFromFile(&model, &err, &warn, path.string());
 
 	if (!warn.empty())
 		Utility::log_warning(warn);
@@ -55,6 +64,7 @@ int main() {
 			//Ignore for now
 		}
 		for (const auto& light : model.lights) {
+			assert(false);
 		}
 		for (const auto& node : model.nodes) {
 		}
@@ -77,6 +87,7 @@ int main() {
 		auto alphaModeResolve = [&](const std::string& mode) {
 			if (mode == "OPAQUE") return AlphaMode::Opaque;
 			if (mode == "MASK") return AlphaMode::AlphaTest;
+			if (mode == "BLEND") return AlphaMode::AlphaBlend;
 			assert(false);
 		};
 		std::vector<nyan::MaterialId> materialMap;
@@ -108,14 +119,15 @@ int main() {
 				nyan::Mesh nMesh{
 					.type {nyan::Mesh::RenderType::Opaque},
 					.name {mesh.name + std::to_string(idx++)},
-					.materialBinding {materialMap[primitive.material]},
 				};
+				if (primitive.material != -1)
+					nMesh.materialBinding = materialMap[primitive.material];
 				{
 					auto accessorId = primitive.indices;
-					auto accessor = model.accessors[accessorId];
-					auto bufferView = model.bufferViews[accessor.bufferView];
+					auto& accessor = model.accessors[accessorId];
+					auto& bufferView = model.bufferViews[accessor.bufferView];
 					assert(bufferView.buffer != -1);
-					auto buffer = model.buffers[bufferView.buffer];
+					auto& buffer = model.buffers[bufferView.buffer];
 					assert(!accessor.sparse.isSparse);
 					assert(bufferView.byteLength);
 					std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
@@ -146,10 +158,10 @@ int main() {
 
 				for (const auto& [attribute, accessorId]: primitive.attributes) {
 
-					auto accessor = model.accessors[accessorId];
-					auto bufferView = model.bufferViews[accessor.bufferView];
+					auto& accessor = model.accessors[accessorId];
+					auto& bufferView = model.bufferViews[accessor.bufferView];
 					assert(bufferView.buffer != -1);
-					auto buffer = model.buffers[bufferView.buffer];
+					auto& buffer = model.buffers[bufferView.buffer];
 					assert(!accessor.sparse.isSparse);
 					assert(bufferView.byteLength);
 					std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
@@ -158,8 +170,7 @@ int main() {
 					auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
 					if (!stride)
 						stride = numComponents * componentByteSize;
-					else
-						assert(false);
+
 
 					size_t offset{ 0 };
 					if (attribute == "POSITION") {
@@ -259,19 +270,21 @@ int main() {
 				auto &material = renderManager.get_material_manager().get_material(materialMap[primitive.material]);
 				if (nMesh.tangents.empty()) {
 					Utility::log_warning().format("{}: has no tangents, skipping mesh", nMesh.name);
-					continue;
+					for (auto i = 0; i < nMesh.normals.size(); ++i)
+						nMesh.tangents.push_back(decltype(nMesh.tangents)::value_type{-1, 0,0, 1});
+					//continue;
 				}
 				if (nMesh.uvs.empty()) {
 					Utility::log_warning().format("{}: has no uvs, skipping mesh", nMesh.name);
-					continue;
+					//continue;
 				}
 				if (nMesh.normals.empty()) {
 					Utility::log_warning().format("{}: has no normals, skipping mesh", nMesh.name);
-					continue;
+					//continue;
 				}
 				if (nMesh.positions.empty()) {
 					Utility::log_warning().format("{}: has no positions, skipping mesh", nMesh.name);
-					continue;
+					//continue;
 				}
 
 				if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
@@ -285,58 +298,110 @@ int main() {
 
 		for (const auto& scene : model.scenes) {
 			for (const auto nodeId : scene.nodes) {
-				const auto& node = model.nodes[nodeId];
-				//node.
-				auto entity = registry.create();
-				registry.emplace<Transform>(entity,
-					Transform{
-						.position{node.translation},
-						.scale{node.scale},
-						.orientation{Math::quat(Math::vec4(node.rotation)).to_euler_angles()},
-					});
-				if (node.mesh != -1) {
-					for (auto meshId : meshMap[node.mesh]) {
-						auto meshEntity = registry.create();
-						const auto& mesh = renderManager.get_mesh_manager().get_shader_mesh(meshId);
-						const auto& material = renderManager.get_material_manager().get_material(mesh.materialId);
-						registry.emplace<MeshID>(meshEntity, meshId);
-						registry.emplace<MaterialId>(meshEntity, mesh.materialId);
-						auto instance = InstanceData{
-								.transform{
-									.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
-								}
-						};
-						instance.instance.instanceCustomIndex = meshId;
-						registry.emplace<InstanceId>(meshEntity, renderManager.get_instance_manager().add_instance(instance));
-						registry.emplace<Transform>(meshEntity,
-							Transform{
-								.position{},
-								.scale{},
-								.orientation{},
-							});
+				std::vector<int> nodes{ nodeId };
+				std::vector<entt::entity> parents{};
 
-						registry.emplace<Parent>(meshEntity,
+				while (!nodes.empty()) {
+					auto entity = registry.create();
+					const auto* node = &model.nodes[nodes.back()];
+					nodes.pop_back();
+					if (!parents.empty()) {
+						registry.emplace<Parent>(entity,
 							Parent{
-								.parent {entity},
+								.parent {parents.back()},
 							});
-						if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
-							if (test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
-								registry.emplace<DeferredDoubleSidedAlphaTest>(meshEntity);
+						parents.pop_back();
+					}
+					for (auto child : node->children) {
+						nodes.push_back(child);
+						parents.push_back(entity);
+					}
+					if (!node->name.empty())
+						registry.emplace<std::string>(entity, node->name);
+					//node.
+					Math::vec3 pos{};
+					Math::vec3 scale{1.f};
+					Math::vec3 orientation{};
+					if (!node->translation.empty())
+						pos = Math::vec3{ node->translation };
+					if (!node->scale.empty())
+						scale = Math::vec3{ node->scale };
+					if (!node->rotation.empty())
+						orientation = Math::vec3{ Math::quat(Math::vec4(node->rotation)).to_euler_angles() };
+					if (!node->matrix.empty()) {
+						Math::mat44 mat{ node->matrix };
+						pos = Math::vec3{ mat.col(3) };
+						Math::vec3 tmpX{ mat.col(0) };
+						Math::vec3 tmpY{ mat.col(1) };
+						Math::vec3 tmpZ{ mat.col(2) };
+						scale = Math::vec3{ tmpX.L2_norm(), tmpY.L2_norm(), tmpZ.L2_norm() };
+						tmpX *= 1.f / scale.x();
+						tmpY *= 1.f / scale.y();
+						tmpZ *= 1.f / scale.z();
+						mat.set_col(tmpX, 0);
+						mat.set_col(tmpY, 0);
+						mat.set_col(tmpZ, 0);
+						Math::quat a{ mat };
+						orientation = Math::vec3{ a.to_euler_angles() };
+					}
+
+					registry.emplace<Transform>(entity,
+						Transform{
+							.position{pos},
+							.scale{scale},
+							.orientation{orientation},
+						});
+					if (node->mesh != -1) {
+
+						for (auto meshId : meshMap[node->mesh]) {
+							auto meshEntity = registry.create();
+							const auto& mesh = renderManager.get_mesh_manager().get_shader_mesh(meshId);
+							const auto& material = renderManager.get_material_manager().get_material(mesh.materialId);
+							registry.emplace<MeshID>(meshEntity, meshId);
+							registry.emplace<MaterialId>(meshEntity, mesh.materialId);
+							auto instance = InstanceData{
+									.transform{
+										.transformMatrix = Math::Mat<float, 3, 4, false>::identity()
+									}
+							};
+							if(!model.meshes[node->mesh].name.empty())
+								registry.emplace<std::string>(meshEntity, model.meshes[node->mesh].name);
+
+							instance.instance.instanceCustomIndex = meshId;
+							registry.emplace<InstanceId>(meshEntity, renderManager.get_instance_manager().add_instance(instance));
+							registry.emplace<Transform>(meshEntity,
+								Transform{
+									.position{},
+									.scale{1.f},
+									.orientation{},
+								});
+
+							registry.emplace<Parent>(meshEntity,
+								Parent{
+									.parent {entity},
+								});
+							if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
+								if (test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
+									registry.emplace<DeferredDoubleSidedAlphaTest>(meshEntity);
+								else
+									registry.emplace<DeferredAlphaTest>(meshEntity);
+							else if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_BLEND_FLAG))
+								registry.emplace<ForwardTransparent>(meshEntity);
 							else
-								registry.emplace<DeferredAlphaTest>(meshEntity);
-						else if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_BLEND_FLAG))
-							registry.emplace<ForwardTransparent>(meshEntity);
-						else
-							if(test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
-								registry.emplace<DeferredDoubleSided>(meshEntity);
-							else
-								registry.emplace<Deferred>(meshEntity);
+								if (test(material.flags, nyan::shaders::MATERIAL_DOUBLE_SIDED_FLAG))
+									registry.emplace<DeferredDoubleSided>(meshEntity);
+								else
+									registry.emplace<Deferred>(meshEntity);
+						}
 					}
 				}
 
 			}
 		}
 	}
+
+
+
 
 	auto parent = registry.create();
 	
@@ -354,16 +419,30 @@ int main() {
 			.orientation{16.4f, -20.f, 0.f},
 		});
 
-	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{});
+	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
+	//		.visualization {false}
+	//	});
+	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
+			.spacing {1.02f, 0.5f, 0.45f},
+			.origin {-0.4f - 11.f * 1.02f, 5.4f - 0.5f * 11.f, -0.25f - 0.45f * 11.f},
+			.probeCount {22, 22, 22},
+			.visualization {false}
+		}); //Sponza
 
 	registry.emplace<Directionallight>(parent, Directionallight
 		{
 			.enabled {true},
 			.shadows{ true },
-			.color {0.4f, 0.2f, 0.1f},
+			.color {1.f, 1.f, 1.f},
 			//.intensity {light.intensity},
-			.intensity {1},
-			.direction {-0.577f, -0.577f, -0.577f},
+			.intensity {1.45},
+			.direction {0.f, -1.f, -0.300f},
+		});
+
+	registry.emplace<SkyLight>(parent, SkyLight
+		{
+			.color {1.f, 1.f, 1.f},
+			.intensity {1.0},
 		});
 
 	registry.emplace<PerspectiveCamera>(camera,

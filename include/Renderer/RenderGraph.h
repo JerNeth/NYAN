@@ -370,6 +370,7 @@ namespace nyan {
 		//bool resource_exists(const entt::hashed_string& name);
 		GBuffer add_gbuffer(const std::string& name);
 		Lighting add_lighting(const std::string& name);
+		RenderResource::Id get_swapchain_resource();
 		RenderResource::Id add_ressource(const std::string& name, Attachment attachment);
 		RenderResource::Id add_ressource(Attachment attachment);
 		const RenderResource& get_resource(RenderResource::Id id) const;

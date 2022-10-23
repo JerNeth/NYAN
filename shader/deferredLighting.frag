@@ -45,7 +45,7 @@ void main() {
         vec4 albedo = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inTexCoord);
         //albedo = vec4(1, 1, 1, 1);
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inTexCoord).x;
-        vec3 normal = decodeOctahedronMapping(unpack1212(normalTexVal.xyz));
+        vec3 normal = get_octahedral_direction(one_to_minus_one(unpack1212(normalTexVal.xyz)));
 
   
         float metalness = pbr.x;

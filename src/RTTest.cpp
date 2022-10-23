@@ -39,40 +39,66 @@ int main() {
 
 	auto& input = application.get_input();
 
-
 	auto directory = getenv("USERPROFILE") / std::filesystem::path{ "Assets" };
+
 	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
-
-	Utility::FBXReader reader;
+	Utility::FBXReader reader(directory);
 	std::vector<nyan::Mesh> meshes;
 	std::vector<nyan::MaterialData> materials;
 	std::vector<nyan::LightParameters> lights;
+	//reader.parse_meshes("test.fbx", meshes, materials, lights);
 	reader.parse_meshes("SunTemple.fbx", meshes, materials, lights);
+	//reader.parse_meshes("san_miguel.fbx", meshes, materials, lights);
+	//reader.parse_meshes("cube.fbx", meshes, materials, lights);
 	renderManager.add_materials(materials);
-
+	//TODO do barrier issues on async Compute, issue is first queue aquire of ddgi, with no release and initial queue aquire is already implicitly done, also wrong initial format
 
 	auto parent = registry.create();
+	;
 	registry.emplace<Transform>(parent,
 		Transform{
-			.position{},
-			.scale{},
-			.orientation{0, 180, 0},
+			.position{0.f, 0.f, 0.f},
+			.scale{1.f},
+			.orientation{0, 0, 0},
 		});
 	auto camera = registry.create();
 	//registry.emplace<Transform>(camera,
-	//	Transform{	
-	//		.position{600.f, 660.f, -1400.f},
-	//		.scale{},
-	//		.orientation{18.f, -27.f, 0.f},
+	//	Transform{
+	//		.position{600.f, 350.f,-960.f},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
 	//	});
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{600.f, 350.f,960.f},
-			.scale{},
-			.orientation{14.f, -145.f, 0.f}, //Cathedral
+			.position{700.f, 1160.f,-1570.f},
+			.scale{1.f},
+			.orientation{16.4f, -20.f, 0.f}, //Cathedral
 		});
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{0.f, 10.f,  5.f},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
+	// 
+	//registry.emplace<Transform>(camera,
+	//	Transform{
+	//		.position{50, 10,20},
+	//		.scale{1.f},
+	//		.orientation{14.f, -145.f, 0.f}, //Cathedral
+	//	});
+	//Transform{
+	//.position{108.f, 216.f,320.f},
+	//.scale{},
+	//.orientation{31.8f, -157.f, 0.f},
+	//});
+	//Transform{
+	//.position{600.f, 660.f, -1400.f},
+	//.scale{},
+	//.orientation{18.f, -27.f, 0.f},
+	//}
 	registry.emplace<PerspectiveCamera>(camera,
 		PerspectiveCamera{
 			.nearPlane {.1f},
@@ -83,9 +109,15 @@ int main() {
 			.up {0.f, 1.f ,0.f},
 			.right {1.f, 0.f ,0.f},
 		});
-	renderManager.set_primary_camera(camera);
+	registry.emplace< CameraMovement>(camera,
+		CameraMovement{
+			.speed {500}
+		});
 
-	for (const auto& a : meshes) {
+	renderManager.set_primary_camera(camera);
+	for (auto& a : meshes) {
+		bool opaque = !(!a.name.empty() && a.name.find(".DoubleSided") != std::string::npos);
+		a.type = opaque ? nyan::Mesh::RenderType::Opaque : nyan::Mesh::RenderType::AlphaTest;
 		auto meshId = renderManager.get_mesh_manager().add_mesh(a);
 		auto accHandle = renderManager.get_mesh_manager().get_acceleration_structure(meshId);
 		auto entity = registry.create();
@@ -93,7 +125,7 @@ int main() {
 		registry.emplace<MaterialId>(entity, renderManager.get_material_manager().get_material(a.material));
 		auto instance = accHandle ?
 			InstanceData{
-				(*accHandle)->create_instance()
+				(*accHandle)->create_instance(static_cast<uint32_t>(a.type))
 		} :
 			InstanceData{
 				.transform{
@@ -101,12 +133,13 @@ int main() {
 				}
 		};
 		instance.instance.instanceCustomIndex = meshId;
+		//instance.instance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(a.type); //Check renderManager if changed here
 		registry.emplace<InstanceId>(entity, renderManager.get_instance_manager().add_instance(instance));
 		registry.emplace<Transform>(entity,
 			Transform{
-				.position{},
-				.scale{},
-				.orientation{},
+				.position{a.translate},
+				.scale{1.f},
+				.orientation{a.rotate},
 			});
 		registry.emplace<Parent>(entity,
 			Parent{
@@ -115,28 +148,81 @@ int main() {
 		registry.emplace<std::string>(entity, a.name);
 
 	}
+
+	for (const auto& light : lights) {
+		auto entity = registry.create();
+		registry.emplace<Transform>(entity,
+			Transform{
+				.position{light.translate},
+				.scale{1.f},
+				.orientation{light.rotate},
+			});
+		registry.emplace<Parent>(entity,
+			Parent{
+				.parent {parent},
+			});
+		registry.emplace<std::string>(entity, light.name);
+		if (light.type == LightParameters::Type::Directional)
+			registry.emplace<Directionallight>(entity, Directionallight
+				{
+					.enabled {true},
+					.shadows{ true },
+					.color {light.color},
+					//.intensity {light.intensity},
+					.intensity {1},
+					.direction {light.direction},
+				});
+		if (light.type == LightParameters::Type::Point)
+			registry.emplace<Pointlight>(entity, Pointlight
+				{
+					.shadows{ true },
+					.color {light.color},
+					.intensity {light.intensity},
+					.attenuation {500}
+				});
+		if (light.type == LightParameters::Type::Spot)
+			registry.emplace<Spotlight>(entity, Spotlight
+				{
+					.shadows{ true },
+					.color {light.color},
+					.intensity {light.intensity},
+					.direction {Math::vec3 {0, 0, 1}},
+					.cone {45},
+					.attenuation {500},
+				});
+	}
 	auto& rendergraph{ renderManager.get_render_graph() };
 	auto& rtPass = rendergraph.get_pass(rendergraph.add_pass("RT-Pass", nyan::Renderpass::Type::Generic));
 
 
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
 
-	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, rtPass);
+	nyan::RTMeshRenderer rtMeshRenderer(device, registry, renderManager, rtPass, rendergraph.get_swapchain_resource());
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
 			cameraController.update(dt);
 			renderManager.update(dt);
+			//imgui.update();
 		});
 	application.each_frame_begin([&]()
 		{
+			//ImGui first here since we might want to use ImGui in other begin_frames
+			imgui.begin_frame();
+
 			rendergraph.begin_frame();
 
-			imgui.next_frame();
+			//ImGui::Begin("Input");
+			//ImGui::Text("Look Right %f", input.get_axis(Input::Axis::LookRight));
+			//ImGui::Text("Look Up %f", input.get_axis(Input::Axis::LookUp));
+			//ImGui::Text("Move Right %f", input.get_axis(Input::Axis::MoveRight));
+			//ImGui::Text("Move Forward %f", input.get_axis(Input::Axis::MoveForward));
+			//ImGui::End();
 
 			//Upload/sync point here, don't really want stuff after here
 			renderManager.begin_frame();
+
 		});
 	application.each_frame_end([&]()
 		{

@@ -26,16 +26,24 @@ layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec4 outPBR;
 
 
-void flip_backfacing_normal(inout MaterialData materialData, in VertexData vertexData, in Scene scene) 
+//void flip_backfacing_normal(inout MaterialData materialData, in VertexData vertexData, in Scene scene) 
+//{
+//    vec3 viewPos = get_viewer_pos(scene);
+//    vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
+//
+//    if(dot(materialData.shadingNormal, viewVec) < 0) {
+//        materialData.shadingNormal = -materialData.shadingNormal;
+//    }
+//}
+//
+void flip_backfacing_normal(inout VertexData vertexData) 
 {
-    vec3 viewPos = get_viewer_pos(scene);
-    vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
-
-    if(dot(materialData.shadingNormal, viewVec) < 0) {
-        materialData.shadingNormal = -materialData.shadingNormal;
+    if(!gl_FrontFacing) {
+        vertexData.normal = -vertexData.normal;
+        vertexData.tangent = -vertexData.tangent;
+        vertexData.bitangent = -vertexData.bitangent;
     }
 }
-
 void main() {
    
     Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
@@ -44,20 +52,24 @@ void main() {
 	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
     Scene scene = scenes[constants.sceneBinding].scene;
     VertexData vertexData;
-    vertexData.normal = fragNormal;
+    vertexData.normal = normalize(fragNormal);
     vertexData.tangent = fragTangent.xyz;
-    vertexData.bitangent = cross(fragNormal, fragTangent.xyz) * fragTangent.w;
+    orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
+
+    computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
+
+
+    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
+        flip_backfacing_normal(vertexData);
     MaterialData materialData = get_material_data(material, vertexData);
     if(materialData.opacity <= material.alphaDiscard)
         discard;
-    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-        flip_backfacing_normal(materialData, vertexData, scene);
 
 
     outAlbedo = vec4(materialData.albedo, materialData.opacity);
-    outNormal = vec4(pack1212(encodeOctahedronMapping(normalize(materialData.shadingNormal))), material.roughness);
+    outNormal = vec4(pack1212(zero_to_one(get_octahedral_coords(normalize(materialData.shadingNormal)))), materialData.roughness);
     //outNormal = normal.xy;
     outPBR = vec4(material.metalness, 0, 0, 0);
 }

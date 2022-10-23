@@ -113,9 +113,6 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 				.ddgiIndex {0},
 				.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)},
-				//.col { 0.4f, 0.6f, 0.8f, 1.0f },
-				//.col { 0.04f, 0.06f, 0.08f, 1.f },
-				.col { 0.f, 0.f, 0.f, 0.f },
 				.randomRotation {sqrt(1- u) * sin(Math::pi_2 * v), sqrt(1-u) * cos(Math::pi_2 * v),
 									sqrt(u) * sin(Math::pi_2*w), sqrt(u) * cos(Math::pi_2 * w)}
 			};

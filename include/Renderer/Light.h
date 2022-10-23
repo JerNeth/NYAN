@@ -39,6 +39,10 @@ namespace nyan {
 		float intensity;
 		Math::vec3 direction;
 	};
+	struct SkyLight {
+		Math::vec3 color;
+		float intensity;
+	};
 }
 
 #endif !RDMATERIAL_H

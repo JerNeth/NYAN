@@ -50,16 +50,13 @@ vec3 get_normal(uint64_t normalsAddress, uint idx) {
 		return vec3(lowVec.xy, highVec.x);
 }
 
-vec3 get_tangent(uint64_t tangentsAddress, uint idx) {
+vec4 get_tangent(uint64_t tangentsAddress, uint idx) {
 	TangentsHalf tangentsHalf = TangentsHalf(tangentsAddress);
-	uint low = tangentsHalf.t[idx * 3 / 2 ];
-	uint high = tangentsHalf.t[idx * 3 / 2  + 1];
+	uint low = tangentsHalf.t[idx * 2 ];
+	uint high = tangentsHalf.t[idx * 2  + 1];
 	vec2 lowVec = unpackHalf2x16(low);
 	vec2 highVec = unpackHalf2x16(high);
-	if((idx % 2) == 1)
-		return vec3(lowVec.y, highVec.xy);
-	else
-		return vec3(lowVec.xy, highVec.x);
+	return vec4(lowVec, highVec);
 }
 
 vec2 get_uv(uint64_t uvsAddress, uint idx) {

@@ -20,6 +20,12 @@ std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::
 	};
 	if(!data.data)
 		throw std::runtime_error("Failed to load image " + filename.string());
+
+	//const uint8_t* tmp = reinterpret_cast<const uint8_t*>(data.data);
+	//std::vector<uint8_t> debugData( width * height * channels );
+	//for (int i = 0; i < width * height * channels; ++i)
+	//	debugData[i] = tmp[i];
+
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 	//switch (channels) {
 	//case 1:

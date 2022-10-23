@@ -13,10 +13,10 @@
 
 layout(std430, push_constant) uniform PushConstants
 {
-    uint imageBinding;
     uint accBinding;
     uint sceneBinding;
     uint meshBinding;
+    uint imageBinding;
 	vec4 col;
 } constants;
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
@@ -48,7 +48,7 @@ void main()
 
         specular.a = materialData.opacity;
         diffuse.a = materialData.opacity;
-        uint  rayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
+        uint  rayFlags = gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
         float tMin     = 0.01;
         float tMax     = 10000.0;
         shadowed = 0.0;
@@ -64,8 +64,10 @@ void main()
                 tMax,           // ray max range
                 1               // payload (location = 0)
         );
-        if(shadowed > 0)
-            calcDirLight(materialData.albedo.xyz, materialData.metalness, materialData.roughness, viewVec, materialData.shadingNormal, light, specular, diffuse);
+        //if(shadowed > 0)
+        //    calcDirLight(materialData.albedo.xyz, materialData.metalness, materialData.roughness, viewVec, materialData.shadingNormal, light, specular, diffuse);
+        specular.xyz = materialData.albedo;
+        diffuse.xyz = materialData.albedo;
         specular.rgb *= shadowed;
         diffuse.rgb *= shadowed;
     }

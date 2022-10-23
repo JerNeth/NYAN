@@ -18,7 +18,6 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiIndex;
 
 	uint renderTarget;
-	vec4 col;
 	vec4 randomRotation;
 } constants;
 

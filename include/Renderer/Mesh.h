@@ -4,6 +4,8 @@
 #include "LinAlg.h"
 #include <vector>
 #include <string>
+#include "Material.h"
+#include "ShaderInterface.h"
 namespace nyan {
 
 	struct Mesh {
