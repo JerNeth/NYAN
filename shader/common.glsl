@@ -1,5 +1,6 @@
 #ifndef COMMON_GLSL
 #define COMMON_GLSL
+#include "shaderStructs.glsl"
 
 vec3 fromLinear(vec3 linearRGB)
 {
@@ -161,27 +162,5 @@ float hash_vec3(in vec3 seed) {
     p3 += dot(p3, p3.yzx + 19.19);
     return fract((p3.x + p3.y) * p3.z);
 }
-
-
-struct VertexData
-{
-    vec3 tangent;
-    vec3 normal;
-    vec3 bitangent;
-    vec3 worldPos;
-    vec2 uv;
-};
-
-
-struct MaterialData
-{
-    float metalness;
-    float roughness;
-    vec3 albedo;
-    float opacity;
-    vec3 shadingNormal;
-    vec3 emissive;
-
-};
 
 #endif

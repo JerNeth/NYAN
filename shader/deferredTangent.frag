@@ -49,7 +49,7 @@ void main() {
 
 
     MaterialData materialData = get_material_data(material, vertexData);
-    
+   // materialData.shadingNormal = vertexData.normal;
     GBufferData gbuffer = encode_gbuffer_data(materialData);
         
     outAlbedo = gbuffer.data0;

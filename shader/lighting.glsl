@@ -1,7 +1,7 @@
 #ifndef LIGHTING_GLSL
 #define LIGHTING_GLSL
-
 #include "extracts.glsl"
+#include "shaderStructs.glsl"
 
 vec3 F_sphericalGaussian(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * exp2((-5.55473 * cosTheta -  6.98316) * cosTheta);
@@ -17,7 +17,7 @@ vec3 F_Schlick(float cosTheta, vec3 F0) {
     return  mix(F0 , vec3(1.0), pow5(1.0-cosTheta));
 }
 vec3 schlickLazanyi(float cosTheta, vec3 F0, vec3 a, float alpha) {
- return F_Schlick(cosTheta, F0) -
+    return F_Schlick(cosTheta, F0) -
             a * cosTheta * pow(1.0 - cosTheta, alpha);
 }
 
@@ -124,27 +124,35 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
     specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, alpha) * light.intensity * NdotL) * F * light.color ;
 }
 
-struct ShadingData
-{
-    vec3 albedo;
-    float alpha;
-    vec3 outLightDir;
-    float metalness;
-    vec3 shadingNormal;
-    //float anisotropy (maybe)
-    vec3 worldPos;
-};
-struct LightData
-{
-    vec3 dir;
-    float intensity;
-    vec3 color;
-};
 
+
+void diffuse_light(in LightData light, in ShadingData shadingData, inout vec3 diffuse)
+{
+    float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
+    if(NdotL <= 0)
+        return;
+
+    //float LdotV = dot(light.dir, shadingData.outLightDir);
+    float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
+    //float rcpLenLV = inversesqrt(2 + 2 * LdotV);
+    //float NdotH = (NdotL + NdotV) * rcpLenLV;
+    //float LdotH = rcpLenLV * LdotV + rcpLenLV;
+    
+    vec3 specularColor = mix( vec3(0.04), shadingData.albedo.xyz, shadingData.metalness);
+    vec3 F = F_Schlick(NdotV, specularColor);
+
+    //diffuse += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity  * NdotL)* (vec3(1.f) -F) * shadingData.albedo.xyz * light.color;
+    diffuse += brdf_lambert()*( (1- shadingData.metalness) * light.intensity * NdotL)* (vec3(1.f) -F) * shadingData.albedo.xyz  * light.color;
+    //diffuse += brdf_lambert()*(light.intensity * NdotL) * shadingData.albedo.xyz * light.color;
+
+}
 
 void calc_light(in LightData light, in ShadingData shadingData, inout vec3 specular, inout vec3 diffuse)
 {
-    
+    //diffuse_light(light, shadingData, diffuse);
+    //return;
+
+
     float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
     if(NdotL <= 0)
         return;
@@ -165,27 +173,6 @@ void calc_light(in LightData light, in ShadingData shadingData, inout vec3 specu
     
     if( shadingData.metalness > 0.f)
         specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, shadingData.alpha) * shadingData.metalness * light.intensity * NdotL) * F * light.color ;
-}
-
-vec3 diffuse_light(in LightData light, in ShadingData shadingData)
-{
-    float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
-    if(NdotL <= 0)
-        return vec3(0.f);
-
-    float LdotV = dot(light.dir, shadingData.outLightDir);
-    float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
-    float rcpLenLV = inversesqrt(2 + 2 * LdotV);
-    float NdotH = (NdotL + NdotV) * rcpLenLV;
-    float LdotH = rcpLenLV * LdotV + rcpLenLV;
-    
-    vec3 specularColor = mix( vec3(0.04), shadingData.albedo.xyz, shadingData.metalness);
-    vec3 F = F_Schlick(NdotV, specularColor);
-
-    vec3 diffuse = multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL)* (vec3(1.f) -F) * light.color;
-    //vec3 diffuse = brdf_lambert()*( (1- shadingData.metalness) * light.intensity * shadingData.albedo.xyz * NdotL)* (vec3(1.f) -F) * light.color;
-
-    return diffuse;
 }
 
 void shadeFragment(in vec3 worldPos, in vec3 normal, in Scene scene, in vec4 albedo, in float metalness, in float roughness, out vec4 specular, out vec4 diffuse) {

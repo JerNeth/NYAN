@@ -122,14 +122,14 @@ void main()
 
     if(stencil != 0) {
         GBufferData gBufferData;
-        
+        //#define SHOW_NORMALS
         gBufferData.data0 = texture(sampler2D(textures2D[constants.albedoBinding], samplers[constants.albedoSampler]), inUV);
         gBufferData.data1 = texture(sampler2D(textures2D[constants.normalBinding], samplers[constants.normalSampler]), inUV);
         gBufferData.data2 = texture(sampler2D(textures2D[constants.pbrBinding], samplers[constants.pbrSampler]), inUV);
+        MaterialData materialData = decode_gbuffer_data(gBufferData);
     #ifndef SHOW_NORMALS
         float depth = texture(sampler2D(textures2D[constants.depthBinding], samplers[constants.depthBinding]), inUV).x;
 
-        MaterialData materialData = decode_gbuffer_data(gBufferData);
 
         vec4 clipSpacePos = vec4(inUV * 2.0 - 1.0, depth, 1.0);
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
@@ -149,7 +149,9 @@ void main()
         
         float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
         if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-            vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
+           
+            vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
+            vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume);
             vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
             diffuseAccum.xyz += radiance;
         }
@@ -158,8 +160,7 @@ void main()
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
     #else
-        vec3 normal = get_octahedral_direction(one_to_minus_one(unpack1212(normalTexVal.xyz)));
-        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(normal, 1.f));
+        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(materialData.shadingNormal, 1.f));
         imageStore(imagesR11G11B10F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0));
     #endif
     } else {

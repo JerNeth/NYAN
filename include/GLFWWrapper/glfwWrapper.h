@@ -354,7 +354,10 @@ namespace glfww {
 			return glfwGetWindowAttrib(m_window, GLFW_FOCUSED) != 0;
 		}
 		int get_key(int key) {
-			return glfwGetKey(m_window, key);
+			ImGuiIO& io = ImGui::GetIO();
+			if(!io.WantCaptureKeyboard)
+				return glfwGetKey(m_window, key);
+			return 0;
 		}
 	private:
 		GLFWwindow* m_window = nullptr;

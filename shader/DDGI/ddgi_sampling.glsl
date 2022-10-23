@@ -52,10 +52,12 @@
 //};
 vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volume) 
 {
-	return (normal * volume.shadowNormalBias) + (-camDir * volume.shadowViewBias);
+	return (normal * volume.shadowNormalBias) + (camDir * volume.shadowViewBias);
 }
 
 float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
+	if(volume.enabled == 0)
+		return 0.f;
 	vec3 origin = get_volume_origin(volume);
 	vec3 extent = (get_volume_spacing(volume) * get_volume_probe_count_minus_one(volume)) * 0.5f;
 
@@ -89,10 +91,10 @@ vec3 sample_ddgi(in vec3 worldPos,
 				in DDGIVolume volume) {
 	vec3 irradiance = vec3(0.f);
 	if(volume.enabled == 0)
-		return vec3(0.05f);
+		return vec3(0.f);
 	float weightSum = 0.f;
 
-	vec3 biasedWorldPos = worldPos + bias * volume.shadowNormalBias;
+	vec3 biasedWorldPos = worldPos + bias;
 	
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);

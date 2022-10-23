@@ -80,7 +80,7 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
         lightData.dir = lightDir;
         lightData.intensity = light.intensity * falloff;
         lightData.color = light.color.rgb;
-        diffuse += diffuse_light(lightData, shadingData);
+        diffuse_light(lightData, shadingData, diffuse);
         
     }
     return diffuse;
@@ -101,7 +101,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
             lightData.dir = -scene.dirLight.dir;
             lightData.intensity = scene.dirLight.intensity;
             lightData.color = scene.dirLight.color;
-            diffuse += diffuse_light(lightData, shadingData);
+            diffuse_light(lightData, shadingData, diffuse);
         }
     }
     if(scene.numPointLights > 0)
@@ -116,7 +116,8 @@ vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
 //#ifdef SAMPLE_DDGI
     float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
     if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, shadingData.shadingNormal, shadingData.shadingNormal, volume);
+        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
+        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, bias, shadingData.shadingNormal, volume);
         vec3 radiance = shadingData.albedo.xyz * irradiance * ((1.f - shadingData.metalness) * brdf_lambert() * volumeWeight); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
         return radiance;
     }
