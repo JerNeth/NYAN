@@ -229,7 +229,7 @@ namespace Math {
 			return static_cast<Scalar>(std::sqrt(L2_square()));
 		}
 		inline Scalar L1_norm() const noexcept {
-			Scalar sum = Scalar(0);
+			Scalar sum{ 0 };
 			//TODO use custom abs
 			for (size_t i = 0; i < Size; i++)
 				sum = sum + static_cast<Scalar>(std::abs(static_cast<double>(m_data[i])));

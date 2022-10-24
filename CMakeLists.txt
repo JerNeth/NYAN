@@ -25,12 +25,11 @@ endif()
 
 find_package(Threads REQUIRED)
 
-find_package(Vulkan REQUIRED)
-
-find_package(spirv-cross-core)
+find_package(Vulkan REQUIRED COMPONENTS SPIRV-Tools volk)
 
 # SPIRV-Cross
-if(NOT spirv-cross-core_FOUND)
+if(NOT Vulkan_SPIRV-Tools_FOUND)
+    #NOTE: requires 3.24
     message("spriv-cross-core not found fetching from repo")
     include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
 endif()
@@ -97,7 +96,7 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
 #add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC} ${MATH_SRC})
+add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC} ${MATH_SRC} ${GLTFREADER_SRC})
 add_library(FBXReader STATIC ${FBXREADER_SRC})
 target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
 target_link_libraries(FBXReader fbx z xml2)

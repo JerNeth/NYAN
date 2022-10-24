@@ -1,11 +1,15 @@
- cmake_minimum_required(VERSION 3.14)
+ cmake_minimum_required(VERSION 3.20)
  
 file(GLOB_RECURSE SHADER_H CONFIGURE_DEPENDS 
-	${PROJECT_SOURCE_DIR}/shader/*.glsl
     ${PROJECT_SOURCE_DIR}/shader/*.h
+)
+file(GLOB_RECURSE SHADER_GLSL CONFIGURE_DEPENDS 
+	${PROJECT_SOURCE_DIR}/shader/*.glsl
 )
 
 list(FILTER SHADER_H EXCLUDE REGEX ".*\\tmp\\.*")
+
+find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
     set(DEPENDENCIES "")
@@ -22,11 +26,19 @@ function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
                 list(APPEND DEPENDENCIESREC "${header}")
             endif()
         endforeach()
+        foreach (header ${SHADER_GLSL})
+            get_filename_component(header_name ${header} NAME_WE)
+            string(FIND "${TMPTXT}" "${header_name}" matchres)
+            if((NOT ${matchres} EQUAL -1) AND (NOT "${header}" IN_LIST DEPENDENCIES))
+                list(APPEND DEPENDENCIES "${header}")
+                list(APPEND DEPENDENCIESREC "${header}")
+            endif()
+        endforeach()
     endwhile()
 
     add_custom_command(
             OUTPUT ${OUTPUT_FILE} 
-            COMMAND "glslc" "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}" #glslc is on the system path on my computer, so I am not currently worried about `find_package`ing it.
+            COMMAND ${glslc_executable} "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}"
             MAIN_DEPENDENCY ${INPUT_FILE}
             DEPENDS ${DEPENDENCIES}
     ) 
@@ -63,3 +75,4 @@ endforeach()
 
 
 add_custom_target(shaders DEPENDS ${SHADERS})
+target_include_directories(shaders INTERFACE ${SHADER_H})

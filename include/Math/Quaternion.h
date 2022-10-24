@@ -107,7 +107,7 @@ namespace Math {
 		constexpr friend inline bool operator==(const Quaternion& lhs, const Quaternion& rhs) noexcept {
 			return (lhs.m_real == rhs.m_real) && (lhs.m_imaginary == rhs.m_imaginary);
 		}
-		constexpr friend inline bool close(const Quaternion& lhs, const Quaternion& rhs, const Scalar& eps = Scalar(1e-5)) noexcept {
+		constexpr friend inline bool close(const Quaternion& lhs, const Quaternion& rhs, const Scalar& eps = static_cast<Scalar>(1e-5)) noexcept {
 			return close(lhs.m_real, rhs.m_real, eps) && close(lhs.m_imaginary, rhs.m_imaginary, eps);
 		}
 		constexpr friend inline Quaternion operator+(const Quaternion& lhs, const Quaternion& rhs)  noexcept {
