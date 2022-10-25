@@ -1,11 +1,11 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#include "../bufferReferences.glsl"
-#include "../structs.h"
-#include "../formats.h"
-#include "../bindlessLayouts.glsl"
-#include "../common.glsl"
-#include "../debug.glsl"
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "formats.h"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "debug.glsl"
 #include "ddgi_common.glsl"
 
 

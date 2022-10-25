@@ -1,13 +1,14 @@
  cmake_minimum_required(VERSION 3.20)
  
 file(GLOB_RECURSE SHADER_H CONFIGURE_DEPENDS 
-    ${PROJECT_SOURCE_DIR}/shader/*.h
+    ${CMAKE_CURRENT_LIST_DIR}/include/*.h
 )
 file(GLOB_RECURSE SHADER_GLSL CONFIGURE_DEPENDS 
-	${PROJECT_SOURCE_DIR}/shader/*.glsl
+	${CMAKE_CURRENT_LIST_DIR}/*.glsl
 )
 
 list(FILTER SHADER_H EXCLUDE REGEX ".*\\tmp\\.*")
+list(FILTER SHADER_GLSL EXCLUDE REGEX ".*\\tmp\\.*")
 
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
 
@@ -38,7 +39,7 @@ function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
 
     add_custom_command(
             OUTPUT ${OUTPUT_FILE} 
-            COMMAND ${glslc_executable} "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}"
+            COMMAND ${glslc_executable} "--target-env=vulkan1.3" "${INPUT_FILE}" "-o${OUTPUT_FILE}" "-I${CMAKE_CURRENT_LIST_DIR}/include" "-I${CMAKE_CURRENT_LIST_DIR}/common"
             MAIN_DEPENDENCY ${INPUT_FILE}
             DEPENDS ${DEPENDENCIES}
     ) 
@@ -46,20 +47,20 @@ endfunction()
 
 
 file(GLOB_RECURSE SHADER_SRC CONFIGURE_DEPENDS 
-	${PROJECT_SOURCE_DIR}/shader/*.vert
-    ${PROJECT_SOURCE_DIR}/shader/*.frag
-    ${PROJECT_SOURCE_DIR}/shader/*.comp
-    ${PROJECT_SOURCE_DIR}/shader/*.rchit
-    ${PROJECT_SOURCE_DIR}/shader/*.rgen
-    ${PROJECT_SOURCE_DIR}/shader/*.rmiss
-    ${PROJECT_SOURCE_DIR}/shader/*.rahit
-    ${PROJECT_SOURCE_DIR}/shader/*.rint
-    ${PROJECT_SOURCE_DIR}/shader/*.rcall
-    ${PROJECT_SOURCE_DIR}/shader/*.mesh
-    ${PROJECT_SOURCE_DIR}/shader/*.task
-    ${PROJECT_SOURCE_DIR}/shader/*.geom
-    ${PROJECT_SOURCE_DIR}/shader/*.tese
-    ${PROJECT_SOURCE_DIR}/shader/*.tesc
+	${CMAKE_CURRENT_LIST_DIR}/*.vert
+    ${CMAKE_CURRENT_LIST_DIR}/*.frag
+    ${CMAKE_CURRENT_LIST_DIR}/*.comp
+    ${CMAKE_CURRENT_LIST_DIR}/*.rchit
+    ${CMAKE_CURRENT_LIST_DIR}/*.rgen
+    ${CMAKE_CURRENT_LIST_DIR}/*.rmiss
+    ${CMAKE_CURRENT_LIST_DIR}/*.rahit
+    ${CMAKE_CURRENT_LIST_DIR}/*.rint
+    ${CMAKE_CURRENT_LIST_DIR}/*.rcall
+    ${CMAKE_CURRENT_LIST_DIR}/*.mesh
+    ${CMAKE_CURRENT_LIST_DIR}/*.task
+    ${CMAKE_CURRENT_LIST_DIR}/*.geom
+    ${CMAKE_CURRENT_LIST_DIR}/*.tese
+    ${CMAKE_CURRENT_LIST_DIR}/*.tesc
 )
 list(FILTER SHADER_SRC EXCLUDE REGEX ".*\\tmp\\.*")
 
@@ -74,5 +75,10 @@ foreach(shader ${SHADER_SRC})
 endforeach()
 
 
-add_custom_target(shaders DEPENDS ${SHADERS})
-target_include_directories(shaders INTERFACE ${SHADER_H})
+add_custom_target(local_shaders DEPENDS ${SHADERS})
+
+add_library(shaders INTERFACE)
+target_include_directories(shaders INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
+target_sources(shaders INTERFACE ${SHADER_H})
+
+add_dependencies(shaders local_shaders)

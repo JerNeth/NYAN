@@ -1,7 +1,7 @@
 #ifndef DDGI_COMMON_GLSL
 #define DDGI_COMMON_GLSL
-#include "../structs.h"
-#include "../bindlessLayouts.glsl"
+#include "bindlessLayouts.glsl"
+#include "structs.h"
 
 uvec3 get_probe_index(in uint probeIdx,in DDGIVolume volume) 
 {

@@ -1,10 +1,10 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
 
-#include "../bufferReferences.glsl"
-#include "../structs.h"
-#include "../bindlessLayouts.glsl"
-#include "../extracts.glsl"
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "bindlessLayouts.glsl"
+#include "extracts.glsl"
 #include "ddgi_common.glsl"
 
 layout(std430, push_constant) uniform PushConstants

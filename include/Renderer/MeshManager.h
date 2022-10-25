@@ -14,7 +14,7 @@ namespace nyan {
 	template<typename T>
 	constexpr std::array<uint8_t, vulkan::MAX_VERTEX_INPUTS> get_formats() {
 		return { static_cast<uint8_t>(vulkan::get_format<decltype(T::positions)::value_type>()),
-		static_cast<uint8_t>(vulkan::get_format<decltype(T::uvs)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<decltype(T::uvs0)::value_type>()),
 		static_cast<uint8_t>(vulkan::get_format<decltype(T::normals)::value_type>()),
 		static_cast<uint8_t>(vulkan::get_format<decltype(T::tangents)::value_type>()) };
 	}

@@ -2,7 +2,7 @@
 #define DDGI_SAMPLING_GLSL
 
 #include "ddgi_common.glsl"
-#include "../moments.glsl"
+#include "moments.glsl"
 
 //struct DDGIVolume {
 //	//Assuming Grid

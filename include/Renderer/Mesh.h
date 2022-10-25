@@ -22,7 +22,8 @@ namespace nyan {
 		Math::vec3 scale;
 		std::vector<uint32_t> indices;
 		std::vector<Math::vec3> positions;
-		std::vector<Math::hvec2> uvs;
+		std::vector<Math::hvec2> uvs0;
+		std::vector<Math::hvec2> uvs1;
 		std::vector<Math::hvec3> normals;
 		std::vector<Math::hvec4> tangents;
 	};

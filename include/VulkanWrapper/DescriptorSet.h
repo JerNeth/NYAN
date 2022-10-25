@@ -3,24 +3,17 @@
 #pragma once
 #include "VulkanIncludes.h"
 #include "VulkanForwards.h"
-#include "..\..\shader\descriptors.h"
 #include <Util>
 #include <numeric>
 #include <format>
 namespace vulkan {
-	static constexpr uint32_t storageBufferBinding = STORAGE_BUFFER_BINDING;
-	static constexpr uint32_t uniformBufferBinding = UNIFORM_BUFFER_BINDING;
-	static constexpr uint32_t samplerBinding = SAMPLER_BINDING;
-	static constexpr uint32_t sampledImageBinding = SAMPLED_IMAGE_BINDING;
-	static constexpr uint32_t storageImageBinding = STORAGE_IMAGE_BINDING;
-	static constexpr uint32_t accelerationStructureBinding = ACCELERATION_STRUCTURE_BINDING;
 	struct DescriptorCreateInfo {
-		uint32_t storage_buffer_count = SSBO_COUNT;
-		uint32_t uniform_buffer_count = UBO_COUNT;
-		uint32_t sampler_count = SAMPLER_COUNT;
-		uint32_t sampled_image_count = TEXTURE_COUNT;
-		uint32_t storage_image_count = IMAGE_COUNT;
-		uint32_t acceleration_structure_count = ACC_COUNT;
+		uint32_t storage_buffer_count{ 0 };
+		uint32_t uniform_buffer_count { 0 };
+		uint32_t sampler_count { 0 };
+		uint32_t sampled_image_count{ 0 };
+		uint32_t storage_image_count { 0 };
+		uint32_t acceleration_structure_count { 0 };
 	};
 	class DescriptorSet {
 	public:
@@ -91,7 +84,8 @@ namespace vulkan {
 	class DescriptorPool : public VulkanObject<VkDescriptorPool> {
 	public:
 		friend class DescriptorSet;
-		DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo = {});
+		DescriptorPool(LogicalDevice& device);
+		DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo);
 		~DescriptorPool() noexcept;
 		DescriptorPool(DescriptorPool&) = delete;
 		DescriptorPool(DescriptorPool&&) = delete;

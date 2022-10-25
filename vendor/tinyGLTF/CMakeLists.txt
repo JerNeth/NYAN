@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.6)
 
 PROJECT (tinygltf)
 
-SET(CMAKE_CXX_STANDARD 11)
-
 option(TINYGLTF_HEADER_ONLY "On: header-only mode. Off: create tinygltf library(No TINYGLTF_IMPLEMENTATION required in your project)" OFF)
 
 #
@@ -28,7 +26,6 @@ else (TINYGLTF_HEADER_ONLY)
           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
           )
 endif (TINYGLTF_HEADER_ONLY)
-
 
 target_compile_features(tinygltf PUBLIC 
     cxx_std_20

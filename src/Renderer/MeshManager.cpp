@@ -22,7 +22,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 	std::vector<uint32_t> offsets;
 	inputData.push_back(InputData{ .ptr = data.indices.data(), .size = data.indices.size() * sizeof(decltype(data.indices)::value_type) });
 	inputData.push_back(InputData{ .ptr = data.positions.data(), .size = data.positions.size() * sizeof(decltype(data.positions)::value_type) });
-	inputData.push_back(InputData{ .ptr = data.uvs.data(), .size = data.uvs.size() * sizeof(decltype(data.uvs)::value_type) });
+	inputData.push_back(InputData{ .ptr = data.uvs0.data(), .size = data.uvs0.size() * sizeof(decltype(data.uvs0)::value_type) });
 	inputData.push_back(InputData{ .ptr = data.normals.data(), .size = data.normals.size() * sizeof(decltype(data.normals)::value_type) });
 	inputData.push_back(InputData{ .ptr = data.tangents.data(), .size = data.tangents.size() * sizeof(decltype(data.tangents)::value_type) });
 	uint32_t offset = 0;

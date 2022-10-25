@@ -1,12 +1,12 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
-#include "../raycommon.glsl"
-#include "../bufferReferences.glsl"
-#include "../structs.h"
-#include "../extracts.glsl"
-#include "../bindlessLayouts.glsl"
-#include "../common.glsl"
+#include "raycommon.glsl"
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "extracts.glsl"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {

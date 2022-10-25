@@ -5,7 +5,7 @@
 
 
 cmake_policy(SET CMP0091 NEW)
-project(SmallEngine)
+project(NYAN)
 include("UserSettings.txt")
 
 #Project Wide Settings
@@ -87,7 +87,7 @@ include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 # Shaders
 # ---------------------------------------------------------------------------
 
-include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
+add_subdirectory(shader)
 
 
 # ---------------------------------------------------------------------------
@@ -96,14 +96,25 @@ include("${CMAKE_SOURCE_DIR}/shader/local.cmake")
 
 
 #add_library(Third-Party-Dependencies STATIC ${THIRD_PARTY_SRC})
-add_library(Engine STATIC ${VULKAN_SRC} ${GLFW_SRC} ${RENDERER_SRC} ${CORE_SRC} ${UTIL_SRC} ${MATH_SRC} ${GLTFREADER_SRC})
+add_library(Engine STATIC "")
+
+target_sources(Engine 
+    PRIVATE ${VULKAN_SRC}
+            ${GLFW_SRC} 
+            ${RENDERER_SRC} 
+            ${CORE_SRC} 
+            ${UTIL_SRC} 
+            ${MATH_SRC} 
+            ${GLTFREADER_SRC}
+    PUBLIC ${INCLUDE_DIR}
+    )
+
 add_library(FBXReader STATIC ${FBXREADER_SRC})
 target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
 target_link_libraries(FBXReader fbx z xml2)
 
 
 
-add_dependencies(Engine shaders)
 
 #add_executable(Demo ${DEMO_SRC})
 #add_executable(Demo2 ${DEMO2_SRC})
@@ -120,11 +131,13 @@ add_executable(DDGITest ${DDGITest_SRC})
 target_link_libraries(vma PUBLIC volk::volk)
 #target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
 target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma  spirv-cross-core  EnTT imgui_entt_entity_editor )
-target_link_libraries(Engine PRIVATE imgui OptickCore stb)
+target_link_libraries(Engine PRIVATE imgui OptickCore stb tinygltf)
+target_link_libraries(tinygltf PUBLIC stb)
+target_link_libraries(Engine PUBLIC shaders)
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
 target_link_libraries(FBXTest Engine FBXReader)
-target_link_libraries(GLTFTest Engine tinygltf)
+target_link_libraries(GLTFTest Engine)
 target_link_libraries(RTTest Engine FBXReader)
 target_link_libraries(HybridTest Engine FBXReader)
 target_link_libraries(DDGITest Engine FBXReader)

@@ -169,7 +169,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 	VkDeviceSize totalSize{0};
 	VkDeviceSize maxScratchSize{0};
 	uint32_t compactionCount{0};
-	auto scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
+	VkDeviceSize scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
 	for (auto& build : m_pendingBuilds) {
 		build.buildInfo = VkAccelerationStructureBuildGeometryInfoKHR {
 			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
@@ -194,8 +194,7 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 			.offset = 0,
 			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
 	
-	auto scratchAddress = (*m_scratch)->get_address();
-	scratchAddress = (scratchAddress + scratchAlignment - 1) & ~(static_cast<VkDeviceSize>(scratchAlignment) - 1);
+	auto scratchAddress = Utility::align_up((*m_scratch)->get_address(), scratchAlignment);
 	assert((scratchAddress % scratchAlignment) == 0);
 	VkQueryPool queryPool{ VK_NULL_HANDLE };
 	if (compactionCount) {
@@ -380,17 +379,16 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	vkCreateAccelerationStructureKHR(r_device, &createInfo, r_device.get_allocator(), &accelHandle);
 	auto tlas = m_acclerationStructurePool.emplace(r_device, accelHandle, accelBuffer, createInfo);
 
-	auto scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
-	BufferInfo scratchInfo{
-		.size = sizeInfo.buildScratchSize + scratchAlignment,
-		.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-		.offset = 0,
-		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
-	};
-	auto scratchBuffer = r_device.create_buffer(scratchInfo, {});
+	VkDeviceSize scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
+	auto maxScratchSize = sizeInfo.buildScratchSize + scratchAlignment;
+	if (!m_scratch || (*m_scratch)->get_size() < maxScratchSize)
+		m_scratch = r_device.create_buffer(BufferInfo{
+			.size = maxScratchSize,
+			.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			.offset = 0,
+			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
 
-	auto scratchAddress = scratchBuffer->get_address();
-	scratchAddress = (scratchAddress + scratchAlignment - 1) & ~(static_cast<VkDeviceSize>(scratchAlignment) - 1);
+	auto scratchAddress = Utility::align_up((*m_scratch)->get_address(), scratchAlignment);
 
 	assert((scratchAddress % scratchAlignment) == 0);
 	buildInfo.dstAccelerationStructure = accelHandle;
@@ -465,18 +463,16 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 	vkCreateAccelerationStructureKHR(r_device, &createInfo, r_device.get_allocator(), &accelHandle);
 	auto tlas = m_acclerationStructurePool.emplace(r_device, accelHandle, accelBuffer, createInfo);
 
-	auto scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
+	VkDeviceSize scratchAlignment = r_device.get_physical_device().get_acceleration_structure_properties().minAccelerationStructureScratchOffsetAlignment;
+	auto maxScratchSize = sizeInfo.buildScratchSize + scratchAlignment;
+	if (!m_scratch || (*m_scratch)->get_size() < maxScratchSize)
+		m_scratch = r_device.create_buffer(BufferInfo{
+			.size = maxScratchSize,
+			.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			.offset = 0,
+			.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY }, {});
 
-	BufferInfo scratchInfo{
-		.size = sizeInfo.buildScratchSize+ scratchAlignment,
-		.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-		.offset = 0,
-		.memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
-	};
-	auto scratchBuffer = r_device.create_buffer(scratchInfo, {});
-
-	auto scratchAddress = scratchBuffer->get_address();
-	scratchAddress = (scratchAddress + scratchAlignment - 1) & ~(static_cast<VkDeviceSize>(scratchAlignment) - 1);
+	auto scratchAddress = Utility::align_up((*m_scratch)->get_address(), scratchAlignment);
 
 	assert((scratchAddress % scratchAlignment) == 0);
 	buildInfo.dstAccelerationStructure = accelHandle;

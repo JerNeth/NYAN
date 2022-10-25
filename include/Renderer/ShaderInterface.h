@@ -39,8 +39,8 @@
 
 namespace nyan {
 	namespace shaders {
-		#include "../../shader/structs.h"
-		#include "../../shader/formats.h"
+		#include "structs.h"
+		#include "formats.h"
 		static_assert(INVALID_BINDING == ~0u);
 	}
 }
