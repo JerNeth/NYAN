@@ -18,6 +18,7 @@ std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::
 		.data = stbi_load(filename.string().c_str(), &width, &height, &channels, 4),
 		
 	};
+	assert(data.data);
 	if(!data.data)
 		throw std::runtime_error("Failed to load image " + filename.string());
 
@@ -27,6 +28,7 @@ std::pair<vulkan::InitialImageData, Utility::TextureInfo> Utility::ImageReader::
 	//	debugData[i] = tmp[i];
 
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+	//VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 	//switch (channels) {
 	//case 1:
 	//	format = VK_FORMAT_R8_SRGB;

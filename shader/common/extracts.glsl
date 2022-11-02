@@ -32,7 +32,7 @@ VertexData get_vertex_data(in Mesh mesh, in vec2 barycentricCoords, in uint prim
     Indices indices = Indices(mesh.indicesAddress);
     Positions positions = Positions(mesh.positionsAddress);
 
-    const vec3 barycentrics = vec3(1.0 - barycentricCoords.x - barycentricCoords.y, barycentricCoords.x, barycentricCoords.y);
+    const vec3 barycentrics = vec3(1.0 - barycentricCoords.x - barycentricCoords.y, barycentricCoords.xy);
     
 
     ivec3 ind = get_indices(mesh.indicesAddress, primitiveId);
@@ -53,6 +53,35 @@ VertexData get_vertex_data(in Mesh mesh, in vec2 barycentricCoords, in uint prim
 
     orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
     vertexData.bitangent *= tangent.w;
+
+    vertexData.worldPos = objectToWorld * vec4(pos, 1.0);
+    
+    vertexData.uv = get_uv(mesh.uvsAddress, ind.x) * barycentrics.x 
+        + get_uv(mesh.uvsAddress, ind.y) * barycentrics.y 
+        + get_uv(mesh.uvsAddress, ind.z) * barycentrics.z;
+
+    return vertexData;
+}
+
+VertexData get_vertex_data_simple(in Mesh mesh, in vec2 barycentricCoords, in uint primitiveId, in mat4x3 objectToWorld) 
+{
+    VertexData vertexData;
+    Indices indices = Indices(mesh.indicesAddress);
+    Positions positions = Positions(mesh.positionsAddress);
+
+    const vec3 barycentrics = vec3(1.0 - barycentricCoords.x - barycentricCoords.y, barycentricCoords.x, barycentricCoords.y);
+    
+
+    ivec3 ind = get_indices(mesh.indicesAddress, primitiveId);
+
+    vec3 pos = get_position(mesh.positionsAddress, ind.x) * barycentrics.x 
+        + get_position(mesh.positionsAddress, ind.y) * barycentrics.y 
+        + get_position(mesh.positionsAddress, ind.z) * barycentrics.z;
+
+    vertexData.normal = normalize(mat3(objectToWorld) * 
+        (get_normal(mesh.normalsAddress, ind.x) * barycentrics.x
+        + get_normal(mesh.normalsAddress, ind.y) * barycentrics.y 
+        + get_normal(mesh.normalsAddress, ind.z) * barycentrics.z));
 
     vertexData.worldPos = objectToWorld * vec4(pos, 1.0);
     
@@ -87,8 +116,9 @@ MaterialData get_material_data(in Material material, in VertexData vertexData)
     vec4 albedo = vec4(1.f);
     if(material.albedoTexId != INVALID_BINDING) 
         albedo = texture(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv);
-        //albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
-    albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+        //GLTF 2.0 Spec says albedo tex is sRGB and multiplier is linear
+    //albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+    albedo *= vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A);
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;
     
@@ -145,7 +175,9 @@ MaterialData get_albedo_data(in Material material, in VertexData vertexData)
     vec4 albedo = vec4(1.f);
     if(material.albedoTexId != INVALID_BINDING) 
         albedo = textureLod(sampler2D(textures2D[nonuniformEXT(material.albedoTexId)], samplers[nonuniformEXT(material.albedoSampler)]), vertexData.uv, 0);
-    albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+    //albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
+    //GLTF 2.0 Spec says albedo tex is sRGB and multiplier is linear
+    albedo *= vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A);
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;
     

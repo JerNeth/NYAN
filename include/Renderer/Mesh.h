@@ -24,8 +24,10 @@ namespace nyan {
 		std::vector<Math::vec3> positions;
 		std::vector<Math::hvec2> uvs0;
 		std::vector<Math::hvec2> uvs1;
+		std::vector<Math::hvec2> uvs2;
 		std::vector<Math::hvec3> normals;
 		std::vector<Math::hvec4> tangents;
+		std::vector<Math::unorm8> colors0;
 	};
 }
 

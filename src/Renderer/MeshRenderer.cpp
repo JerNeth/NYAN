@@ -149,10 +149,12 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 	r_pass.add_depth_attachment(m_depth);
 	r_pass.add_attachment(m_lighting.specular);
 	r_pass.add_attachment(m_lighting.diffuse);
+	renderManager.get_ddgi_manager().add_read(pass.get_id());
 
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
+			const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 			auto pipelineBind = cmd.bind_graphics_pipeline(m_staticTangentPipeline);
 			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
 			pipelineBind.set_scissor_with_count(1, &scissor);
@@ -162,7 +164,10 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 					.instanceBinding {r_renderManager.get_instance_manager().get_binding()},
 					//.instanceId {instanceId},
 					.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
-					.accBinding { *r_renderManager.get_instance_manager().get_tlas_bind()}
+					.accBinding { *r_renderManager.get_instance_manager().get_tlas_bind()},
+					.ddgiBinding {ddgiManager.get_binding()},
+					.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
+					.ddgiIndex {0},
 			};
 			auto view = r_registry.view<const MeshID, const InstanceId, const Forward>();
 			for (const auto& [entity, meshID, instanceId] : view.each()) {

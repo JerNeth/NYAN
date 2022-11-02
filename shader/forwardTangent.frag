@@ -1,13 +1,15 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_ray_query : require
-
+#include "raycommon.glsl"
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
 #include "extracts.glsl"
 #include "lighting.glsl"
+#include "DDGI/ddgi_sampling.glsl"
+#include "gbuffer.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -16,75 +18,137 @@ layout(std430, push_constant) uniform PushConstants
     uint instanceId;
     uint sceneBinding;
     uint accBinding;
+    uint ddgiBinding;
+    uint ddgiCount;
+    uint ddgiIndex;
 } constants;
 
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec3 fragNormal;
-//layout(location = 2) in vec3 fragTangent;
-//layout(location = 3) in vec3 fragBitangent;
+layout(location = 2) in vec4 fragTangent;
 layout(location = 4) in vec3 fragWorldPos;
 
 layout(location = 0) out vec4 outSpecular;
 layout(location = 1) out vec4 outDiffuse;
 
 
-void main() {
-    Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
-    uint meshId = instance.meshId & 0x00FFFFFF;
-	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
-	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
-    vec4 albedo = texture(sampler2D(textures2D[material.albedoTexId], samplers[material.albedoSampler]), fragTexCoord);
-    albedo *= fromSRGB(vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A));
-
-    vec2 normalSample = texture(sampler2D(textures2D[material.normalTexId], samplers[material.normalSampler]), fragTexCoord).rg;
-   // vec3 normal = tangentSpaceNormal(normalSample,fragNormal, fragBitangent, fragTangent);
-    Scene scene = scenes[constants.sceneBinding].scene;
-    
-//    vec3 position = gl_FragCoord.xyz / gl_FragCoord.w;
-//    vec3 tmpNormal = fragNormal;
-//    vec3 tmpBitangent;
-//    vec3 tmpTangent;
-//    calculateTBN(tmpTangent, tmpBitangent, tmpNormal, position, fragTexCoord);
-//    vec3 normal = tangentSpaceNormal(normalSample, tmpNormal, tmpBitangent, tmpTangent);
-//    normal = pack1212(encodeOctahedronMapping(normalize(normal)));
-    vec3 normal = fragNormal;
-    float roughness = material.roughness;
-    float metalness = material.metalness;
-    vec4 diffuse;
-    vec4 specular;
-    
-    vec3 viewPos = get_viewer_pos(scene);
-    vec3 viewVec = normalize(viewPos - fragWorldPos.xyz);
-    if(dot(normal, viewVec) < 0) {
-        normal = -normal;
-    }
-    
+float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
+{
     rayQueryEXT rq;
+    const float tMin     = 0.01;
 
-    rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, fragWorldPos.xyz, 0.01, scene.dirLight.dir, 10000);
+    rayQueryInitializeEXT(rq, accelerationStructures[constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT , 0xFF, 
+                shadingData.worldPos.xyz + shadingData.shadingNormal * 0.02, tMin, dir.xyz, tMax);
 
     // Traverse the acceleration structure and store information about the first intersection (if any)
     rayQueryProceedEXT(rq);
 
     if (rayQueryGetIntersectionTypeEXT(rq, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-        // Not in shadow
-        shadeFragment(fragWorldPos, normal, scene, albedo, metalness, roughness, specular, diffuse);
-        outSpecular = vec4(specular.xyz, albedo.w);
-        outDiffuse = vec4( diffuse.xyz, albedo.w);
+        return 1.0f;
+    } else {
+        return 0.f;
     }
-    else {
-        outSpecular = vec4(0, 0,0 , albedo.w);
-        outDiffuse = vec4(0, 0,0 , albedo.w);
+}
+const float minLight = 1e-5;
+void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse, inout vec3 specular) 
+{
+    for(int i = 0; i < maxNumPointLights; i++) 
+    {
+        PointLight light = scene.pointLights[i];
+        vec3 lightDir = light.pos.xyz - shadingData.worldPos;
+        float dist = length(lightDir);
+        if(dist > light.attenuationDistance)
+            continue;
+
+        lightDir /= dist;
+        float lightShadow = light_visibility(shadingData, lightDir,dist);
+        if(lightShadow <= minLight )
+            continue;
+        //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
+        float distRatio = dist / light.attenuationDistance;
+        distRatio *= distRatio;
+        distRatio *= distRatio;
+        float falloff = min(max(1.f - distRatio, 0.0f), 1.0f);
+        falloff *= falloff;
+        falloff *= 1.f / (dist * dist + 1.f);
+        LightData lightData;
+        lightData.dir = lightDir;
+        lightData.intensity = light.intensity * falloff;
+        lightData.color = light.color.rgb;
+        calc_light(lightData, shadingData, diffuse, specular);
     }
-    //normal.xy = encodeOctahedronMapping(normal);
-//
-//    outAlbedo = albedo;
-//    outNormal = vec4(normal.xyz, material.roughness);
-//    //outNormal = normal.xy;
-//    outPBR = vec4(material.metalness, material.F0_R, material.F0_G, material.F0_B);
-//    outPBR.yzw -= vec3(0.022, 0.022, 0.022);
-    //outColor = vec4(0.2,0.6,0.5,1.0);
+}
+
+void direct_lighting(in Scene scene, in ShadingData shadingData, out vec3 diffuse, out vec3 specular)
+{
+    diffuse = vec3(0.f);
+    specular = vec3(0.f);
+    if(scene.dirLight.enabled > 0) 
+    {
+        float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
+        if(lightShadow > minLight) {
+            LightData lightData;
+            lightData.dir = -scene.dirLight.dir;
+            lightData.intensity = scene.dirLight.intensity;
+            lightData.color = scene.dirLight.color;
+            calc_light(lightData, shadingData, diffuse, specular);
+        }
+    }
+    if(scene.numPointLights > 0)
+    {
+        point_lights(scene, shadingData, diffuse, specular);
+    }
+}
+
+void main() {
+    Instance instance = instances[constants.instanceBinding].instances[constants.instanceId];
+    uint meshId = instance.meshId & 0x00FFFFFF;
+	Mesh mesh = meshData[constants.meshBinding].meshes[meshId];
+	Material material = materials[mesh.materialBinding].materials[mesh.materialId];
+    Scene scene = scenes[constants.sceneBinding].scene;
+	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+    VertexData vertexData;
+    vertexData.normal = fragNormal;
+    vertexData.tangent = fragTangent.xyz;
+    orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
+    vertexData.bitangent *= fragTangent.w;
+    vertexData.worldPos = fragWorldPos;
+    vertexData.uv = fragTexCoord;
+    
+    //computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
+    
+    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
+                                        && !gl_FrontFacing);
+
+
+    MaterialData materialData = get_material_data(material, vertexData);
+    
+    if(materialData.opacity <= material.alphaDiscard)
+        discard;
+    vec4 diffuseAccum  = vec4(0.0);
+    vec4 specularAccum = vec4(0.0);
+    ShadingData shadingData;
+    shadingData.albedo = materialData.albedo.xyz;
+    shadingData.alpha = materialData.roughness * materialData.roughness;
+    shadingData.worldPos = fragWorldPos.xyz;
+    shadingData.outLightDir = normalize(get_viewer_pos(scene) - shadingData.worldPos.xyz);
+    shadingData.metalness = materialData.metalness;
+    shadingData.shadingNormal = materialData.shadingNormal;
+    direct_lighting(scene, shadingData, diffuseAccum.xyz, specularAccum.xyz);
+        
+    float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
+    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+           
+        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
+        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume);
+        vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+        diffuseAccum.xyz += radiance;
+    }
+    specularAccum.xyz += materialData.emissive.xyz;
+
+    outDiffuse = vec4(diffuseAccum.xyz, materialData.opacity);
+    outSpecular = vec4(specularAccum.xyz, materialData.opacity);
 }
 

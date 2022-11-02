@@ -4,52 +4,7 @@
 #include "ddgi_common.glsl"
 #include "moments.glsl"
 
-//struct DDGIVolume {
-//	//Assuming Grid
-//	float spacingX;
-//	float spacingY;
-//	float spacingZ;
-//
-//	float inverseSpacingX;
-//	float inverseSpacingY;
-//	float inverseSpacingZ;
-//
-//	float gridOriginX;
-//	float gridOriginY;
-//	float gridOriginZ;
-//
-//	uint probeCountX;
-//	uint probeCountY;
-//	uint probeCountZ;
-//
-//	uint raysPerProbe;
-//
-//	//Probe size in px 
-//	uint irradianceProbeSize;
-//	uint depthProbeSize;
-//
-//	uint irradianceTextureSizeX;
-//	uint irradianceTextureSizeY;
-//	float inverseIrradianceTextureSizeX;
-//	float inverseIrradianceTextureSizeY;
-//	uint irradianceTextureBinding;
-//	uint irradianceTextureSampler;
-//	uint irradianceImageBinding;
-//
-//	uint depthTextureSizeX;
-//	uint depthTextureSizeY;
-//	float inverseDepthTextureSizeX;
-//	float inverseDepthTextureSizeY;
-//	uint depthTextureBinding;
-//	uint depthTextureSampler;
-//	uint depthImageBinding;
-//
-//	float shadowBias;
-//	float maxRayDistance;
-//	float hysteresis;
-//	float irradianceThreshold;
-//	float lightToDarkThreshold;
-//};
+
 vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volume) 
 {
 	return (normal * volume.shadowNormalBias) + (camDir * volume.shadowViewBias);
@@ -97,7 +52,7 @@ vec3 sample_ddgi(in vec3 worldPos,
 	vec3 biasedWorldPos = worldPos + bias;
 	
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
-	ivec3 probeCountsMinusOne = ivec3(volume.probeCountX - 1, volume.probeCountY - 1, volume.probeCountZ - 1);
+	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
 	ivec3 baseProbeIdx = get_volume_base_probe(biasedWorldPos, volume);
 	
 	vec3 baseProbeWorldPos = get_probe_coordinates(baseProbeIdx, volume) ;
@@ -121,13 +76,12 @@ vec3 sample_ddgi(in vec3 worldPos,
 		vec3 trilinear = max(vec3(0.001f), mix(vec3(1.f) - alpha, alpha, vec3(adjacentProbeIdxOffset)));
 		float trilinearWeight = trilinear.x *trilinear.y * trilinear.z;
 		float weight = 1.f;
-
-		#ifdef WRAPSHADING
+		
+		#ifndef NOWRAPSHADING
 		float backFaceWeight = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
 		weight *= fma(backFaceWeight, backFaceWeight, 0.2f);
 		#else
-		float backFaceWeight = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
-		weight *= backFaceWeight * backFaceWeight;
+		weight *= dot(worldPosToAdjacentProbe, direction);
 		#endif
 
 
@@ -138,17 +92,17 @@ vec3 sample_ddgi(in vec3 worldPos,
 		vec2 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
 
 
-		vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
+		vec3 probeIrradiance = textureLod(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV, 0).rgb;
 
 		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
 		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;
 		if(volume.useMoments != 0) {
-			vec4 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rgba;
+			vec4 filteredDistance = textureLod(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
 			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
 			weight *= max(0.05f, shadowValue);
 		}
 		else {
-			vec2 filteredDistance = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV).rg;
+			vec2 filteredDistance = textureLod(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rg;
 			float chebyshev = 1.f;
 			if(biasedWorldPosToAdjacentProbeDist > filteredDistance.x) {
 				float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
@@ -168,16 +122,23 @@ vec3 sample_ddgi(in vec3 worldPos,
 		{
 			weight *= weight * weight * (1.f / (threshold * threshold));
 		}
-		probeIrradiance = sqrt(probeIrradiance);
+		#undef DO_GAMMA
+		//#define DO_GAMMA
+		#ifdef DO_GAMMA
+		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f * 5.f));
+		#endif		
+		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f));
 		weight *= trilinearWeight;
-		//TODO maybe do gamma
 		irradiance += weight * probeIrradiance;
 		weightSum += weight;
 
 	}
-	if(weightSum == 0.f) return vec3(0.f);
+	if(weightSum <= 1e-9) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize
+	#ifdef DO_GAMMA
+	irradiance *= irradiance; //sRGB blending, I don't like it
+	#endif	
 	irradiance *= irradiance; //sRGB blending, I don't like it
 	irradiance *= 3.14159265359 * 2;
 

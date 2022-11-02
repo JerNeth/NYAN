@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
     SPIRV-Cross
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross
-    GIT_TAG        master
+    GIT_TAG        sdk-1.3.231.0
     GIT_SHALLOW    true
 )
 FetchContent_GetProperties(SPIRV-Cross)

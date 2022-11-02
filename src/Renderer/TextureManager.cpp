@@ -28,6 +28,14 @@ vulkan::Image* nyan::TextureManager::request_texture(const std::filesystem::path
 	}
 	return create_image(path, m_minimumMipLevel);
 }
+vulkan::Image* nyan::TextureManager::request_texture(const TextureInfo& info, const std::vector<unsigned char>& data)
+{
+	if (const auto& res = m_textureIndex.find(info.name); res != m_textureIndex.end()) {
+		assert(m_usedTextures.find(res->second) != m_usedTextures.end());
+		return m_usedTextures.find(res->second)->second.handle;
+	}
+	return create_image(info, data);
+}
 uint32_t nyan::TextureManager::get_texture_idx(const std::string& name, const std::string& defaultTex)
 {
 	std::filesystem::path path{ name };
@@ -84,6 +92,139 @@ void nyan::TextureManager::change_mip(const std::string& name, uint32_t targetMi
 		image = std::move(*newImage);
 	}
 
+}
+
+vulkan::ImageHandle nyan::TextureManager::create_image(const TextureInfo& info, const std::vector<unsigned char>& data)
+{
+	VkFormat format {VK_FORMAT_UNDEFINED};
+	if (info.components == 1)
+		if (info.bitsPerChannel == 8)
+			if (info.sRGB)
+				format = VK_FORMAT_R8_SRGB;
+			else
+				format = VK_FORMAT_R8_UNORM;
+		else if (info.bitsPerChannel == 16)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R16_UNORM;
+		else if (info.bitsPerChannel == 32)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R32_UINT;
+		else
+			assert(false);
+	else if (info.components == 2)
+		if (info.bitsPerChannel == 8)
+			if (info.sRGB)
+				format = VK_FORMAT_R8G8_SRGB;
+			else
+				format = VK_FORMAT_R8G8_UNORM;
+		else if (info.bitsPerChannel == 16)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R16G16_UNORM;
+		else if (info.bitsPerChannel == 32)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R32G32_UINT;
+		else
+			assert(false);
+	else if (info.components == 3)
+		if (info.bitsPerChannel == 8)
+			if (info.sRGB)
+				format = VK_FORMAT_R8G8B8_SRGB;
+			else
+				format = VK_FORMAT_R8G8B8_UNORM;
+		else if (info.bitsPerChannel == 16)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R16G16B16_UNORM;
+		else if (info.bitsPerChannel == 32)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R32G32B32_UINT;
+		else
+			assert(false);
+	else if (info.components == 4)
+		if (info.bitsPerChannel == 8)
+			if (info.sRGB)
+				format = VK_FORMAT_R8G8B8A8_SRGB;
+			else
+				format = VK_FORMAT_R8G8B8A8_UNORM;
+		else if (info.bitsPerChannel == 16)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R16G16B16A16_UNORM;
+		else if (info.bitsPerChannel == 32)
+			if (info.sRGB)
+				assert(false);
+			else
+				format = VK_FORMAT_R32G32B32A32_UINT;
+		else
+			assert(false);
+	else
+		assert(false);
+
+	assert(format != VK_FORMAT_UNDEFINED);
+	Utility::TextureInfo texInfo {
+		.format {format},
+		.type {VK_IMAGE_TYPE_2D},
+		.width {info.width},
+		.height {info.height},
+		.depth {1},
+		.arrayLayers {1},
+		.mipLevels {1},
+		.cube {false},
+	};
+	vulkan::ImageInfo imageInfo{
+		.format = texInfo.format,
+		.width = texInfo.width,
+		.height = texInfo.height,
+		.depth = texInfo.depth,
+		.mipLevels = texInfo.mipLevels,
+		.arrayLayers = texInfo.arrayLayers,
+		.usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+		.type = texInfo.type,
+		.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.flags = texInfo.cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : static_cast<VkImageCreateFlags>(0x0u),
+		.createFlags {}
+	};
+	vulkan::InitialImageData imageData{
+		.data {data.data()},
+		.mipOffsets {0},
+		.mipCounts {1},
+	};
+	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentAsyncCompute);
+	//info.createFlags.set(vulkan::ImageInfo::Flags::ConcurrentGraphics);
+	imageInfo.createFlags.set(vulkan::ImageInfo::Flags::GenerateMips);
+	if (m_useSparse) {
+		imageInfo.flags |= (VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT);
+		auto image = r_device.create_sparse_image(imageInfo, &imageData);
+
+		r_device.wait_idle();
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = imageInfo.layout });
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
+		m_textureIndex.emplace(info.name, idx);
+		return image;
+	}
+	else {
+		auto image = r_device.create_image(imageInfo, &imageData);
+
+		r_device.wait_idle();
+
+		auto idx = r_device.get_bindless_set().set_sampled_image(VkDescriptorImageInfo{ .imageView = *image->get_view(), .imageLayout = imageInfo.layout });
+		m_usedTextures.emplace(idx, ::nyan::TextureManager::Texture{ image, texInfo });
+		m_textureIndex.emplace(info.name, idx);
+
+		return image;
+	}
 }
 
 vulkan::ImageHandle nyan::TextureManager::create_image(const std::filesystem::path& file, uint32_t mipLevel)

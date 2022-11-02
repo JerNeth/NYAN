@@ -26,6 +26,7 @@ layout(location = 4) in vec3 fragWorldPos; //currently unused
 layout(location = 0) out vec4 outAlbedo;
 layout(location = 1) out vec4 outNormal;
 layout(location = 2) out vec4 outPBR;
+layout(location = 3) out vec4 outEmissive;
 
 
 void main() {
@@ -44,14 +45,14 @@ void main() {
     
     //computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
 
-    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-        flip_backfacing_normal(vertexData, !gl_FrontFacing);
+    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
+                                        && !gl_FrontFacing);
 
 
     MaterialData materialData = get_material_data(material, vertexData);
    // materialData.shadingNormal = vertexData.normal;
     GBufferData gbuffer = encode_gbuffer_data(materialData);
-        
+    
     outAlbedo = gbuffer.data0;
     outNormal = gbuffer.data1;
     outPBR = gbuffer.data2;

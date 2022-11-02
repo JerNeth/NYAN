@@ -34,8 +34,8 @@ void main()
 	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
 
     VertexData vertexData = get_vertex_data(mesh, baryCoord, gl_PrimitiveID, gl_ObjectToWorldEXT);
-    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-        flip_backfacing_normal(vertexData, gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT);
+    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG) &&
+										(gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT));
     const MaterialData materialData = get_material_data(material, vertexData);
     
 	DirectionalLight light = scene.dirLight;

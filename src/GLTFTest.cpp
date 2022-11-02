@@ -33,6 +33,7 @@ int main() {
 	std::filesystem::path file;
 	file = "sponza-gltf-pbr/sponza.glb";
 	file = "Sponza/glTF/Sponza.gltf";
+	//file = "SunTemple.glb";
 	//file = "NewSponza_Main_glTF_002.gltf";
 	//file = "glTF-Sample-Models/2.0/NormalTangentMirrorTest/glTF/NormalTangentMirrorTest.gltf";
 	std::filesystem::path dir = "glTF-Sample-Models/2.0";
@@ -43,7 +44,7 @@ int main() {
 	//file = "sphere.glb";
 	//file = "cornellFixed.gltf";
 	std::filesystem::path path = directory / dir / file;
-	//std::filesystem::path path = directory /file;
+	//path = directory / file;
 	nyan::GLTFReader reader{ renderManager };
 	reader.load_file(path);
 
@@ -61,9 +62,19 @@ int main() {
 	auto camera = registry.create();
 	registry.emplace<Transform>(camera,
 		Transform{
-			.position{0., 10.f, 0.f},
+			.position{7.46, 5.07f, 0.92f},
 			.scale{1.f},
-			.orientation{16.4f, -20.f, 0.f},
+			.orientation{-13.22f, -295.23f, 0.f},
+		});
+	registry.emplace<PerspectiveCamera>(camera,
+		PerspectiveCamera{
+			.nearPlane {.1f},
+			.farPlane {10000.f},
+			.fovX {68.f},
+			.aspect {16.f / 9.f },
+			.forward {0.f, 0.f ,1.f},
+			.up {0.f, 1.f ,0.f},
+			.right {1.f, 0.f ,0.f},
 		});
 
 	//registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
@@ -71,8 +82,8 @@ int main() {
 	//	});
 	registry.emplace<nyan::DDGIManager::DDGIVolumeParameters>(parent, nyan::DDGIManager::DDGIVolumeParameters{
 			.spacing {1.02f, 0.5f, 0.45f},
-			.origin {-0.4f - 11.f * 1.02f, 5.4f - 0.5f * 11.f, -0.25f - 0.45f * 11.f},
-			.probeCount {22, 22, 22},
+			.origin {-0.4f - 12.f * 1.02f, 5.4f - 0.5f * 11.f, -0.25f - 0.45f * 12.f},
+			.probeCount {24, 22, 24},
 			.raysPerProbe {256},
 			.depthBias {0.1},
 			.depthViewBias {0.3},
@@ -92,26 +103,16 @@ int main() {
 			.color {1.f, 1.f, 1.f},
 			//.intensity {light.intensity},
 			.intensity {1.45},
-			.direction {0.f, -1.f, -0.300f},
+			.direction {0.f, -1.f, 0.300f},
 		});
 
 	registry.emplace<SkyLight>(parent, SkyLight
 		{
 			.color {1.f, 1.f, 1.f},
-			.intensity {0.1},
-			//.intensity {5.1},
+			//.intensity {0.1},
+			.intensity {1.0},
 		});
 
-	registry.emplace<PerspectiveCamera>(camera,
-		PerspectiveCamera{
-			.nearPlane {.1f},
-			.farPlane {10000.f},
-			.fovX {90.f},
-			.aspect {16.f / 9.f },
-			.forward {0.f, 0.f ,1.f},
-			.up {0.f, 1.f ,0.f},
-			.right {1.f, 0.f ,0.f},
-		});
 	renderManager.set_primary_camera(camera);
 
 	auto& rendergraph{ renderManager.get_render_graph() };

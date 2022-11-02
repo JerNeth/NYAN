@@ -897,7 +897,8 @@ Lighting nyan::Rendergraph::add_lighting(const std::string& name)
 	return 	Lighting {
 		.diffuse {add_ressource(name + "_diffuse", nyan::ImageAttachment
 		{
-			.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			//.format{VK_FORMAT_B10G11R11_UFLOAT_PACK32},
+			.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 			//.clearColor{0.4f, 0.6f, 0.8f, 1.f},
 			.clearColor{0.0f, 0.0f, 0.0f, 1.f},
 		})},

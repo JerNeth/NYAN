@@ -84,7 +84,7 @@ void main()
 	float resultWeight = 0.f;
 	
 	int rayIdx = 0;
-	if (volume.relocationEnabled != 0 || volume.classificationEnabled != 0)
+	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
     {
         rayIdx = int(volume.fixedRayCount);
     }
@@ -101,7 +101,7 @@ void main()
 
 		if(filterIrradiance) {
 			if(rayDist < 0.f){
-				backfaceCount++;
+				++backfaceCount;
 				if( backfaceCount > backfaceThreshold)
 					return;
 				continue;
@@ -143,10 +143,18 @@ void main()
 	else if(imageFormat == R32G32B32A32F)
 		previous = imageLoad(imagesRGBA32F[imageBinding], texCoord);
 
-	if(dot(previous, previous) == 0)
+	//Recover if we somehow get negativ radiance
+	//Shouldn't happen though
+	if(dot(previous, previous) <= 0)
 		hysteresis = 0.f;
 
 	if(filterIrradiance) {
+		#undef DO_GAMMA
+		//#define DO_GAMMA
+		#ifdef DO_GAMMA
+		result.xyz = pow(result.xyz, vec3(1.f / 5.f));
+		#endif		
+
 		vec3 delta = result.xyz - previous.xyz;
 		if(max_component(-delta) > volume.irradianceThreshold)
 		{
@@ -178,12 +186,12 @@ void main()
 #ifdef DEBUG_COLORS
 		result = debugColors[probeIdx % debugColors.length()];
 #endif
-
+		//result.xyz = vec3(0.1f);
 	}
 	else {
 		result = vec4(mix(result, previous, hysteresis));
 	}
-	
+	//barrier();
 	if(imageFormat == R11G11B10F)
 		imageStore(imagesR11G11B10F[imageBinding], texCoord, result);
 	else if(imageFormat == R10G10B10A2F)

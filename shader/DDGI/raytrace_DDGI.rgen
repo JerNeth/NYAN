@@ -195,8 +195,8 @@ void main()
     diffuse = debugColors[probeIdx % debugColors.length()].xyz;
     #endif
     
-	if(volume.renderTargetImageFormat == R16G16B16A16F)
+	if(renderTargetImageFormat == R16G16B16A16F)
         imageStore(imagesRGBA16F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
-	else if(volume.renderTargetImageFormat == R32G32B32A32F)
+	else if(renderTargetImageFormat == R32G32B32A32F)
         imageStore(imagesRGBA32F[constants.renderTarget], ivec2(gl_LaunchIDEXT.xy), vec4(diffuse, hitDistance));
 }

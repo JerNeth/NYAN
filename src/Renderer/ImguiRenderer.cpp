@@ -261,7 +261,7 @@ namespace MM {
 		auto& light = reg.get<nyan::Directionallight>(e);
 		ImGui::Checkbox("Enabled", &light.enabled);
 		ImGui::ColorEdit3("Color", &light.color.x());
-		ImGui::DragFloat("Intensity", &light.intensity);
+		ImGui::DragFloat("Intensity", &light.intensity, 0.1f, 0.f, 1e8f);
 		ImGui::DragFloat3("Direction", &light.direction.x(), 0.05f, -1.f, 1.f);
 	}
 	template <>
@@ -269,7 +269,7 @@ namespace MM {
 	{
 		auto& light = reg.get<nyan::Pointlight>(e);
 		ImGui::ColorEdit3("Color", &light.color.x());
-		ImGui::DragFloat("Intensity", &light.intensity);
+		ImGui::DragFloat("Intensity", &light.intensity, 0.1f, 0.f, 1e8f);
 		ImGui::DragFloat("Attenuation", &light.attenuation);
 	}
 	template <>
@@ -277,7 +277,7 @@ namespace MM {
 	{
 		auto& light = reg.get<nyan::SkyLight>(e);
 		ImGui::ColorEdit3("Color", &light.color.x());
-		ImGui::DragFloat("Intensity", &light.intensity);
+		ImGui::DragFloat("Intensity", &light.intensity, 0.1f, 0.f, 1e8f);
 	}
 }
 nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, glfww::Window* window) :

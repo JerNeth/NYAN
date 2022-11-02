@@ -52,6 +52,9 @@ namespace nyan {
 			uint32_t instanceId;
 			uint32_t sceneBinding;
 			uint32_t accBinding;
+			uint32_t ddgiBinding;
+			uint32_t ddgiCount;
+			uint32_t ddgiIndex;
 		};
 	public:
 		ForwardMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting, const nyan::RenderResource::Id& depth);

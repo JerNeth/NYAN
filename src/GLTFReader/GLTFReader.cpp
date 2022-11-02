@@ -40,6 +40,12 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 		assert(material.emissiveTexture.texCoord == 0);
 		assert(material.pbrMetallicRoughness.metallicRoughnessTexture.texCoord == 0);
 		assert(material.normalTexture.texCoord == 0);
+		assert(!material.pbrMetallicRoughness.baseColorTexture.extras.Size());
+		assert(material.pbrMetallicRoughness.baseColorTexture.extensions.empty());
+		if (material.pbrMetallicRoughness.baseColorTexture.index != -1) {
+			assert(!model.textures[material.pbrMetallicRoughness.baseColorTexture.index].extras.Size());
+			assert(model.textures[material.pbrMetallicRoughness.baseColorTexture.index].extensions.empty());
+		}
 	}
 	for (const auto& sampler : model.samplers) {
 		//Ignore for now
@@ -58,8 +64,19 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				textureMap.push_back(image.uri);
 			}
 			else {
+				textureManager.request_texture(nyan::TextureManager::TextureInfo{ 
+					.name {image.name}, 
+					.width {static_cast<uint32_t>(image.width)},
+					.height {static_cast<uint32_t>(image.height)},
+					.components {static_cast<uint32_t>(image.component)},
+					.bitsPerChannel {static_cast<uint32_t>(image.bits)},
+					.sRGB{true},
+					}, image.image);
 				textureMap.push_back(image.name);
-				assert(false);
+				assert(image.width > 0);
+				assert(image.height > 0);
+				assert(image.component > 0);
+				assert(image.bits > 0);
 			}
 		}
 
@@ -72,9 +89,13 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 		assert(false);
 	};
 	std::vector<nyan::MaterialId> materialMap;
-	for (const auto& material : model.materials) {
+	for (size_t matIdx{ 0 }; matIdx < model.materials.size(); ++matIdx) {
+		const auto& material = model.materials[matIdx];
+		std::string materialName = material.name;
+		if (materialName.empty())
+			materialName = "Material_" + std::to_string(matIdx);
 		nyan::PBRMaterialData materialData{
-			.name{material.name},
+			.name{materialName},
 			.albedoTex{texResolve(material.pbrMetallicRoughness.baseColorTexture.index)},
 			.emissiveTex {texResolve(material.emissiveTexture.index)},
 			.roughnessMetalnessTex {texResolve(material.pbrMetallicRoughness.metallicRoughnessTexture.index)},
@@ -91,15 +112,20 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 	}
 	auto test = [](uint32_t flags, uint32_t flag) {return (flags & flag) == flag; };
 	std::vector<std::vector<nyan::MeshID>> meshMap;
-	for (const auto& mesh : model.meshes) {
+
+	for (size_t meshIdx{ 0 }; meshIdx < model.meshes.size(); ++meshIdx) {
+		const auto& mesh = model.meshes[meshIdx];
 		size_t idx{ 0 };
 		meshMap.emplace_back();
 		auto& map = meshMap.back();
+		std::string meshName = mesh.name;
+		if (meshName.empty())
+			meshName = "Mesh_" + std::to_string(meshIdx);
 		for (const auto& primitive : mesh.primitives) {
 			assert(primitive.mode == TINYGLTF_MODE_TRIANGLES);
 			nyan::Mesh nMesh{
 				.type {nyan::Mesh::RenderType::Opaque},
-				.name {mesh.name + std::to_string(idx++)},
+				.name {meshName + "_Primitive_" + std::to_string(idx++)},
 			};
 			if (primitive.material != -1)
 				nMesh.materialBinding = materialMap[primitive.material];
@@ -112,7 +138,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				assert(!accessor.sparse.isSparse);
 				assert(accessor.type == TINYGLTF_TYPE_SCALAR);
 				assert(bufferView.byteLength);
-				std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
+				std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset + accessor.byteOffset);
 				auto stride = bufferView.byteStride;
 				auto numComponents = tinygltf::GetNumComponentsInType(accessor.type);
 				auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
@@ -136,7 +162,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 					offset += stride;
 					assert(offset <= bufferView.byteLength);
 				}
-				assert(buffer.data.size() < offset + bufferView.byteOffset);
+				assert(buffer.data.size() >= offset + bufferView.byteOffset + accessor.byteOffset);
 			}
 
 			for (const auto& [attribute, accessorId] : primitive.attributes) {
@@ -147,13 +173,13 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				auto& buffer = model.buffers[bufferView.buffer];
 				assert(!accessor.sparse.isSparse);
 				assert(bufferView.byteLength);
-				std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset);
+				std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset + accessor.byteOffset);
 				auto stride = bufferView.byteStride;
 				auto numComponents = tinygltf::GetNumComponentsInType(accessor.type);
 				auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
 				if (!stride)
 					stride = numComponents * componentByteSize;
-
+				
 
 				size_t offset{ 0 };
 				if (attribute == "POSITION") {
@@ -250,7 +276,6 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				}
 				else if (attribute == "TEXCOORD_1") {
 					decltype(nMesh.uvs1)::value_type uv;
-
 					nMesh.uvs1.reserve(accessor.count);
 					for (size_t i{ 0 }; i < accessor.count; ++i) {
 						auto* ptr = data + offset;
@@ -270,11 +295,38 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						offset += stride;
 						assert(offset <= bufferView.byteLength);
 					}
+					Utility::log_warning().format("Mesh: {}, TEXCOORD_1 unsupported attribute", nMesh.name);
+				}
+				else if (attribute == "TEXCOORD_2") {
+					decltype(nMesh.uvs2)::value_type uv;
+					nMesh.uvs2.reserve(accessor.count);
+					for (size_t i{ 0 }; i < accessor.count; ++i) {
+						auto* ptr = data + offset;
+						for (size_t j{ 0 }; j < numComponents; ++j) {
+							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
+								uv[j] = *fPtr;
+							}
+							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
+								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
+								uv[j] = *dPtr;
+							}
+							else
+								assert(false);
+						}
+						nMesh.uvs2.push_back(uv);
+						offset += stride;
+						assert(offset <= bufferView.byteLength);
+					}
+					Utility::log_warning().format("Mesh: {}, TEXCOORD_2 unsupported attribute", nMesh.name);
+				}
+				else if(attribute == "COLOR_0") {
+					Utility::log_warning().format("Mesh: {}, COLOR_0 unsupported attribute",nMesh.name);
 				}
 				else {
 					assert(false && "unsupported attribute");
 				}
-				assert(buffer.data.size() < offset + bufferView.byteOffset);
+				assert(buffer.data.size() >= offset + bufferView.byteOffset + accessor.byteOffset);
 
 
 			}
@@ -389,6 +441,8 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						};
 						if (!model.meshes[node->mesh].name.empty())
 							registry.emplace<std::string>(meshEntity, model.meshes[node->mesh].name);
+						else
+							registry.emplace<std::string>(meshEntity, "Mesh_" + std::to_string(node->mesh));
 
 						instance.instance.instanceCustomIndex = meshId;
 						registry.emplace<InstanceId>(meshEntity, instanceManager.add_instance(instance));

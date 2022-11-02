@@ -24,6 +24,8 @@ void main() {
 //    float diff = max(dot(normal, constants.lightDir.xyz), 0.0);
 //    vec3 diffuse = diff * constants.lightColor.xyz;
 //
+    //outColor = fromLinear(texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
+    //           texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord));
     outColor = fromLinear(texture(sampler2D(textures2D[constants.specularBinding], samplers[constants.specularSampler]), inTexCoord) + 
                texture(sampler2D(textures2D[constants.diffuseBinding], samplers[constants.diffuseSampler]), inTexCoord));
     //outColor.xyz = outColor.xyz / (1 + outColor.xyz);

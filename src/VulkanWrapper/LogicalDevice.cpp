@@ -767,7 +767,7 @@ vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(
 		.size = mipInfo.size,
 		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		.offset = 0,
-		.memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY
+		.memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU
 	};
 	auto buffer = create_buffer(bufferInfo, {});
 	auto map = buffer->map_data();

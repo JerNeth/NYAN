@@ -54,9 +54,9 @@ void main() {
 
     //computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
 
-
-    if((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-        flip_backfacing_normal(vertexData, !gl_FrontFacing);
+    
+    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
+                                        && !gl_FrontFacing);
 
     MaterialData materialData = get_material_data(material, vertexData);
     if(materialData.opacity <= material.alphaDiscard)

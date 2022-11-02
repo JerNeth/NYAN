@@ -25,13 +25,17 @@ endif()
 
 find_package(Threads REQUIRED)
 
-find_package(Vulkan REQUIRED COMPONENTS SPIRV-Tools volk)
+find_package(Vulkan REQUIRED COMPONENTS glslc SPIRV-Tools volk)
 
 # SPIRV-Cross
-if(NOT Vulkan_SPIRV-Tools_FOUND)
-    #NOTE: requires 3.24
+if(NOT Vulkan_SPIRV-Tools_FOUND OR TRUE)
     message("spriv-cross-core not found fetching from repo")
     include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
+    set(SPIRV_LIB spirv-cross-core)
+else()
+    #NOTE: requires cmake 3.24
+    #NOTE: currently not working
+    set(SPIRV_LIB Vulkan::SPIRV-Tools)
 endif()
 
 # GLFW
@@ -130,7 +134,7 @@ add_executable(DDGITest ${DDGITest_SRC})
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
 #target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
-target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma  spirv-cross-core  EnTT imgui_entt_entity_editor )
+target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor )
 target_link_libraries(Engine PRIVATE imgui OptickCore stb tinygltf)
 target_link_libraries(tinygltf PUBLIC stb)
 target_link_libraries(Engine PUBLIC shaders)
