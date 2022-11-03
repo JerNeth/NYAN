@@ -149,13 +149,25 @@ void main()
 		hysteresis = 0.f;
 
 	if(filterIrradiance) {
+		vec3 delta = result.xyz - previous.xyz;
+
+		#ifndef B
+		float changeMagnitude = max_component(abs(-delta));
+		
+		if(changeMagnitude > 0.25)
+			hysteresis = max(0.f, hysteresis - 0.15f);
+
+		if(changeMagnitude > 0.8)
+			hysteresis = 0.f;
+
+			
 		#undef DO_GAMMA
 		//#define DO_GAMMA
 		#ifdef DO_GAMMA
-		result.xyz = pow(result.xyz, vec3(1.f / 5.f));
+		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
 		#endif		
-
-		vec3 delta = result.xyz - previous.xyz;
+		result.rgb = mix(result.rgb, previous.rgb, hysteresis);
+		#elif
 		if(max_component(-delta) > volume.irradianceThreshold)
 		{
 			hysteresis = max(0.f, hysteresis - 0.75f);
@@ -175,6 +187,7 @@ void main()
 			lerpDelta = clamp(vec3(threshold), abs(lerpDelta), abs(delta)) * sign(lerpDelta);
 		}
 		result = vec4(previous.xyz + lerpDelta, 1.0f);
+	#endif
 //Debug checkerboard pattern
 //		result = vec4(0, 0, 0, 1);
 //		if((((texCoord.x &0x1) == 1)|| ((texCoord.y &0x1) == 1)) && !(((texCoord.x &0x1) == 1) && ((texCoord.y &0x1) == 1)))

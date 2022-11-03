@@ -7,7 +7,11 @@
 
 vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volume) 
 {
-	return (normal * volume.shadowNormalBias) + (camDir * volume.shadowViewBias);
+	//return (normal * volume.shadowNormalBias) + (camDir * volume.shadowViewBias);
+	vec3 spacing = get_volume_spacing(volume);
+	float minElement = min(min(spacing.x, spacing.y), spacing.z);
+	//Adpated from Scaling Probe-Based Real-Time Global Illumination for Production
+	return mix(normal, camDir, 0.8) * (0.75 * minElement * volume.shadowNormalBias);
 }
 
 float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
