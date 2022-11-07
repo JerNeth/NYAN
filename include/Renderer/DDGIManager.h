@@ -44,11 +44,13 @@ namespace nyan {
 			bool useMoments{ false };
 			bool relocationEnabled{ false };
 			bool classificationEnabled{ false };
+			bool dynamicRayAllocation{ false };
 			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
 
 
+			uint32_t frames{ 0 };
 			uint32_t ddgiVolume {nyan::InvalidBinding};
 			bool dirty{ true };
 
@@ -86,17 +88,22 @@ namespace nyan {
 		void end_frame();
 		void add_read(Renderpass::Id pass);
 		void add_write(Renderpass::Id pass, Renderpass::Write::Type type);
+		VkDeviceAddress get_ray_count_device_address(uint32_t volumeId) const;
 	private:
 		void update_spacing(nyan::shaders::DDGIVolume& volume);
 		void update_depth_texture(nyan::shaders::DDGIVolume& volume);
 		void update_irradiance_texture(nyan::shaders::DDGIVolume& volume);
 		void update_offset_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume);
+		void update_dynamic_ray_buffer_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume);
+		void update_ray_counts(uint32_t volumeId);
 
 		nyan::Rendergraph& r_rendergraph;
 		entt::registry& r_registry;
 		std::vector<Renderpass::Id> m_reads;
 		std::vector<Write> m_writes;
 		std::vector<std::unique_ptr<Offsets>> m_offsets;
+		std::vector<std::unique_ptr<Offsets>> m_rayAllocation;
+		std::vector<std::unique_ptr<vulkan::BufferHandle>> m_rayCounts;
 	};
 }
 

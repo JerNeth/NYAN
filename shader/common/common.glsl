@@ -163,4 +163,17 @@ float hash_vec3(in vec3 seed) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
+float max_component(vec2 v) {
+	return max(v.x, v.y);
+}
+
+float max_component(vec3 v) {
+	return max(max(v.x, v.y), v.z);
+}
+
+float max_component(vec4 v) {
+	return max( max(max(v.x, v.y), v.z), v.w);
+}
+
+
 #endif

@@ -2,27 +2,47 @@
 #define BINDLESS_LAYOUTS_GLSL
 #include "descriptors.h"
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer MeshData {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer MeshData {
 	Mesh meshes[];
 } meshData[SSBO_COUNT];
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer Instances {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer Instances {
 	Instance instances[];
 } instances[SSBO_COUNT];
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer Scenes {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer Scenes {
 	Scene scene;
 } scenes[SSBO_COUNT];
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer DDGIVolumes {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer DDGIVolumes {
 	DDGIVolume volume[];
 } ddgiVolumes[SSBO_COUNT];
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer DDGIOffsets {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) writeonly buffer WriteDDGIOffsets {
 	float offsets[];
-} ddgiOffsets[SSBO_COUNT];
+} writeDdgiOffsets[SSBO_COUNT];
 
-layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) buffer Materials  {
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer ReadDDGIOffsets {
+	float offsets[];
+} readDdgiOffsets[SSBO_COUNT];
+
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) writeonly buffer WriteDDGIRayCounts {
+	uint offset[];
+} writeDdgiRayCounts[SSBO_COUNT];
+
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer ReadDDGIRayCounts {
+	uint offset[];
+} readDdgiRayCounts[SSBO_COUNT];
+
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) writeonly buffer WriteDDGIRayVariance {
+	float sigma[];
+} writeDdgiRayVariance[SSBO_COUNT];
+
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer ReadDDGIRayVariance {
+	float sigma[];
+} readDdgiRayVariance[SSBO_COUNT];
+
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer Materials  {
 	Material materials[];
 } materials [SSBO_COUNT];
 

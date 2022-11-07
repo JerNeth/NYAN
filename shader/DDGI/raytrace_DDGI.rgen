@@ -18,7 +18,8 @@ layout(location = 1) rayPayloadEXT float visibility;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-layout(constant_id = 1) const uint renderTargetImageFormat = R16G16B16A16F;
+layout(constant_id = 1) const uint renderTargetImageWidthBits = 10;
+layout(constant_id = 2) const uint renderTargetImageFormat = R16G16B16A16F;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -129,13 +130,15 @@ void main()
 {
     //gl_LaunchIDEXT.xy;
     Scene scene = scenes[constants.sceneBinding].scene;
-	uint rayIdx = gl_LaunchIDEXT.x;
-	uint probeIdx = gl_LaunchIDEXT.y;
-	
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+	uint globalRayIdx = gl_LaunchIDEXT.x + (gl_LaunchIDEXT.y << renderTargetImageWidthBits);
+
+	uint rayIdx = globalRayIdx % volume.raysPerProbe;
+	uint probeIdx = globalRayIdx / volume.raysPerProbe;
+	
 
 	vec3 probeCords = get_probe_coordinates(probeIdx, volume);
-	vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume);
+	vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
 
     uint  rayFlags = gl_RayFlagsNoneEXT;
     float tMin     = 0.001;

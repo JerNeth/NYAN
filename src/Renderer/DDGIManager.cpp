@@ -64,6 +64,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.useMoments {parameters.useMoments},
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
+			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -210,12 +211,13 @@ void nyan::DDGIManager::update()
 			(constDeviceVolume.visualizeDirections != 0) != parameters.visualizeDirections ||
 			(constDeviceVolume.useMoments != 0) != parameters.useMoments ||
 			(constDeviceVolume.relocationEnabled != 0) != parameters.relocationEnabled ||
-			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled )
+			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled ||
+			(constDeviceVolume.dynamicRayAllocationEnabled != 0) != parameters.dynamicRayAllocation)
 			parameters.dirty = true;
-
+		parameters.frames++;
 		if (!parameters.dirty)
 			continue;
-
+		parameters.frames = 0;
 
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
@@ -253,6 +255,7 @@ void nyan::DDGIManager::update()
 			.useMoments {parameters.useMoments},
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
+			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
 		};
 		if (deviceVolume.fixedRayCount > deviceVolume.raysPerProbe)
 			deviceVolume.fixedRayCount = deviceVolume.raysPerProbe;
@@ -261,6 +264,10 @@ void nyan::DDGIManager::update()
 		update_depth_texture(deviceVolume);
 		update_irradiance_texture(deviceVolume);
 		update_offset_binding(parameters.ddgiVolume, deviceVolume);
+		if (parameters.dynamicRayAllocation) {
+			update_dynamic_ray_buffer_binding(parameters.ddgiVolume, deviceVolume);
+			update_ray_counts(parameters.ddgiVolume);
+		}
 
 
 		VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
@@ -452,6 +459,12 @@ void  nyan::DDGIManager::add_write(Renderpass::Id pass, Renderpass::Write::Type 
 	m_writes.push_back({ pass, type });
 }
 
+VkDeviceAddress nyan::DDGIManager::get_ray_count_device_address(uint32_t volumeId) const
+{
+	assert(m_rayCounts.size() > volumeId);
+	return (*m_rayCounts[volumeId])->get_address();
+}
+
 void nyan::DDGIManager::update_spacing(nyan::shaders::DDGIVolume& volume)
 {
 	volume.spacingX = Math::max(volume.spacingX, 1e-6f);
@@ -484,8 +497,8 @@ void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& vol
 void nyan::DDGIManager::update_offset_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume)
 {
 	if (m_offsets.size() <= volumeId)
-		m_offsets.resize(volumeId + 1ull);	
-	
+		m_offsets.resize(volumeId + 1ull);
+
 	auto desiredSize = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
 	if (!m_offsets[volumeId] || desiredSize > m_offsets[volumeId]->counts) {
 		vulkan::BufferInfo info{
@@ -501,11 +514,62 @@ void nyan::DDGIManager::update_offset_binding(uint32_t volumeId, nyan::shaders::
 			oldBinding = r_device.get_bindless_set().reserve_storage_buffer();
 		m_offsets[volumeId]->binding = oldBinding;
 		r_device.get_bindless_set().set_storage_buffer(oldBinding,
-			VkDescriptorBufferInfo{ 
+			VkDescriptorBufferInfo{
 				.buffer {m_offsets[volumeId]->buffer->get_handle()},
 				.offset {0},
 				.range {info.size}
 			});
 	}
 	volume.offsetBufferBinding = m_offsets[volumeId]->binding;
+}
+
+void nyan::DDGIManager::update_dynamic_ray_buffer_binding(uint32_t volumeId, nyan::shaders::DDGIVolume& volume)
+{
+	if (m_rayAllocation.size() <= volumeId)
+		m_rayAllocation.resize(volumeId + 1ull);
+
+	auto desiredSize = volume.probeCountX * volume.probeCountY * volume.probeCountZ + 1;
+	if (!m_rayAllocation[volumeId] || desiredSize > m_rayAllocation[volumeId]->counts) {
+		vulkan::BufferInfo info{
+			.size {desiredSize * (sizeof(uint32_t) * 2 + sizeof(float) * 3) + sizeof(float)},
+			.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
+			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
+		};
+		uint32_t oldBinding{ ~0u };
+		if (m_rayAllocation[volumeId])
+			oldBinding = m_rayAllocation[volumeId]->binding;
+		m_rayAllocation[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, {}, false), desiredSize);
+		if (oldBinding == ~0)
+			oldBinding = r_device.get_bindless_set().reserve_storage_buffer();
+		m_rayAllocation[volumeId]->binding = oldBinding;
+		r_device.get_bindless_set().set_storage_buffer(oldBinding,
+			VkDescriptorBufferInfo{
+				.buffer {m_rayAllocation[volumeId]->buffer->get_handle()},
+				.offset {0},
+				.range {info.size}
+			});
+	}
+	volume.dynamicRayBufferBinding = m_rayAllocation[volumeId]->binding;
+}
+
+void nyan::DDGIManager::update_ray_counts(uint32_t volumeId) 
+{
+
+	if (m_rayCounts.size() <= volumeId)
+		m_rayCounts.resize(volumeId + 1ull);
+
+	static constexpr auto desiredSize = sizeof(VkTraceRaysIndirectCommandKHR);
+	if (!m_rayCounts[volumeId] || desiredSize > (*m_rayCounts[volumeId])->get_size()) {
+		vulkan::BufferInfo info{
+			.size {desiredSize},
+			.usage {VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT },
+			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
+		};
+		VkTraceRaysIndirectCommandKHR data{
+			.width {1},
+			.height {1},
+			.depth {1},
+		};
+		m_rayCounts[volumeId] = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(info, { vulkan::InputData{.ptr {&data},.size {desiredSize} } }, false));
+	}
 }

@@ -64,7 +64,7 @@ void main() {
     }
     if(volume.visualizeDirections != 0) {
         for(int i = 0; i < volume.raysPerProbe; i++) {
-		    vec3 direction = get_ray_direction(constants.randomRotation, i, volume);
+		    vec3 direction = get_ray_direction(constants.randomRotation, i, volume.raysPerProbe, volume);
             if(dot(sphereDir, direction) > 0.99999)  {
                 probeColor = 1.f - probeColor;
                 break;

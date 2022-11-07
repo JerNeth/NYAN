@@ -1,0 +1,23 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "formats.h"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "debug.glsl"
+#include "ddgi_common.glsl"
+#include "packing.glsl"
+
+layout(std430, push_constant) uniform PushConstants
+{
+	uint64_t targetAddress;
+	uint ddgiBinding;
+	uint ddgiCount;
+	uint ddgiIndex;
+} constants;
+
+
+void main()
+{
+}

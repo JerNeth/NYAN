@@ -222,6 +222,7 @@ namespace MM {
 		ImGui::Checkbox("Visualizate Directions", &volume.visualizeDirections);
 		ImGui::Checkbox("Relocation Enabled", &volume.relocationEnabled);
 		ImGui::Checkbox("Classification Enabled", &volume.classificationEnabled);
+		ImGui::Checkbox("Dynamic Ray Allocation Enabled", &volume.dynamicRayAllocation);
 		if (volume.ddgiVolume != ~0) {
 			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
 			ImGui::Text("Irradiance Texture");

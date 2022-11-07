@@ -29,6 +29,11 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) buffer NormalsHalf 
 layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TangentsHalf {
 	uint t[]; 
 };
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TraceRaysIndirect {
+	uint width; 
+	uint height;
+	uint depth;
+};
 
 ivec3 get_indices(uint64_t indicesAddress, uint idx) {
 	Indices indices = Indices(indicesAddress);

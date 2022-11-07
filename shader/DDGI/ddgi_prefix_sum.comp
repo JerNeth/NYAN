@@ -1,0 +1,36 @@
+// See https://research.nvidia.com/sites/default/files/pubs/2016-03_Single-pass-Parallel-Prefix/nvr-2016-002.pdf
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_memory_scope_semantics : enable
+
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "formats.h"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "debug.glsl"
+#include "ddgi_common.glsl"
+#include "packing.glsl"
+
+layout(std430, push_constant) uniform PushConstants
+{
+	uint64_t targetAddress;
+	uint ddgiBinding;
+	uint ddgiCount;
+	uint ddgiIndex;
+	uint workBufferBinding;
+} constants;
+
+
+layout(local_size_x_id = 1) in;
+layout(local_size_y_id = 2) in;
+layout(local_size_z_id = 3) in;
+layout(constant_id = 4) const uint subgroupSize = 32;
+layout(constant_id = 5) const uint numRows = 16;
+
+void main()
+{
+}

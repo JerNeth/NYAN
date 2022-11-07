@@ -1,5 +1,10 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_EXT_shader_atomic_float : enable
 #include "bufferReferences.glsl"
 #include "structs.h"
 #include "formats.h"
@@ -29,17 +34,13 @@ layout(constant_id = 4) const uint rayCount = 64;
 layout(constant_id = 5) const bool filterIrradiance = false;
 layout(constant_id = 6) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
-
-//layout(local_size_x = 64) in;
-//layout(local_size_y = 1) in;
-//layout(local_size_z = 1) in;
-
-//layout(local_size_x = GroupSizeX, local_size_y = GroupSizeY, local_size_z = GroupSizeZ) in; 
+layout(constant_id = 8) const uint renderTargetImageWidthBits = 10;
+layout(constant_id = 9) const uint subgroupSize = 32;
 
 shared vec3 rayDirection[rayCount];
 shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
 shared float rayDistance[rayCount];
-
+shared float rayVariance; //Unclear whether coherent is needed
 
 struct MultiscaleMeanEstimatorData
 {
@@ -103,9 +104,6 @@ void MultiscaleMeanEstimator(vec3 y,
 	data.inconsistency = inconsistency;
 }
 
-float max_component(vec3 v) {
-	return max(max(v.x, v.y), v.z);
-}
 //#define DEBUG_COLORS
 void main()
 {
@@ -124,17 +122,19 @@ void main()
 	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
 	//float maxRayDist = length(get_volume_spacing(volume)) * 2.f;
-	for(int i = 0; i < iMax;i++) {
+	for(int i = 0; i < iMax; i++) {
 		const int rayIdx = offset + i;
 		if(rayIdx >= rayCount) break;
 		
-		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume);
+		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
 		vec4 data = vec4(0);
 		
+		uint globalRayIdx = probeIdx * volume.raysPerProbe + rayIdx;
+		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		if(renderTargetImageFormat == R16G16B16A16F)
-			data = imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+			data = imageLoad(imagesRGBA16F[constants.renderTarget], renderTargetIdx);
 		else if(renderTargetImageFormat == R32G32B32A32F)
-			data = imageLoad(imagesRGBA32F[constants.renderTarget], ivec2(rayIdx, probeIdx));
+			data = imageLoad(imagesRGBA32F[constants.renderTarget], renderTargetIdx);
 		
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;
@@ -146,10 +146,10 @@ void main()
 	float resultWeight = 0.f;
 	
 	int rayIdx = 0;
-	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
-    {
-        rayIdx = int(volume.fixedRayCount);
-    }
+//	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
+//    {
+//        rayIdx = int(volume.fixedRayCount);
+//    }
 
 	uint backfaceCount = 0;
 	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.backfaceThreshold);
@@ -239,7 +239,20 @@ void main()
 		imageStore(imagesRGBA16F[volume.data0ImageBinding], texCoord, vec4(data.shortMean, data.vbbr));
 		imageStore(imagesRGBA16F[volume.data1ImageBinding], texCoord, vec4(data.variance, data.inconsistency));
 
-
+		if(volume.dynamicRayAllocationEnabled != 0) {
+			//float variance = max_component(abs(data.variance));
+			float variance = max_component(abs(data.variance / result.xyz)); //relative Variance
+			variance = subgroupInclusiveAdd(variance);//gl_SubgroupID 
+			float totalVariance = 0.f;
+			int finished = 0;
+			if(subgroupElect()) {
+				totalVariance = atomicAdd(rayVariance, variance) + variance;
+			}
+			//Since there's no guarantee that two atomics are executed in order
+			barrier();
+			if(gl_LocalInvocationIndex == 0)
+				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[volume.probeCountX * volume.probeCountY * volume.probeCountZ + probeIdx] = rayVariance;
+		}
 	//Biased shadow-preserving temporal hysteresis. from GI-1.0
 //		float l1 = dot(result.xyz, vec3(1.f / 3.f));
 //		float l2 = dot(previous.xyz, vec3(1.f / 3.f));
@@ -251,7 +264,7 @@ void main()
 //		result = vec4(mix(result.xyz, previous.xyz, alpha), 1.f);
 
 
-		// From 2021 paper
+		// From the 2021 paper
 //		vec3 delta = result.xyz - previous.xyz;
 //
 //		float changeMagnitude = max_component(abs(-delta));

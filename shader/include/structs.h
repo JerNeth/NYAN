@@ -148,6 +148,7 @@ struct DDGIVolume {
 	uint renderTargetImageFormat;
 
 	uint offsetBufferBinding;
+	uint dynamicRayBufferBinding;
 	uint fixedRayCount;
 	float relocationBackfaceThreshold;
 	float backfaceThreshold;
@@ -168,6 +169,7 @@ struct DDGIVolume {
 	uint useMoments;
 	uint relocationEnabled;
 	uint classificationEnabled;
+	uint dynamicRayAllocationEnabled;
 };
 
 #endif

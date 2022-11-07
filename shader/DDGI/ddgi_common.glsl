@@ -49,9 +49,9 @@ ivec3 get_volume_probe_count_minus_one(DDGIVolume volume)
 
 vec3 get_probe_offset(in uint probeIdx, in DDGIVolume volume) 
 {
-	return vec3(ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3],
-		ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1],
-		ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2]);
+	return vec3(readDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3],
+		readDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1],
+		readDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2]);
 }
 
 
@@ -63,9 +63,9 @@ vec3 get_probe_offset(in uvec3 idx, in DDGIVolume volume)
 
 void set_probe_offset(in uint probeIdx, in DDGIVolume volume, in vec3 offset) 
 {
-	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3] = offset.x;
-	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1] = offset.y;
-	ddgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2] = offset.z;
+	writeDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3] = offset.x;
+	writeDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 1] = offset.y;
+	writeDdgiOffsets[volume.offsetBufferBinding].offsets[probeIdx * 3 + 2] = offset.z;
 }
 
 vec3 get_probe_coordinates(in uvec3 idx,in DDGIVolume volume)
@@ -100,19 +100,19 @@ vec3 spherical_fibonacci(float i, float n) {
 #undef madfrac
 }
 
-vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in DDGIVolume volume)
+vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount, in DDGIVolume volume)
 {
-	float maxCount = volume.raysPerProbe;
+	float maxCount = rayCount;
 	float idx = rayIdx;
-	bool fixedRay = false;
-	if(volume.relocationEnabled != 0 || volume.classificationEnabled != 0) {
-		fixedRay = rayIdx < volume.fixedRayCount;
-		idx = mix( idx - volume.fixedRayCount, idx, fixedRay);
-		maxCount = mix(maxCount - volume.fixedRayCount, volume.fixedRayCount, fixedRay);
-	}
+//	bool fixedRay = false;
+//	if(volume.relocationEnabled != 0 || volume.classificationEnabled != 0) {
+//		fixedRay = rayIdx < volume.fixedRayCount;
+//		idx = mix( idx - volume.fixedRayCount, idx, fixedRay);
+//		maxCount = mix(maxCount - volume.fixedRayCount, volume.fixedRayCount, fixedRay);
+//	}
 	vec3 dir = spherical_fibonacci(idx, maxCount);
-    if(fixedRay)
-		return dir;
+//    if(fixedRay)
+//		return dir;
 
 	return quaternion_rotate(randomRotation, dir);
 }

@@ -210,6 +210,7 @@ namespace vulkan {
 			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
 		void trace_rays(const RTPipeline& pipeline,
 			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
+		void trace_rays(const RTPipeline& pipeline, VkDeviceAddress address);
 	private:
 	};
 

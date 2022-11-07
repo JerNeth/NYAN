@@ -24,6 +24,7 @@ layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const bool relocationEnabled = false;
 layout(constant_id = 5) const uint renderTargetImageFormat = R16G16B16A16F;
+layout(constant_id = 6) const uint renderTargetImageWidthBits = 10;
 
 void main() 
 {
@@ -50,15 +51,18 @@ void main()
 
 	int rayCount = min(int(volume.raysPerProbe), int(volume.fixedRayCount));
 	
+
 	vec3 spacing = get_volume_spacing(volume);
 	float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
 	for(int rayIdx = 0; rayIdx < rayCount; rayIdx++)
 	{
+		uint globalRayIdx = probeIdx * volume.raysPerProbe + rayIdx;
+		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		float hitDistance = 0.f;
 		if(renderTargetImageFormat == R16G16B16A16F)
-			hitDistance =  imageLoad(imagesRGBA16F[constants.renderTarget], ivec2(rayIdx, probeIdx)).a * maxRayDist;
+			hitDistance =  imageLoad(imagesRGBA16F[constants.renderTarget], renderTargetIdx).a * maxRayDist;
 		else if(renderTargetImageFormat == R32G32B32A32F)
-			hitDistance =  imageLoad(imagesRGBA32F[constants.renderTarget], ivec2(rayIdx, probeIdx)).a * maxRayDist;
+			hitDistance =  imageLoad(imagesRGBA32F[constants.renderTarget], renderTargetIdx).a * maxRayDist;
 
 		if(hitDistance < 0.f)
 		{
@@ -87,13 +91,13 @@ void main()
 
 	if((closestBackfaceIdx != -1) && ((backfaceCount / float(rayCount)) > volume.relocationBackfaceThreshold))
 	{
-		vec3 closestBackfaceDirection = get_ray_direction(constants.randomRotation, closestBackfaceIdx, volume);
+		vec3 closestBackfaceDirection = get_ray_direction(constants.randomRotation, closestBackfaceIdx, volume.raysPerProbe, volume);
 		fullOffset = offset + (closestBackfaceDirection * (closestBackfaceDist + volume.minFrontFaceDistance* 0.5f) );
 	}
 	else if(closestFrontfaceDist < volume.minFrontFaceDistance)
 	{
-		vec3 closestFrontfaceDirection = get_ray_direction(constants.randomRotation, closestFrontfaceIdx, volume);
-		vec3 farthestFrontfaceDirection = get_ray_direction(constants.randomRotation, farthestFrontfaceIdx, volume);
+		vec3 closestFrontfaceDirection = get_ray_direction(constants.randomRotation, closestFrontfaceIdx, volume.raysPerProbe, volume);
+		vec3 farthestFrontfaceDirection = get_ray_direction(constants.randomRotation, farthestFrontfaceIdx, volume.raysPerProbe, volume);
 		if(dot(closestFrontfaceDirection, farthestFrontfaceDirection) <= 0.f)
 		{
 			farthestFrontfaceDist *= min(farthestFrontfaceDist, 1.f);

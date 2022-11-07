@@ -785,3 +785,14 @@ void vulkan::RaytracingPipelineBind::trace_rays(const vulkan::RTPipeline& pipeli
 		pipeline.miss_region(), pipeline.hit_region(),
 		pipeline.callable_region(), width, height, depth);
 }
+
+void vulkan::RaytracingPipelineBind::trace_rays(const RTPipeline& pipeline, VkDeviceAddress address)
+{
+	assert(pipeline.rgen_region());
+	assert(pipeline.miss_region());
+	assert(pipeline.hit_region());
+	assert(pipeline.callable_region());
+	vkCmdTraceRaysIndirectKHR(m_cmd, pipeline.rgen_region(),
+		pipeline.miss_region(), pipeline.hit_region(),
+		pipeline.callable_region(), address);
+}
