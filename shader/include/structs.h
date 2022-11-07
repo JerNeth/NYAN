@@ -130,6 +130,12 @@ struct DDGIVolume {
 	uint irradianceImageBinding;
 	uint irradianceImageFormat;
 
+	uint data0ImageBinding;
+	uint data1ImageBinding;
+	uint data0TextureBinding;
+	uint data1TextureBinding;
+
+
 	uint depthTextureSizeX;
 	uint depthTextureSizeY;
 	float inverseDepthTextureSizeX;

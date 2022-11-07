@@ -118,7 +118,10 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	else if(imageFormat == R32G32B32A32F)
 		imageStore(imagesRGBA32F[imageBinding], texelCoord, 
 			imageLoad(imagesRGBA32F[imageBinding], copyLoad));
-
+	else if(imageFormat == E5B9G9R9F)
+		imageStore(imagesR32F[imageBinding], texelCoord, 
+			imageLoad(imagesR32F[imageBinding], copyLoad));
+			
 	
 	texelCoord.y += probeSizeMinusOne;
 	copyLoad = ivec2(probeStart + offset, texelCoord.y - 1);
@@ -135,6 +138,9 @@ void copy_border_rows(DDGIVolume volume, uvec3 globalId) {
 	else if(imageFormat == R32G32B32A32F)
 		imageStore(imagesRGBA32F[imageBinding], texelCoord, 
 			imageLoad(imagesRGBA32F[imageBinding], copyLoad));
+	else if(imageFormat == E5B9G9R9F)
+		imageStore(imagesR32F[imageBinding], texelCoord, 
+			imageLoad(imagesR32F[imageBinding], copyLoad));
 
 }
 
@@ -207,6 +213,12 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 			imageLoad(imagesRGBA32F[imageBinding], copyLoadFirst));
 		imageStore(imagesRGBA32F[imageBinding], texelCoordSecond, 
 			imageLoad(imagesRGBA32F[imageBinding], copyLoadSecond));
+	}
+	else if(imageFormat == E5B9G9R9F) {			
+		imageStore(imagesR32F[imageBinding], texelCoordFirst, 
+			imageLoad(imagesR32F[imageBinding], copyLoadFirst));
+		imageStore(imagesR32F[imageBinding], texelCoordSecond, 
+			imageLoad(imagesR32F[imageBinding], copyLoadSecond));
 	}
 	
 }

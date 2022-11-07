@@ -42,11 +42,15 @@ uint vec3_to_rgb9e5(vec3 rgb) {
     int rm = int(floor(rc / denom + 0.5));
     int gm = int(floor(gc / denom + 0.5));
     int bm = int(floor(bc / denom + 0.5));
-
-    return (uint(rm) << (32 - 9))
-        | (uint(gm) << (32 - 9 * 2))
-        | (uint(bm) << (32 - 9 * 3))
-        | uint(exp_shared);
+    
+//    return (uint(rm) << (32 - 9))
+//        | (uint(gm) << (32 - 9 * 2))
+//        | (uint(bm) << (32 - 9 * 3))
+//        | uint(exp_shared);
+    return (uint(rm) << (0))
+        | (uint(gm) << (RGB9E5_MANTISSA_BITS * 1))
+        | (uint(bm) << ( RGB9E5_MANTISSA_BITS * 2))
+        | (uint(exp_shared)<< (RGB9E5_MANTISSA_BITS * 3));
 }
 
 
@@ -55,15 +59,19 @@ uint bitfield_extract(uint value, uint offset, uint bits) {
     return (value >> offset) & mask;
 }
 
-vec3 rgb9e5_to_vec33(uint v) {
+vec3 rgb9e5_to_vec3(uint v) {
     int exponent =
-        int(bitfield_extract(v, 0, RGB9E5_EXPONENT_BITS)) - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
+        //int(bitfield_extract(v, 0, RGB9E5_EXPONENT_BITS)) - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
+        int(bitfield_extract(v, RGB9E5_MANTISSA_BITS * 3, RGB9E5_EXPONENT_BITS)) - RGB9E5_EXP_BIAS - RGB9E5_MANTISSA_BITS;
     float scale = exp2(float(exponent));
 
-    return float3(
-        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS, RGB9E5_MANTISSA_BITS)) * scale,
-        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS * 2, RGB9E5_MANTISSA_BITS)) * scale,
-        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS * 3, RGB9E5_MANTISSA_BITS)) * scale
+    return vec3(
+//        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS, RGB9E5_MANTISSA_BITS)) * scale,
+//        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS * 2, RGB9E5_MANTISSA_BITS)) * scale,
+//        float(bitfield_extract(v, 32 - RGB9E5_MANTISSA_BITS * 3, RGB9E5_MANTISSA_BITS)) * scale
+        float(bitfield_extract(v, 0, RGB9E5_MANTISSA_BITS)) * scale,
+        float(bitfield_extract(v, RGB9E5_MANTISSA_BITS * 1, RGB9E5_MANTISSA_BITS)) * scale,
+        float(bitfield_extract(v, RGB9E5_MANTISSA_BITS * 2, RGB9E5_MANTISSA_BITS)) * scale
     );
 }
 

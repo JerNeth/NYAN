@@ -11,7 +11,7 @@ vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volum
 	vec3 spacing = get_volume_spacing(volume);
 	float minElement = min(min(spacing.x, spacing.y), spacing.z);
 	//Adpated from Scaling Probe-Based Real-Time Global Illumination for Production
-	return mix(normal, camDir, 0.8) * (0.75 * minElement * volume.shadowNormalBias);
+	return mix(normal, camDir, 0.8) * (0.75 * minElement * volume.shadowViewBias);
 }
 
 float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
@@ -97,6 +97,7 @@ vec3 sample_ddgi(in vec3 worldPos,
 
 
 		vec3 probeIrradiance = textureLod(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV, 0).rgb;
+
 
 		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
 		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;

@@ -89,9 +89,10 @@ int main() {
 			.depthViewBias {0.3},
 			.hysteresis {0.97},
 			.irradianceThreshold {0.2},
-			.lightToDarkThreshold {2.0},
+			.lightToDarkThreshold {0.08f},
+			//.lightToDarkThreshold {2.0},
 			.visualizerRadius {0.1},
-			.minFrontFaceDistance {0.3},
+			.minFrontFaceDistance {0.1},
 			.visualization {false},
 			.relocationEnabled {true},
 		}); //Sponza

@@ -303,9 +303,9 @@ void nyan::DDGIManager::update()
 		}
 		VkFormat irradianceFormat{ VK_FORMAT_UNDEFINED };
 		switch (deviceVolume.irradianceImageFormat) {
-		//case nyan::shaders::E5B9G9R9F: //No image load store specificlly, would need extra implementation
-		//	irradianceFormat = VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
-		//	break;
+		case nyan::shaders::E5B9G9R9F: 
+			irradianceFormat = VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+			break;
 		case nyan::shaders::R10G10B10A2F:
 			irradianceFormat = VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 			break;
@@ -346,6 +346,54 @@ void nyan::DDGIManager::update()
 				pass.add_write(parameters.irradianceResource, type);
 			}
 		}
+		if (parameters.data0Resource) {
+			auto& data0Resource = r_rendergraph.get_resource(parameters.data0Resource);
+			assert(data0Resource.m_type == nyan::RenderResource::Type::Image);
+			auto& data0Attachment = std::get< ImageAttachment>(data0Resource.attachment);
+			data0Attachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			data0Attachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			data0Attachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+		}
+		else {
+			parameters.data0Resource = r_rendergraph.add_ressource(std::format("DDGI_Data0_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.size{nyan::ImageAttachment::Size::Absolute},
+				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
+				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
+				});
+			for (const auto& read : m_reads) {
+				auto& pass = r_rendergraph.get_pass(read);
+				pass.add_read(parameters.data0Resource);
+			}
+			for (const auto& [write, type] : m_writes) {
+				auto& pass = r_rendergraph.get_pass(write);
+				pass.add_write(parameters.data0Resource, type);
+			}
+		}
+		if (parameters.data1Resource) {
+			auto& data1Resource = r_rendergraph.get_resource(parameters.data1Resource);
+			assert(data1Resource.m_type == nyan::RenderResource::Type::Image);
+			auto& data1Attachment = std::get< ImageAttachment>(data1Resource.attachment);
+			data1Attachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			data1Attachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			data1Attachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+		}
+		else {
+			parameters.data1Resource = r_rendergraph.add_ressource(std::format("DDGI_Data1_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				.size{nyan::ImageAttachment::Size::Absolute},
+				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
+				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
+				});
+			for (const auto& read : m_reads) {
+				auto& pass = r_rendergraph.get_pass(read);
+				pass.add_read(parameters.data1Resource);
+			}
+			for (const auto& [write, type] : m_writes) {
+				auto& pass = r_rendergraph.get_pass(write);
+				pass.add_write(parameters.data1Resource, type);
+			}
+		}
 		// Update Probes -> Update Renderpass Read/Writes (if changed) -> Rendergraph update -> Update Bindings here
 	}
 }
@@ -367,6 +415,12 @@ void nyan::DDGIManager::begin_frame()
 			auto irradianceImageBind = writePass.get_write_bind(parameters.irradianceResource, Renderpass::Write::Type::Compute);
 			if (constDeviceVolume.irradianceImageBinding != irradianceImageBind)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceImageBinding = irradianceImageBind;
+			auto data0ImageBind = writePass.get_write_bind(parameters.data0Resource, Renderpass::Write::Type::Compute);
+			if (constDeviceVolume.data0ImageBinding != data0ImageBind)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data0ImageBinding = data0ImageBind;
+			auto data1ImageBind = writePass.get_write_bind(parameters.data1Resource, Renderpass::Write::Type::Compute);
+			if (constDeviceVolume.data1ImageBinding != data1ImageBind)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data1ImageBinding = data1ImageBind;
 		}
 		if (!m_reads.empty()) {
 			auto& readPass = r_rendergraph.get_pass(m_reads.front());
@@ -376,6 +430,12 @@ void nyan::DDGIManager::begin_frame()
 			auto irradianceTextureBinding = readPass.get_read_bind(parameters.irradianceResource);
 			if (constDeviceVolume.irradianceTextureBinding != irradianceTextureBinding)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceTextureBinding = irradianceTextureBinding;
+			auto data0TextureBinding = readPass.get_read_bind(parameters.data0Resource);
+			if (constDeviceVolume.data0TextureBinding != data0TextureBinding)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data0TextureBinding = data0TextureBinding;
+			auto data1TextureBinding = readPass.get_read_bind(parameters.data1Resource);
+			if (constDeviceVolume.data1TextureBinding != data1TextureBinding)
+				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data1TextureBinding = data1TextureBinding;
 		}
 	}
 }

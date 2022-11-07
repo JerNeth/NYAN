@@ -34,6 +34,8 @@ layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgb10_a2) uniform image2D image
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, r11f_g11f_b10f) uniform image2D imagesR11G11B10F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba16f) uniform image2D imagesRGBA16F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba32f) uniform image2D imagesRGBA32F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, r32f) uniform image2D imagesR32F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, r32ui) uniform uimage2D imagesR32UI[IMAGE_COUNT];
 
 //layout(set = 0, binding = 0) buffer SSBO {} ssbos [];
 //layout(set = 0, binding = 1) uniform ubos[];

@@ -166,7 +166,7 @@ namespace MM {
 		}
 
 		{
-			static constexpr const char* irradianceFormats[] = {"R16G16B16A16F", "R10G10B10A2F", "R11G11B10F" };
+			static constexpr const char* irradianceFormats[] = {"R16G16B16A16F", "R10G10B10A2F", "R11G11B10F", "R9G9B9E5F" };
 			static const char* currentIrradianceFormat = irradianceFormats[0];
 			if (ImGui::BeginCombo("##Irradiance Format", currentIrradianceFormat))
 			{
@@ -187,6 +187,9 @@ namespace MM {
 			}
 			else if (currentIrradianceFormat == irradianceFormats[2]) {
 				volume.irradianceImageFormat = nyan::shaders::R11G11B10F;
+			}
+			else if (currentIrradianceFormat == irradianceFormats[3]) {
+				volume.irradianceImageFormat = nyan::shaders::E5B9G9R9F;
 			}
 			ImGui::SameLine();
 			ImGui::Text("Irradiance Format");

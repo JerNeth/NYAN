@@ -31,6 +31,8 @@ namespace nyan {
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
+			RenderResource::Id data0Resource{};
+			RenderResource::Id data1Resource{};
 			uint32_t fixedRayCount{ 32 };
 			float relocationBackfaceThreshold{ 0.25f };
 			float backfaceThreshold{ 0.1f };

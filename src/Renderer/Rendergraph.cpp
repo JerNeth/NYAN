@@ -363,8 +363,10 @@ uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type typ
 	assert(res != m_writes.cend());
 	if (res != m_writes.cend())
 		return res->binding;
-	else
+	else {
+		Utility::log_warning().format("Resource ({}): invalid write bind", resource.name);
 		return InvalidResourceId.id;
+	}
 }
 
 uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
@@ -375,8 +377,10 @@ uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
 	assert(res != m_reads.cend());
 	if (res != m_reads.cend())
 		return res->binding;
-	else
+	else {
+		Utility::log_warning().format("Resource ({}): invalid read bind", resource.name);
 		return InvalidResourceId.id;
+	}
 
 }
 

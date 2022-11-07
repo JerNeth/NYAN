@@ -7,7 +7,7 @@
 #include "common.glsl"
 #include "debug.glsl"
 #include "ddgi_common.glsl"
-
+#include "packing.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -40,6 +40,68 @@ shared vec3 rayDirection[rayCount];
 shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
 shared float rayDistance[rayCount];
 
+
+struct MultiscaleMeanEstimatorData
+{
+  vec3 mean;
+  vec3 shortMean;
+  float vbbr;
+  vec3 variance;
+  float inconsistency;
+};
+
+void MultiscaleMeanEstimator(vec3 y,
+	  inout MultiscaleMeanEstimatorData data,
+	  float shortWindowBlend)
+{
+	vec3 mean = data.mean;
+	vec3 shortMean = data.shortMean;
+	float vbbr = data.vbbr;
+	vec3 variance = data.variance;
+	float inconsistency = data.inconsistency;
+  
+	// Suppress fireflies.
+	{
+		vec3 dev = sqrt(max(1e-5f.xxx, variance));
+		vec3 highThreshold = 0.1 + shortMean + dev * 8;
+		vec3 overflow = max(0.f.xxx, y - highThreshold);
+		y -= overflow;
+	}
+  
+	vec3 delta = y - shortMean;
+	shortMean = mix(shortMean, y, shortWindowBlend);
+	vec3 delta2 = y - shortMean;
+  
+	// This should be a longer window than shortWindowBlend to avoid bias
+	// from the variance getting smaller when the short-term mean does.
+	float varianceBlend = shortWindowBlend * 0.5;
+	variance = mix(variance, delta * delta2, varianceBlend);
+	vec3 dev = sqrt(max(1e-5f.xxx, variance));
+  
+	vec3 shortDiff = mean - shortMean;
+  
+	float relativeDiff = dot( vec3(0.299f, 0.587f, 0.114f),
+		abs(shortDiff) / max(1e-5f.xxx, dev) );
+	inconsistency = mix(inconsistency, relativeDiff, 0.08f);
+  
+	float varianceBasedBlendReduction =
+		clamp( dot( vec3(0.299, 0.587, 0.114),
+		0.5 * shortMean / max(1e-5f.xxx, dev) ), 1.0/32.f, 1.f );
+  
+	float catchUpBlend = clamp(smoothstep(0.f, 1.f,
+		relativeDiff * max(0.02f, inconsistency - 0.2)), 1.0f/256.f, 1.f);
+	catchUpBlend *= vbbr;
+  
+	vbbr = mix(vbbr, varianceBasedBlendReduction, 0.1);
+	mean = mix(mean, y, clamp(catchUpBlend, 0.f, 1.f));
+  
+	// Output
+	data.mean = mean;
+	data.shortMean = shortMean;
+	data.vbbr = vbbr;
+	data.variance = variance;
+	data.inconsistency = inconsistency;
+}
 
 float max_component(vec3 v) {
 	return max(max(v.x, v.y), v.z);
@@ -142,6 +204,9 @@ void main()
 		previous = imageLoad(imagesRGBA16F[imageBinding], texCoord);
 	else if(imageFormat == R32G32B32A32F)
 		previous = imageLoad(imagesRGBA32F[imageBinding], texCoord);
+	else if(imageFormat == E5B9G9R9F)
+		previous.xyz = rgb9e5_to_vec3(imageLoad(imagesR32UI[imageBinding], texCoord).x);
+		//previous.xyz = rgb9e5_to_vec3(floatBitsToUint(imageLoad(imagesR32F[imageBinding], texCoord).x));
 
 	//Recover if we somehow get negativ radiance
 	//Shouldn't happen though
@@ -149,45 +214,82 @@ void main()
 		hysteresis = 0.f;
 
 	if(filterIrradiance) {
-		vec3 delta = result.xyz - previous.xyz;
-
-		#ifndef B
-		float changeMagnitude = max_component(abs(-delta));
-		
-		if(changeMagnitude > 0.25)
-			hysteresis = max(0.f, hysteresis - 0.15f);
-
-		if(changeMagnitude > 0.8)
-			hysteresis = 0.f;
-
-			
+	
 		#undef DO_GAMMA
 		//#define DO_GAMMA
-		#ifdef DO_GAMMA
+		#ifdef DO_GAMMA0
 		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
 		#endif		
-		result.rgb = mix(result.rgb, previous.rgb, hysteresis);
-		#elif
-		if(max_component(-delta) > volume.irradianceThreshold)
-		{
-			hysteresis = max(0.f, hysteresis - 0.75f);
-		}
+
+		//MultiscaleMeanEstimator from Ray Tracing Gems
+		vec4 data0 = imageLoad(imagesRGBA16F[volume.data0ImageBinding], texCoord);
+		vec4 data1 = imageLoad(imagesRGBA16F[volume.data1ImageBinding], texCoord);
+		MultiscaleMeanEstimatorData data;
+		
+		data.mean = previous.xyz;
+		data.shortMean = data0.xyz;
+		data.vbbr = data0.w;
+		data.variance = data1.xyz;
+		data.inconsistency = data1.w;
+
+		//MultiscaleMeanEstimator(result.xyz, data, 0.08f);
+		MultiscaleMeanEstimator(result.xyz, data, volume.lightToDarkThreshold);
+		result = vec4(data.mean, 1.f);
+
+		imageStore(imagesRGBA16F[volume.data0ImageBinding], texCoord, vec4(data.shortMean, data.vbbr));
+		imageStore(imagesRGBA16F[volume.data1ImageBinding], texCoord, vec4(data.variance, data.inconsistency));
 
 
-		if(length(delta) > volume.lightToDarkThreshold)
-		{
-			result.rgb = previous.xyz + (delta * 0.25f);
-		}
+	//Biased shadow-preserving temporal hysteresis. from GI-1.0
+//		float l1 = dot(result.xyz, vec3(1.f / 3.f));
+//		float l2 = dot(previous.xyz, vec3(1.f / 3.f));
+//
+//		float alpha = max(l1 - l2 - min(l1, l2), 0.f) / max(max(l1, l2), 1e-4f);
+//		alpha = clamp(alpha, 0.f, 0.95f);
+//		alpha *= alpha;
+//
+//		result = vec4(mix(result.xyz, previous.xyz, alpha), 1.f);
 
 
-		const float threshold = 1.f / 1024.f;
-		vec3 lerpDelta = (1.f - hysteresis) * delta;
-		if(max_component(result.xyz) < max_component(previous.xyz))
-		{
-			lerpDelta = clamp(vec3(threshold), abs(lerpDelta), abs(delta)) * sign(lerpDelta);
-		}
-		result = vec4(previous.xyz + lerpDelta, 1.0f);
-	#endif
+		// From 2021 paper
+//		vec3 delta = result.xyz - previous.xyz;
+//
+//		float changeMagnitude = max_component(abs(-delta));
+//		
+//		if(changeMagnitude > 0.25)
+//			hysteresis = max(0.f, hysteresis - 0.15f);
+//
+//		if(changeMagnitude > 0.8)
+//			hysteresis = 0.f;
+//			
+
+//		result.rgb = mix(result.rgb, previous.rgb, hysteresis);
+//		result.a = 1.f;
+
+
+		//From RTXGI SDK
+//		vec3 delta = result.xyz - previous.xyz;
+//		if(length(delta) > volume.lightToDarkThreshold)
+//		{
+//			result.rgb = previous.xyz + (delta * 0.25f);
+//		}
+//		
+//		if(max_component(-delta) > volume.irradianceThreshold)
+//		{
+//			hysteresis = max(0.f, hysteresis - 0.75f);
+//		}
+//
+//
+//		const float threshold = 1.f / 1024.f;
+//		vec3 lerpDelta = (1.f - hysteresis) * delta;
+//		if(max_component(result.xyz) < max_component(previous.xyz))
+//		{
+//			lerpDelta = clamp(vec3(threshold), abs(lerpDelta), abs(delta)) * sign(lerpDelta);
+//		}
+//		result = vec4(previous.xyz + lerpDelta, 1.0f);
+
+
+
 //Debug checkerboard pattern
 //		result = vec4(0, 0, 0, 1);
 //		if((((texCoord.x &0x1) == 1)|| ((texCoord.y &0x1) == 1)) && !(((texCoord.x &0x1) == 1) && ((texCoord.y &0x1) == 1)))
@@ -213,5 +315,8 @@ void main()
 		imageStore(imagesRGBA16F[imageBinding], texCoord, result);
 	else if(imageFormat == R32G32B32A32F)
 		imageStore(imagesRGBA32F[imageBinding], texCoord, result);
+	else if(imageFormat == E5B9G9R9F)
+		imageStore(imagesR32UI[imageBinding], texCoord, uvec4(vec3_to_rgb9e5(result.rgb), 0, 0,0));
+		//imageStore(imagesR32F[imageBinding], texCoord, vec4(uintBitsToFloat(vec3_to_rgb9e5(result.rgb)), 0, 0,0));
 	
 }
