@@ -838,7 +838,9 @@ void validate_image_create_info(const vulkan::LogicalDevice& device, const VkIma
 		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension1D);
 		assert(createInfo.extent.height == 1);
 		assert(createInfo.extent.depth == 1);
+		assert(createInfo.arrayLayers <= device.get_physical_device_properties().limits.maxImageArrayLayers);
 	}
+	
 	if (createInfo.imageType == VK_IMAGE_TYPE_2D) {
 		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension2D)
 			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
@@ -852,6 +854,7 @@ void validate_image_create_info(const vulkan::LogicalDevice& device, const VkIma
 		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension2D);
 		assert(createInfo.extent.height <= device.get_physical_device_properties().limits.maxImageDimension2D);
 		assert(createInfo.extent.depth == 1);
+		assert(createInfo.arrayLayers <= device.get_physical_device_properties().limits.maxImageArrayLayers);
 	}
 	if (createInfo.imageType == VK_IMAGE_TYPE_3D) {
 		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension3D)

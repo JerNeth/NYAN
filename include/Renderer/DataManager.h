@@ -21,6 +21,8 @@ namespace nyan {
 			r_device(device),
 			m_usage(usage)
 		{
+			m_ssbo = (m_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
 			auto stagingBuffer = create_buffer(initialSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 			auto deviceBuffer = create_buffer(initialSize, m_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 			m_slot = std::make_unique<Slot>(Slot{
@@ -70,6 +72,7 @@ namespace nyan {
 		vulkan::LogicalDevice& r_device;
 		VkBufferUsageFlags m_usage;
 		std::unique_ptr<Slot> m_slot;
+		bool m_ssbo;
 	};
 }
 #endif !RDDATAMANAGER_H

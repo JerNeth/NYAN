@@ -126,7 +126,6 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 			};
 			assert(resource.handle);
 
-
 			 
 			for (uint32_t i = 0; i < static_cast<uint32_t>(r_renderManager.get_ddgi_manager().slot_count()); ++i) {
 				//auto pipelineBind = cmd.bind_compute_pipeline(m_filterDDGIPipeline);
@@ -238,21 +237,29 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.workSizeX {m_scanGroupSize},
 					.workSizeY {1},
 					.workSizeZ {1},
-					.subgroupSize {32}, //TODO Query device;
+					.subgroupSize {r_device.get_physical_device().get_subgroup_properties().subgroupSize}, //TODO Query device;
 					.numRows {m_scanNumRows}
 				};
 
-				auto scanPipeline = create_scan_pipeline(scanPipelineCfg);
-				//bind scanPipeline
-				//do prefixSum and max (inclusive) of variances
+				if (volume.dynamicRayAllocationEnabled) {
+					auto scanPipeline = create_scan_pipeline(scanPipelineCfg);
+					pipelineBind = cmd.bind_compute_pipeline(scanPipeline);
+
+					sum_variance(pipelineBind, dynamicConstants, (volume.probeCountX* volume.probeCountY* volume.probeCountZ + ((m_scanGroupSize  * m_scanNumRows)- 1)) / (m_scanGroupSize * m_scanNumRows), 1, 1);
+
+				}
 				
 
 
-				if (parameters.frames < 15) {
-					if (volume.relocationEnabled)
-						pipelineBind = cmd.bind_compute_pipeline(relocatePipelineEnabledId);
-					else
-						pipelineBind = cmd.bind_compute_pipeline(relocatePipelineDisabledId);
+				if (parameters.frames <= 1) {
+					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineDisabledId);
+
+					relocate_probes(pipelineBind, constants,
+						(volume.probeCountX* volume.probeCountY* volume.probeCountZ + (relocateConfig.workSizeX - 1))
+						/ relocateConfig.workSizeX, 1, 1);
+				}
+				else if (volume.relocationEnabled) {
+					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineEnabledId);
 
 					relocate_probes(pipelineBind, constants,
 						(volume.probeCountX * volume.probeCountY * volume.probeCountZ + (relocateConfig.workSizeX - 1))
@@ -260,14 +267,27 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				}
 
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, 1);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(irradianceRowBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.irradianceTextureSizeX, volume.probeCountY* volume.probeCountZ, 1);
+				copy_borders(pipelineBind, constants, volume.irradianceTextureSizeX, volume.probeCountY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(depthColumnBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.probeCountX, volume.depthTextureSizeY, 1);
+				copy_borders(pipelineBind, constants, volume.probeCountX, volume.depthTextureSizeY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(depthRowBorderPipelineId);
-				copy_borders(pipelineBind, constants, volume.depthTextureSizeX, volume.probeCountY* volume.probeCountZ, 1);
+				copy_borders(pipelineBind, constants, volume.depthTextureSizeX, volume.probeCountY, volume.probeCountZ);
 
+				GatherPipelineConfig gatherPipelineCfg{
+					.workSizeX {m_gatherGroupSize},
+					.workSizeY {1},
+					.workSizeZ {1},
+					.numRows {m_gatherNumRows}
+				};
+
+				if (volume.dynamicRayAllocationEnabled) {
+					auto gatherPipeline = create_gather_pipeline(gatherPipelineCfg);
+					cmd.bind_compute_pipeline(gatherPipeline);
+					cmd.barrier2(1, &global);
+					gather_variance(pipelineBind, dynamicConstants, (volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((m_gatherGroupSize * m_gatherNumRows )- 1)) / (m_gatherGroupSize * m_gatherNumRows), 1, 1);
+				}
 
 			}
 		}, false);
@@ -392,6 +412,26 @@ void nyan::DDGIRenderer::relocate_probes(vulkan::ComputePipelineBind& bind, cons
 	bind.dispatch(groupCountX, groupCountY, groupCountZ);
 }
 
+void nyan::DDGIRenderer::sum_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+	bind.push_constants(constants);
+	const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(groupCountX <= groupCountLimit[0]);
+	assert(groupCountY <= groupCountLimit[1]);
+	assert(groupCountZ <= groupCountLimit[2]);
+	bind.dispatch(groupCountX, groupCountY, groupCountZ);
+}
+
+void nyan::DDGIRenderer::gather_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+	bind.push_constants(constants);
+	const auto* const groupCountLimit = r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount;
+	assert(groupCountX <= groupCountLimit[0]);
+	assert(groupCountY <= groupCountLimit[1]);
+	assert(groupCountZ <= groupCountLimit[2]);
+	bind.dispatch(groupCountX, groupCountY, groupCountZ);
+}
+
 vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConfig& config)
 {
 	vulkan::PipelineId pipelineId;
@@ -469,7 +509,7 @@ vulkan::PipelineId nyan::DDGIRenderer::create_scan_pipeline(const ScanPipelineCo
 	}
 	else {
 		vulkan::ComputePipelineConfig pipelineConfig{
-				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_prefix_sum_comp",
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_sum_comp",
 				config.workSizeX, config.workSizeY,
 				config.workSizeZ,
 				vulkan::ShaderStorage::SpecializationConstant{ScanPipelineConfig::subgroupSizeShaderName, config.subgroupSize},
@@ -479,6 +519,26 @@ vulkan::PipelineId nyan::DDGIRenderer::create_scan_pipeline(const ScanPipelineCo
 		};
 		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
 		m_scanPipelines.emplace(config, pipelineId);
+	}
+	return pipelineId;
+}
+vulkan::PipelineId nyan::DDGIRenderer::create_gather_pipeline(const GatherPipelineConfig& config)
+{
+	vulkan::PipelineId pipelineId;
+	if (auto it = m_gatherPipelines.find(config); it != m_gatherPipelines.end()) {
+		pipelineId = it->second;
+	}
+	else {
+		vulkan::ComputePipelineConfig pipelineConfig{
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_gather_comp",
+				config.workSizeX, config.workSizeY,
+				config.workSizeZ,
+				vulkan::ShaderStorage::SpecializationConstant{ScanPipelineConfig::numRowsShaderName, config.numRows}
+				)},
+				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
+		};
+		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+		m_gatherPipelines.emplace(config, pipelineId);
 	}
 	return pipelineId;
 }

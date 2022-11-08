@@ -11,12 +11,13 @@ namespace nyan {
 	//Interfaces
 
 	struct ImageAttachment {
-		enum class Size : uint8_t {
+		enum class Size : uint32_t { // no point using 1 byte, because of alignment reasons
 			Absolute,
 			Swapchain
 		};
 		VkFormat format = VK_FORMAT_UNDEFINED;
 		Size size = Size::Swapchain;
+		uint32_t arrayLayers = 1;
 		float width = 1.0f;
 		float height = 1.0f;
 		Math::vec4 clearColor{0.f, 0.f, 0.f, 0.f};

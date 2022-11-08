@@ -328,10 +328,6 @@ void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrie
 	};
 	vkCmdPipelineBarrier2(m_handle, &dependencyInfo);
 }
-void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
-{
-	barrier2(barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
-}
 void vulkan::CommandBuffer::barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
 {
 	barrier2(0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);

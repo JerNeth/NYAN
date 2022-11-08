@@ -5,10 +5,10 @@
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
 {
 	vulkan::Instance::Validation validation{
-		//.enabled {debug},
-		//.createCallback {debug},
-		.enabled {false},
-		.createCallback {false},
+		.enabled {debug},
+		.createCallback {debug},
+		//.enabled {false},
+		//.createCallback {false},
 		.gpuAssisted { false },
 		.gpuAssistedReserveBindingSlot { false },
 		.bestPractices { false },
@@ -214,6 +214,7 @@ bool nyan::Application::setup_vulkan_device()
 			VK_KHR_RAY_QUERY_EXTENSION_NAME,
 			VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
 			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+			VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
 			//VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, 1.2 Core
 			//VK_KHR_MAINTENANCE_4_EXTENSION_NAME, 1.3 Core
 			VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME,

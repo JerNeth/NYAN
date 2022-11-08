@@ -30,14 +30,20 @@ bool nyan::DataManager<T>::upload(vulkan::CommandBuffer& cmd)
 template<typename T>
 uint32_t nyan::DataManager<T>::bind_buffer(vulkan::BufferHandle& buffer)
 {
-	return r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
+	if(m_ssbo)
+		return r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
+	else
+		return r_device.get_bindless_set().set_uniform_buffer(VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
 }
 
 template<typename T>
 inline void nyan::DataManager<T>::rebind_buffer(vulkan::BufferHandle& buffer)
 {
-	r_device.get_bindless_set().set_storage_buffer(m_slot->binding, VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
-} 
+	if (m_ssbo)
+		r_device.get_bindless_set().set_storage_buffer(m_slot->binding, VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
+	else
+		r_device.get_bindless_set().set_uniform_buffer(m_slot->binding, VkDescriptorBufferInfo{ .buffer = buffer->get_handle(), .offset = 0, .range = buffer->get_size() });
+}
 template<typename T>
 vulkan::BufferHandle nyan::DataManager<T>::create_buffer(size_t size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {

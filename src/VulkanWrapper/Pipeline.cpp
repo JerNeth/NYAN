@@ -48,6 +48,7 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& p
 			data.resize(length);
 			in.read(reinterpret_cast<char*>(data.data()), length);
 			in.close();
+			size = length;
 		}
 		else {
 			size = 0;

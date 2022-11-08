@@ -104,15 +104,15 @@ vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount,
 {
 	float maxCount = rayCount;
 	float idx = rayIdx;
-//	bool fixedRay = false;
-//	if(volume.relocationEnabled != 0 || volume.classificationEnabled != 0) {
-//		fixedRay = rayIdx < volume.fixedRayCount;
-//		idx = mix( idx - volume.fixedRayCount, idx, fixedRay);
-//		maxCount = mix(maxCount - volume.fixedRayCount, volume.fixedRayCount, fixedRay);
-//	}
+	bool fixedRay = false;
+	if(volume.relocationEnabled != 0 || volume.classificationEnabled != 0) {
+		fixedRay = rayIdx < volume.fixedRayCount;
+		idx = mix( idx - volume.fixedRayCount, idx, fixedRay);
+		maxCount = mix(maxCount - volume.fixedRayCount, volume.fixedRayCount, fixedRay);
+	}
 	vec3 dir = spherical_fibonacci(idx, maxCount);
-//    if(fixedRay)
-//		return dir;
+    if(fixedRay)
+		return dir;
 
 	return quaternion_rotate(randomRotation, dir);
 }
@@ -133,17 +133,16 @@ vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels)
 	return uv;
 }
 
-ivec2 get_probe_texel_coords(ivec3 probeIdx, in ivec2 probeTexelSize, in DDGIVolume volume) {
-	probeIdx.y += int(volume.probeCountY) * probeIdx.z;
-	return 1 + probeIdx.xy *  (2+ probeTexelSize);
+ivec3 get_probe_texel_coords(ivec3 probeIdx, in ivec2 probeTexelSize, in DDGIVolume volume) {
+	return ivec3(1 + probeIdx.xy *  (2+ probeTexelSize), probeIdx.z);
 }
 
-vec2 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexelSize, in DDGIVolume volume)
+vec3 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexelSize, in DDGIVolume volume)
 {
-	ivec2 texelCoords = get_probe_texel_coords(probeIdx, ivec2(probeTexelSize), volume);
+	ivec3 texelCoords = get_probe_texel_coords(probeIdx, ivec2(probeTexelSize), volume);
 
-	vec2 uv = texelCoords + (octahedralCoords * 0.5 + 0.5) * probeTexelSize;
-	vec2 texSize = vec2(volume.probeCountX, volume.probeCountY * volume.probeCountZ) * (probeTexelSize + 2);
-	return uv / texSize;
+	vec2 uv = texelCoords.xy + (octahedralCoords * 0.5 + 0.5) * probeTexelSize;
+	vec2 texSize = vec2(volume.probeCountX, volume.probeCountY) * (probeTexelSize + 2);
+	return vec3(uv / texSize, texelCoords.z);
 }
 #endif

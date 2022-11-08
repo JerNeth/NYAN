@@ -15,9 +15,42 @@ layout(std430, push_constant) uniform PushConstants
 	uint ddgiBinding;
 	uint ddgiCount;
 	uint ddgiIndex;
+	uint workBufferBinding;
 } constants;
 
+layout(local_size_x_id = 1) in;
+layout(local_size_y_id = 2) in;
+layout(local_size_z_id = 3) in;
+layout(constant_id = 4) const uint numRows = 16;
 
 void main()
 {
+	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+    uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+	uint globalIdx = gl_GlobalInvocationID.x;
+	if(globalIdx >= probeCount)
+		return;
+
+	float variances[numRows];
+
+	for(uint i = 0; i < numRows; ++i) {
+		uint idx = globalIdx * numRows + i;
+		if(idx < probeCount)
+			variances[i] = readFloats[volume.dynamicRayBufferBinding].f[probeCount * 2 + idx];
+		else
+			variances[i] = 0.f;
+	}
+	float totalVariance = readFloats[volume.dynamicRayBufferBinding].f[probeCount * 3];
+	uint totalRayCount = probeCount * (volume.numRays - min(volume.numFixedRays, volume.numRays));
+
+	
+	for(uint i = 0; i < numRows; ++i) {
+		uint idx = globalIdx * numRows + i;
+		uint numRays = volume.numFixedRays;
+		numRays += totalRayCount * (variances[i] / totalVariance);
+		if(idx < probeCount)
+			writeUInts[volume.dynamicRayBufferBinding].u[idx] = numRays;
+	}
+
+
 }

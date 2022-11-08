@@ -218,7 +218,7 @@ void nyan::DDGIManager::update()
 		if (!parameters.dirty)
 			continue;
 		parameters.frames = 0;
-
+		sizeof(nyan::shaders::DDGIVolume);
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
@@ -286,6 +286,7 @@ void nyan::DDGIManager::update()
 			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
 			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
 			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
+			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
 			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
 			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
 			imageAttachment.format = depthFormat;
@@ -296,6 +297,7 @@ void nyan::DDGIManager::update()
 				//VK_FORMAT_R16G16B16A16_SFLOAT},
 				//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
+				.arrayLayers {deviceVolume.probeCountZ},
 				.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
 				.height {static_cast<float>(deviceVolume.depthTextureSizeY)}
 				});
@@ -330,6 +332,7 @@ void nyan::DDGIManager::update()
 			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
 			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
 			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
+			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
 			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
 			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
 			imageAttachment.format = irradianceFormat;
@@ -341,6 +344,7 @@ void nyan::DDGIManager::update()
 				//VK_FORMAT_E5B9G9R9_UFLOAT_PACK32
 				//VK_FORMAT_R16G16B16_SFLOAT
 				.size{nyan::ImageAttachment::Size::Absolute},
+				.arrayLayers {deviceVolume.probeCountZ},
 				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
 				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
 				});
@@ -356,15 +360,17 @@ void nyan::DDGIManager::update()
 		if (parameters.data0Resource) {
 			auto& data0Resource = r_rendergraph.get_resource(parameters.data0Resource);
 			assert(data0Resource.m_type == nyan::RenderResource::Type::Image);
-			auto& data0Attachment = std::get< ImageAttachment>(data0Resource.attachment);
-			data0Attachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
-			data0Attachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
-			data0Attachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+			auto& imageAttachment = std::get< ImageAttachment>(data0Resource.attachment);
+			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			imageAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
 		}
 		else {
 			parameters.data0Resource = r_rendergraph.add_ressource(std::format("DDGI_Data0_{}", parameters.ddgiVolume), nyan::ImageAttachment{
 				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
+				.arrayLayers {deviceVolume.probeCountZ},
 				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
 				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
 				});
@@ -380,17 +386,19 @@ void nyan::DDGIManager::update()
 		if (parameters.data1Resource) {
 			auto& data1Resource = r_rendergraph.get_resource(parameters.data1Resource);
 			assert(data1Resource.m_type == nyan::RenderResource::Type::Image);
-			auto& data1Attachment = std::get< ImageAttachment>(data1Resource.attachment);
-			data1Attachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
-			data1Attachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
-			data1Attachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+			auto& imageAttachment = std::get< ImageAttachment>(data1Resource.attachment);
+			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			imageAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
 		}
 		else {
 			parameters.data1Resource = r_rendergraph.add_ressource(std::format("DDGI_Data1_{}", parameters.ddgiVolume), nyan::ImageAttachment{
 				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
 				.size{nyan::ImageAttachment::Size::Absolute},
+				.arrayLayers {deviceVolume.probeCountZ},
 				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
-				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
+				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)},
 				});
 			for (const auto& read : m_reads) {
 				auto& pass = r_rendergraph.get_pass(read);
@@ -480,7 +488,8 @@ void nyan::DDGIManager::update_depth_texture(nyan::shaders::DDGIVolume& volume)
 {
 	//Add 1 pixel sample border
 	volume.depthTextureSizeX = volume.probeCountX * (2 + volume.depthProbeSize);
-	volume.depthTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.depthProbeSize);
+	//volume.depthTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.depthProbeSize);
+	volume.depthTextureSizeY = volume.probeCountY * (2 + volume.depthProbeSize);
 	volume.inverseDepthTextureSizeX = 1.0f / volume.depthTextureSizeX;
 	volume.inverseDepthTextureSizeY = 1.0f / volume.depthTextureSizeY;
 }
@@ -489,7 +498,8 @@ void nyan::DDGIManager::update_irradiance_texture(nyan::shaders::DDGIVolume& vol
 {
 	//Add 1 pixel sample border
 	volume.irradianceTextureSizeX = volume.probeCountX * (2 + volume.irradianceProbeSize);
-	volume.irradianceTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.irradianceProbeSize);
+	//volume.irradianceTextureSizeY = volume.probeCountZ * volume.probeCountY * (2 + volume.irradianceProbeSize);
+	volume.irradianceTextureSizeY = volume.probeCountY * (2 + volume.irradianceProbeSize);
 	volume.inverseIrradianceTextureSizeX = 1.0f / volume.irradianceTextureSizeX;
 	volume.inverseIrradianceTextureSizeY = 1.0f / volume.irradianceTextureSizeY;
 }

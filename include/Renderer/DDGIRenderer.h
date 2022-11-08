@@ -128,6 +128,20 @@ namespace nyan {
 					lhs.numRows == rhs.numRows;
 			}
 		};
+		struct GatherPipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			uint32_t numRows;
+			static constexpr const char* numRowsShaderName{ "numRows" };
+			friend bool operator==(const GatherPipelineConfig& lhs, const GatherPipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ &&
+					lhs.numRows == rhs.numRows;
+			}
+		};
 	public:
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
@@ -137,10 +151,13 @@ namespace nyan {
 		void filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
 		void copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
 		void relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+		void sum_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+		void gather_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
 		vulkan::PipelineId create_relocate_pipeline(const RelocatePipelineConfig& config);
 		vulkan::PipelineId create_scan_pipeline(const ScanPipelineConfig& config);
+		vulkan::PipelineId create_gather_pipeline(const GatherPipelineConfig& config);
 		vulkan::RTPipeline& get_rt_pipeline(const RTConfig& config);
 
 		vulkan::RaytracingPipelineConfig generate_config(const RTConfig& config);
@@ -154,10 +171,13 @@ namespace nyan {
 		uint32_t m_scratchBufferBinding{ ~0ul };
 		uint32_t m_scanGroupSize{ 1024ul };
 		uint32_t m_scanNumRows{ 16ul };
+		uint32_t m_gatherGroupSize{ 64ul };
+		uint32_t m_gatherNumRows{ 16ul };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
 		std::unordered_map<RelocatePipelineConfig, vulkan::PipelineId, Utility::Hash<RelocatePipelineConfig>> m_relocatePipelines;
 		std::unordered_map<ScanPipelineConfig, vulkan::PipelineId, Utility::Hash<ScanPipelineConfig>> m_scanPipelines;
+		std::unordered_map<GatherPipelineConfig, vulkan::PipelineId, Utility::Hash<GatherPipelineConfig>> m_gatherPipelines;
 		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_rtPipelines;
 		std::mt19937 m_generator{ 420 };
 		std::uniform_real_distribution<float> m_dist {0.f, 1.f};

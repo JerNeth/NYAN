@@ -81,7 +81,9 @@ vec3 sample_ddgi(in vec3 worldPos,
 		float trilinearWeight = trilinear.x *trilinear.y * trilinear.z;
 		float weight = 1.f;
 		
+		//#define NOWRAPSHADING
 		#ifndef NOWRAPSHADING
+		//Wrapshading can cause light bleeding, especially with high light intensities
 		float backFaceWeight = fma(dot(worldPosToAdjacentProbe, direction), 0.5f , 0.5f) ;
 		weight *= fma(backFaceWeight, backFaceWeight, 0.2f);
 		#else
@@ -91,23 +93,23 @@ vec3 sample_ddgi(in vec3 worldPos,
 
 		vec2 octCoords = get_octahedral_coords(biasedWorldPosToAdjacentProbe);
 		
-		vec2 depthUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.depthProbeSize, volume);
+		vec3 depthUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.depthProbeSize, volume);
 		octCoords = get_octahedral_coords(direction);
-		vec2 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
+		vec3 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
 
 
-		vec3 probeIrradiance = textureLod(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV, 0).rgb;
+		vec3 probeIrradiance = textureLod(sampler2DArray(textures2DArray[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV, 0).rgb;
 
 
 		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
 		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;
 		if(volume.useMoments != 0) {
-			vec4 filteredDistance = textureLod(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
+			vec4 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
 			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
 			weight *= max(0.05f, shadowValue);
 		}
 		else {
-			vec2 filteredDistance = textureLod(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rg;
+			vec2 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rg;
 			float chebyshev = 1.f;
 			if(biasedWorldPosToAdjacentProbeDist > filteredDistance.x) {
 				float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
@@ -128,7 +130,7 @@ vec3 sample_ddgi(in vec3 worldPos,
 			weight *= weight * weight * (1.f / (threshold * threshold));
 		}
 		#undef DO_GAMMA
-		//#define DO_GAMMA
+		#define DO_GAMMA
 		#ifdef DO_GAMMA
 		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f * 5.f));
 		#endif		

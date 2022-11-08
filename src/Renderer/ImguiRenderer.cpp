@@ -135,8 +135,8 @@ namespace MM {
 		ImGui::DragFloat("View Bias", &volume.depthViewBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance, 1.f, 0.00001f, 100000.0f);
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Use Moments", &volume.useMoments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
@@ -225,24 +225,32 @@ namespace MM {
 		ImGui::Checkbox("Dynamic Ray Allocation Enabled", &volume.dynamicRayAllocation);
 		if (volume.ddgiVolume != ~0) {
 			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
+			auto ratio = static_cast<float>(volume.probeCount.y()) / static_cast<float>(volume.probeCount.x());
 			ImGui::Text("Irradiance Texture");
 			ImGui::SameLine(0, 25);
 			ImGui::Text("Depth Texture");
+			static int layer = 0;
+
+			ImGui::InputInt("Layer", &layer, 1);
+			layer = std::max(layer, 0);
+			layer = std::min(static_cast<uint32_t>(layer), volume.probeCount.z());
 			if (devvolume.irradianceTextureBinding != ~0) {
-				ImGui::Image(static_cast<ImTextureID>(devvolume.irradianceTextureBinding + 1), ImVec2(128, 256));
+				uint64_t image = (devvolume.irradianceTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
+				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
 				if (ImGui::IsItemHovered()) {
 					ImGui::BeginTooltip();
-					ImGui::Image(static_cast<ImTextureID>(devvolume.irradianceTextureBinding + 1), ImVec2(512, 1024));
+					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
 					ImGui::EndTooltip();
 				}
 			}
 			if (devvolume.depthTextureBinding != ~0) {
 				ImGui::SameLine();
-				ImGui::Image(static_cast<ImTextureID>(devvolume.depthTextureBinding + 1), ImVec2(128, 256));
+				uint64_t image = (devvolume.depthTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
+				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
 
 				if (ImGui::IsItemHovered()) {
 					ImGui::BeginTooltip();
-					ImGui::Image(static_cast<ImTextureID>(devvolume.depthTextureBinding + 1), ImVec2(512, 1024));
+					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
 					ImGui::EndTooltip();
 				}
 			}
@@ -410,6 +418,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 		int samplerId;
 		int customTexId;
 		int customSamplerId;
+		int arrayLayer;
 	} push {
 		.scale {
 			2.0f / static_cast<float>(draw_data->DisplaySize.x),
@@ -423,6 +432,7 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 		.samplerId {static_cast<int>(vulkan::DefaultSampler::NearestClamp)},
 		//.customTexId {-1},
 		//.customSamplerId{static_cast<int>(vulkan::DefaultSampler::LinearWrap)}
+		.arrayLayer {-1}
 	};
 	//push.scale[0] = 2.0f / draw_data->DisplaySize.x;
 	//push.scale[1] = 2.0f / draw_data->DisplaySize.y;
@@ -490,12 +500,16 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 							.height = (uint32_t)(clip_rect.w - clip_rect.y),
 						}
 					};
-					auto tex = static_cast<int>(pcmd->TextureId) -1;
+					auto data = static_cast<long long>(pcmd->TextureId) ;
+					auto tex = (data & (std::numeric_limits<uint32_t>::max())) - 1;
+					auto texInfo = ((data >> 32) & (std::numeric_limits<uint32_t>::max())) - 1;
 					if (tex != -1) {
 						push.texId = tex;
+						push.arrayLayer = texInfo;
 					}
 					else {
 						push.texId = static_cast<int>(m_fontBind);
+						push.arrayLayer = -1;
 					}
 					pipelineBind.push_constants(push);
 					pipelineBind.set_scissor_with_count(1, &scissor);

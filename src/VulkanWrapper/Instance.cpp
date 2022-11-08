@@ -1,4 +1,5 @@
 #include "Instance.h"
+#include "Instance.h"
 #include <stdexcept>
 
 #include "Utility/Exceptions.h"
@@ -478,6 +479,11 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 				m_features.pNext = &m_meshShaderFeatures;
 				m_extensions.mesh_shader = m_meshShaderFeatures.meshShader && m_meshShaderFeatures.taskShader;
 			}
+			else if (strcmp(ext.extensionName, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME) == 0) {
+				m_atomicFloatFeatures.pNext = m_features.pNext;
+				m_features.pNext = &m_atomicFloatFeatures;
+				m_extensions.atomic_floats = m_atomicFloatFeatures.shaderBufferFloat32Atomics && m_atomicFloatFeatures.shaderBufferFloat32AtomicAdd;
+			}
 			else if (strcmp(ext.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
 				m_extensions.swapchain = 1;
 			}
@@ -603,6 +609,11 @@ const VkPhysicalDeviceVulkan13Features& vulkan::PhysicalDevice::get_vulkan13_fea
 	return m_13Features;
 }
 
+const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& vulkan::PhysicalDevice::get_atomic_float_features() const noexcept
+{
+	return m_atomicFloatFeatures;
+}
+
 const VkPhysicalDeviceAccelerationStructureFeaturesKHR& vulkan::PhysicalDevice::get_acceleration_structure_features() const noexcept
 {
 	return m_accelerationStructureFeatures;
@@ -631,6 +642,11 @@ const VkPhysicalDeviceMeshShaderFeaturesNV& vulkan::PhysicalDevice::get_mesh_sha
 const VkPhysicalDeviceProperties& vulkan::PhysicalDevice::get_properties() const noexcept
 {
 	return m_properties.properties;
+}
+
+const VkPhysicalDeviceSubgroupProperties& vulkan::PhysicalDevice::get_subgroup_properties() const noexcept
+{
+	return m_subgroupProperties;
 }
 
 const VkPhysicalDeviceVulkan11Properties& vulkan::PhysicalDevice::get_vulkan11_properties() const noexcept
@@ -719,7 +735,10 @@ void vulkan::PhysicalDevice::init_features() noexcept
 	m_12Features.pNext = &m_13Features;
 
 	m_13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-	m_13Features.pNext = &m_accelerationStructureFeatures;
+	m_13Features.pNext = &m_atomicFloatFeatures;
+
+	m_atomicFloatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+	m_atomicFloatFeatures.pNext = &m_accelerationStructureFeatures;
 
 	m_accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
 	m_accelerationStructureFeatures.pNext = &m_rayTracingPipelineFeatures;
@@ -744,7 +763,10 @@ void vulkan::PhysicalDevice::init_features() noexcept
 void vulkan::PhysicalDevice::init_properties() noexcept
 {
 	m_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	m_properties.pNext = &m_11Properties;
+	m_properties.pNext = &m_subgroupProperties;
+
+	m_subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+	m_subgroupProperties.pNext = &m_11Properties;
 
 	m_11Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
 	m_11Properties.pNext = &m_12Properties;

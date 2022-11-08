@@ -51,15 +51,15 @@ void main() {
 	vec2 octCoords = get_octahedral_coords(sphereDir);
     vec3 probeColor;
     if(volume.visualizeDepth != 0) {
-	    vec2 depthUv = get_probe_uv(ivec3(probeIdx), octCoords, volume.depthProbeSize, volume);
-
-	    vec3 probeDepth = texture(sampler2D(textures2D[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUv).rrr;
+	    vec3 depthUv = get_probe_uv(ivec3(probeIdx), octCoords, volume.depthProbeSize, volume);
+        
+	    vec3 probeDepth = texture(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUv).rrr;
         probeColor = probeDepth / length(vec3(volume.spacingX, volume.spacingY, volume.spacingZ));
 
     } else {
-	    vec2 irradianceUV = get_probe_uv(ivec3(probeIdx), octCoords, volume.irradianceProbeSize, volume);
-
-	    vec3 probeIrradiance = texture(sampler2D(textures2D[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
+	    vec3 irradianceUV = get_probe_uv(ivec3(probeIdx), octCoords, volume.irradianceProbeSize, volume);
+        
+	    vec3 probeIrradiance = texture(sampler2DArray(textures2DArray[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV).rgb;
         probeColor = probeIrradiance;
     }
     if(volume.visualizeDirections != 0) {

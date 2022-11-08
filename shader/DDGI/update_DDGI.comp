@@ -94,7 +94,7 @@ void MultiscaleMeanEstimator(vec3 y,
 	catchUpBlend *= vbbr;
   
 	vbbr = mix(vbbr, varianceBasedBlendReduction, 0.1);
-	mean = mix(mean, y, clamp(catchUpBlend, 0.f, 1.f));
+	mean = mix(mean, y, clamp(catchUpBlend, 6e-5f, 1.f));
   
 	// Output
 	data.mean = mean;
@@ -146,10 +146,11 @@ void main()
 	float resultWeight = 0.f;
 	
 	int rayIdx = 0;
-//	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
-//    {
-//        rayIdx = int(volume.fixedRayCount);
-//    }
+	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
+    {
+		//Biased
+        rayIdx = int(volume.fixedRayCount);
+    }
 
 	uint backfaceCount = 0;
 	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.backfaceThreshold);
@@ -165,7 +166,11 @@ void main()
 			if(rayDist < 0.f){
 				++backfaceCount;
 				if( backfaceCount > backfaceThreshold)
-					return;
+				{
+					result.xyz = vec3(0.f);
+					break;
+					//return;
+				}
 				continue;
 			}
 			vec3 rayRadiance = rayRadiance[rayIdx];
@@ -179,8 +184,9 @@ void main()
 	}
 	float epsilon = float(rayCount) * 1e-9f;
 	float hysteresis = volume.hysteresis;
-
-	ivec2 texCoord = ivec2(gl_LocalInvocationID.xy + get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), ivec2(gl_WorkGroupSize.xy), volume));
+	
+	ivec3 texCoord = get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), ivec2(gl_WorkGroupSize.xy), volume);
+	texCoord.xy += ivec2(gl_LocalInvocationID.xy);
 
 	float weightNormalization = 1.f/ (max(resultWeight, epsilon));
 
@@ -197,15 +203,15 @@ void main()
 		imageBinding = volume.depthImageBinding;
 			
 	if(imageFormat == R11G11B10F)
-		previous = imageLoad(imagesR11G11B10F[imageBinding], texCoord);
+		previous = imageLoad(imagesArrayR11G11B10F[imageBinding], texCoord);
 	else if(imageFormat == R10G10B10A2F)
-		previous = imageLoad(imagesRGB10_A2[imageBinding], texCoord);
+		previous = imageLoad(imagesArrayRGB10_A2[imageBinding], texCoord);
 	else if(imageFormat == R16G16B16A16F)
-		previous = imageLoad(imagesRGBA16F[imageBinding], texCoord);
+		previous = imageLoad(imagesArrayRGBA16F[imageBinding], texCoord);
 	else if(imageFormat == R32G32B32A32F)
-		previous = imageLoad(imagesRGBA32F[imageBinding], texCoord);
+		previous = imageLoad(imagesArrayRGBA32F[imageBinding], texCoord);
 	else if(imageFormat == E5B9G9R9F)
-		previous.xyz = rgb9e5_to_vec3(imageLoad(imagesR32UI[imageBinding], texCoord).x);
+		previous.xyz = rgb9e5_to_vec3(imageLoad(imagesArrayR32UI[imageBinding], texCoord).x);
 		//previous.xyz = rgb9e5_to_vec3(floatBitsToUint(imageLoad(imagesR32F[imageBinding], texCoord).x));
 
 	//Recover if we somehow get negativ radiance
@@ -216,16 +222,17 @@ void main()
 	if(filterIrradiance) {
 	
 		#undef DO_GAMMA
-		//#define DO_GAMMA
-		#ifdef DO_GAMMA0
+		#define DO_GAMMA
+		#ifdef DO_GAMMA
 		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
 		#endif		
 
 		//MultiscaleMeanEstimator from Ray Tracing Gems
-		vec4 data0 = imageLoad(imagesRGBA16F[volume.data0ImageBinding], texCoord);
-		vec4 data1 = imageLoad(imagesRGBA16F[volume.data1ImageBinding], texCoord);
+
+		vec4 data0 = imageLoad(imagesArrayRGBA16F[volume.data0ImageBinding], texCoord);
+		vec4 data1 = imageLoad(imagesArrayRGBA16F[volume.data1ImageBinding], texCoord);
 		MultiscaleMeanEstimatorData data;
-		
+
 		data.mean = previous.xyz;
 		data.shortMean = data0.xyz;
 		data.vbbr = data0.w;
@@ -235,9 +242,9 @@ void main()
 		//MultiscaleMeanEstimator(result.xyz, data, 0.08f);
 		MultiscaleMeanEstimator(result.xyz, data, volume.lightToDarkThreshold);
 		result = vec4(data.mean, 1.f);
-
-		imageStore(imagesRGBA16F[volume.data0ImageBinding], texCoord, vec4(data.shortMean, data.vbbr));
-		imageStore(imagesRGBA16F[volume.data1ImageBinding], texCoord, vec4(data.variance, data.inconsistency));
+		
+		imageStore(imagesArrayRGBA16F[volume.data0ImageBinding], texCoord, vec4(data.shortMean, data.vbbr));
+		imageStore(imagesArrayRGBA16F[volume.data1ImageBinding], texCoord, vec4(data.variance, data.inconsistency));
 
 		if(volume.dynamicRayAllocationEnabled != 0) {
 			//float variance = max_component(abs(data.variance));
@@ -251,8 +258,9 @@ void main()
 			//Since there's no guarantee that two atomics are executed in order
 			barrier();
 			if(gl_LocalInvocationIndex == 0)
-				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[volume.probeCountX * volume.probeCountY * volume.probeCountZ + probeIdx] = rayVariance;
+				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[(volume.probeCountX * volume.probeCountY * volume.probeCountZ) * 2 + probeIdx] = rayVariance;
 		}
+
 	//Biased shadow-preserving temporal hysteresis. from GI-1.0
 //		float l1 = dot(result.xyz, vec3(1.f / 3.f));
 //		float l2 = dot(previous.xyz, vec3(1.f / 3.f));
@@ -275,10 +283,10 @@ void main()
 //		if(changeMagnitude > 0.8)
 //			hysteresis = 0.f;
 //			
-
+//
 //		result.rgb = mix(result.rgb, previous.rgb, hysteresis);
 //		result.a = 1.f;
-
+//
 
 		//From RTXGI SDK
 //		vec3 delta = result.xyz - previous.xyz;
@@ -319,17 +327,17 @@ void main()
 	else {
 		result = vec4(mix(result, previous, hysteresis));
 	}
-	//barrier();
+
 	if(imageFormat == R11G11B10F)
-		imageStore(imagesR11G11B10F[imageBinding], texCoord, result);
+		imageStore(imagesArrayR11G11B10F[imageBinding], texCoord, result);
 	else if(imageFormat == R10G10B10A2F)
-		imageStore(imagesRGB10_A2[imageBinding], texCoord, result);
+		imageStore(imagesArrayRGB10_A2[imageBinding], texCoord, result);
 	else if(imageFormat == R16G16B16A16F)
-		imageStore(imagesRGBA16F[imageBinding], texCoord, result);
+		imageStore(imagesArrayRGBA16F[imageBinding], texCoord, result);
 	else if(imageFormat == R32G32B32A32F)
-		imageStore(imagesRGBA32F[imageBinding], texCoord, result);
+		imageStore(imagesArrayRGBA32F[imageBinding], texCoord, result);
 	else if(imageFormat == E5B9G9R9F)
-		imageStore(imagesR32UI[imageBinding], texCoord, uvec4(vec3_to_rgb9e5(result.rgb), 0, 0,0));
+		imageStore(imagesArrayR32UI[imageBinding], texCoord, uvec4(vec3_to_rgb9e5(result.rgb), 0, 0,0));
 		//imageStore(imagesR32F[imageBinding], texCoord, vec4(uintBitsToFloat(vec3_to_rgb9e5(result.rgb)), 0, 0,0));
 	
 }

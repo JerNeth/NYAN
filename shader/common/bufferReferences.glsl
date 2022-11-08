@@ -2,34 +2,34 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_ARB_gpu_shader_int64 : require
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Indices {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Indices {
 	ivec3 i[];
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Positions {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Positions {
 	vec3 p[];
 };
 
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Uvs {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Uvs {
 	vec2 u[];
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Normals {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Normals {
 	vec3 n[];
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer Tangents {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Tangents {
 	vec4 t[];
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer UvsHalf {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer UvsHalf {
 	uint u[];
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer NormalsHalf {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer NormalsHalf {
 	uint n[];
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TangentsHalf {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer TangentsHalf {
 	uint t[]; 
 };
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TraceRaysIndirect {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer TraceRaysIndirect {
 	uint width; 
 	uint height;
 	uint depth;

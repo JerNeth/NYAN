@@ -88,6 +88,7 @@ namespace vulkan {
 		uint32_t performance_query : 1;
 		uint32_t vertex_input_dynamic_state : 1;
 		uint32_t mesh_shader : 1;
+		uint32_t atomic_floats : 1;
 		uint32_t buffer_device_address : 1;
 	};
 	class PhysicalDevice {
@@ -110,6 +111,7 @@ namespace vulkan {
 		const VkPhysicalDeviceVulkan11Features& get_vulkan11_features() const noexcept;
 		const VkPhysicalDeviceVulkan12Features& get_vulkan12_features() const noexcept;
 		const VkPhysicalDeviceVulkan13Features& get_vulkan13_features() const noexcept;
+		const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& get_atomic_float_features() const noexcept;
 		const VkPhysicalDeviceAccelerationStructureFeaturesKHR& get_acceleration_structure_features() const noexcept;
 		const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& get_ray_tracing_pipeline_features() const noexcept;
 		const VkPhysicalDeviceRayQueryFeaturesKHR& get_ray_query_features() const noexcept;
@@ -117,6 +119,7 @@ namespace vulkan {
 		const VkPhysicalDeviceMeshShaderFeaturesNV& get_mesh_shader_features() const noexcept;
 
 		const VkPhysicalDeviceProperties& get_properties() const noexcept;
+		const VkPhysicalDeviceSubgroupProperties& get_subgroup_properties() const noexcept;
 		const VkPhysicalDeviceVulkan11Properties& get_vulkan11_properties() const noexcept;
 		const VkPhysicalDeviceVulkan12Properties& get_vulkan12_properties() const noexcept;
 		const VkPhysicalDeviceVulkan13Properties& get_vulkan13_properties() const noexcept;
@@ -145,6 +148,7 @@ namespace vulkan {
 		VkPhysicalDeviceVulkan11Features  m_11Features{};
 		VkPhysicalDeviceVulkan12Features  m_12Features{};
 		VkPhysicalDeviceVulkan13Features  m_13Features{};
+		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT m_atomicFloatFeatures{};
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures{};
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_rayTracingPipelineFeatures{};
 		VkPhysicalDeviceRayQueryFeaturesKHR m_rayQueryFeatures{};
@@ -152,6 +156,7 @@ namespace vulkan {
 		VkPhysicalDeviceMeshShaderFeaturesNV m_meshShaderFeatures{};
 
 		VkPhysicalDeviceProperties2 m_properties{};
+		VkPhysicalDeviceSubgroupProperties m_subgroupProperties{};
 		VkPhysicalDeviceVulkan11Properties  m_11Properties{};
 		VkPhysicalDeviceVulkan12Properties  m_12Properties{};
 		VkPhysicalDeviceVulkan13Properties  m_13Properties{};

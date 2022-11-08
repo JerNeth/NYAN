@@ -15,6 +15,9 @@ layout(push_constant) uniform uPushConstant {
     vec2 uTranslate;
     int texId;
     int samplerId;
+    int customTexId;
+    int customSamplerId;
+    int arrayLayer;
 } pc;
 
 out gl_PerVertex { vec4 gl_Position; };

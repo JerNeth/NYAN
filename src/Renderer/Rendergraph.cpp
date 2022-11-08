@@ -1303,6 +1303,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 	}
 	if (m_swapchainResource == resource.m_id) {
 		resource.handle = r_device.get_swapchain_image();
+		assert(attachment.arrayLayers == 1);
 	}
 	else {
 		VkImageUsageFlags usage = 0;
@@ -1364,7 +1365,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 			}
 		}
 		if (!totalUses.none())
-			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id.id, usage, initialLayout);
+			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id.id, usage, initialLayout, VK_SAMPLE_COUNT_1_BIT, attachment.arrayLayers);
 	}
 	resource.handle->set_debug_label(resource.name.data());
 	resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
