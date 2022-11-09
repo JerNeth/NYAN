@@ -255,7 +255,8 @@ void nyan::DDGIManager::update()
 			.useMoments {parameters.useMoments},
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
-			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
+			//.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
+			.dynamicRayAllocationEnabled {false},
 		};
 		if (deviceVolume.fixedRayCount > deviceVolume.raysPerProbe)
 			deviceVolume.fixedRayCount = deviceVolume.raysPerProbe;
@@ -545,10 +546,11 @@ void nyan::DDGIManager::update_dynamic_ray_buffer_binding(uint32_t volumeId, nya
 			.usage {VK_BUFFER_USAGE_STORAGE_BUFFER_BIT},
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
+		std::vector<uint32_t> data(volume.probeCountX * volume.probeCountY * volume.probeCountZ * 2, volume.raysPerProbe);
 		uint32_t oldBinding{ ~0u };
 		if (m_rayAllocation[volumeId])
 			oldBinding = m_rayAllocation[volumeId]->binding;
-		m_rayAllocation[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, {}, false), desiredSize);
+		m_rayAllocation[volumeId] = std::make_unique<Offsets>(r_device.create_buffer(info, { vulkan::InputData{.ptr = data.data(), .size = data.size()} }, false), desiredSize);
 		if (oldBinding == ~0)
 			oldBinding = r_device.get_bindless_set().reserve_storage_buffer();
 		m_rayAllocation[volumeId]->binding = oldBinding;
@@ -576,8 +578,8 @@ void nyan::DDGIManager::update_ray_counts(uint32_t volumeId)
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
 		VkTraceRaysIndirectCommandKHR data{
-			.width {1},
-			.height {1},
+			.width {(1 << 10) / 8},
+			.height {2904},
 			.depth {1},
 		};
 		m_rayCounts[volumeId] = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(info, { vulkan::InputData{.ptr {&data},.size {desiredSize} } }, false));

@@ -41,13 +41,13 @@ void main()
 			variances[i] = 0.f;
 	}
 	float totalVariance = readFloats[volume.dynamicRayBufferBinding].f[probeCount * 3];
-	uint totalRayCount = probeCount * (volume.numRays - min(volume.numFixedRays, volume.numRays));
+	uint totalRayCount = probeCount * (volume.raysPerProbe - min(volume.fixedRayCount, volume.raysPerProbe));
 
 	
 	for(uint i = 0; i < numRows; ++i) {
 		uint idx = globalIdx * numRows + i;
-		uint numRays = volume.numFixedRays;
-		numRays += totalRayCount * (variances[i] / totalVariance);
+		uint numRays = volume.fixedRayCount;
+		numRays += uint(totalRayCount * (variances[i] / totalVariance));
 		if(idx < probeCount)
 			writeUInts[volume.dynamicRayBufferBinding].u[idx] = numRays;
 	}

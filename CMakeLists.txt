@@ -6,7 +6,7 @@
 
 cmake_policy(SET CMP0091 NEW)
 project(NYAN)
-include("UserSettings.txt")
+#include("UserSettings.txt")
 
 #Project Wide Settings
 #All Options which change the ABI come here
@@ -113,16 +113,16 @@ target_sources(Engine
     PUBLIC ${INCLUDE_DIR}
     )
 
-add_library(FBXReader STATIC ${FBXREADER_SRC})
-target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
-target_link_libraries(FBXReader fbx z xml2)
+#add_library(FBXReader STATIC ${FBXREADER_SRC})
+#target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
+#target_link_libraries(FBXReader fbx z xml2)
 
 
 
 
 #add_executable(Demo ${DEMO_SRC})
 #add_executable(Demo2 ${DEMO2_SRC})
-add_executable(FBXTest ${FBXTest_SRC})
+#add_executable(FBXTest ${FBXTest_SRC})
 add_executable(RTTest ${RTTest_SRC})
 add_executable(GLTFTest ${GLTFTest_SRC})
 add_executable(HybridTest ${HybridTest_SRC})
@@ -140,7 +140,7 @@ target_link_libraries(tinygltf PUBLIC stb)
 target_link_libraries(Engine PUBLIC shaders)
 #target_link_libraries(Demo Engine)
 #target_link_libraries(Demo2 Engine)
-target_link_libraries(FBXTest Engine FBXReader)
+#target_link_libraries(FBXTest Engine FBXReader)
 target_link_libraries(GLTFTest Engine)
 target_link_libraries(RTTest Engine FBXReader)
 target_link_libraries(HybridTest Engine FBXReader)
@@ -162,9 +162,9 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
 endif()
 
-target_compile_features(FBXReader PUBLIC 
-    cxx_std_20
-)
+#target_compile_features(FBXReader PUBLIC 
+#    cxx_std_20
+#)
 target_compile_features(Engine PUBLIC 
     cxx_std_20
 )

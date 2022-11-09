@@ -50,13 +50,19 @@ void main()
 	float backfaceCount = 0.f;
 
 	int rayCount = min(int(volume.raysPerProbe), int(volume.fixedRayCount));
-	
+	uint globalRayBeginIdx = probeIdx * volume.raysPerProbe;
+	if(volume.dynamicRayAllocationEnabled != 0) {
+        uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
+		uint probeEnd = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx + 1];
+		rayCount = min(int(probeEnd - probeBegin), int(volume.fixedRayCount));
+		globalRayBeginIdx = probeBegin;
+	}
 
 	vec3 spacing = get_volume_spacing(volume);
 	float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
 	for(int rayIdx = 0; rayIdx < rayCount; rayIdx++)
 	{
-		uint globalRayIdx = probeIdx * volume.raysPerProbe + rayIdx;
+		uint globalRayIdx = globalRayBeginIdx + rayIdx;
 		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		float hitDistance = 0.f;
 		if(renderTargetImageFormat == R16G16B16A16F)

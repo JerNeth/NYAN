@@ -223,6 +223,9 @@ namespace MM {
 		ImGui::Checkbox("Relocation Enabled", &volume.relocationEnabled);
 		ImGui::Checkbox("Classification Enabled", &volume.classificationEnabled);
 		ImGui::Checkbox("Dynamic Ray Allocation Enabled", &volume.dynamicRayAllocation);
+		ImGui::InputInt("Raygen Num Rows", reinterpret_cast<int*>(&volume.numRowsRaygen));
+		while (2048 % volume.numRowsRaygen)
+			volume.numRowsRaygen--;
 		if (volume.ddgiVolume != ~0) {
 			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
 			auto ratio = static_cast<float>(volume.probeCount.y()) / static_cast<float>(volume.probeCount.x());

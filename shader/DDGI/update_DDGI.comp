@@ -30,16 +30,16 @@ layout(std430, push_constant) uniform PushConstants
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
-layout(constant_id = 4) const uint rayCount = 64;
+layout(constant_id = 4) const uint maxRayCount = 64;
 layout(constant_id = 5) const bool filterIrradiance = false;
 layout(constant_id = 6) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 layout(constant_id = 8) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 9) const uint subgroupSize = 32;
 
-shared vec3 rayDirection[rayCount];
-shared vec3 rayRadiance[rayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
-shared float rayDistance[rayCount];
+shared vec3 rayDirection[maxRayCount];
+shared vec3 rayRadiance[maxRayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
+shared float rayDistance[maxRayCount];
 shared float rayVariance; //Unclear whether coherent is needed
 
 struct MultiscaleMeanEstimatorData
@@ -110,6 +110,7 @@ void main()
 
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 	uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
+	uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
 
 	vec2 uv = vec2(0);
 	if(filterIrradiance)
@@ -118,7 +119,16 @@ void main()
 		uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.depthProbeSize));
 
 	vec3 texelDir = get_octahedral_direction(uv);
-	
+
+	uint globalRayBeginIdx = probeIdx * volume.raysPerProbe;
+	uint rayCount = maxRayCount;
+	if(volume.dynamicRayAllocationEnabled != 0) {
+        uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
+		uint probeEnd = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx + 1];
+		rayCount = min(int(probeEnd - probeBegin), int(maxRayCount));
+		globalRayBeginIdx = probeBegin;
+	}
+
 	const int iMax = int(ceil(float(rayCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
 	//float maxRayDist = length(get_volume_spacing(volume)) * 2.f;
@@ -129,7 +139,7 @@ void main()
 		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
 		vec4 data = vec4(0);
 		
-		uint globalRayIdx = probeIdx * volume.raysPerProbe + rayIdx;
+		uint globalRayIdx = globalRayBeginIdx + rayIdx;
 		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		if(renderTargetImageFormat == R16G16B16A16F)
 			data = imageLoad(imagesRGBA16F[constants.renderTarget], renderTargetIdx);
@@ -258,7 +268,7 @@ void main()
 			//Since there's no guarantee that two atomics are executed in order
 			barrier();
 			if(gl_LocalInvocationIndex == 0)
-				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[(volume.probeCountX * volume.probeCountY * volume.probeCountZ) * 2 + probeIdx] = rayVariance;
+				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[(probeCount) * 2 + probeIdx + 1] = rayVariance;
 		}
 
 	//Biased shadow-preserving temporal hysteresis. from GI-1.0

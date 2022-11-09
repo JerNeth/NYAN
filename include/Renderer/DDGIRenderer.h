@@ -32,6 +32,7 @@ namespace nyan {
 			uint32_t ddgiCount;
 			uint32_t ddgiIndex;
 			uint32_t workBufferBinding;
+			uint32_t numRows;
 		};
 		struct PipelineConfig
 		{
@@ -43,7 +44,7 @@ namespace nyan {
 			uint32_t renderTargetImageFormat;
 			uint32_t imageFormat;
 			uint32_t renderTargetImageWidthBits;
-			static constexpr const char* rayCountShaderName{ "rayCount" };
+			static constexpr const char* rayCountShaderName{ "maxRayCount" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
 			static constexpr const char* imageFormatShaderName{ "imageFormat" };
@@ -104,11 +105,14 @@ namespace nyan {
 		{
 			uint32_t renderTargetImageWidthBits;
 			uint32_t renderTargetImageFormat;
+			uint32_t numRows;
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
+			static constexpr const char* numRowsShaderName{ "numRows" };
 			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
 				return lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
-						lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits;
+					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits &&
+					lhs.numRows == rhs.numRows;
 			}
 		};
 		struct ScanPipelineConfig
@@ -142,6 +146,26 @@ namespace nyan {
 					lhs.numRows == rhs.numRows;
 			}
 		};
+		struct PrefixSumPipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			uint32_t subgroupSize;
+			uint32_t numRows;
+			uint32_t renderTargetImageWidthBits;
+			static constexpr const char* subgroupSizeShaderName{ "subgroupSize" };
+			static constexpr const char* numRowsShaderName{ "numRows" };
+			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
+			friend bool operator==(const PrefixSumPipelineConfig& lhs, const PrefixSumPipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ &&
+					lhs.subgroupSize == rhs.subgroupSize &&
+					lhs.numRows == rhs.numRows &&
+					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits;
+			}
+		};
 	public:
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
@@ -153,11 +177,13 @@ namespace nyan {
 		void relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void sum_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void gather_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+		void prefix_sum(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
 		vulkan::PipelineId create_relocate_pipeline(const RelocatePipelineConfig& config);
 		vulkan::PipelineId create_scan_pipeline(const ScanPipelineConfig& config);
 		vulkan::PipelineId create_gather_pipeline(const GatherPipelineConfig& config);
+		vulkan::PipelineId create_prefix_sum_pipeline(const PrefixSumPipelineConfig& config);
 		vulkan::RTPipeline& get_rt_pipeline(const RTConfig& config);
 
 		vulkan::RaytracingPipelineConfig generate_config(const RTConfig& config);
@@ -173,11 +199,14 @@ namespace nyan {
 		uint32_t m_scanNumRows{ 16ul };
 		uint32_t m_gatherGroupSize{ 64ul };
 		uint32_t m_gatherNumRows{ 16ul };
+		uint32_t m_prefixSumGroupSize{ 64ul };
+		uint32_t m_prefixSumNumRows{ 16ul };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
 		std::unordered_map<RelocatePipelineConfig, vulkan::PipelineId, Utility::Hash<RelocatePipelineConfig>> m_relocatePipelines;
 		std::unordered_map<ScanPipelineConfig, vulkan::PipelineId, Utility::Hash<ScanPipelineConfig>> m_scanPipelines;
 		std::unordered_map<GatherPipelineConfig, vulkan::PipelineId, Utility::Hash<GatherPipelineConfig>> m_gatherPipelines;
+		std::unordered_map<PrefixSumPipelineConfig, vulkan::PipelineId, Utility::Hash<PrefixSumPipelineConfig>> m_prefixSumPipelines;
 		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_rtPipelines;
 		std::mt19937 m_generator{ 420 };
 		std::uniform_real_distribution<float> m_dist {0.f, 1.f};

@@ -4,6 +4,7 @@
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_ballot : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_vote : enable
 #extension GL_KHR_memory_scope_semantics : enable
 #extension GL_EXT_shader_atomic_float : enable
 
@@ -62,8 +63,11 @@ void main()
 		aggregates[i] = TYPE(0); //Not sure if zero initialized
 	}
 	TYPE total = 0;
-	uint offset = (probeCount) * 2;
-	bool cond = ((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (numRows - 1) * subgroupSize + (localIdx & (subgroupSize - 1))) < probeCount;
+	uint offset = (probeCount) * 2 + 1;
+	
+	bool condB = ((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (localIdx & (subgroupSize - 1))) < probeCount;
+	bool cond = (((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (numRows - 1) * subgroupSize + (localIdx & (subgroupSize - 1))) < probeCount)
+				&& condB;
 	if(subgroupAll(cond)) {
 		for(uint i = 0; i < numRows; ++i) {
 			//Intention: each subgroup reads contigous memory
@@ -77,7 +81,7 @@ void main()
 		{
 			chunks[localIdx / subgroupSize] = total;
 		}
-	} else if(subgroupAny(cond)) {
+	} else if(subgroupAny(condB)) {
 		for(uint i = 0; i < numRows; ++i) {
 			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
 			TYPE data = 0.f;
@@ -94,7 +98,7 @@ void main()
 	}
 	barrier();
 
-	if(subgroupAny(cond)) {
+	if(subgroupAny(condB)) {
 		if(localIdx < subgroupSize)
 		{
 			TYPE chunk = chunks[gl_SubgroupInvocationID];
@@ -105,10 +109,10 @@ void main()
 		TYPE exclusivePrefix = 0;
 		if(localIdx == (subgroupSize - 1))
 		{
-			atomicStore(Floats[constants.workBufferBinding].f[myTile * 4 + 2], total, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
+			atomicStore(floats[constants.workBufferBinding].f[myTile * 4 + 2], total, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
 			uint flag = FLAG_AGGREGATE_READY;
 			if(myTile == 0) {
-				atomicStore(Floats[constants.workBufferBinding].f[myTile * 4 + 3], total, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
+				atomicStore(floats[constants.workBufferBinding].f[myTile * 4 + 3], total, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
 				flag = FLAG_PREFIX_READY;
 			}
 			atomicStore(uInts[constants.workBufferBinding].u[myTile * 4 + 1], flag, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
@@ -117,11 +121,11 @@ void main()
 				while(true) {
 					flag = atomicLoad(uInts[constants.workBufferBinding].u[lookBackIdx * 4 + 1], gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsAcquire);
 					if(flag == FLAG_PREFIX_READY) {
-						TYPE theirPrefix = atomicLoad(Floats[constants.workBufferBinding].f[lookBackIdx * 4 +3], gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
+						TYPE theirPrefix = atomicLoad(floats[constants.workBufferBinding].f[lookBackIdx * 4 +3], gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
 						exclusivePrefix = theirPrefix + exclusivePrefix;
 						break;
 					} else if(flag == FLAG_AGGREGATE_READY) {
-						TYPE theirAgg = atomicLoad(Floats[constants.workBufferBinding].f[lookBackIdx * 4 + 2], gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
+						TYPE theirAgg = atomicLoad(floats[constants.workBufferBinding].f[lookBackIdx * 4 + 2], gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
 						exclusivePrefix = theirAgg + exclusivePrefix;
 						lookBackIdx--;
 					}
@@ -129,7 +133,7 @@ void main()
 
 				TYPE inclusivePrefix = exclusivePrefix + total;
 				sharedPrefix = exclusivePrefix;
-				atomicStore(Floats[constants.workBufferBinding].f[myTile * 4 +3], inclusivePrefix, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
+				atomicStore(floats[constants.workBufferBinding].f[myTile * 4 +3], inclusivePrefix, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelaxed);
 				flag = FLAG_PREFIX_READY;
 				atomicStore(uInts[constants.workBufferBinding].u[myTile * 4 + 1], flag, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelease);
 			}
@@ -138,7 +142,7 @@ void main()
 	TYPE prefix = 0;
 	barrier();
 
-	if(subgroupAny(cond)) {
+	if(subgroupAny(condB)) {
 		if(myTile != 0)
 			prefix = sharedPrefix;
 	
@@ -148,10 +152,11 @@ void main()
 
 		for(uint i = 0; i < numRows; ++i) {
 			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+			TYPE agg = aggregates[i];
 			if(idx == (probeCount - 1))
-				WriteFloats[volume.dynamicRayBufferBinding].f[probeCount * 3] = prefix;
-			uint agg = aggregates[i];
+				writeFloats[volume.dynamicRayBufferBinding].f[probeCount * 3 + 1] = prefix + agg;
 			prefix += subgroupBroadcast(agg, subgroupSize - 1);
 		}
-	} 
+	}
+	
 }

@@ -48,6 +48,7 @@ namespace nyan {
 			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
+			uint32_t numRowsRaygen{ 8 }; //8 works marginally better for some reason
 
 
 			uint32_t frames{ 0 };
