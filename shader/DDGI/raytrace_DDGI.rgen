@@ -21,6 +21,7 @@ layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStruct
 layout(constant_id = 1) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 2) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 3) const uint numRows = 1;
+layout(constant_id = 4) const bool dynamicRayAllocationEnabled = false;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -132,8 +133,6 @@ void main()
     //gl_LaunchIDEXT.xy;
     Scene scene = scenes[constants.sceneBinding].scene;
     DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
-    uint probeBegin = 0;
-    uint probeEnd = 0;
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
     uint L = 0;
     for(uint i = 0; i <numRows; ++i) {
@@ -142,19 +141,21 @@ void main()
         
         uint rayIdx = 0;
         uint probeIdx = 0;
-		if(volume.dynamicRayAllocationEnabled != 0) {
+		if(dynamicRayAllocationEnabled) {
             uint R = probeCount;
             while (L < R) {
                 uint m = (L+R) >> 1;
-                probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + m];
+                uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + m];
                 if(probeBegin < globalRayIdx)
                     L = m + 1;
                 else
                     R = m;
             }
-            rayIdx = globalRayIdx - probeBegin;
-            probeIdx = L;
-        } else {
+            probeIdx = L - 1;
+            rayIdx = globalRayIdx - readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
+        } 
+        else 
+        {
             rayIdx  = globalRayIdx % volume.raysPerProbe;
             probeIdx = globalRayIdx / volume.raysPerProbe;
         }
@@ -187,7 +188,8 @@ void main()
 	    {
 	        hitDistance *= -0.2;
 	    }
-        else if ((volume.relocationEnabled == 0) || rayIdx > volume.fixedRayCount) {
+        else if ((volume.relocationEnabled == 0) || rayIdx > volume.fixedRayCount || (volume.biasedEstimator == 0) ) {
+        //else {
 	        if(payload.hitkind == HitDDGIMiss) 
 	        {
 		        diffuse = payload.albedo;

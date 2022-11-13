@@ -44,11 +44,13 @@ namespace nyan {
 			uint32_t renderTargetImageFormat;
 			uint32_t imageFormat;
 			uint32_t renderTargetImageWidthBits;
+			VkBool32 dynamicRayAllocationEnabled;
 			static constexpr const char* rayCountShaderName{ "maxRayCount" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
 			static constexpr const char* imageFormatShaderName{ "imageFormat" };
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
+			static constexpr const char* dynamicRayAllocationEnabledShaderName{ "dynamicRayAllocationEnabled" };
 			friend bool operator==(const PipelineConfig& lhs, const PipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
@@ -58,6 +60,7 @@ namespace nyan {
 					lhs.filterIrradiance == rhs.filterIrradiance &&
 					lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
 					lhs.imageFormat == rhs.imageFormat &&
+					lhs.dynamicRayAllocationEnabled == rhs.dynamicRayAllocationEnabled &&
 					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits;
 			}
 		};
@@ -106,12 +109,15 @@ namespace nyan {
 			uint32_t renderTargetImageWidthBits;
 			uint32_t renderTargetImageFormat;
 			uint32_t numRows;
+			VkBool32 dynamicRayAllocationEnabled;
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
+			static constexpr const char* dynamicRayAllocationEnabledShaderName{ "dynamicRayAllocationEnabled" };
 			static constexpr const char* numRowsShaderName{ "numRows" };
 			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
 				return lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
 					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits &&
+					lhs.dynamicRayAllocationEnabled == rhs.dynamicRayAllocationEnabled &&
 					lhs.numRows == rhs.numRows;
 			}
 		};
@@ -194,12 +200,14 @@ namespace nyan {
 		uint32_t m_borderSizeX{ 8 };
 		uint32_t m_borderSizeY{ 8 };
 		std::unique_ptr<vulkan::BufferHandle> m_scratchBuffer;
+		std::unique_ptr<vulkan::BufferHandle> dstBuf;
+		std::unique_ptr<vulkan::BufferHandle> dstBuf2;
 		uint32_t m_scratchBufferBinding{ ~0ul };
 		uint32_t m_scanGroupSize{ 1024ul };
 		uint32_t m_scanNumRows{ 16ul };
 		uint32_t m_gatherGroupSize{ 64ul };
 		uint32_t m_gatherNumRows{ 16ul };
-		uint32_t m_prefixSumGroupSize{ 64ul };
+		uint32_t m_prefixSumGroupSize{ 1024ul };
 		uint32_t m_prefixSumNumRows{ 16ul };
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;

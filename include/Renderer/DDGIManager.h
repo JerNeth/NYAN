@@ -33,6 +33,7 @@ namespace nyan {
 			RenderResource::Id irradianceResource{};
 			RenderResource::Id data0Resource{};
 			RenderResource::Id data1Resource{};
+			RenderResource::Id data2Resource{};
 			uint32_t fixedRayCount{ 32 };
 			float relocationBackfaceThreshold{ 0.25f };
 			float backfaceThreshold{ 0.1f };
@@ -45,6 +46,7 @@ namespace nyan {
 			bool relocationEnabled{ false };
 			bool classificationEnabled{ false };
 			bool dynamicRayAllocation{ false };
+			bool biasedEstimator{ false };
 			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
@@ -90,6 +92,8 @@ namespace nyan {
 		void add_read(Renderpass::Id pass);
 		void add_write(Renderpass::Id pass, Renderpass::Write::Type type);
 		VkDeviceAddress get_ray_count_device_address(uint32_t volumeId) const;
+		vulkan::BufferHandle& get_ray_count_device_addressB(uint32_t volumeId);
+		vulkan::BufferHandle& get_ray_count_device_addressC(uint32_t volumeId);
 	private:
 		void update_spacing(nyan::shaders::DDGIVolume& volume);
 		void update_depth_texture(nyan::shaders::DDGIVolume& volume);

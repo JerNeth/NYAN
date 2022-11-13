@@ -23,6 +23,7 @@ namespace vulkan {
 		void copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size);
 		void copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount);
 		void copy_buffer(const Buffer& dst, const Buffer& src);
+		void fill_buffer(const Buffer& dst, uint32_t data);
 		void blit_image(const Image& dst, const Image& src, const VkOffset3D &dstOffset, const VkOffset3D &dstExtent,
 						const VkOffset3D &srcOffset, const VkOffset3D &srcExtent, uint32_t dstLevel, uint32_t srcLevel,
 						uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter);

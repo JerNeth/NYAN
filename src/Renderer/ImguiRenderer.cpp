@@ -125,7 +125,7 @@ namespace MM {
 		ImGui::DragFloat3("Spacing", &volume.spacing.x());
 		ImGui::DragFloat3("Origin", &volume.origin.x());
 		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32,"%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Fixed Ray Count", reinterpret_cast<int*>(&volume.fixedRayCount), 1, 0, volume.raysPerProbe, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
@@ -223,6 +223,7 @@ namespace MM {
 		ImGui::Checkbox("Relocation Enabled", &volume.relocationEnabled);
 		ImGui::Checkbox("Classification Enabled", &volume.classificationEnabled);
 		ImGui::Checkbox("Dynamic Ray Allocation Enabled", &volume.dynamicRayAllocation);
+		ImGui::Checkbox("Biased Estimator Enabled", &volume.biasedEstimator);
 		ImGui::InputInt("Raygen Num Rows", reinterpret_cast<int*>(&volume.numRowsRaygen));
 		while (2048 % volume.numRowsRaygen)
 			volume.numRowsRaygen--;

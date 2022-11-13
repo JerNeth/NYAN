@@ -23,33 +23,42 @@ layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const uint numRows = 16;
 
+shared float totalVariance;
+shared uint sharedTile;
+
 void main()
 {
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+	uint localIdx = gl_LocalInvocationID.x;
 	uint globalIdx = gl_GlobalInvocationID.x;
-	if(globalIdx >= probeCount)
+	if((globalIdx* numRows) >= probeCount)
 		return;
+	uint readOffset = (probeCount) * 2 + 1;
 
+	if (localIdx == 0)
+		totalVariance = readFloats[volume.dynamicRayBufferBinding].f[readOffset + probeCount];
+
+	barrier();
 	float variances[numRows];
 
 	for(uint i = 0; i < numRows; ++i) {
 		uint idx = globalIdx * numRows + i;
 		if(idx < probeCount)
-			variances[i] = readFloats[volume.dynamicRayBufferBinding].f[probeCount * 2 + idx];
+			variances[i] = readFloats[volume.dynamicRayBufferBinding].f[readOffset + idx];
 		else
 			variances[i] = 0.f;
 	}
-	float totalVariance = readFloats[volume.dynamicRayBufferBinding].f[probeCount * 3];
-	uint totalRayCount = probeCount * (volume.raysPerProbe - min(volume.fixedRayCount, volume.raysPerProbe));
+
+	uint totalRayCount = probeCount * ((volume.raysPerProbe >> 1) - min(volume.fixedRayCount * 2, volume.raysPerProbe >> 1));
 
 	
 	for(uint i = 0; i < numRows; ++i) {
 		uint idx = globalIdx * numRows + i;
-		uint numRays = volume.fixedRayCount;
-		numRays += uint(totalRayCount * (variances[i] / totalVariance));
+		uint numRays = volume.fixedRayCount * 2;
+		numRays += uint((totalRayCount *variances[i]) / totalVariance);
 		if(idx < probeCount)
-			writeUInts[volume.dynamicRayBufferBinding].u[idx] = numRays;
+			writeUInts[volume.dynamicRayBufferBinding].u[idx] = min(numRays, volume.raysPerProbe);
 	}
 
 

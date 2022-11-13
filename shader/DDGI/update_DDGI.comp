@@ -36,6 +36,7 @@ layout(constant_id = 6) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 layout(constant_id = 8) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 9) const uint subgroupSize = 32;
+layout(constant_id = 10) const bool dynamicRayAllocationEnabled = false;
 
 shared vec3 rayDirection[maxRayCount];
 shared vec3 rayRadiance[maxRayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
@@ -51,7 +52,7 @@ struct MultiscaleMeanEstimatorData
   float inconsistency;
 };
 
-void MultiscaleMeanEstimator(vec3 y,
+float MultiscaleMeanEstimator(vec3 y,
 	  inout MultiscaleMeanEstimatorData data,
 	  float shortWindowBlend)
 {
@@ -94,7 +95,8 @@ void MultiscaleMeanEstimator(vec3 y,
 	catchUpBlend *= vbbr;
   
 	vbbr = mix(vbbr, varianceBasedBlendReduction, 0.1);
-	mean = mix(mean, y, clamp(catchUpBlend, 6e-5f, 1.f));
+	float blendFactor = clamp(catchUpBlend, 6e-5f, 1.f);
+	mean = mix(mean, y, blendFactor);
   
 	// Output
 	data.mean = mean;
@@ -102,6 +104,7 @@ void MultiscaleMeanEstimator(vec3 y,
 	data.vbbr = vbbr;
 	data.variance = variance;
 	data.inconsistency = inconsistency;
+	return blendFactor;
 }
 
 //#define DEBUG_COLORS
@@ -122,7 +125,7 @@ void main()
 
 	uint globalRayBeginIdx = probeIdx * volume.raysPerProbe;
 	uint rayCount = maxRayCount;
-	if(volume.dynamicRayAllocationEnabled != 0) {
+	if(dynamicRayAllocationEnabled) {
         uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
 		uint probeEnd = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx + 1];
 		rayCount = min(int(probeEnd - probeBegin), int(maxRayCount));
@@ -152,18 +155,32 @@ void main()
 	}
 	barrier();
 
+	
+	vec4 biasedResult = vec4(0.f);
+	if (filterIrradiance && (volume.biasedEstimator != 0)){
+		for(int rayIdx = 0; rayIdx < volume.fixedRayCount; rayIdx++) {
+			vec3 rayDir = rayDirection[rayIdx];
+			float weight = max(0.f, dot(rayDir, texelDir));
+			biasedResult.w += weight;
+			vec3 rayRadiance = rayRadiance[rayIdx];
+			biasedResult.xyz += rayRadiance * weight;
+		}
+		float epsilon = float(volume.fixedRayCount) * 1e-9f;
+		float weightNormalization = 1.f/ (max(biasedResult.w, epsilon));
+		biasedResult.xyz *= weightNormalization;
+	}
+
 	vec4 result = vec4(0.f);
 	float resultWeight = 0.f;
-	
 	int rayIdx = 0;
-	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled) != 0)
+	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled != 0))
     {
 		//Biased
         rayIdx = int(volume.fixedRayCount);
     }
-
 	uint backfaceCount = 0;
 	uint backfaceThreshold = uint(uint( rayCount - rayIdx) * volume.backfaceThreshold);
+
 	for(; rayIdx < rayCount; rayIdx++) {
 
 		vec3 rayDir = rayDirection[rayIdx];
@@ -235,14 +252,17 @@ void main()
 		#define DO_GAMMA
 		#ifdef DO_GAMMA
 		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
+			
+		biasedResult.rgb = pow(biasedResult.rgb, vec3(1.f / 5.f));
 		#endif		
 
 		//MultiscaleMeanEstimator from Ray Tracing Gems
-
+		
 		vec4 data0 = imageLoad(imagesArrayRGBA16F[volume.data0ImageBinding], texCoord);
 		vec4 data1 = imageLoad(imagesArrayRGBA16F[volume.data1ImageBinding], texCoord);
 		MultiscaleMeanEstimatorData data;
 
+		//data.mean = data2.xyz;
 		data.mean = previous.xyz;
 		data.shortMean = data0.xyz;
 		data.vbbr = data0.w;
@@ -250,15 +270,28 @@ void main()
 		data.inconsistency = data1.w;
 
 		//MultiscaleMeanEstimator(result.xyz, data, 0.08f);
-		MultiscaleMeanEstimator(result.xyz, data, volume.lightToDarkThreshold);
-		result = vec4(data.mean, 1.f);
+		if(volume.biasedEstimator == 0) {
+			data.mean = previous.xyz;
+			MultiscaleMeanEstimator(result.xyz, data, volume.lightToDarkThreshold);
+			result.xyz = data.mean;
+		} else {
+			vec4 data2 = imageLoad(imagesArrayRGBA16F[volume.data2ImageBinding], texCoord);
+			data.mean = data2.xyz;
+			float blendfactor = MultiscaleMeanEstimator(biasedResult.xyz, data, volume.lightToDarkThreshold);
+			result = vec4(mix(previous.xyz, result.xyz, blendfactor), 1.f);
+			imageStore(imagesArrayRGBA16F[volume.data2ImageBinding], texCoord, vec4(data.mean, blendfactor));
+		}
+		//float blendfactor = MultiscaleMeanEstimator(biasedResult.xyz, data, volume.lightToDarkThreshold);
+		//float blendfactor = MultiscaleMeanEstimator(result.xyz, data, volume.lightToDarkThreshold);
+		//result = vec4(mix(previous.xyz, result.xyz, blendfactor), 1.f);
+		//result = vec4(mix(previous.xyz, biasedResult.xyz, blendfactor), 1.f);
 		
 		imageStore(imagesArrayRGBA16F[volume.data0ImageBinding], texCoord, vec4(data.shortMean, data.vbbr));
 		imageStore(imagesArrayRGBA16F[volume.data1ImageBinding], texCoord, vec4(data.variance, data.inconsistency));
 
-		if(volume.dynamicRayAllocationEnabled != 0) {
+		if(dynamicRayAllocationEnabled) {
 			//float variance = max_component(abs(data.variance));
-			float variance = max_component(abs(data.variance / result.xyz)); //relative Variance
+			float variance = max_component(abs(data.variance / max(data.mean, 1e-6))); //relative Variance
 			variance = subgroupInclusiveAdd(variance);//gl_SubgroupID 
 			float totalVariance = 0.f;
 			int finished = 0;
@@ -268,7 +301,7 @@ void main()
 			//Since there's no guarantee that two atomics are executed in order
 			barrier();
 			if(gl_LocalInvocationIndex == 0)
-				writeDdgiRayVariance[volume.dynamicRayBufferBinding].sigma[(probeCount) * 2 + probeIdx + 1] = rayVariance;
+				writeFloats[volume.dynamicRayBufferBinding].f[(probeCount) * 2 + probeIdx + 1] = rayVariance;
 		}
 
 	//Biased shadow-preserving temporal hysteresis. from GI-1.0

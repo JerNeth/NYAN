@@ -51,7 +51,6 @@ void main()
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ; 
 	uint localIdx = gl_LocalInvocationID.x;
-	uint globalIdx = gl_GlobalInvocationID.x;
 	// Determine tile to process by atomic counter (implement idea from
     // section 4.4 in the paper).
 	if (localIdx == 0) {
@@ -61,46 +60,49 @@ void main()
 	uint myTile = sharedTile;
     uint memBase = myTile * numRows * gl_WorkGroupSize.x;
 	TYPE aggregates[numRows];
+	TYPE dates[numRows];
 	for(uint i = 0; i < numRows; ++i) {
 		aggregates[i] = TYPE(0); //Not sure if zero initialized
 	}
 	TYPE data = 0;
 	TYPE total = 0;
-	uint offset = 0;
-	bool condB = ((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (localIdx & (subgroupSize - 1))) < probeCount;
-	bool cond = (((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (numRows - 1) * subgroupSize + (localIdx & (subgroupSize - 1))) < probeCount)
-				&& condB;
-	if(subgroupAll(cond)) {
-		for(uint i = 0; i < numRows; ++i) {
-			//Intention: each subgroup reads contigous memory
-			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
-			data = readUInts[volume.dynamicRayBufferBinding].u[offset + memBase + idx];
-			TYPE row = subgroupExclusiveAdd(data);
-			total += row;
-			aggregates[i] = row;
-		}
-		if(gl_SubgroupInvocationID == (subgroupSize - 1))
-		{
-			chunks[localIdx / subgroupSize] = total;
-		}
-	} else if(subgroupAny(condB)) {
-		for(uint i = 0; i < numRows; ++i) {
-			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
-			data = 0;
-			if(idx < probeCount)
-				data = readUInts[volume.dynamicRayBufferBinding].u[offset + memBase + idx];
-			TYPE row = subgroupExclusiveAdd(data);
-			total += row;
-			aggregates[i] = row;
-		}
-		if(gl_SubgroupInvocationID == (subgroupSize - 1))
-		{
-			chunks[localIdx / subgroupSize] = total;
-		}
+	uint readOffset = memBase;
+	uint writeOffset = memBase + probeCount;
+//	bool condB = ((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (localIdx & (subgroupSize - 1))) < probeCount;
+//	bool cond = (((localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + (numRows - 1) * subgroupSize + (localIdx & (subgroupSize - 1))) < probeCount)
+//				&& condB;
+//	if(subgroupAll(cond)) {
+//		for(uint i = 0; i < numRows; ++i) {
+//			//Intention: each subgroup reads contigous memory
+//			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+//			data = readUInts[volume.dynamicRayBufferBinding].u[offset + memBase + idx];
+//			TYPE row = subgroupExclusiveAdd(data);
+//			total += row;
+//			aggregates[i] = row;
+//		}
+//		if(gl_SubgroupInvocationID == (subgroupSize - 1))
+//		{
+//			chunks[localIdx / subgroupSize] = total;
+//		}
+	//} else if(subgroupAny(condB)) {
+	for(uint i = 0; i < numRows; ++i) {
+		uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+		dates[i] = 0;
+		if(idx < probeCount)
+			dates[i] = readUInts[volume.dynamicRayBufferBinding].u[readOffset + idx];
+		TYPE row = subgroupInclusiveAdd(dates[i]);
+		//TYPE row = subgroupExclusiveAdd(data);
+		total += row;
+		aggregates[i] = row;
 	}
+	if(gl_SubgroupInvocationID == (subgroupSize - 1))
+	{
+		chunks[localIdx / subgroupSize] = total;
+	}
+	//}
 	barrier();
 
-	if(subgroupAny(condB)) {
+	//if(subgroupAny(condB)) {
 		if(localIdx < subgroupSize)
 		{
 			TYPE chunk = chunks[gl_SubgroupInvocationID];
@@ -140,50 +142,50 @@ void main()
 				atomicStore(uInts[constants.workBufferBinding].u[myTile * 4 + 1], flag, gl_ScopeDevice, gl_StorageSemanticsBuffer, gl_SemanticsRelease);
 			}
 		}
-	}
+	//}
 	TYPE prefix = 0;
 	barrier();
 	
-	if(subgroupAll(cond)) {
-		if(myTile != 0)
-			prefix = sharedPrefix;
+//	if(subgroupAll(cond)) {
+//		if(myTile != 0)
+//			prefix = sharedPrefix;
+//	
+//		if(localIdx / subgroupSize > 0)
+//			prefix += chunks[(localIdx / subgroupSize) - 1];
+//
+//		for(uint i = 0; i < numRows; ++i) {
+//			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+//			uint agg = aggregates[i];
+//			writeUInts[volume.dynamicRayBufferBinding].u[probeCount + memBase  + idx] = prefix + agg;
+//			prefix += subgroupBroadcast(agg, subgroupSize - 1);
+//		}
+//	} else if(subgroupAny(condB)) {
+	if(myTile != 0)
+		prefix = sharedPrefix;
 	
-		if(localIdx / subgroupSize > 0)
-			prefix += chunks[(localIdx / subgroupSize) - 1];
-
-		for(uint i = 0; i < numRows; ++i) {
-			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
-			uint agg = aggregates[i];
-			writeUInts[volume.dynamicRayBufferBinding].u[probeCount + memBase  + idx] = prefix + agg;
-			prefix += subgroupBroadcast(agg, subgroupSize - 1);
-		}
-	} else if(subgroupAny(condB)) {
-		if(myTile != 0)
-			prefix = sharedPrefix;
+	if((localIdx / subgroupSize) > 0)
+		prefix += chunks[(localIdx / subgroupSize) - 1];
 	
-		if(localIdx / subgroupSize > 0)
-			prefix += chunks[(localIdx / subgroupSize) - 1];
-	
-		for(uint i = 0; i < numRows; ++i) {
-			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
-			uint agg = aggregates[i];
-			if(idx < probeCount)
-				writeUInts[volume.dynamicRayBufferBinding].u[probeCount + memBase  + idx] = prefix + agg;
-			prefix += subgroupBroadcast(agg, subgroupSize - 1);
+	for(uint i = 0; i < numRows; ++i) {
+		uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+		uint agg = aggregates[i];
+		if(idx < probeCount)
+			writeUInts[volume.dynamicRayBufferBinding].u[writeOffset + idx] = prefix + agg - dates[i];
+		prefix += subgroupBroadcast(agg, subgroupSize - 1);
+	}
+	//}
+	//if(subgroupAny(condB)) {
+	for(uint i = 0; i < numRows; ++i) {
+		uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
+		if(idx == (probeCount - 1)) {
+			uint numRays = prefix;
+			writeUInts[volume.dynamicRayBufferBinding].u[writeOffset + idx + 1] = numRays;
+			uint width =  (1 << renderTargetImageWidthBits) / constants.numRows;
+			TraceRaysIndirect indirectBuffer = TraceRaysIndirect(constants.targetAddress);
+			indirectBuffer.width = width;
+			indirectBuffer.height = (numRays + (width -1)) >> renderTargetImageWidthBits;
+			indirectBuffer.depth = 1;
 		}
 	}
-	if(subgroupAny(condB)) {
-		for(uint i = 0; i < numRows; ++i) {
-			uint idx = (localIdx & (gl_WorkGroupSize.x - subgroupSize)) * numRows + i * subgroupSize + (localIdx & (subgroupSize - 1));
-			if(idx == (probeCount - 1)) {
-				uint numRays = prefix + data;
-				writeUInts[volume.dynamicRayBufferBinding].u[probeCount + memBase + idx + 1] = numRays;
-				uint width =  (1 << renderTargetImageWidthBits) / constants.numRows;
-				TraceRaysIndirect indirectBuffer = TraceRaysIndirect(constants.targetAddress);
-				indirectBuffer.width = width;
-				indirectBuffer.height = (numRays + (width -1)) >> renderTargetImageWidthBits;
-				indirectBuffer.depth = 1;
-			}
-		}
-	}
+	//}
 }

@@ -168,11 +168,11 @@ float max_component(vec2 v) {
 }
 
 float max_component(vec3 v) {
-	return max(max(v.x, v.y), v.z);
+	return max(v.z, max(v.x, v.y));
 }
 
 float max_component(vec4 v) {
-	return max( max(max(v.x, v.y), v.z), v.w);
+	return max(v.w, max(v.z, max(v.x, v.y)));
 }
 
 

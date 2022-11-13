@@ -15,6 +15,18 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 {
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	ddgiManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
+	
+	//vulkan::BufferInfo info{
+	//	.size {sizeof(VkTraceRaysIndirectCommandKHR)},
+	//	.usage {VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+	//	.memoryUsage {VMA_MEMORY_USAGE_CPU_ONLY},
+	//};
+	//dstBuf = std::make_unique< vulkan::BufferHandle>(r_device.create_buffer(info, {}));
+	//auto probecount = (24 * 22 * 24 + 1);
+	//auto uintPart = probecount * 2;
+	//auto floatPart = probecount * 3 + 1;
+	//info.size = uintPart * sizeof(uint32_t) + sizeof(float) * floatPart;
+	//dstBuf2 = std::make_unique< vulkan::BufferHandle>(r_device.create_buffer(info, {}));
 
 	pass.add_renderfunction([this] (vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
@@ -149,6 +161,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.renderTargetImageFormat {volume.renderTargetImageFormat},
 					.imageFormat {volume.irradianceImageFormat},
 					.renderTargetImageWidthBits{m_renderTargetWidthBits},
+					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
 				};
 				vulkan::PipelineId irradiancePipelineId = create_filter_pipeline(irradianceConfig);
 
@@ -161,6 +174,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.renderTargetImageFormat {volume.renderTargetImageFormat},
 					.imageFormat {volume.depthImageFormat},
 					.renderTargetImageWidthBits{m_renderTargetWidthBits},
+					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
 				};
 				vulkan::PipelineId depthPipelineId = create_filter_pipeline(depthConfig);
 
@@ -206,7 +220,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				RTConfig rtConfig{
 					.renderTargetImageWidthBits {m_renderTargetWidthBits},
 					.renderTargetImageFormat {volume.renderTargetImageFormat},
-					.numRows{ parameters.numRowsRaygen}
+					.numRows{ parameters.numRowsRaygen},
+					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled}
 				};
 				//calculate numRaysPerProbe
 				//bind scanPipeline
@@ -219,31 +234,53 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.numRows {rtConfig.numRows}
 				};
 				auto& rtPipeline = get_rt_pipeline(rtConfig);
-				//if (volume.dynamicRayAllocationEnabled) {
-				if (parameters.dynamicRayAllocation) {
+				if (volume.dynamicRayAllocationEnabled) {
+				//if (parameters.dynamicRayAllocation) {
 					assert(m_scratchBufferBinding != ~0);
 					dynamicConstants.workBufferBinding = m_scratchBufferBinding;
 					dynamicConstants.targetAddress = ddgiManager.get_ray_count_device_address(i);
-					//PrefixSumPipelineConfig prefixSumPipelineConfig{
-					//	.workSizeX {m_prefixSumGroupSize},
-					//	.workSizeY {1},
-					//	.workSizeZ {1},
-					//	.subgroupSize {r_device.get_physical_device().get_subgroup_properties().subgroupSize},
-					//	.numRows {m_prefixSumNumRows},
-					//	.renderTargetImageWidthBits {m_renderTargetWidthBits},
-					//};
-					//auto prefixSumPipeline = create_prefix_sum_pipeline(prefixSumPipelineConfig);
-					//auto pipelineBind = cmd.bind_compute_pipeline(prefixSumPipeline);
-					//prefix_sum(pipelineBind, dynamicConstants, (volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((m_prefixSumGroupSize * m_prefixSumNumRows) - 1)) / (m_prefixSumGroupSize * m_prefixSumNumRows), 1, 1);
+					PrefixSumPipelineConfig prefixSumPipelineConfig{
+						.workSizeX {m_prefixSumGroupSize},
+						.workSizeY {1},
+						.workSizeZ {1},
+						.subgroupSize {r_device.get_physical_device().get_subgroup_properties().subgroupSize},
+						.numRows {m_prefixSumNumRows},
+						.renderTargetImageWidthBits {m_renderTargetWidthBits},
+					};
+					auto prefixSumPipeline = create_prefix_sum_pipeline(prefixSumPipelineConfig);
+					auto pipelineBind = cmd.bind_compute_pipeline(prefixSumPipeline);
+					prefix_sum(pipelineBind, dynamicConstants, (volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((m_prefixSumGroupSize * m_prefixSumNumRows) - 1)) / (m_prefixSumGroupSize * m_prefixSumNumRows), 1, 1);
+					VkMemoryBarrier2 globalRay{
+						.sType {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2},
+						.pNext {nullptr},
+						.srcStageMask {VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT},
+						.srcAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT},
+						.dstStageMask {VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR},
+						.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT}, //VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT Does not work with indirect traces
+					};
 					//VkMemoryBarrier2 globalRay{
 					//	.sType {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2},
 					//	.pNext {nullptr},
 					//	.srcStageMask {VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT},
 					//	.srcAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT},
-					//	.dstStageMask {VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR},
+					//	.dstStageMask {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT},
 					//	.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT}, //VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT Does not work with indirect traces
 					//};
-					//cmd.barrier2(1, &globalRay);
+					cmd.barrier2(1, &globalRay);
+					cmd.fill_buffer(*m_scratchBuffer, 0);
+					auto& srcbuf = r_renderManager.get_ddgi_manager().get_ray_count_device_addressB(i);
+					auto& srcBuf2 = r_renderManager.get_ddgi_manager().get_ray_count_device_addressC(i);
+					//cmd.copy_buffer(*dstBuf, srcbuf);
+					//cmd.copy_buffer(*dstBuf2, srcBuf2);
+					//std::vector<uint32_t> dataA(uintPart);
+					//std::vector<float> dataB(floatPart);
+					//std::memcpy(dataA.data(), (*dstBuf2)->map_data(), uintPart * sizeof(uint32_t));
+					//std::memcpy(dataB.data(), reinterpret_cast<float*>((*dstBuf2)->map_data()) + uintPart, floatPart * sizeof(uint32_t));
+					////assert(dataA[25344] == 0 || dataA[25344] == 3244032);
+					//assert(dataA[25344] == 0 || dataA[25344] == 3244032);
+					//assert(dataA[25343] == 0 || dataA[25343] == 3244032);
+					//auto b = *reinterpret_cast<VkTraceRaysIndirectCommandKHR*>((*dstBuf)->map_data());
+					//assert(b.height == 0 || b.height == 3168);
 					auto rtPipelineBind = cmd.bind_raytracing_pipeline(rtPipeline);
 					render_volume(rtPipelineBind, rtPipeline, constants, dynamicConstants.targetAddress);
 				}
@@ -268,7 +305,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.numRows {m_scanNumRows}
 				};
 
-				if (volume.dynamicRayAllocationEnabled && false) {
+				if (volume.dynamicRayAllocationEnabled) {
 					auto scanPipeline = create_scan_pipeline(scanPipelineCfg);
 					pipelineBind = cmd.bind_compute_pipeline(scanPipeline);
 					sum_variance(pipelineBind, dynamicConstants, (volume.probeCountX* volume.probeCountY* volume.probeCountZ + ((m_scanGroupSize  * m_scanNumRows)- 1)) / (m_scanGroupSize * m_scanNumRows), 1, 1);
@@ -301,7 +338,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				pipelineBind = cmd.bind_compute_pipeline(depthRowBorderPipelineId);
 				copy_borders(pipelineBind, constants, volume.depthTextureSizeX, volume.probeCountY, volume.probeCountZ);
 
-				if (volume.dynamicRayAllocationEnabled && false) {
+				if (volume.dynamicRayAllocationEnabled) {
 					GatherPipelineConfig gatherPipelineCfg{
 						.workSizeX {m_gatherGroupSize},
 						.workSizeY {1},
@@ -311,6 +348,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					auto gatherPipeline = create_gather_pipeline(gatherPipelineCfg);
 					pipelineBind = cmd.bind_compute_pipeline(gatherPipeline);
 					cmd.barrier2(1, &global);
+					cmd.fill_buffer(*m_scratchBuffer, 0);
 					gather_variance(pipelineBind, dynamicConstants, (volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((m_gatherGroupSize * m_gatherNumRows )- 1)) / (m_gatherGroupSize * m_gatherNumRows), 1, 1);
 				}
 
@@ -372,10 +410,12 @@ void nyan::DDGIRenderer::begin_frame()
 	if (maxScratchSize > 0 && !m_scratchBuffer) {
 		vulkan::BufferInfo info{
 			.size {maxScratchSize * sizeof(uint32_t) * 4},
-			.usage {VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT },
+			.usage {VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT },
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
-		m_scratchBuffer = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(info, {}, false));
+		std::vector<uint32_t> data(maxScratchSize * 4, 0);
+
+		m_scratchBuffer = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(info, { vulkan::InputData{.ptr {data.data()}, .size {info.size}} }, false));
 		m_scratchBufferBinding = r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{(*m_scratchBuffer)->get_handle(), 0, info.size});
 		
 	}
@@ -475,6 +515,7 @@ vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConf
 		pipelineId = it->second;
 	}
 	else {
+		
 		vulkan::ComputePipelineConfig pipelineConfig{
 			.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("update_DDGI_comp",
 			config.workSizeX, config.workSizeY,
@@ -482,7 +523,8 @@ vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConf
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::filterIrradianceShaderName, config.filterIrradiance},
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat},
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::imageFormatShaderName, config.imageFormat },
-			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits })
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits },
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled })
 			},
 			.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -621,6 +663,7 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTCon
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_DDGI_rgen"
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits}
+				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::numRowsShaderName, config.numRows})},
 			},
 		},

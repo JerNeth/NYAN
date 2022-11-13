@@ -132,8 +132,10 @@ struct DDGIVolume {
 
 	uint data0ImageBinding;
 	uint data1ImageBinding;
+	uint data2ImageBinding;
 	uint data0TextureBinding;
 	uint data1TextureBinding;
+	uint data2TextureBinding;
 
 
 	uint depthTextureSizeX;
@@ -170,6 +172,7 @@ struct DDGIVolume {
 	uint relocationEnabled;
 	uint classificationEnabled;
 	uint dynamicRayAllocationEnabled;
+	uint biasedEstimator;
 };
 
 #endif

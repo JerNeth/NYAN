@@ -131,6 +131,11 @@ void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src)
 	copy_buffer(dst, src, 0, 0, dst.get_info().size);
 }
 
+void vulkan::CommandBuffer::fill_buffer(const Buffer& dst, uint32_t data)
+{
+	vkCmdFillBuffer(m_handle, dst, 0, dst.get_size(), data);
+}
+
 void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const VkOffset3D& dstOffset, const VkOffset3D& dstExtent,
 	const VkOffset3D& srcOffset, const VkOffset3D& srcExtent, uint32_t dstLevel,
 	uint32_t srcLevel, uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter)
