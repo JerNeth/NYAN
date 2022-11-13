@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.20)
+﻿cmake_minimum_required (VERSION 3.24)
 #set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -25,7 +25,8 @@ endif()
 
 find_package(Threads REQUIRED)
 
-find_package(Vulkan REQUIRED COMPONENTS glslc SPIRV-Tools volk)
+#find_package(Vulkan REQUIRED COMPONENTS glslc SPIRV-Tools volk)
+find_package(Vulkan REQUIRED COMPONENTS glslc)
 
 # SPIRV-Cross
 if(NOT Vulkan_SPIRV-Tools_FOUND OR TRUE)

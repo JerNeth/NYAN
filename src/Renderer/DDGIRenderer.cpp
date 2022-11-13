@@ -286,8 +286,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				}
 				else {
 					auto rtPipelineBind = cmd.bind_raytracing_pipeline(rtPipeline);
-					render_volume(rtPipelineBind, rtPipeline, constants, (1ul << m_renderTargetWidthBits) / rtConfig.numRows,
-						(volume.raysPerProbe * volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((1 << m_renderTargetWidthBits)+ 1)) >> m_renderTargetWidthBits);
+					render_volume(rtPipelineBind, rtPipeline, constants, (1ul << m_renderTargetWidthBits),
+						(volume.raysPerProbe * volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((1 << m_renderTargetWidthBits) + 1)) >> m_renderTargetWidthBits);
 				}
 				cmd.barrier2(1, &writeBarrier);
 
@@ -297,15 +297,15 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				cmd.barrier2(1, &global, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
 
-				ScanPipelineConfig scanPipelineCfg{
-					.workSizeX {m_scanGroupSize},
-					.workSizeY {1},
-					.workSizeZ {1},
-					.subgroupSize {r_device.get_physical_device().get_subgroup_properties().subgroupSize},
-					.numRows {m_scanNumRows}
-				};
 
 				if (volume.dynamicRayAllocationEnabled) {
+					ScanPipelineConfig scanPipelineCfg{
+						.workSizeX {m_scanGroupSize},
+						.workSizeY {1},
+						.workSizeZ {1},
+						.subgroupSize {r_device.get_physical_device().get_subgroup_properties().subgroupSize},
+						.numRows {m_scanNumRows}
+					};
 					auto scanPipeline = create_scan_pipeline(scanPipelineCfg);
 					pipelineBind = cmd.bind_compute_pipeline(scanPipeline);
 					sum_variance(pipelineBind, dynamicConstants, (volume.probeCountX* volume.probeCountY* volume.probeCountZ + ((m_scanGroupSize  * m_scanNumRows)- 1)) / (m_scanGroupSize * m_scanNumRows), 1, 1);
@@ -608,10 +608,11 @@ vulkan::PipelineId nyan::DDGIRenderer::create_gather_pipeline(const GatherPipeli
 	}
 	else {
 		vulkan::ComputePipelineConfig pipelineConfig{
-				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_gather_comp",
-				config.workSizeX, config.workSizeY,
-				config.workSizeZ,
-				vulkan::ShaderStorage::SpecializationConstant{GatherPipelineConfig::numRowsShaderName, config.numRows}
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_gather_comp"
+				,config.workSizeX
+				,config.workSizeY
+				,config.workSizeZ
+				,vulkan::ShaderStorage::SpecializationConstant{GatherPipelineConfig::numRowsShaderName, config.numRows}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -628,12 +629,13 @@ vulkan::PipelineId nyan::DDGIRenderer::create_prefix_sum_pipeline(const PrefixSu
 	}
 	else {
 		vulkan::ComputePipelineConfig pipelineConfig{
-				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_prefix_sum_comp",
-				config.workSizeX, config.workSizeY,
-				config.workSizeZ,
-				vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::subgroupSizeShaderName, config.subgroupSize},
-				vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::numRowsShaderName, config.numRows},
-				vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits}
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_prefix_sum_comp"
+				,config.workSizeX
+				,config.workSizeY
+				,config.workSizeZ
+				,vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::numRowsShaderName, config.numRows}
+				,vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::subgroupSizeShaderName, config.subgroupSize}
+				,vulkan::ShaderStorage::SpecializationConstant{PrefixSumPipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits}
 				)},
 				.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -664,7 +666,8 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTCon
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled}
-				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::numRowsShaderName, config.numRows})},
+				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::numRowsShaderName, config.numRows}
+				)},
 			},
 		},
 		.hitGroups {
@@ -684,7 +687,7 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTCon
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
 			},
 		},
-		.recursionDepth {2},
+		.recursionDepth {1},
 		.pipelineLayout = r_device.get_bindless_pipeline_layout()
 	};
 }

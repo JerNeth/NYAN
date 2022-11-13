@@ -135,94 +135,92 @@ void main()
     DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
     uint L = 0;
-    for(uint i = 0; i <numRows; ++i) {
-        uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x * numRows + i, gl_LaunchIDEXT.y);
-        uint globalRayIdx = launchIdx.x + (launchIdx.y << renderTargetImageWidthBits);
+    uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y);
+    uint globalRayIdx = launchIdx.x + (launchIdx.y << renderTargetImageWidthBits);
         
-        uint rayIdx = 0;
-        uint probeIdx = 0;
-		if(dynamicRayAllocationEnabled) {
-            uint R = probeCount;
-            while (L < R) {
-                uint m = (L+R) >> 1;
-                uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + m];
-                if(probeBegin < globalRayIdx)
-                    L = m + 1;
-                else
-                    R = m;
-            }
-            probeIdx = L - 1;
-            rayIdx = globalRayIdx - readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
-        } 
-        else 
-        {
-            rayIdx  = globalRayIdx % volume.raysPerProbe;
-            probeIdx = globalRayIdx / volume.raysPerProbe;
+    uint rayIdx = 0;
+    uint probeIdx = 0;
+	if(dynamicRayAllocationEnabled) {
+        uint R = probeCount;
+        while (L < R) {
+            uint m = (L+R) >> 1;
+            uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + m];
+            if(probeBegin < globalRayIdx)
+                L = m + 1;
+            else
+                R = m;
         }
-        
-        vec3 probeCords = get_probe_coordinates(probeIdx, volume);
-        vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
-
-        uint  rayFlags = gl_RayFlagsNoneEXT;
-        float tMin     = 0.0001;
-        float tMax     = volume.maxRayDistance;
-        traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-                rayFlags,       // rayFlags
-                0xFF,           // cullMask
-                0,              // sbtRecordOffset
-                0,              // sbtRecordStride
-                0,              // missIndex
-                probeCords.xyz, // ray origin
-                tMin,           // ray min range
-                direction.xyz,  // ray direction
-                tMax,           // ray max range
-                0               // payload (location = 0)
-            );
-	    Payload payload = unpack_payload(pld);
-
-	    vec3 diffuse = vec3(0.f);
-
-	    float hitDistance = payload.hitT;
-
-	    if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
-	    {
-	        hitDistance *= -0.2;
-	    }
-        else if ((volume.relocationEnabled == 0) || rayIdx > volume.fixedRayCount || (volume.biasedEstimator == 0) ) {
-        //else {
-	        if(payload.hitkind == HitDDGIMiss) 
-	        {
-		        diffuse = payload.albedo;
-	        } 
-	        else {
-                ShadingData shadingData;
-                shadingData.albedo = payload.albedo;
-                shadingData.alpha = payload.roughness * payload.roughness;
-                shadingData.outLightDir = -direction;
-                shadingData.metalness = payload.metallic;
-                shadingData.shadingNormal = payload.shadingNormal;
-                shadingData.worldPos = payload.worldPos;
-                //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
-                //Probable cause was loop end condition in an SSBO
-		        diffuse += diffuse_direct_lighting(scene, shadingData);
-		        diffuse += diffuse_indirect_lighting(volume, shadingData);
-            }
-        }
-     
-        float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
-        //hitDistance = clamp(hitDistance, -65504.f, 65504.f) ;
-        hitDistance = hitDistance / maxRayDist;//Normalize since moments need more accuracy and we have more accuracy in [0;1]
-        if(renderTargetImageFormat == R16G16B16A16F) //Not sure if necessary or it gets clamped anyways
-            hitDistance = clamp(hitDistance, -65504.f, 65504.f);
-        //hitDistance = min(hitDistance, 65504.f);
-
-        #ifdef DEBUG_COLORS
-        diffuse = debugColors[probeIdx % debugColors.length()].xyz;
-        #endif
-    
-        if(renderTargetImageFormat == R16G16B16A16F)
-            imageStore(imagesRGBA16F[constants.renderTarget], ivec2(launchIdx), vec4(diffuse, hitDistance));
-        else if(renderTargetImageFormat == R32G32B32A32F)
-            imageStore(imagesRGBA32F[constants.renderTarget], ivec2(launchIdx), vec4(diffuse, hitDistance));
+        probeIdx = L - 1;
+        rayIdx = globalRayIdx - readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
+    } 
+    else 
+    {
+        rayIdx  = globalRayIdx % volume.raysPerProbe;
+        probeIdx = globalRayIdx / volume.raysPerProbe;
     }
+        
+    vec3 probeCords = get_probe_coordinates(probeIdx, volume);
+    vec3 direction = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
+
+    uint  rayFlags = gl_RayFlagsNoneEXT;
+    float tMin     = 0.0001;
+    float tMax     = volume.maxRayDistance;
+    traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
+            rayFlags,       // rayFlags
+            0xFF,           // cullMask
+            0,              // sbtRecordOffset
+            0,              // sbtRecordStride
+            0,              // missIndex
+            probeCords.xyz, // ray origin
+            tMin,           // ray min range
+            direction.xyz,  // ray direction
+            tMax,           // ray max range
+            0               // payload (location = 0)
+        );
+	Payload payload = unpack_payload(pld);
+
+	vec3 diffuse = vec3(0.f);
+
+	float hitDistance = payload.hitT;
+
+	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
+	{
+	    hitDistance *= -0.2;
+	}
+    else if ((volume.relocationEnabled == 0) || rayIdx > volume.fixedRayCount || (volume.biasedEstimator == 0) ) {
+    //else {
+	    if(payload.hitkind == HitDDGIMiss) 
+	    {
+		    diffuse = payload.albedo;
+	    } 
+	    else {
+            ShadingData shadingData;
+            shadingData.albedo = payload.albedo;
+            shadingData.alpha = payload.roughness * payload.roughness;
+            shadingData.outLightDir = -direction;
+            shadingData.metalness = payload.metallic;
+            shadingData.shadingNormal = payload.shadingNormal;
+            shadingData.worldPos = payload.worldPos;
+            //High compile time here, due to point lights (possibly rays in a loop or just the loop alone)
+            //Probable cause was loop end condition in an SSBO
+		    diffuse += diffuse_direct_lighting(scene, shadingData);
+		    diffuse += diffuse_indirect_lighting(volume, shadingData);
+        }
+    }
+     
+    float maxRayDist = get_volume_max_distance(volume); //Get maximum possible distance
+    //hitDistance = clamp(hitDistance, -65504.f, 65504.f) ;
+    hitDistance = hitDistance / maxRayDist;//Normalize since moments need more accuracy and we have more accuracy in [0;1]
+    if(renderTargetImageFormat == R16G16B16A16F) //Not sure if necessary or it gets clamped anyways
+        hitDistance = clamp(hitDistance, -65504.f, 65504.f);
+    //hitDistance = min(hitDistance, 65504.f);
+
+    #ifdef DEBUG_COLORS
+    diffuse = debugColors[probeIdx % debugColors.length()].xyz;
+    #endif
+    
+    if(renderTargetImageFormat == R16G16B16A16F)
+        imageStore(imagesRGBA16F[constants.renderTarget], ivec2(launchIdx), vec4(diffuse, hitDistance));
+    else if(renderTargetImageFormat == R32G32B32A32F)
+        imageStore(imagesRGBA32F[constants.renderTarget], ivec2(launchIdx), vec4(diffuse, hitDistance));
 }

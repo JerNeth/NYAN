@@ -465,9 +465,11 @@ void nyan::DDGIManager::begin_frame()
 			auto data1ImageBind = writePass.get_write_bind(parameters.data1Resource, Renderpass::Write::Type::Compute);
 			if (constDeviceVolume.data1ImageBinding != data1ImageBind)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data1ImageBinding = data1ImageBind;
-			auto data2ImageBind = writePass.get_write_bind(parameters.data2Resource, Renderpass::Write::Type::Compute);
-			if (constDeviceVolume.data2ImageBinding != data2ImageBind)
-				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data2ImageBinding = data2ImageBind;
+			if (parameters.biasedEstimator) {
+				auto data2ImageBind = writePass.get_write_bind(parameters.data2Resource, Renderpass::Write::Type::Compute);
+				if (constDeviceVolume.data2ImageBinding != data2ImageBind)
+					DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data2ImageBinding = data2ImageBind;
+			}
 		}
 		if (!m_reads.empty()) {
 			auto& readPass = r_rendergraph.get_pass(m_reads.front());
@@ -483,9 +485,11 @@ void nyan::DDGIManager::begin_frame()
 			auto data1TextureBinding = readPass.get_read_bind(parameters.data1Resource);
 			if (constDeviceVolume.data1TextureBinding != data1TextureBinding)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data1TextureBinding = data1TextureBinding;
-			auto data2TextureBinding = readPass.get_read_bind(parameters.data2Resource);
-			if (constDeviceVolume.data2TextureBinding != data2TextureBinding)
-				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data2TextureBinding = data2TextureBinding;
+			if (parameters.biasedEstimator) {
+				auto data2TextureBinding = readPass.get_read_bind(parameters.data2Resource);
+				if (constDeviceVolume.data2TextureBinding != data2TextureBinding)
+					DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).data2TextureBinding = data2TextureBinding;
+			}
 		}
 	}
 }
@@ -622,7 +626,7 @@ void nyan::DDGIManager::update_ray_counts(uint32_t volumeId)
 			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY},
 		};
 		VkTraceRaysIndirectCommandKHR data{
-			.width {(1 << 10) / 8},
+			.width {(1 << 10)},
 			.height {3168},
 			.depth {1},
 		};
