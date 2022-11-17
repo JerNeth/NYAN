@@ -1,6 +1,6 @@
 #pragma once
-#ifndef RAYTRACEPIPELINE_H
-#define RAYTRACEPIPELINE_H
+#ifndef VKRAYTRACEPIPELINE_H
+#define VKRAYTRACEPIPELINE_H
 
 #include "VkWrapper.h"
 #include "Pipeline.h"
@@ -32,4 +32,4 @@ namespace vulkan {
 }
 
 
-#endif !RAYTRACEPIPELINE_H
+#endif !VKRAYTRACEPIPELINE_H

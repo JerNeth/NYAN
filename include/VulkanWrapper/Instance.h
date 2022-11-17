@@ -111,6 +111,7 @@ namespace vulkan {
 		const VkPhysicalDeviceVulkan11Features& get_vulkan11_features() const noexcept;
 		const VkPhysicalDeviceVulkan12Features& get_vulkan12_features() const noexcept;
 		const VkPhysicalDeviceVulkan13Features& get_vulkan13_features() const noexcept;
+		const VkPhysicalDeviceHostQueryResetFeatures& get_host_query_reset_features() const noexcept;
 		const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& get_atomic_float_features() const noexcept;
 		const VkPhysicalDeviceAccelerationStructureFeaturesKHR& get_acceleration_structure_features() const noexcept;
 		const VkPhysicalDeviceRayTracingPipelineFeaturesKHR& get_ray_tracing_pipeline_features() const noexcept;
@@ -148,6 +149,7 @@ namespace vulkan {
 		VkPhysicalDeviceVulkan11Features  m_11Features{};
 		VkPhysicalDeviceVulkan12Features  m_12Features{};
 		VkPhysicalDeviceVulkan13Features  m_13Features{};
+		VkPhysicalDeviceHostQueryResetFeatures m_hostQueryResetFeatures{};
 		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT m_atomicFloatFeatures{};
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR m_accelerationStructureFeatures{};
 		VkPhysicalDeviceRayTracingPipelineFeaturesKHR m_rayTracingPipelineFeatures{};

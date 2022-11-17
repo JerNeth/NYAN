@@ -4,6 +4,7 @@
 
 #include "Utility/Exceptions.h"
 #include "LogicalDevice.h"
+#include "..\..\include\VulkanWrapper\Instance.h"
 
 
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugReportFlagsEXT flags,
@@ -609,6 +610,11 @@ const VkPhysicalDeviceVulkan13Features& vulkan::PhysicalDevice::get_vulkan13_fea
 	return m_13Features;
 }
 
+const VkPhysicalDeviceHostQueryResetFeatures& vulkan::PhysicalDevice::get_host_query_reset_features() const noexcept
+{
+	return m_hostQueryResetFeatures;
+}
+
 const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& vulkan::PhysicalDevice::get_atomic_float_features() const noexcept
 {
 	return m_atomicFloatFeatures;
@@ -732,7 +738,11 @@ void vulkan::PhysicalDevice::init_features() noexcept
 	m_11Features.pNext = &m_12Features;
 
 	m_12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-	m_12Features.pNext = &m_13Features;
+	m_12Features.pNext = &m_hostQueryResetFeatures;
+
+	//1.2 Feature
+	m_hostQueryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES;
+	m_hostQueryResetFeatures.pNext = &m_13Features;
 
 	m_13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	m_13Features.pNext = &m_atomicFloatFeatures;

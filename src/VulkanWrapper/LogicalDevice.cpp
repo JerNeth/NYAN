@@ -17,6 +17,7 @@
 #include "Manager.h"
 #include "Buffer.h"
 #include "AccelerationStructure.h"
+#include "QueryPool.hpp"
 
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	const vulkan::PhysicalDevice& physicalDevice,
@@ -636,6 +637,11 @@ vulkan::PipelineStorage2& vulkan::LogicalDevice::get_pipeline_storage()
 vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
 {
 	return *m_frameResources[m_currentFrame % m_frameResources.size()];
+}
+
+vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::previous_frame()
+{
+	return *m_frameResources[(m_currentFrame + m_frameResources.size() - 1)% m_frameResources.size()];
 }
 
 const vulkan::Extensions& vulkan::LogicalDevice::get_supported_extensions() const noexcept {
@@ -1865,6 +1871,19 @@ vulkan::LogicalDevice::FrameResource::FrameResource(LogicalDevice& device) : r_d
 	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
 		transferPool.emplace_back(device, device.m_transfer.familyIndex);
 	}
+
+	graphicsTimestamps.reserve(device.get_thread_count());
+	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+		graphicsTimestamps.emplace_back(device);
+	}
+	computeTimestamps.reserve(device.get_thread_count());
+	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+		computeTimestamps.emplace_back(device);
+	}
+	transferTimestamps.reserve(device.get_thread_count());
+	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
+		transferTimestamps.emplace_back(device);
+	}
 }
 
 vulkan::LogicalDevice::FrameResource::~FrameResource()
@@ -1904,6 +1923,21 @@ vulkan::CommandPool& vulkan::LogicalDevice::FrameResource::get_pool(CommandBuffe
 	default:
 		assert(false && "Invalid Command buffer type");
 		return graphicsPool[r_device.get_thread_index()];
+	}
+}
+
+vulkan::TimestampQueryPool& vulkan::LogicalDevice::FrameResource::get_timestamps(CommandBufferType type) noexcept
+{
+	switch (type) {
+	case CommandBufferType::Compute:
+		return computeTimestamps[r_device.get_thread_index()];
+	case CommandBufferType::Generic:
+		return graphicsTimestamps[r_device.get_thread_index()];
+	case CommandBufferType::Transfer:
+		return transferTimestamps[r_device.get_thread_index()];
+	default:
+		assert(false && "Invalid Command buffer type");
+		return graphicsTimestamps[r_device.get_thread_index()];
 	}
 }
 
@@ -1951,6 +1985,7 @@ void vulkan::LogicalDevice::FrameResource::begin()
 	}
 	reset_command_pools();
 	delete_resources();
+	read_queries();
 }
 
 void vulkan::LogicalDevice::FrameResource::clear_fences()
@@ -2012,6 +2047,22 @@ bool vulkan::LogicalDevice::FrameResource::has_transfer_cmd() const noexcept
 bool vulkan::LogicalDevice::FrameResource::has_compute_cmd() const noexcept
 {
 	return !submittedComputeCmds.empty();
+}
+
+void vulkan::LogicalDevice::FrameResource::read_queries()
+{
+	for (auto& timestamps : graphicsTimestamps) {
+		timestamps.read_queries();
+		timestamps.reset();
+	}
+	for (auto& timestamps : computeTimestamps) {
+		timestamps.read_queries();
+		timestamps.reset();
+	}
+	for (auto& timestamps : transferTimestamps) {
+		timestamps.read_queries();
+		timestamps.reset();
+	}
 }
 
 void vulkan::LogicalDevice::FrameResource::reset_command_pools()

@@ -70,6 +70,9 @@ namespace vulkan {
 	class RTPipeline;
 	struct ResourceBinding;
 
+	class QueryPool;
+	class TimestampQueryPool;
+
 	class Shader;
 	class ShaderInstance;
 	class ShaderStorage;
