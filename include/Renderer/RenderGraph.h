@@ -9,7 +9,7 @@
 namespace nyan {
 
 	//Interfaces
-
+	class Profiler;
 	struct ImageAttachment {
 		enum class Size : uint32_t { // no point using 1 byte, because of alignment reasons
 			Absolute,
@@ -366,6 +366,7 @@ namespace nyan {
 		void build();
 		void begin_frame();
 		void end_frame();
+		void set_profiler(nyan::Profiler* profiler);
 		//RenderResource& add_ressource(const entt::hashed_string& name, Attachment attachment);
 		//RenderResource& get_resource(const entt::hashed_string& name);
 		//bool resource_exists(const entt::hashed_string& name);
@@ -391,6 +392,7 @@ namespace nyan {
 
 		State m_state = State::Setup;
 		vulkan::LogicalDevice& r_device;
+		nyan::Profiler* p_profiler{ nullptr };
 		std::vector<Renderpass*> m_submissionOrder;
 		//Utility::NonInvalidatingMap<entt::hashed_string::hash_type, Renderpass> m_renderpasses;
 		//Utility::NonInvalidatingMap<entt::hashed_string::hash_type, RenderResource> m_renderresources;

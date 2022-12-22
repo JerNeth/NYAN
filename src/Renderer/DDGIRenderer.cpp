@@ -162,6 +162,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.imageFormat {volume.irradianceImageFormat},
 					.renderTargetImageWidthBits{m_renderTargetWidthBits},
 					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
+					.ReSTIREnabled {volume.useReSTIR},
 				};
 				vulkan::PipelineId irradiancePipelineId = create_filter_pipeline(irradianceConfig);
 
@@ -175,6 +176,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					.imageFormat {volume.depthImageFormat},
 					.renderTargetImageWidthBits{m_renderTargetWidthBits},
 					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
+					.ReSTIREnabled {volume.useReSTIR}
 				};
 				vulkan::PipelineId depthPipelineId = create_filter_pipeline(depthConfig);
 
@@ -220,8 +222,9 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				RTConfig rtConfig{
 					.renderTargetImageWidthBits {m_renderTargetWidthBits},
 					.renderTargetImageFormat {volume.renderTargetImageFormat},
-					.numRows{ parameters.numRowsRaygen},
-					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled}
+					.numRows{ parameters.numRowsRaygen}, //Deprecated
+					.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
+					.ReSTIREnabled {volume.useReSTIR}
 				};
 				//calculate numRaysPerProbe
 				//bind scanPipeline
@@ -235,6 +238,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				};
 				auto& rtPipeline = get_rt_pipeline(rtConfig);
 				if (volume.dynamicRayAllocationEnabled) {
+					r_renderManager.get_profiler().begin_profile(cmd, "Dynamic Ray Allocation");
 				//if (parameters.dynamicRayAllocation) {
 					assert(m_scratchBufferBinding != ~0);
 					dynamicConstants.workBufferBinding = m_scratchBufferBinding;
@@ -281,24 +285,33 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					//assert(dataA[25343] == 0 || dataA[25343] == 3244032);
 					//auto b = *reinterpret_cast<VkTraceRaysIndirectCommandKHR*>((*dstBuf)->map_data());
 					//assert(b.height == 0 || b.height == 3168);
+					r_renderManager.get_profiler().end_profile(cmd);
+					r_renderManager.get_profiler().begin_profile(cmd, "DDGI Ray Trace");
 					auto rtPipelineBind = cmd.bind_raytracing_pipeline(rtPipeline);
 					render_volume(rtPipelineBind, rtPipeline, constants, dynamicConstants.targetAddress);
+					r_renderManager.get_profiler().end_profile(cmd);
+
 				}
 				else {
+					r_renderManager.get_profiler().begin_profile(cmd, "DDGI Ray Trace");
 					auto rtPipelineBind = cmd.bind_raytracing_pipeline(rtPipeline);
 					render_volume(rtPipelineBind, rtPipeline, constants, (1ul << m_renderTargetWidthBits),
 						(volume.raysPerProbe * volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((1 << m_renderTargetWidthBits) + 1)) >> m_renderTargetWidthBits);
+					r_renderManager.get_profiler().end_profile(cmd);
 				}
 				cmd.barrier2(1, &writeBarrier);
+				r_renderManager.get_profiler().begin_profile(cmd, "DDGI Filter");
 
 				auto pipelineBind = cmd.bind_compute_pipeline(irradiancePipelineId);
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(depthPipelineId);
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				cmd.barrier2(1, &global, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
+				r_renderManager.get_profiler().end_profile(cmd);
 
 
 				if (volume.dynamicRayAllocationEnabled) {
+					r_renderManager.get_profiler().begin_profile(cmd, "DDGI Sum Variance");
 					ScanPipelineConfig scanPipelineCfg{
 						.workSizeX {m_scanGroupSize},
 						.workSizeY {1},
@@ -309,6 +322,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					auto scanPipeline = create_scan_pipeline(scanPipelineCfg);
 					pipelineBind = cmd.bind_compute_pipeline(scanPipeline);
 					sum_variance(pipelineBind, dynamicConstants, (volume.probeCountX* volume.probeCountY* volume.probeCountZ + ((m_scanGroupSize  * m_scanNumRows)- 1)) / (m_scanGroupSize * m_scanNumRows), 1, 1);
+					r_renderManager.get_profiler().end_profile(cmd);
 
 				}
 				
@@ -322,13 +336,16 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 						/ relocateConfig.workSizeX, 1, 1);
 				}
 				else if (volume.relocationEnabled) {
+					r_renderManager.get_profiler().begin_profile(cmd, "DDGI Relocate");
 					pipelineBind = cmd.bind_compute_pipeline(relocatePipelineEnabledId);
 
 					relocate_probes(pipelineBind, constants,
 						(volume.probeCountX * volume.probeCountY * volume.probeCountZ + (relocateConfig.workSizeX - 1))
 						/ relocateConfig.workSizeX, 1, 1);
+					r_renderManager.get_profiler().end_profile(cmd);
 				}
 
+				r_renderManager.get_profiler().begin_profile(cmd, "DDGI Copy Borders");
 				pipelineBind = cmd.bind_compute_pipeline(irradianceColumnBorderPipelineId);
 				copy_borders(pipelineBind, constants, volume.probeCountX, volume.irradianceTextureSizeY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(irradianceRowBorderPipelineId);
@@ -338,7 +355,10 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				pipelineBind = cmd.bind_compute_pipeline(depthRowBorderPipelineId);
 				copy_borders(pipelineBind, constants, volume.depthTextureSizeX, volume.probeCountY, volume.probeCountZ);
 
+				r_renderManager.get_profiler().end_profile(cmd);
+
 				if (volume.dynamicRayAllocationEnabled) {
+					r_renderManager.get_profiler().begin_profile(cmd, "DDGI Gather Variance");
 					GatherPipelineConfig gatherPipelineCfg{
 						.workSizeX {m_gatherGroupSize},
 						.workSizeY {1},
@@ -350,6 +370,7 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 					cmd.barrier2(1, &global);
 					cmd.fill_buffer(*m_scratchBuffer, 0);
 					gather_variance(pipelineBind, dynamicConstants, (volume.probeCountX * volume.probeCountY * volume.probeCountZ + ((m_gatherGroupSize * m_gatherNumRows )- 1)) / (m_gatherGroupSize * m_gatherNumRows), 1, 1);
+					r_renderManager.get_profiler().end_profile(cmd);
 				}
 
 			}
@@ -524,7 +545,8 @@ vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConf
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat},
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::imageFormatShaderName, config.imageFormat },
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits },
-			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled })
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled },
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::ReSTIREnabledShaderName, config.ReSTIREnabled})
 			},
 			.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -666,6 +688,7 @@ vulkan::RaytracingPipelineConfig nyan::DDGIRenderer::generate_config(const RTCon
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits}
 				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled}
+				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::ReSTIREnabledShaderName, config.ReSTIREnabled}
 				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::numRowsShaderName, config.numRows}
 				)},
 			},
@@ -771,4 +794,67 @@ void nyan::DDGIVisualizer::create_pipeline()
 	visualizerConfig.dynamicState.stencil_test_enable = VK_FALSE;
 
 	r_pass.add_pipeline(visualizerConfig, &m_pipeline);
+}
+
+
+nyan::DDGIReSTIRRenderer::DDGIReSTIRRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
+	Renderer(device, registry, renderManager, pass),
+	m_rtPipeline(std::make_unique< vulkan::RTPipeline>(r_device, generate_config()))
+{
+	auto& ddgiRestirManager = r_renderManager.get_ddgi_restir_manager();
+	ddgiRestirManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
+	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+		{
+			PushConstants constants{
+			.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()},
+			.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
+			.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
+			//.renderTarget {r_pass.get_write_bind()},
+			};
+			auto pipelineBind = cmd.bind_raytracing_pipeline(*m_rtPipeline);
+			render_volume(pipelineBind, *m_rtPipeline, constants, 1, 1, 1);
+		}, false);
+}
+
+void nyan::DDGIReSTIRRenderer::begin_frame()
+{
+}
+
+void nyan::DDGIReSTIRRenderer::render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t xCount, uint32_t yCount, uint32_t zCount)
+{
+	bind.push_constants(constants);
+	bind.trace_rays(pipeline, xCount, yCount, zCount);
+}
+
+vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_config()
+{
+	return vulkan::RaytracingPipelineConfig{
+		.rgenGroups {
+			vulkan::Group
+			{
+				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_restir_raytrace_rgen"
+					//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
+					)},
+				},
+			},
+			.hitGroups {
+				vulkan::Group
+				{
+					.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_restir_raytrace_rchit")},
+					.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
+				},
+			},
+			.missGroups {
+				vulkan::Group
+				{
+					.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_restir_raytrace_rmiss")},
+				},
+				vulkan::Group
+				{
+					.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
+				},
+			},
+			.recursionDepth {1},
+			.pipelineLayout = r_device.get_bindless_pipeline_layout()
+	};
 }

@@ -135,8 +135,8 @@ add_executable(DDGITest ${DDGITest_SRC})
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
 #target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
-target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor )
-target_link_libraries(Engine PRIVATE imgui OptickCore stb tinygltf)
+target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
+target_link_libraries(Engine PRIVATE OptickCore stb tinygltf )
 target_link_libraries(tinygltf PUBLIC stb)
 target_link_libraries(Engine PUBLIC shaders)
 #target_link_libraries(Demo Engine)
@@ -168,6 +168,9 @@ endif()
 #)
 target_compile_features(Engine PUBLIC 
     cxx_std_20
+)
+set_target_properties(Engine GLTFTest PROPERTIES 
+    UNITY_BUILD on
 )
 if(WIN32)
     target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_WIN32_KHR)

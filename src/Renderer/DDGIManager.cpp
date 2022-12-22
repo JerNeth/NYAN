@@ -66,6 +66,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
 			.biasedEstimator {parameters.biasedEstimator},
+			.useReSTIR {parameters.useReSTIR},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -214,13 +215,14 @@ void nyan::DDGIManager::update()
 			(constDeviceVolume.relocationEnabled != 0) != parameters.relocationEnabled ||
 			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled ||
 			(constDeviceVolume.dynamicRayAllocationEnabled != 0) != parameters.dynamicRayAllocation ||
-			(constDeviceVolume.biasedEstimator != 0) != parameters.biasedEstimator)
+			(constDeviceVolume.biasedEstimator != 0) != parameters.biasedEstimator ||
+			(constDeviceVolume.useReSTIR != 0) != parameters.useReSTIR)
 			parameters.dirty = true;
 		parameters.frames++;
 		if (!parameters.dirty)
 			continue;
 		parameters.frames = 0;
-		sizeof(nyan::shaders::DDGIVolume);
+
 		auto& deviceVolume = DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume);
 		deviceVolume = nyan::shaders::DDGIVolume{
 			.spacingX {parameters.spacing[0]},
@@ -259,6 +261,7 @@ void nyan::DDGIManager::update()
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
 			.biasedEstimator {parameters.biasedEstimator},
+			.useReSTIR {parameters.useReSTIR},
 		};
 		if (deviceVolume.fixedRayCount > deviceVolume.raysPerProbe)
 			deviceVolume.fixedRayCount = deviceVolume.raysPerProbe;
@@ -632,4 +635,168 @@ void nyan::DDGIManager::update_ray_counts(uint32_t volumeId)
 		};
 		m_rayCounts[volumeId] = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(info, { vulkan::InputData{.ptr {&data},.size {desiredSize} } }, false));
 	}
+}
+
+
+nyan::DDGIReSTIRManager::DDGIReSTIRManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry) :
+	DataManager(device, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 32),
+	r_rendergraph(rendergraph),
+	r_registry(registry)
+{
+
+}
+
+uint32_t nyan::DDGIReSTIRManager::add_volume(const DDGIReSTIRVolumeParameters& parameters)
+{
+	nyan::shaders::DDGIReSTIRVolume volume{
+			.spacingX {parameters.spacing[0]},
+			.spacingY {parameters.spacing[1]},
+			.spacingZ {parameters.spacing[2]},
+			.inverseSpacingX {},
+			.inverseSpacingY {},
+			.inverseSpacingZ {},
+			.gridOriginX {parameters.origin[0]},
+			.gridOriginY {parameters.origin[1]},
+			.gridOriginZ {parameters.origin[2]},
+			.probeCountX {parameters.probeCount[0]},
+			.probeCountY {parameters.probeCount[1]},
+			.probeCountZ {parameters.probeCount[2]},
+			.enabled {parameters.enabled},
+	};
+	return add(volume);
+}
+
+const nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters& nyan::DDGIReSTIRManager::get_parameters(uint32_t id) const
+{
+	auto volumeView = r_registry.view<DDGIReSTIRVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.gpuVolume == id)
+			return parameters;
+	}
+	assert(false && "Invalid Id");
+	throw std::runtime_error("Invalid Id");
+}
+
+nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters& nyan::DDGIReSTIRManager::get_parameters(uint32_t id)
+{
+	auto volumeView = r_registry.view<DDGIReSTIRVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.gpuVolume == id)
+			return parameters;
+	}
+	assert(false && "Invalid Id");
+	throw std::runtime_error("Invalid Id");
+}
+
+const nyan::shaders::DDGIReSTIRVolume& nyan::DDGIReSTIRManager::get(uint32_t id) const
+{
+	return DataManager<nyan::shaders::DDGIReSTIRVolume>::get(id);
+}
+
+void nyan::DDGIReSTIRManager::update()
+{
+	auto volumeView = r_registry.view<DDGIReSTIRVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.gpuVolume == nyan::InvalidBinding) {
+			parameters.gpuVolume = add_volume(parameters);
+			parameters.dirty = true;
+		}
+		const auto& constDeviceVolume = DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume);
+
+		if ((constDeviceVolume.enabled != 0) != parameters.enabled ||
+			constDeviceVolume.spacingX != parameters.spacing[0] ||
+			constDeviceVolume.spacingY != parameters.spacing[1] ||
+			constDeviceVolume.spacingZ != parameters.spacing[2] ||
+			constDeviceVolume.gridOriginX != parameters.origin[0] ||
+			constDeviceVolume.gridOriginY != parameters.origin[1] ||
+			constDeviceVolume.gridOriginZ != parameters.origin[2] ||
+			constDeviceVolume.probeCountX != parameters.probeCount[0] ||
+			constDeviceVolume.probeCountY != parameters.probeCount[1] ||
+			constDeviceVolume.probeCountZ != parameters.probeCount[2])
+			parameters.dirty = true;
+		parameters.frames++;
+		if (!parameters.dirty)
+			continue;
+		parameters.frames = 0;
+
+		auto& deviceVolume = DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume);
+		deviceVolume = nyan::shaders::DDGIReSTIRVolume{
+						.spacingX {parameters.spacing[0]},
+						.spacingY {parameters.spacing[1]},
+						.spacingZ {parameters.spacing[2]},
+						.gridOriginX {parameters.origin[0]},
+						.gridOriginY {parameters.origin[1]},
+						.gridOriginZ {parameters.origin[2]},
+						.probeCountX {parameters.probeCount[0]},
+						.probeCountY {parameters.probeCount[1]},
+						.probeCountZ {parameters.probeCount[2]},
+						.enabled {parameters.enabled},
+						};
+		parameters.dirty = false;
+		//if (parameters.depthResource) {
+		//	auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
+		//	assert(depthResource.m_type == nyan::RenderResource::Type::Image);
+		//	auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
+		//	imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+		//	imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
+		//	imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+		//	imageAttachment.format = depthFormat;
+		//}
+		//else {
+		//	parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+		//		.format{depthFormat},
+		//		//VK_FORMAT_R16G16B16A16_SFLOAT},
+		//		//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
+		//		.size{nyan::ImageAttachment::Size::Absolute},
+		//		.arrayLayers {deviceVolume.probeCountZ},
+		//		.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
+		//		.height {static_cast<float>(deviceVolume.depthTextureSizeY)}
+		//		});
+		//	for (const auto& read : m_reads) {
+		//		auto& pass = r_rendergraph.get_pass(read);
+		//		pass.add_read(parameters.depthResource);
+		//	}
+		//	for (const auto& [write, type] : m_writes) {
+		//		auto& pass = r_rendergraph.get_pass(write);
+		//		pass.add_write(parameters.depthResource, type);
+		//	}
+		//}
+	}
+}
+
+void nyan::DDGIReSTIRManager::begin_frame()
+{
+	auto volumeView = r_registry.view<DDGIReSTIRVolumeParameters>();
+	for (auto [entity, parameters] : volumeView.each()) {
+		if (parameters.gpuVolume == nyan::InvalidBinding) {
+			continue;
+		}
+		const auto& constDeviceVolume = DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume);
+		if (!m_writes.empty()) {
+			//update write binds
+			//auto depthImageBind = writePass.get_write_bind(parameters.depthResource, Renderpass::Write::Type::Compute);
+			//if (constDeviceVolume.depthImageBinding != depthImageBind)
+			//	DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthImageBinding = depthImageBind;
+		}
+		if (!m_reads.empty()) {
+			//update read binds
+			//auto depthTextureBinding = readPass.get_read_bind(parameters.depthResource);
+			//if (constDeviceVolume.depthTextureBinding != depthTextureBinding)
+			//	DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthTextureBinding = depthTextureBinding;
+		}
+	}
+}
+
+void nyan::DDGIReSTIRManager::end_frame()
+{
+}
+
+void nyan::DDGIReSTIRManager::add_read(Renderpass::Id pass)
+{
+	m_reads.push_back(pass);
+}
+
+void nyan::DDGIReSTIRManager::add_write(Renderpass::Id pass, Renderpass::Write::Type type)
+{
+	m_writes.push_back({ pass, type });
 }

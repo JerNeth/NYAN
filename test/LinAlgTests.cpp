@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+//#include <gmock/gmock.h>
 #include "LinAlg.h"
 #include <random>
 namespace Math {
@@ -28,6 +29,7 @@ namespace Math {
         EXPECT_EQ(e.data, 0xFBFF) << std::hex << e.data << " should be " << 0xFBFF;
         half f(65504);
         EXPECT_EQ(f.data, 0x7BFF) << std::hex << f.data << " should be " << 0x7BFF;
+
     }
     TEST(Linalg, Half2) {
         for (int i = -1024; i < 1024; i++) {
@@ -72,7 +74,28 @@ namespace Math {
         double c = 1.0001;
         EXPECT_EQ(c, max(a, c));
     }
-    TEST(Vectors, Assignment) {
+    struct Vectors : public ::testing::Test {
+        Math::vec2 a2{ 0 };
+        Math::vec2 b2{ 1 };
+        Math::vec2 c2{ 2 };
+        Math::vec3 a3{ 0 };
+        Math::vec3 b3{ 1 };
+        Math::vec3 c3{ 2 };
+        Math::vec4 a4{ 0 };
+        Math::vec4 b4{ 1 };
+        Math::vec4 c4{ 2 };
+        //static SetUpTestSuite()
+        //For each test:
+        //Vectors()
+        //void SetUp();
+        //--Test-Body--
+        //void TearDown();
+        //~Vectors()
+        //--end for each
+        //static TearDownTestSuite()
+    };
+
+    TEST_F(Vectors, Assignment) {
         Math::vec4 test({ 0,0,0,0 });
         test.x() = 5;
         test.y() -= 4;
@@ -80,7 +103,7 @@ namespace Math {
         test[3] = 4;
         EXPECT_EQ(test, vec4({5,-4,3,4}));
     }
-    TEST(Vectors, Addition) {
+    TEST_F(Vectors, Addition) {
        
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
@@ -93,10 +116,7 @@ namespace Math {
         EXPECT_EQ(b3 + b3, c3);
         EXPECT_EQ(b4 + b4, c4);
     }
-    TEST(Vectors, Subtraction) {
-        Math::vec2 a2(0), b2(1), c2(2);
-        Math::vec3 a3(0), b3(1), c3(2);
-        Math::vec4 a4(0), b4(1), c4(2);
+    TEST_F(Vectors, Subtraction) {
 
         EXPECT_EQ(b2 - a2, b2);
         EXPECT_EQ(b3 - a3, b3);
@@ -106,7 +126,24 @@ namespace Math {
         EXPECT_EQ(b3 - b3, a3);
         EXPECT_EQ(b4 - b4, a4);
     }
-    TEST(Vectors, Multiplication) {
+    struct TestTuple {
+        Math::vec4 a;
+        Math::vec4 b;
+        Math::vec4 c;
+    };
+    struct VectorWithParams : public ::testing::TestWithParam<TestTuple> {
+    };
+    TEST_P(VectorWithParams, Subtraction) {
+
+        auto [a, b, c] = GetParam();
+        EXPECT_EQ(a - b, c);
+    }
+    const TestTuple tests[] = { TestTuple{Math::vec4{2}, Math::vec4{1}, Math::vec4{1}} ,
+                                 TestTuple{Math::vec4{std::numeric_limits<float>::max()}, Math::vec4{std::numeric_limits<float>::max()}, Math::vec4{0}} };
+    INSTANTIATE_TEST_SUITE_P(SimpleNumbers, VectorWithParams, 
+            ::testing::ValuesIn(tests)
+        );
+    TEST_F(Vectors, Multiplication) {
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
         Math::vec4 a4(0), b4(1), c4(2);
@@ -123,7 +160,7 @@ namespace Math {
         EXPECT_EQ(b3 * c3, c3);
         EXPECT_EQ(b4 * c4, c4);
     }
-    TEST(Vectors, Division) {
+    TEST_F(Vectors, Division) {
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
         Math::vec4 a4(0), b4(1), c4(2);
@@ -140,7 +177,7 @@ namespace Math {
         EXPECT_EQ(c3 / 2, b3);
         EXPECT_EQ(c4 / 2, b4);
     }
-    TEST(Vectors, Pow) {
+    TEST_F(Vectors, Pow) {
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
         Math::vec4 a4(0), b4(1), c4(2);
@@ -172,7 +209,7 @@ namespace Math {
         EXPECT_EQ(c4 ^ 2, Math::vec4(4));
     }
 
-    TEST(Vectors, Dot) {
+    TEST_F(Vectors, Dot) {
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
         Math::vec4 a4(0), b4(1), c4(2);
@@ -201,7 +238,7 @@ namespace Math {
         EXPECT_EQ(c3.dot( c3), 12);
         EXPECT_EQ(c4.dot( c4), 16);
     }
-    TEST(Vectors, Lerp) {
+    TEST_F(Vectors, Lerp) {
         Math::vec2 a2(0), b2(1), c2(0.5);
         Math::vec3 a3(0), b3(1), c3(0.5);
         Math::vec4 a4(0), b4(1), c4(0.5);
@@ -211,7 +248,7 @@ namespace Math {
         EXPECT_EQ(Math::lerp(a4, b4, t), c4);
 
     }
-    TEST(Vectors, Broadcast) {
+    TEST_F(Vectors, Broadcast) {
         Math::vec2 a2(0), b2(1), c2(2);
         Math::vec3 a3(0), b3(1), c3(2);
         Math::vec4 a4(0), b4(1), c4(2);
@@ -223,7 +260,7 @@ namespace Math {
         EXPECT_EQ(c4.apply_fun(fun), Math::vec4(4));
     }
 
-    TEST(Vectors, Cross) {
+    TEST_F(Vectors, Cross) {
         Math::vec3 a({ 0, 0, 1 }), b({ 1, 0, 0 }), c({0, 1, 0});
 
         EXPECT_EQ(cross(a, b), c);
@@ -234,7 +271,7 @@ namespace Math {
         EXPECT_EQ(cross(a, c), -b);
         EXPECT_EQ(cross(c, b), -a);
     }
-    TEST(Vectors, Close) {
+    TEST_F(Vectors, Close) {
         Math::vec3 a({ 0, 0, 1 }), b({ 0, 0, 1 }), c({ 0, 0, 1.001f }), d({ 0, 0, -1.0f }), e({ 0, 0, -1.001f });
 
         EXPECT_TRUE(close(a, a));
@@ -297,7 +334,7 @@ namespace Math {
         return res.normalized();
     }
 
-    TEST(Vectors, Octahedral) {
+    TEST_F(Vectors, Octahedral) {
         std::array as{ Math::vec3{0, 0, 1}, Math::vec3{0, 0, 1}, Math::vec3{0, 0, 1.f}
         , Math::vec3{0.16, 0.02f, -0.6f}
         , Math::vec3{0, 0.01f, -0.99f} 
@@ -355,8 +392,8 @@ namespace Math {
             vec3 b({ dist_vec(rng), dist_vec(rng), dist_vec(rng) });
             vec3 result2 = t33 * b;
 
-            ASSERT_TRUE(close(a, result1, 0.0001f)) << a.convert_to_string() << " not close to " << result1.convert_to_string() << " at: i="<< i;
-            ASSERT_TRUE(close(b, result2, 0.0001f)) << b.convert_to_string() << " not close to " << result2.convert_to_string() << " at: i=" << i;
+            EXPECT_TRUE(close(a, result1, 0.0001f)) << a.convert_to_string() << " not close to " << result1.convert_to_string() << " at: i="<< i;
+            EXPECT_TRUE(close(b, result2, 0.0001f)) << b.convert_to_string() << " not close to " << result2.convert_to_string() << " at: i=" << i;
         }
         //EXPECT_EQ(a.dot(b), 0);
     }
@@ -372,8 +409,8 @@ namespace Math {
                 dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng),
                 dist_vec(rng), dist_vec(rng) , dist_vec(rng) ,dist_vec(rng), });
             mat44 t_t = t.transpose();
-            ASSERT_TRUE(close(t, t.transpose().transpose()));
-            ASSERT_TRUE(close(t, t_t.transposed()));
+            EXPECT_TRUE(close(t, t.transpose().transpose()));
+            EXPECT_TRUE(close(t, t_t.transposed()));
         }
         //EXPECT_EQ(a.dot(b), 0);
     }
@@ -394,10 +431,10 @@ namespace Math {
                 counter++;
                 continue;
             }
-            ASSERT_TRUE(close(mat44::identity(), t * t_t, 1e-2f)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
-            ASSERT_TRUE(close(mat44::identity(),  t_t *t, 1e-2f));
+            EXPECT_TRUE(close(mat44::identity(), t * t_t, 1e-2f)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
+            EXPECT_TRUE(close(mat44::identity(),  t_t *t, 1e-2f));
         }
-        std::cout << "Non invertible matrices: " << counter << "\n";
+        //std::cout << "Non invertible matrices: " << counter << "\n";
         //EXPECT_EQ(a.dot(b), 0);
     }
     TEST(Matrices, inverse2) {
@@ -410,8 +447,8 @@ namespace Math {
         mat44 t_t;
         if (!t.inverse(t_t)) {
         }
-        ASSERT_TRUE(close(mat44::identity(), t * t_t)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
-        ASSERT_TRUE(close(mat44::identity(), t_t * t));
+        EXPECT_TRUE(close(mat44::identity(), t * t_t)) << t.convert_to_string() << "\n" << t_t.convert_to_string() << "\n" << (t * t_t).convert_to_string() << " should be:\n" << mat44::identity().convert_to_string() << "\n";
+        EXPECT_TRUE(close(mat44::identity(), t_t * t));
 
         //EXPECT_EQ(a.dot(b), 0);
     }
@@ -437,8 +474,8 @@ namespace Math {
             mat2(3, 3) = 1;
             mat2.set_col(rotMat * -pos, 3ull);
             auto inv2 = mat.inverse_affine_transformation_matrix();
-            ASSERT_TRUE(close(mat2, matInverse, 1e-3f)) << matInverse.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
-            ASSERT_TRUE(close(mat2, inv2, 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+            EXPECT_TRUE(close(mat2, matInverse, 1e-3f)) << matInverse.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+            EXPECT_TRUE(close(mat2, inv2, 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
 
         }
         for (int i = 0; i < 100000; i++) {
@@ -449,7 +486,7 @@ namespace Math {
             mat34 mat2 = mat34(rotMat);
             mat2.set_col(rotMat * -pos, 3ull);
             const auto inv2 = mat.inverse_affine_transformation_matrix();
-            ASSERT_TRUE(close(mat2, static_cast<mat34>(inv2), 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
+            EXPECT_TRUE(close(mat2, static_cast<mat34>(inv2), 1e-3f)) << inv2.convert_to_string() << " should be:\n" << mat2.convert_to_string() << "\n";
 
         }
         EXPECT_EQ(counter1_1, 0) << counter1_1 << " trivially inversible matrices should have been inverted\n";

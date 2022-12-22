@@ -1,6 +1,6 @@
-#include "..\..\include\VulkanWrapper\QueryPool.hpp"
 #include "QueryPool.hpp"
 #include "LogicalDevice.h"
+#include "Instance.h"
 #include <bit>
 
 vulkan::QueryPool::QueryPool(LogicalDevice& device, VkQueryPool queryPool, uint32_t maxQueryCount)
@@ -17,7 +17,7 @@ vulkan::QueryPool::~QueryPool()
 void vulkan::QueryPool::reset(uint32_t firstQuery, uint32_t queryCount)
 {
 	assert(m_handle);
-	assert(r_device.get_physical_device().get_host_query_reset_features().hostQueryReset);
+	assert(r_device.get_physical_device().get_vulkan12_features().hostQueryReset);
 	vkResetQueryPool(r_device, m_handle, firstQuery, queryCount);
 	m_usedQueryCount = 0;
 }
@@ -60,7 +60,7 @@ void vulkan::TimestampQueryPool::reset()
 		return;
 	if (m_usedQueryCount > m_maxQueryCount) {
 		destroy();
-		m_maxQueryCount = 1 << std::bit_width(m_usedQueryCount);
+		m_maxQueryCount = std::bit_width(m_usedQueryCount) << 1;
 		create();
 	}
 	else {
@@ -85,5 +85,7 @@ void vulkan::TimestampQueryPool::create()
 	};
 	vkCreateQueryPool(r_device, &createInfo, r_device.get_allocator(), &m_handle);
 	m_results.resize(m_maxQueryCount);
+	m_usedQueryCount = 0;
+	QueryPool::reset(0, m_maxQueryCount);
 }
 

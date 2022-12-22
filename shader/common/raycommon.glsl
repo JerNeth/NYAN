@@ -56,7 +56,7 @@ void barycentric_derivatives(vec4 x, vec3 n, vec3 x0, vec3 x1, vec3 x2, mat4 wor
 	dvDXY = (dvDxt.xy + dvDxt.z * ddepthdXY) * wMx;
 }
 
-const uint HitDDGIMiss = 0xFDu;
+const uint HitKindMiss = 0xFDu;
 
 struct Payload {
 	vec3 albedo;

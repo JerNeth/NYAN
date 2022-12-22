@@ -10,6 +10,7 @@
 #include "Renderer/DDGIRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/DeferredLighting.h"
+#include "Renderer/Profiler.hpp"
 #include "GLTFReader/GLTFReader.hpp"
 
 using namespace nyan;
@@ -117,6 +118,7 @@ int main() {
 	renderManager.set_primary_camera(camera);
 
 	auto& rendergraph{ renderManager.get_render_graph() };
+	rendergraph.set_profiler(&renderManager.get_profiler());
 
 
 	auto gbuffer = rendergraph.add_gbuffer("gbuffer");
@@ -142,7 +144,9 @@ int main() {
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
+
 	rendergraph.build();
+
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
 			cameraController.update(dt);
@@ -152,6 +156,8 @@ int main() {
 		{
 			//ImGui first here since we might want to use ImGui in other begin_frames
 			imgui.begin_frame();
+
+			renderManager.get_profiler().begin_frame();
 
 			ddgiRenderer.begin_frame();
 			rendergraph.begin_frame();

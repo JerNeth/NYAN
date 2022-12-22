@@ -43,29 +43,30 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
 {
 	volkLoadDevice(device);
-	if (r_physicalDevice.get_extensions().performance_query) {
-		uint32_t counterCount{ 0 };
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_graphics.familyIndex, &counterCount, nullptr, nullptr);
-		std::vector< VkPerformanceCounterKHR> counters(counterCount);
-		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions(counterCount);
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_graphics.familyIndex, &counterCount, counters.data(), counterDecriptions.data());
+	//Not really widely supported
+	//if (r_physicalDevice.get_extensions().performance_query) {
+	//	uint32_t counterCount{ 0 };
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_graphics.familyIndex, &counterCount, nullptr, nullptr);
+	//	std::vector< VkPerformanceCounterKHR> counters(counterCount);
+	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions(counterCount);
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_graphics.familyIndex, &counterCount, counters.data(), counterDecriptions.data());
 
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_compute.familyIndex, &counterCount, nullptr, nullptr);
-		std::vector< VkPerformanceCounterKHR> counters2(counterCount);
-		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions2(counterCount);
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_compute.familyIndex, &counterCount, counters2.data(), counterDecriptions2.data());
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_compute.familyIndex, &counterCount, nullptr, nullptr);
+	//	std::vector< VkPerformanceCounterKHR> counters2(counterCount);
+	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions2(counterCount);
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_compute.familyIndex, &counterCount, counters2.data(), counterDecriptions2.data());
 
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_transfer.familyIndex, &counterCount, nullptr, nullptr);
-		std::vector< VkPerformanceCounterKHR> counters3(counterCount);
-		std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions3(counterCount);
-		vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-			r_physicalDevice, m_transfer.familyIndex, &counterCount, counters3.data(), counterDecriptions3.data());
-	}
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_transfer.familyIndex, &counterCount, nullptr, nullptr);
+	//	std::vector< VkPerformanceCounterKHR> counters3(counterCount);
+	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions3(counterCount);
+	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
+	//		r_physicalDevice, m_transfer.familyIndex, &counterCount, counters3.data(), counterDecriptions3.data());
+	//}
 
 	vkGetDeviceQueue(m_device, m_graphics.familyIndex, 0, &m_graphics.queue);
 	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
@@ -1872,17 +1873,9 @@ vulkan::LogicalDevice::FrameResource::FrameResource(LogicalDevice& device) : r_d
 		transferPool.emplace_back(device, device.m_transfer.familyIndex);
 	}
 
-	graphicsTimestamps.reserve(device.get_thread_count());
+	timestamps.reserve(device.get_thread_count());
 	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-		graphicsTimestamps.emplace_back(device);
-	}
-	computeTimestamps.reserve(device.get_thread_count());
-	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-		computeTimestamps.emplace_back(device);
-	}
-	transferTimestamps.reserve(device.get_thread_count());
-	for (uint32_t i = 0; i < device.get_thread_count(); i++) {
-		transferTimestamps.emplace_back(device);
+		timestamps.emplace_back(device);
 	}
 }
 
@@ -1926,19 +1919,9 @@ vulkan::CommandPool& vulkan::LogicalDevice::FrameResource::get_pool(CommandBuffe
 	}
 }
 
-vulkan::TimestampQueryPool& vulkan::LogicalDevice::FrameResource::get_timestamps(CommandBufferType type) noexcept
+vulkan::TimestampQueryPool& vulkan::LogicalDevice::FrameResource::get_timestamps() noexcept
 {
-	switch (type) {
-	case CommandBufferType::Compute:
-		return computeTimestamps[r_device.get_thread_index()];
-	case CommandBufferType::Generic:
-		return graphicsTimestamps[r_device.get_thread_index()];
-	case CommandBufferType::Transfer:
-		return transferTimestamps[r_device.get_thread_index()];
-	default:
-		assert(false && "Invalid Command buffer type");
-		return graphicsTimestamps[r_device.get_thread_index()];
-	}
+	return timestamps[r_device.get_thread_index()];
 }
 
 std::vector<VkSemaphore>& vulkan::LogicalDevice::FrameResource::get_signal_semaphores() noexcept
@@ -1985,7 +1968,7 @@ void vulkan::LogicalDevice::FrameResource::begin()
 	}
 	reset_command_pools();
 	delete_resources();
-	read_queries();
+	read_queries(); //TODO move timestamp queries to profiler
 }
 
 void vulkan::LogicalDevice::FrameResource::clear_fences()
@@ -2051,17 +2034,9 @@ bool vulkan::LogicalDevice::FrameResource::has_compute_cmd() const noexcept
 
 void vulkan::LogicalDevice::FrameResource::read_queries()
 {
-	for (auto& timestamps : graphicsTimestamps) {
-		timestamps.read_queries();
-		timestamps.reset();
-	}
-	for (auto& timestamps : computeTimestamps) {
-		timestamps.read_queries();
-		timestamps.reset();
-	}
-	for (auto& timestamps : transferTimestamps) {
-		timestamps.read_queries();
-		timestamps.reset();
+	for (auto& timestamp : timestamps) {
+		timestamp.read_queries();
+		timestamp.reset();
 	}
 }
 

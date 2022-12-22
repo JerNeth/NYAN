@@ -45,12 +45,14 @@ namespace nyan {
 			uint32_t imageFormat;
 			uint32_t renderTargetImageWidthBits;
 			VkBool32 dynamicRayAllocationEnabled;
+			VkBool32 ReSTIREnabled;
 			static constexpr const char* rayCountShaderName{ "maxRayCount" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
 			static constexpr const char* imageFormatShaderName{ "imageFormat" };
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
 			static constexpr const char* dynamicRayAllocationEnabledShaderName{ "dynamicRayAllocationEnabled" };
+			static constexpr const char* ReSTIREnabledShaderName{ "ReSTIREnabled" };
 			friend bool operator==(const PipelineConfig& lhs, const PipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
@@ -110,9 +112,11 @@ namespace nyan {
 			uint32_t renderTargetImageFormat;
 			uint32_t numRows;
 			VkBool32 dynamicRayAllocationEnabled;
+			VkBool32 ReSTIREnabled;
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
 			static constexpr const char* dynamicRayAllocationEnabledShaderName{ "dynamicRayAllocationEnabled" };
+			static constexpr const char* ReSTIREnabledShaderName{ "ReSTIREnabled" };
 			static constexpr const char* numRowsShaderName{ "numRows" };
 			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
 				return lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
@@ -241,6 +245,25 @@ namespace nyan {
 		nyan::RenderResource::Id m_depth;
 		std::mt19937 m_generator{ 420 };
 		std::uniform_real_distribution<float> m_dist{ 0.f, 1.f };
+	};
+
+	class DDGIReSTIRRenderer : Renderer {
+	private:
+		struct PushConstants
+		{
+			uint32_t accBinding;
+			uint32_t sceneBinding;
+			uint32_t meshBinding;
+			uint32_t renderTarget;
+		};
+	public:
+		DDGIReSTIRRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
+		void begin_frame();
+	private:
+		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t xCount, uint32_t yCount, uint32_t zCount);
+		vulkan::RaytracingPipelineConfig generate_config();
+
+		std::unique_ptr<vulkan::RTPipeline> m_rtPipeline;
 	};
 }
 

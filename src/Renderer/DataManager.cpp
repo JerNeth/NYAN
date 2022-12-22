@@ -59,5 +59,6 @@ vulkan::BufferHandle nyan::DataManager<T>::create_buffer(size_t size, VkBufferUs
 template class nyan::DataManager<nyan::shaders::Mesh>;
 template class nyan::DataManager<nyan::shaders::Material>;
 template class nyan::DataManager<nyan::shaders::DDGIVolume>;
+template class nyan::DataManager<nyan::shaders::DDGIReSTIRVolume>;
 template class nyan::DataManager<nyan::shaders::Scene>;
 template class nyan::DataManager<nyan::InstanceData>;

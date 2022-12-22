@@ -14,18 +14,13 @@ layout(std430, push_constant) uniform PushConstants
 	uint accBinding;
 	uint sceneBinding;
 	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
 	uint renderTarget;
-	vec4 randomRotation;
+
 } constants;
 
-layout(location = 0) rayPayloadInEXT PackedPayload pld;
-//layout(location = 0) rayPayloadInEXT  Payload payload;
+layout(location = 0) rayPayloadEXT PackedPayload pld;
 
-void main()
-{
+void main() {
     Scene scene = scenes[constants.sceneBinding].scene;
 	Payload payload;
 	//TODO maybe use Henyey-Greenstein or Environmentmap

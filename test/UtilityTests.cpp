@@ -36,7 +36,7 @@ namespace Utility {
             }
         }
         auto t3 = std::chrono::steady_clock::now();
-        std::cout << "Delta t, std: " << (t2 - t1).count() << " util: " << (t3 - t2).count() << "\n";
+        //std::cout << "Delta t, std: " << (t2 - t1).count() << " util: " << (t3 - t2).count() << "\n";
         EXPECT_EQ(res1, res2);
     }
     TEST(Utility, bitstuff) {
@@ -70,7 +70,7 @@ namespace Utility {
                 result += fast_log2(i);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "Fast log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "Fast log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         uint64_t result2 = 0;
         {
@@ -79,7 +79,7 @@ namespace Utility {
                 result2 += static_cast<uint32_t>(std::log2(i));
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "log2 took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         uint64_t result3 = 0;
         {
@@ -88,7 +88,7 @@ namespace Utility {
                 result3 += static_cast<uint32_t>(std::bit_width(i) - 1);
             }
             auto end = std::chrono::steady_clock::now();
-            std::cout << "bitwidth took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
+            //std::cout << "bitwidth took: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "microseconds\n";
         }
         EXPECT_EQ(result, result3);
     }

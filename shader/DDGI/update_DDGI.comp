@@ -37,6 +37,7 @@ layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 layout(constant_id = 8) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 9) const uint subgroupSize = 32;
 layout(constant_id = 10) const bool dynamicRayAllocationEnabled = false;
+layout(constant_id = 11) const bool ReSTIREnabled = false;
 
 shared vec3 rayDirection[maxRayCount];
 shared vec3 rayRadiance[maxRayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V

@@ -98,7 +98,7 @@ namespace vulkan {
 			void recycle_semaphore(VkSemaphore sempahore);
 			std::vector<CommandBufferHandle>& get_submissions(CommandBufferType type) noexcept;
 			vulkan::CommandPool& get_pool(CommandBufferType type) noexcept;
-			vulkan::TimestampQueryPool& get_timestamps(CommandBufferType type) noexcept;
+			vulkan::TimestampQueryPool& get_timestamps() noexcept;
 			std::vector<VkSemaphore>& get_signal_semaphores() noexcept;
 			void signal_semaphore(VkSemaphore semaphore) noexcept;
 			void wait_for_fence(FenceHandle&& fence) noexcept;
@@ -135,9 +135,7 @@ namespace vulkan {
 			std::vector<CommandBufferHandle> submittedGraphicsCmds;
 			std::vector<CommandBufferHandle> submittedComputeCmds;
 			std::vector<CommandBufferHandle> submittedTransferCmds;
-			std::vector<TimestampQueryPool> graphicsTimestamps;
-			std::vector<TimestampQueryPool> computeTimestamps;
-			std::vector<TimestampQueryPool> transferTimestamps;
+			std::vector<TimestampQueryPool> timestamps;
 
 
 			std::vector<VkBufferView> deletedBufferViews;

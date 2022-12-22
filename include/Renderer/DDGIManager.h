@@ -47,6 +47,7 @@ namespace nyan {
 			bool classificationEnabled{ false };
 			bool dynamicRayAllocation{ false };
 			bool biasedEstimator{ false };
+			bool useReSTIR{ false };
 			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
@@ -110,6 +111,49 @@ namespace nyan {
 		std::vector<std::unique_ptr<Offsets>> m_rayAllocation;
 		std::vector<std::unique_ptr<vulkan::BufferHandle>> m_rayCounts;
 	};
+
+	class DDGIReSTIRManager : public DataManager<nyan::shaders::DDGIReSTIRVolume>
+	{
+	public:
+		struct DDGIReSTIRVolumeParameters
+		{
+			friend class DDGIReSTIRManager;
+			Math::vec3 spacing{ 10.f, 10.f, 10.f };
+			Math::vec3 origin{ 0.f, 0.f, 0.f };
+			Math::uvec3 probeCount{ 16, 4, 16 };
+			bool enabled{ true };
+
+			uint32_t frames{ 0 };
+			uint32_t gpuVolume{ nyan::InvalidBinding };
+			bool dirty{ true };
+
+		};
+	private:
+		struct Write {
+			Renderpass::Id pass{};
+			Renderpass::Write::Type type{};
+		};
+	public:
+		DDGIReSTIRManager(vulkan::LogicalDevice& device, nyan::Rendergraph& rendergraph, entt::registry& registry);
+		uint32_t add_volume(const DDGIReSTIRVolumeParameters& parameters = {});
+
+		const DDGIReSTIRVolumeParameters& get_parameters(uint32_t id) const;
+		DDGIReSTIRVolumeParameters& get_parameters(uint32_t id);
+		const nyan::shaders::DDGIReSTIRVolume& get(uint32_t id) const;
+
+		void update();
+		void begin_frame();
+		void end_frame();
+		void add_read(Renderpass::Id pass);
+		void add_write(Renderpass::Id pass, Renderpass::Write::Type type);
+
+	private:
+		nyan::Rendergraph& r_rendergraph;
+		entt::registry& r_registry;
+		std::vector<Renderpass::Id> m_reads;
+		std::vector<Write> m_writes;
+	};
+
 }
 
 #endif !RDDDGIMANAGER_H

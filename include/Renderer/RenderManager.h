@@ -10,6 +10,7 @@
 #include "DDGIManager.h"
 #include "TextureManager.h"
 #include "Camera.h"
+#include "Profiler.hpp"
 #include "entt/entt.hpp"
 
 namespace nyan {
@@ -36,8 +37,13 @@ namespace nyan {
 		const nyan::SceneManager& get_scene_manager() const;
 		nyan::DDGIManager& get_ddgi_manager();
 		const nyan::DDGIManager& get_ddgi_manager() const;
+		nyan::DDGIReSTIRManager& get_ddgi_restir_manager();
+		const nyan::DDGIReSTIRManager& get_ddgi_restir_manager() const;
 		entt::registry& get_registry();
 		const entt::registry& get_registry() const;
+		nyan::Profiler& get_profiler();
+		const nyan::Profiler& get_profiler() const;
+
 		void add_materials(const std::vector<nyan::MaterialData>& materials);
 		void set_primary_camera(entt::entity entity);
 		const entt::entity& get_primary_camera() const;
@@ -55,6 +61,8 @@ namespace nyan {
 		nyan::InstanceManager m_instanceManager;
 		nyan::SceneManager m_sceneManager;
 		nyan::DDGIManager m_ddgiManager;
+		nyan::DDGIReSTIRManager m_ddgiReSTIRManager;
+		nyan::Profiler m_profiler;
 
 		bool m_useRayTracing;
 		entt::entity m_primaryCamera;

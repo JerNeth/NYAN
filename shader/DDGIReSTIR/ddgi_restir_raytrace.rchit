@@ -13,25 +13,19 @@ layout(std430, push_constant) uniform PushConstants
 	uint accBinding;
 	uint sceneBinding;
 	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-
 	uint renderTarget;
-	vec4 randomRotation;
+
 } constants;
 
-layout(location = 0) rayPayloadInEXT PackedPayload pld;
+layout(location = 0) rayPayloadEXT PackedPayload pld;
 
 hitAttributeEXT vec2 baryCoord;
 
-void main()
-{
-
+void main() {
     Scene scene = scenes[constants.sceneBinding].scene;
 	Mesh mesh = meshData[nonuniformEXT(constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
 	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
-	
+		
 	#ifdef COMPLEX
     VertexData vertexData = get_vertex_data(mesh, baryCoord, gl_PrimitiveID, gl_ObjectToWorldEXT);
 	#else

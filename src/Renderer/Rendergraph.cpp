@@ -1,6 +1,7 @@
 #include "Renderer/RenderGraph.h"
 #include "VulkanWrapper/Image.h"
 #include "CommandBuffer.h"
+#include "Renderer/Profiler.hpp"
 
 using namespace nyan;
 //using namespace vulkan;
@@ -825,7 +826,9 @@ void nyan::Rendergraph::end_frame()
 		//std::cout << "Execute pass: "<< pass.get_id() << "\n";
 		auto cmdHandle = r_device.request_command_buffer(commandBufferType);
 		auto& cmd = *cmdHandle;
-		cmd.begin_region(pass.m_name.data());
+		if (p_profiler)
+			p_profiler->begin_profile(cmd, pass.m_name);
+		cmd.begin_region(pass.m_name.c_str());
 		pass.apply_pre_barriers(cmd);
 		for (auto [id, type, view, binding] : pass.m_writes) {
 			auto& resource = m_renderresources.get(id);
@@ -847,6 +850,8 @@ void nyan::Rendergraph::end_frame()
 		pass.execute(cmd);
 		pass.apply_post_barriers(cmd);
 		cmd.end_region();
+		if (p_profiler)
+			p_profiler->end_profile(cmd);
 
 		r_device.add_wait_semaphores(commandBufferType, pass.m_waitInfos);
 		pass.m_waitInfos.clear();
@@ -863,6 +868,11 @@ void nyan::Rendergraph::end_frame()
 		if (pass.m_id == m_lastCompute || pass.m_id == m_lastGeneric)
 			r_device.add_wait_semaphore(vulkan::CommandBufferType::Transfer, signals.back(), VK_PIPELINE_STAGE_2_COPY_BIT);
 	});
+}
+
+void nyan::Rendergraph::set_profiler(nyan::Profiler* profiler)
+{
+	p_profiler = profiler;
 }
 
 GBuffer nyan::Rendergraph::add_gbuffer(const std::string& name)

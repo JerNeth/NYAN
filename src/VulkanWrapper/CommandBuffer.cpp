@@ -8,6 +8,7 @@
 #include "Buffer.h"
 #include "AccelerationStructure.h"
 #include "Utility/Exceptions.h"
+#include "QueryPool.hpp"
 
 vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type, uint32_t threadIdx) :
 	VulkanObject(parent, handle),
@@ -109,6 +110,11 @@ vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(P
 	auto set = r_device.get_bindless_set().get_set();
 	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR };
+}
+
+void vulkan::CommandBuffer::write_timestamp(VkPipelineStageFlags2 stage, TimestampQueryPool& queryPool, uint32_t query)
+{
+	vkCmdWriteTimestamp2(m_handle, stage, queryPool, query);
 }
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size)

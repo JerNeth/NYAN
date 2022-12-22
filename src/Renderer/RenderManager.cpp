@@ -18,6 +18,8 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
 	m_sceneManager(r_device),
 	m_ddgiManager(r_device, m_rendergraph, m_registry),
+	m_ddgiReSTIRManager(r_device, m_rendergraph, m_registry),
+	m_profiler(r_device),
 	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
 		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
 	m_primaryCamera(entt::null)
@@ -90,6 +92,16 @@ const nyan::DDGIManager& nyan::RenderManager::get_ddgi_manager() const
 	return m_ddgiManager;
 }
 
+nyan::DDGIReSTIRManager& nyan::RenderManager::get_ddgi_restir_manager()
+{
+	return m_ddgiReSTIRManager;
+}
+
+const nyan::DDGIReSTIRManager& nyan::RenderManager::get_ddgi_restir_manager() const
+{
+	return m_ddgiReSTIRManager;
+}
+
 entt::registry& nyan::RenderManager::get_registry()
 {
 	return m_registry;
@@ -98,6 +110,16 @@ entt::registry& nyan::RenderManager::get_registry()
 const entt::registry& nyan::RenderManager::get_registry() const
 {
 	return m_registry;
+}
+
+nyan::Profiler& nyan::RenderManager::get_profiler()
+{
+	return m_profiler;
+}
+
+const nyan::Profiler& nyan::RenderManager::get_profiler() const
+{
+	return m_profiler;
 }
 
 void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& materials)

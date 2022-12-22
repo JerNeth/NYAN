@@ -173,6 +173,29 @@ struct DDGIVolume {
 	uint classificationEnabled;
 	uint dynamicRayAllocationEnabled;
 	uint biasedEstimator;
+	uint useReSTIR;
+};
+
+struct DDGIReSTIRVolume {
+	//Assuming Grid
+	float spacingX;
+	float spacingY;
+	float spacingZ;
+
+	float inverseSpacingX;
+	float inverseSpacingY;
+	float inverseSpacingZ;
+
+	float gridOriginX;
+	float gridOriginY;
+	float gridOriginZ;
+
+	uint probeCountX;
+	uint probeCountY;
+	uint probeCountZ;
+
+	uint enabled;
+
 };
 
 #endif

@@ -82,6 +82,8 @@ namespace vulkan {
 	constexpr ShaderId invalidShaderId = ~ShaderId{ 0 };
 	class WindowSystemInterface;
 
+	class LogicalDevice;
+
 	enum class DefaultSampler : uint32_t {
 		NearestClamp,
 		LinearClamp,

@@ -20,6 +20,8 @@ namespace vulkan {
 		ComputePipelineBind bind_compute_pipeline(PipelineId pipelineIdentifier);
 		RaytracingPipelineBind bind_raytracing_pipeline(PipelineId pipelineIdentifier);
 
+		void write_timestamp(VkPipelineStageFlags2 stage, TimestampQueryPool& queryPool, uint32_t query);
+
 		void copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size);
 		void copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount);
 		void copy_buffer(const Buffer& dst, const Buffer& src);

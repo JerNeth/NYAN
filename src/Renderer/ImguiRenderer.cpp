@@ -7,6 +7,7 @@
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/Light.h"
+#include "implot.h"
 //#include "Renderer/DDGIManager.h"
 using namespace vulkan;
 
@@ -307,6 +308,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	io.DisplaySize.x = static_cast<float>(r_device.get_swapchain_width());
 	io.DisplaySize.y = static_cast<float>(r_device.get_swapchain_height());
@@ -344,6 +346,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 
 nyan::ImguiRenderer::~ImguiRenderer()
 {
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 }
 

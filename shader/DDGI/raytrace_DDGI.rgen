@@ -14,7 +14,6 @@
 
 layout(location = 0) rayPayloadEXT PackedPayload pld;
 //layout(location = 0) rayPayloadEXT Payload payload;
-layout(location = 1) rayPayloadEXT float visibility;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
@@ -22,6 +21,7 @@ layout(constant_id = 1) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 2) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 3) const uint numRows = 1;
 layout(constant_id = 4) const bool dynamicRayAllocationEnabled = false;
+layout(constant_id = 5) const bool ReSTIREnabled = false;
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -36,96 +36,21 @@ layout(std430, push_constant) uniform PushConstants
 } constants;
 
 
-float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
-{
-    visibility = 0.f;
-    uint  rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
-    float tMin     = 0.02;
-	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-            rayFlags,       // rayFlags
-            0xFF,           // cullMask
-            0,              // sbtRecordOffset
-            0,              // sbtRecordStride
-            1,              // missIndex
-            shadingData.worldPos.xyz + shadingData.shadingNormal * 0.02, // ray origin
-            tMin,           // ray min range
-            dir.xyz,  // ray direction
-            tMax,           // ray max range
-            1               // payload (location = 0)
-        );
-    return visibility;
-    //return 1.0f;
-}
-const float minLight = 1e-5;
-vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData) 
-{
-    vec3 diffuse = vec3(0.f);
-    for(int i = 0; i < maxNumPointLights; i++) 
-    {
-        PointLight light = scene.pointLights[i];
-        vec3 lightDir = light.pos.xyz - shadingData.worldPos;
-        float dist = length(lightDir);
-        if(dist > light.attenuationDistance)
-            continue;
+//#define SHADOW_RAY_PAYLOAD_LOCATION 1 Optional for different locations
+#include "raytrace_lighting.glsl"
 
-        lightDir /= dist;
-        float lightShadow = light_visibility(shadingData, lightDir,dist);
-        if(lightShadow <= minLight )
-            continue;
-        //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
-        float distRatio = dist / light.attenuationDistance;
-        distRatio *= distRatio;
-        distRatio *= distRatio;
-        float falloff = clamp(1.f - distRatio, 0.f, 1.f);
-        falloff *= falloff;
-        falloff *= 1.f / (dist * dist + 1.f);
-        LightData lightData;
-        lightData.dir = lightDir;
-        lightData.intensity = light.intensity * falloff;
-        lightData.color = light.color.rgb;
-        diffuse_light(lightData, shadingData, diffuse);
-        
-    }
-    return diffuse;
-}
-
-vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
+uint binary_search(in DDGIVolume volume, in uint readOffset, in uint searchValue) 
 {
-    vec3 diffuse = vec3(0.f);
-    //Only shade dielectrics
-    if(shadingData.metalness >= 1) {
-        return vec3(0.f);
+    uint L = 0;
+    uint R = readOffset;
+    while (L < R) {
+        uint m = (L+R) >> 1;
+        if(readUInts[volume.dynamicRayBufferBinding].u[readOffset + m] < searchValue)
+            L = m + 1;
+        else
+            R = m;
     }
-    if(scene.dirLight.enabled > 0) 
-    {
-        float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
-        if(lightShadow > minLight) {
-            LightData lightData;
-            lightData.dir = -scene.dirLight.dir;
-            lightData.intensity = scene.dirLight.intensity;
-            lightData.color = scene.dirLight.color;
-            diffuse_light(lightData, shadingData, diffuse);
-        }
-    }
-    if(scene.numPointLights > 0)
-    {
-        diffuse += diffuse_point_lights(scene, shadingData);
-    }
-    return diffuse;
-}
-//#define SAMPLE_DDGI
-vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
-{
-//#ifdef SAMPLE_DDGI
-    float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, bias, shadingData.shadingNormal, volume);
-        vec3 radiance = shadingData.albedo.xyz * irradiance * ((1.f - shadingData.metalness) * brdf_lambert() * volumeWeight); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
-        return radiance;
-    }
-//#endif
-    return vec3(0.f);
+    return L;
 }
 
 void main()
@@ -134,23 +59,14 @@ void main()
     Scene scene = scenes[constants.sceneBinding].scene;
     DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
-    uint L = 0;
+
     uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y);
     uint globalRayIdx = launchIdx.x + (launchIdx.y << renderTargetImageWidthBits);
         
     uint rayIdx = 0;
     uint probeIdx = 0;
 	if(dynamicRayAllocationEnabled) {
-        uint R = probeCount;
-        while (L < R) {
-            uint m = (L+R) >> 1;
-            uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + m];
-            if(probeBegin < globalRayIdx)
-                L = m + 1;
-            else
-                R = m;
-        }
-        probeIdx = L - 1;
+        probeIdx = binary_search(volume, probeCount, globalRayIdx) - 1;
         rayIdx = globalRayIdx - readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx];
     } 
     else 
@@ -189,7 +105,7 @@ void main()
 	}
     else if ((volume.relocationEnabled == 0) || rayIdx > volume.fixedRayCount || (volume.biasedEstimator == 0) ) {
     //else {
-	    if(payload.hitkind == HitDDGIMiss) 
+	    if(payload.hitkind == HitKindMiss) 
 	    {
 		    diffuse = payload.albedo;
 	    } 
