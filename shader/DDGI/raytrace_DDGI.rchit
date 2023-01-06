@@ -7,19 +7,7 @@
 #include "extracts.glsl"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-
-	uint renderTarget;
-	vec4 randomRotation;
-} constants;
+#include "ddgi_push_constants.h"
 
 layout(location = 0) rayPayloadInEXT PackedPayload pld;
 
@@ -28,8 +16,8 @@ hitAttributeEXT vec2 baryCoord;
 void main()
 {
 
-    Scene scene = scenes[constants.sceneBinding].scene;
-	Mesh mesh = meshData[nonuniformEXT(constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
+    Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+	Mesh mesh = meshData[nonuniformEXT(pushConstants.constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
 	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
 	
 	#ifdef COMPLEX

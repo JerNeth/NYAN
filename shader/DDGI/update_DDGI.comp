@@ -13,19 +13,7 @@
 #include "debug.glsl"
 #include "ddgi_common.glsl"
 #include "packing.glsl"
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-	uint renderTarget;
-	vec4 randomRotation;
-} constants;
-
+#include "ddgi_push_constants.h"
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
@@ -46,11 +34,11 @@ shared float rayVariance; //Unclear whether coherent is needed
 
 struct MultiscaleMeanEstimatorData
 {
-  vec3 mean;
-  vec3 shortMean;
-  float vbbr;
-  vec3 variance;
-  float inconsistency;
+	vec3 mean;
+	vec3 shortMean;
+	float vbbr;
+	vec3 variance;
+	float inconsistency;
 };
 
 float MultiscaleMeanEstimator(vec3 y,
@@ -111,8 +99,7 @@ float MultiscaleMeanEstimator(vec3 y,
 //#define DEBUG_COLORS
 void main()
 {
-
-	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+	DDGIVolume volume = ddgiVolumes[pushConstants.constants.ddgiBinding].volume[pushConstants.constants.ddgiIndex];
 	uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
 	uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
 
@@ -140,15 +127,15 @@ void main()
 		const int rayIdx = offset + i;
 		if(rayIdx >= rayCount) break;
 		
-		rayDirection[rayIdx] = get_ray_direction(constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
+		rayDirection[rayIdx] = get_ray_direction(pushConstants.constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
 		vec4 data = vec4(0);
 		
 		uint globalRayIdx = globalRayBeginIdx + rayIdx;
 		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		if(renderTargetImageFormat == R16G16B16A16F)
-			data = imageLoad(imagesRGBA16F[constants.renderTarget], renderTargetIdx);
+			data = imageLoad(imagesRGBA16F[pushConstants.constants.renderTarget], renderTargetIdx);
 		else if(renderTargetImageFormat == R32G32B32A32F)
-			data = imageLoad(imagesRGBA32F[constants.renderTarget], renderTargetIdx);
+			data = imageLoad(imagesRGBA32F[pushConstants.constants.renderTarget], renderTargetIdx);
 		
 		if(filterIrradiance)
 			rayRadiance[rayIdx] = data.xyz;

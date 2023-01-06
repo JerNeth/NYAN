@@ -6,18 +6,7 @@
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
 #include "ddgi_common.glsl"
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-	uint renderTarget;
-	vec4 randomRotation; //Unused here
-} constants;
+#include "ddgi_push_constants.h"
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
@@ -28,7 +17,7 @@ layout(constant_id = 6) const uint renderTargetImageWidthBits = 10;
 
 void main() 
 {
-	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+	DDGIVolume volume = ddgiVolumes[pushConstants.constants.ddgiBinding].volume[pushConstants.constants.ddgiIndex];
 
 	int probeIdx = int(gl_GlobalInvocationID.x);
 	int probeCount = int(volume.probeCountX * volume.probeCountY * volume.probeCountZ);
@@ -66,9 +55,9 @@ void main()
 		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << renderTargetImageWidthBits)-1), globalRayIdx >> renderTargetImageWidthBits );
 		float hitDistance = 0.f;
 		if(renderTargetImageFormat == R16G16B16A16F)
-			hitDistance =  imageLoad(imagesRGBA16F[constants.renderTarget], renderTargetIdx).a * maxRayDist;
+			hitDistance =  imageLoad(imagesRGBA16F[pushConstants.constants.renderTarget], renderTargetIdx).a * maxRayDist;
 		else if(renderTargetImageFormat == R32G32B32A32F)
-			hitDistance =  imageLoad(imagesRGBA32F[constants.renderTarget], renderTargetIdx).a * maxRayDist;
+			hitDistance =  imageLoad(imagesRGBA32F[pushConstants.constants.renderTarget], renderTargetIdx).a * maxRayDist;
 
 		if(hitDistance < 0.f)
 		{
@@ -97,13 +86,13 @@ void main()
 
 	if((closestBackfaceIdx != -1) && ((backfaceCount / float(rayCount)) > volume.relocationBackfaceThreshold))
 	{
-		vec3 closestBackfaceDirection = get_ray_direction(constants.randomRotation, closestBackfaceIdx, volume.raysPerProbe, volume);
+		vec3 closestBackfaceDirection = get_ray_direction(pushConstants.constants.randomRotation, closestBackfaceIdx, volume.raysPerProbe, volume);
 		fullOffset = offset + (closestBackfaceDirection * (closestBackfaceDist + volume.minFrontFaceDistance* 0.5f) );
 	}
 	else if(closestFrontfaceDist < volume.minFrontFaceDistance)
 	{
-		vec3 closestFrontfaceDirection = get_ray_direction(constants.randomRotation, closestFrontfaceIdx, volume.raysPerProbe, volume);
-		vec3 farthestFrontfaceDirection = get_ray_direction(constants.randomRotation, farthestFrontfaceIdx, volume.raysPerProbe, volume);
+		vec3 closestFrontfaceDirection = get_ray_direction(pushConstants.constants.randomRotation, closestFrontfaceIdx, volume.raysPerProbe, volume);
+		vec3 farthestFrontfaceDirection = get_ray_direction(pushConstants.constants.randomRotation, farthestFrontfaceIdx, volume.raysPerProbe, volume);
 		if(dot(closestFrontfaceDirection, farthestFrontfaceDirection) <= 0.f)
 		{
 			farthestFrontfaceDist *= min(farthestFrontfaceDist, 1.f);

@@ -6,18 +6,7 @@
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
 #include "ddgi_common.glsl"
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-	uint renderTarget;
-	vec4 randomRotation; //Unused here
-} constants;
+#include "ddgi_push_constants.h"
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
@@ -181,6 +170,7 @@ void copy_border_columns(DDGIVolume volume, uvec3 globalId) {
 
 void main()
 {
+	DDGIPushConstants constants = pushConstants.constants;
 	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 	if(columns) {
 		copy_border_columns(volume, gl_GlobalInvocationID);

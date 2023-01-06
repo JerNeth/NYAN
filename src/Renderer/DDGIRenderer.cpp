@@ -301,12 +301,16 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 				}
 				cmd.barrier2(1, &writeBarrier);
 				r_renderManager.get_profiler().begin_profile(cmd, "DDGI Filter");
+				r_renderManager.get_profiler().begin_profile(cmd, "Irradiance");
 
 				auto pipelineBind = cmd.bind_compute_pipeline(irradiancePipelineId);
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				pipelineBind = cmd.bind_compute_pipeline(depthPipelineId);
+				r_renderManager.get_profiler().end_profile(cmd);
+				r_renderManager.get_profiler().begin_profile(cmd, "Depth");
 				filter_volume(pipelineBind, constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 				cmd.barrier2(1, &global, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data());
+				r_renderManager.get_profiler().end_profile(cmd);
 				r_renderManager.get_profiler().end_profile(cmd);
 
 

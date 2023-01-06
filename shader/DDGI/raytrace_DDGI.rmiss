@@ -8,25 +8,14 @@
 #include "extracts.glsl"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
-	uint renderTarget;
-	vec4 randomRotation;
-} constants;
+#include "ddgi_push_constants.h"
 
 layout(location = 0) rayPayloadInEXT PackedPayload pld;
 //layout(location = 0) rayPayloadInEXT  Payload payload;
 
 void main()
 {
-    Scene scene = scenes[constants.sceneBinding].scene;
+    Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
 	Payload payload;
 	//TODO maybe use Henyey-Greenstein or Environmentmap
 	payload.albedo = scene.skyLight.color * scene.skyLight.intensity;

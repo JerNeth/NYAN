@@ -9,13 +9,13 @@
 
 layout(location = SHADOW_RAY_PAYLOAD_LOCATION) rayPayloadEXT float visibility;
 
-float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
+float light_visibility(in accelerationStructureEXT accelerationStructure, in ShadingData shadingData, in vec3 dir, in float tMax) 
 {
     visibility = 0.f;
     uint  rayFlags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT;
     float tMin     = 0.02;
-	traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-            rayFlags,       // rayFlags
+	traceRayEXT(accelerationStructure, // acceleration structure
+            rayFlags,       // rayFlagsaccelerationStructure
             0xFF,           // cullMask
             0,              // sbtRecordOffset
             0,              // sbtRecordStride
@@ -29,8 +29,10 @@ float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax)
     return visibility;
     //return 1.0f;
 }
+
 const float minLight = 1e-5;
-vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData) 
+
+vec3 diffuse_point_lights(in accelerationStructureEXT accelerationStructure, in Scene scene, in ShadingData shadingData) 
 {
     vec3 diffuse = vec3(0.f);
     for(int i = 0; i < maxNumPointLights; i++) 
@@ -42,7 +44,7 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
             continue;
 
         lightDir /= dist;
-        float lightShadow = light_visibility(shadingData, lightDir,dist);
+        float lightShadow = light_visibility(accelerationStructure, shadingData, lightDir,dist);
         if(lightShadow <= minLight )
             continue;
         //Falloff borrowed from Real Shading in Unreal Engine 4, Brian Karis 2013 SIGGRAPH
@@ -62,7 +64,7 @@ vec3 diffuse_point_lights(in Scene scene, in ShadingData shadingData)
     return diffuse;
 }
 
-vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
+vec3 diffuse_direct_lighting(in accelerationStructureEXT accelerationStructure, in Scene scene, in ShadingData shadingData)
 {
     vec3 diffuse = vec3(0.f);
     //Only shade dielectrics
@@ -71,7 +73,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     if(scene.dirLight.enabled > 0) 
     {
-        float lightShadow = light_visibility(shadingData, -scene.dirLight.dir, 1e27f);
+        float lightShadow = light_visibility(accelerationStructure, shadingData, -scene.dirLight.dir, 1e27f);
         if(lightShadow > minLight) {
             LightData lightData;
             lightData.dir = -scene.dirLight.dir;
@@ -82,7 +84,7 @@ vec3 diffuse_direct_lighting(in Scene scene, in ShadingData shadingData)
     }
     if(scene.numPointLights > 0)
     {
-        diffuse += diffuse_point_lights(scene, shadingData);
+        diffuse += diffuse_point_lights(accelerationStructure, scene, shadingData);
     }
     return diffuse;
 }
