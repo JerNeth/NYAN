@@ -35,16 +35,22 @@ namespace Math {
 		//}
 		template<typename... Args>
 		constexpr explicit Vec(Args... args) {
+			//static_assert(sizeof...(Args) <= Size);
 			assert(sizeof...(Args) <= Size);
 			if constexpr (sizeof...(Args) == 1) {
+				std::array<std::common_type_t<Args...>, 1> list = { std::forward<Args>(args)... };
 				for (size_t i = 0; i < Size; i++)
 				{
-					std::array<std::common_type_t<Args...>, 1> list = {std::forward<Args>(args)...};
 					m_data[i] = static_cast<Scalar>(list[0]);
 				}
 			}
+			else if constexpr (sizeof...(Args) == Size) {
+				std::array<Scalar, sizeof...(Args)> list = { static_cast<Scalar>(std::forward<Args>(args))... };
+				m_data = std::move(list);
+			}
 			else {
-				std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
+				//std::array<std::common_type_t<Args...>, sizeof...(Args)> list = { std::forward<Args>(args)... };
+				std::array<Scalar, sizeof...(Args)> list = { static_cast<Scalar>(std::forward<Args>(args))... };
 				for (size_t i = 0; i < Size; i++)
 				{
 					m_data[i] = static_cast<Scalar>(list[i]);
@@ -220,7 +226,7 @@ namespace Math {
 		//	return result;
 		//}
 		constexpr inline Scalar L2_square() const noexcept {
-			Scalar sum = Scalar(0);
+			Scalar sum = Scalar(0.);
 			for (size_t i = 0; i < Size; i++)
 				sum = sum +  m_data[i] * m_data[i];
 			return sum;
@@ -229,7 +235,7 @@ namespace Math {
 			return static_cast<Scalar>(std::sqrt(L2_square()));
 		}
 		inline Scalar L1_norm() const noexcept {
-			Scalar sum{ 0 };
+			Scalar sum = Scalar(0.);
 			//TODO use custom abs
 			for (size_t i = 0; i < Size; i++)
 				sum = sum + static_cast<Scalar>(std::abs(static_cast<double>(m_data[i])));
@@ -287,7 +293,8 @@ namespace Math {
 			return *this;
 		}
 		constexpr inline Vec& operator*=(const Quaternion<Scalar>& rhs) noexcept {
-			assert(("Only works for three dimensional vectors", Size == 3 || Size == 4));
+			//assert(("Only works for three dimensional vectors", Size == 3 || Size == 4));
+			assert(("Only works for three dimensional vectors", Size == 3));
 			if constexpr (Size == 3) {
 				*this = rhs * *this;
 			}
@@ -330,7 +337,7 @@ namespace Math {
 		}
 		constexpr inline Scalar dot(const Vec& rhs) const noexcept {
 			// Not sure if this is better than = 0, but this way we correctly have a Scalar
-			Scalar result = static_cast<Scalar>(0);
+			Scalar result = static_cast<Scalar>(0.);
 			for (size_t i = 0; i < Size; i++)
 				result = result + m_data[i] * rhs.m_data[i];
 			return result;

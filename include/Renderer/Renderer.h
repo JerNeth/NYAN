@@ -10,6 +10,8 @@ namespace nyan {
 	class RenderManager;
 	class Renderer {
 	public:
+		void set_enable(bool enabled) noexcept;
+		bool enabled() noexcept;
 	protected:
 		Renderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 
@@ -17,6 +19,7 @@ namespace nyan {
 		entt::registry& r_registry;
 		nyan::RenderManager& r_renderManager;
 		nyan::Renderpass& r_pass;
+		bool m_enabled;
 		
 	};
 	//struct GraphicsModule {

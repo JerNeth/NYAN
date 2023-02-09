@@ -1,24 +1,12 @@
-#ifndef DDGI_SAMPLING_GLSL
-#define DDGI_SAMPLING_GLSL
-#undef RAYTRACE_DDGI_VOLUMES
-#ifdef RAYTRACE_DDGI_VOLUMES
+#ifndef DDGI_RESTIR_SAMPLING_GLSL
+#define DDGI_RESTIR_SAMPLING_GLSL
+#ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
 #extension GL_EXT_ray_query : require
 #endif
 
-#include "ddgi_common.glsl"
-#include "moments.glsl"
+#include "ddgi_restir_common.glsl"
 
-
-vec3 get_volume_surface_bias(in vec3 normal,in  vec3 camDir,in  DDGIVolume volume) 
-{
-	//return (normal * volume.shadowNormalBias) + (camDir * volume.shadowViewBias);
-	vec3 spacing = get_volume_spacing(volume);
-	float minElement = min(min(spacing.x, spacing.y), spacing.z);
-	//Adpated from Scaling Probe-Based Real-Time Global Illumination for Production
-	return mix(normal, camDir, 0.8) * (0.75 * minElement * volume.shadowViewBias);
-}
-
-float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
+float get_volume_weight(in vec3 worldPos,in  DDGIReSTIRVolume volume) {
 	if(volume.enabled == 0)
 		return 0.f;
 	vec3 origin = get_volume_origin(volume);
@@ -35,7 +23,7 @@ float get_volume_weight(in vec3 worldPos,in  DDGIVolume volume) {
 	return weight;
 }
 
-ivec3 get_volume_base_probe(in vec3 worldPos,in  DDGIVolume volume) {
+ivec3 get_volume_base_probe(in vec3 worldPos,in DDGIReSTIRVolume volume) {
 	vec3 position = worldPos - get_volume_origin(volume);
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
@@ -46,12 +34,11 @@ ivec3 get_volume_base_probe(in vec3 worldPos,in  DDGIVolume volume) {
 
 	return probeIdx;
 }
-//#define SAMPLE_IRRADIANCE_NEAREST
-vec3 sample_ddgi(in vec3 worldPos, 
-				in vec3 bias,
+
+vec3 sample_ddgi_restir(in vec3 worldPos,
 				in vec3 direction, 
-				in DDGIVolume volume
-				#ifdef RAYTRACE_DDGI_VOLUMES
+				in DDGIReSTIRVolume volume
+				#ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
 				,in accelerationStructureEXT acc
 				#endif
 				) {
@@ -59,16 +46,14 @@ vec3 sample_ddgi(in vec3 worldPos,
 	if(volume.enabled == 0)
 		return vec3(0.f);
 	float weightSum = 0.f;
-
-	vec3 biasedWorldPos = worldPos + bias;
 	
 	vec3 inverseSpacing = get_volume_inverse_spacing(volume);
 	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
-	ivec3 baseProbeIdx = get_volume_base_probe(biasedWorldPos, volume);
+	ivec3 baseProbeIdx = get_volume_base_probe(worldPos, volume);
 	
 	vec3 baseProbeWorldPos = get_probe_coordinates(baseProbeIdx, volume) ;
 
-	vec3 delta = biasedWorldPos - baseProbeWorldPos;
+	vec3 delta = worldPos - baseProbeWorldPos;
 	vec3 alpha = clamp( delta * inverseSpacing,vec3(0.f), vec3(1.f));
 
 
@@ -82,9 +67,6 @@ vec3 sample_ddgi(in vec3 worldPos,
 		vec3 worldPosToAdjacentProbe = adjacentProbeWorldPos - worldPos;
 		float worldPosToAdjacentProbeDist = length(worldPosToAdjacentProbe);
 		worldPosToAdjacentProbe *= 1.f / worldPosToAdjacentProbeDist;
-		vec3 biasedWorldPosToAdjacentProbe = biasedWorldPos - adjacentProbeWorldPos;
-		float biasedWorldPosToAdjacentProbeDist = length(biasedWorldPosToAdjacentProbe);
-		biasedWorldPosToAdjacentProbe *= 1.f/ biasedWorldPosToAdjacentProbeDist;
 
 		vec3 trilinear = max(vec3(0.001f), mix(vec3(1.f) - alpha, alpha, vec3(adjacentProbeIdxOffset)));
 		float trilinearWeight = trilinear.x *trilinear.y * trilinear.z;
@@ -100,20 +82,20 @@ vec3 sample_ddgi(in vec3 worldPos,
 		#endif
 
 
-		vec2 octCoords = get_octahedral_coords(biasedWorldPosToAdjacentProbe);
-		
-		vec3 depthUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.depthProbeSize, volume);
+		vec2 octCoords = get_octahedral_coords(worldPosToAdjacentProbe);
 		octCoords = get_octahedral_coords(direction);
+		const vec3 texelDir = get_octahedral_direction(octCoords);
+
 		vec3 irradianceUV = get_probe_uv(adjacentProbeIdx, octCoords, volume.irradianceProbeSize, volume);
 
 
-		vec3 probeIrradiance = textureLod(sampler2DArray(textures2DArray[volume.irradianceTextureBinding], samplers[volume.irradianceTextureSampler]), irradianceUV, 0).rgb;
+		vec3 probeIrradiance = textureLod(sampler2DArray(textures2DArray[volume.irradianceTextureBinding], samplers[volume.irradianceSamplerBinding]), irradianceUV, 0).rgb;
 
 		
-		#ifdef RAYTRACE_DDGI_VOLUMES
+		#ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
 		
 		rayQueryEXT rq;
-		const float tMin     = 0.001;
+		const float tMin     = 0.1;
 		const float tMax = worldPosToAdjacentProbeDist;
 		rayQueryInitializeEXT(rq, acc, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT , 0xFF, 
 					worldPos, tMin, worldPosToAdjacentProbe, tMax);
@@ -124,44 +106,13 @@ vec3 sample_ddgi(in vec3 worldPos,
 		if (rayQueryGetIntersectionTypeEXT(rq, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
 		} else {
 			weight = 0;
+			continue;
 		}
 		#else
-
-		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
-		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;
-		if(volume.useMoments != 0) {
-			vec4 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
-			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
-			weight *= max(0.05f, shadowValue);
-		}
-		else {
-			vec2 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rg;
-			float chebyshev = 1.f;
-			if(biasedWorldPosToAdjacentProbeDist > filteredDistance.x) {
-				float variance = abs((filteredDistance.x * filteredDistance.x) - filteredDistance.y);
-				float v = biasedWorldPosToAdjacentProbeDist - filteredDistance.x;
-				chebyshev = variance / (variance + (v * v));
-				//Pretty sure we don't need max here since variance is positive and v² is also positive
-				chebyshev = chebyshev * chebyshev * chebyshev;
-			}
-			weight *= max(0.05f, chebyshev);
-		}
 		#endif
 
 		weight = max(1e-6f, weight);
 
-//		Originally crush tiny weights because of log perception
-		const float threshold = 0.2f;
-		if(weight < threshold)
-		{
-			weight *= weight * weight * (1.f / (threshold * threshold));
-		}
-		#undef DO_GAMMA
-		#define DO_GAMMA
-		#ifdef DO_GAMMA
-		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f * 5.f));
-		#endif		
-		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f));
 		weight *= trilinearWeight;
 		irradiance += weight * probeIrradiance;
 		weightSum += weight;
@@ -170,38 +121,38 @@ vec3 sample_ddgi(in vec3 worldPos,
 	if(weightSum <= 1e-9) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize
-	#ifdef DO_GAMMA
-	irradiance *= irradiance; //sRGB blending, I don't like it
-	#endif	
-	irradiance *= irradiance; //sRGB blending, I don't like it
-	irradiance *= 3.14159265359 * 2;
+//	#ifdef DO_GAMMA
+//	irradiance *= irradiance; //sRGB blending, I don't like it
+//	#endif	
+//	irradiance *= irradiance; //sRGB blending, I don't like it
+//	irradiance *= 3.14159265359 * 2;
 
 	return irradiance;
 
 }
 
 
-//#define SAMPLE_DDGI
-vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData
-		#ifdef RAYTRACE_DDGI_VOLUMES
+#define SAMPLE_DDGI
+vec3 diffuse_indirect_lighting(in DDGIReSTIRVolume volume, in ShadingData shadingData
+		#ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
 		,in accelerationStructureEXT acc
 		#endif
 )
 {
-//#ifdef SAMPLE_DDGI
+#ifdef SAMPLE_DDGI
     float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
     if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, bias, shadingData.shadingNormal, volume        		
-            #ifdef RAYTRACE_DDGI_VOLUMES
+        vec3 irradiance = sample_ddgi_restir(shadingData.worldPos.xyz, shadingData.shadingNormal, volume        		
+            #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
             , acc
 			#endif
         );
         vec3 radiance = shadingData.albedo.xyz * irradiance * ((1.f - shadingData.metalness) * brdf_lambert() * volumeWeight); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
         return radiance;
     }
-//#endif
+#endif
     return vec3(0.f);
 }
 //#define SAMPLE_DDGI
+
 #endif

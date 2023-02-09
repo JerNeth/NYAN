@@ -205,6 +205,48 @@ void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkIma
 	vkCmdCopyImage(m_handle, src.get_handle(), srcLayout, dst.get_handle(), dstLayout, 1, &region);
 }
 
+static constexpr bool implies(bool a, bool b) noexcept {
+	return !a || b;
+}
+
+void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffer& buffer, const std::span<const VkBufferImageCopy> regions, VkImageLayout srcLayout)
+{
+	assert(regions.size());
+	assert(regions.data());
+	for (const auto& region : regions) {
+		assert(region.imageOffset.x >= 0 && region.imageOffset.x <= image.get_info().width);
+		assert((region.imageOffset.x + region.imageExtent.width) >= 0 && (region.imageOffset.x + region.imageExtent.width) <= image.get_info().width);
+		assert(region.imageOffset.y >= 0 && region.imageOffset.y <= image.get_info().height);
+		assert((region.imageOffset.y + region.imageExtent.height) >= 0 && (region.imageOffset.y + region.imageExtent.height) <= image.get_info().height);
+		assert(region.imageOffset.z >= 0 && region.imageOffset.z <= image.get_info().depth);
+		assert((region.imageOffset.z + region.imageExtent.depth) >= 0 && (region.imageOffset.z + region.imageExtent.depth) <= image.get_info().depth);
+		assert(vulkan::ImageInfo::format_to_aspect_mask(image.get_format())& region.imageSubresource.aspectMask);
+		assert(region.imageSubresource.aspectMask);
+		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_METADATA_BIT));
+		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT));
+		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT));
+		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT));
+		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT));
+		assert(implies(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT, !(region.imageSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))));
+
+		assert(implies(image.get_info().type == VK_IMAGE_TYPE_1D, (region.imageOffset.y == 0) && (region.imageExtent.height == 1)));
+		assert(implies(image.get_info().type == VK_IMAGE_TYPE_1D || image.get_info().type == VK_IMAGE_TYPE_2D, (region.imageOffset.z == 0) && (region.imageExtent.depth == 1)));
+		assert(implies(image.get_info().type == VK_IMAGE_TYPE_3D, (region.imageSubresource.baseArrayLayer == 0) && (region.imageSubresource.layerCount == 1)));
+		assert(region.imageSubresource.mipLevel < image.get_info().mipLevels);
+		assert((region.imageSubresource.baseArrayLayer + region.imageSubresource.layerCount) <= image.get_info().arrayLayers);
+		assert(region.imageSubresource.layerCount > 0);
+	}
+	assert(image.get_info().usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+	assert(image.get_info().samples & VK_SAMPLE_COUNT_1_BIT);
+	assert(srcLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL || srcLayout == VK_IMAGE_LAYOUT_GENERAL || srcLayout == VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR);
+
+	assert(buffer.get_usage() & VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+
+
+
+	vkCmdCopyImageToBuffer(m_handle, image, srcLayout, buffer, regions.size(), regions.data());
+}
+
 
 void vulkan::CommandBuffer::generate_mips(const Image& image)
 {
@@ -300,6 +342,11 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineSt
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
 	vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, barrierCount,
 		globals, bufferBarrierCounts, bufferBarriers, imageBarrierCounts, imageBarriers);
+}
+
+void vulkan::CommandBuffer::barrier2(const VkMemoryBarrier2& global, VkDependencyFlags dependencyFlags)
+{
+	barrier2(1, &global, 0, nullptr, 0, nullptr, dependencyFlags);
 }
 
 void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals,

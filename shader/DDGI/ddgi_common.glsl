@@ -83,23 +83,6 @@ vec3 get_probe_coordinates(uint probeIdx, DDGIVolume volume)
 	return get_probe_coordinates(idx, volume);
 }
 
-
-vec3 spherical_fibonacci(float i, float n) {
-	const float pi = 3.14159265359f;
-    const float PHI = sqrt(5) * 0.5 + 0.5;
-#define madfrac(A, B) ((A)*(B)-floor((A)*(B)))
-    float phi = 2.0 * pi * madfrac(i, PHI - 1);
-    float cosTheta = 1.0 - (2.0 * i + 1.0) * (1.0 / n);
-    float sinTheta = sqrt(max(min(1.0 - cosTheta*cosTheta, 1.0), 0.0));
-
-    return vec3(
-        cos(phi) * sinTheta,
-        sin(phi) * sinTheta,
-        cosTheta);
-
-#undef madfrac
-}
-
 vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount, in DDGIVolume volume)
 {
 	float maxCount = rayCount;
@@ -120,17 +103,6 @@ vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount,
 float get_volume_max_distance(in DDGIVolume volume)
 {
 	return length(get_volume_spacing(volume)) * 1.5f; //Get maximum possible distance
-}
-
-vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels) 
-{
-	vec2 uv = vec2(texCoords.x % numTexels, texCoords.y % numTexels);
-
-	uv += vec2(0.5f);
-	uv /= vec2(numTexels);
-	uv *= 2.f;
-	uv -= vec2(1.f);
-	return uv;
 }
 
 ivec3 get_probe_texel_coords(ivec3 probeIdx, in ivec2 probeTexelSize, in DDGIVolume volume) {

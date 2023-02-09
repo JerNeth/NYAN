@@ -1,0 +1,124 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+#include "raycommon.glsl"
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "extracts.glsl"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "hash.glsl"
+#include "lighting.glsl"
+#include "ddgi_restir_common.glsl"
+#include "ddgi_restir_sample.glsl"
+#include "ddgi_restir_push_constants.h"
+
+layout(location = 0) rayPayloadEXT PackedPayload pld;
+
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
+
+
+
+//struct DDGIReSTIRPushConstants {
+//	uint accBinding;
+//	uint sceneBinding;
+//	uint meshBinding;
+//	uint ddgiReSTIRBinding;
+//	uint ddgiReSTIRCount;
+//	uint ddgiReSTIRIndex;
+//	uint renderTarget;
+//	uint resampleTarget;
+//	vec4 randomRotation;
+//  uint rngSeed;
+//};
+
+
+//#define SHADOW_RAY_PAYLOAD_LOCATION 1 Optional for different locations
+#include "raytrace_lighting.glsl"
+
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalReservoirs {
+	DDGIReSTIRTemporalReservoir res[]; 
+};
+void main() {
+    Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+    DDGIReSTIRVolume volume = ddgiReSTIRVolumes[pushConstants.constants.ddgiReSTIRBinding].volume[pushConstants.constants.ddgiReSTIRIndex];
+
+    const uvec3 probeId = gl_LaunchIDEXT / uvec3(volume.irradianceProbeSize, volume.irradianceProbeSize ,1);
+    const uvec3 resId = gl_LaunchIDEXT - probeId * uvec3(volume.irradianceProbeSize, volume.irradianceProbeSize, 0);
+    const uint resIdx = resId.y * volume.irradianceProbeSize + resId.x;
+	const uint probeIdx = get_probe_index(probeId, volume);
+	TemporalReservoirs reservoirs = TemporalReservoirs(pushConstants.constants.reservoirs);
+	DDGIReSTIRTemporalReservoir reservoir = reservoirs.res[probeIdx + resIdx]; //In place should be possible, no need for flip flop
+
+    if(reservoir.M == 0)
+        return;
+
+    vec3 probeCords = get_probe_coordinates(probeIdx, volume);
+    uint rngSeed = reservoir.rngSeed;
+    float u = uint_to_u01_float(hash1_mut(rngSeed));
+    float v = uint_to_u01_float(hash1_mut(rngSeed));
+    float w = uint_to_u01_float(hash1_mut(rngSeed));
+    vec3 direction = get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
+
+    uint  rayFlags = gl_RayFlagsNoneEXT;
+    float tMin     = 0.0001;
+    float tMax     = 1e7f;
+    traceRayEXT(accelerationStructures[pushConstants.constants.accBinding], // acceleration structure
+            rayFlags,       // rayFlags
+            0xFF,           // cullMask
+            0,              // sbtRecordOffset
+            0,              // sbtRecordStride
+            0,              // missIndex
+            probeCords.xyz, // ray origin
+            tMin,           // ray min range
+            direction.xyz,  // ray direction
+            tMax,           // ray max range
+            0               // payload (location = 0)
+        );
+	Payload payload = unpack_payload(pld);
+    
+	vec3 diffuse = vec3(0.f);
+
+	float hitDistance = payload.hitT;
+
+    
+	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
+	{
+	    hitDistance *= -1.0;
+	} 
+    else if(payload.hitkind == HitKindMiss) 
+	{
+		diffuse = payload.albedo;
+	} 
+	else {
+        ShadingData shadingData;
+        shadingData.albedo = payload.albedo;
+        shadingData.alpha = payload.roughness * payload.roughness;
+        shadingData.outLightDir = -direction;
+        shadingData.metalness = payload.metallic;
+        shadingData.shadingNormal = payload.shadingNormal;
+        shadingData.worldPos = payload.worldPos;
+        //High compile time here
+        //Probable cause was loop end condition in an SSBO
+		diffuse += diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData);
+        if(volume.recurse != 0) {
+            diffuse += diffuse_indirect_lighting(volume, shadingData
+            #ifdef RAYTRACE_DDGI_VOLUMES
+                , accelerationStructures[pushConstants.constants.accBinding]
+		    #endif
+            );
+        }
+    }
+
+    vec3 irradiance = vec3(reservoir.irradianceR, reservoir.irradianceB, reservoir.irradianceG);
+    //rngSeed += probeIdx;
+    //reservoir.age > uint_to_u01_float(hash1_mut(rngSeed)) * volume.maximumReservoirAge 
+    if(luminance(diffuse) < (luminance(irradiance) * 0.8) || luminance(diffuse) > (luminance(irradiance)* 1.2) || hitDistance < (reservoir.hitDistance * 0.9) || hitDistance > (reservoir.hitDistance * 1.1f)) {
+        reservoir.M = 0;
+        reservoir.weightSum = 0;
+        reservoir.W = 0;
+        reservoir.age = 0;
+    }
+    
+    reservoirs.res[probeIdx + resIdx] = reservoir;
+}

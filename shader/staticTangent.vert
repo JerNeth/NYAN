@@ -48,14 +48,7 @@ void main() {
     //vec3 normal = normalize(modelS * normals.n[gl_VertexIndex].xyz);
     //vec3 normal = normalize(modelS *getNormal(mesh.normalsAddress, gl_VertexIndex));
     //vec3 bitangent = cross(normal.xyz, tangent.xyz) * inTangent.w;
-    //980 ti
-    //46 Entities 57 fps    17.5ms (fetch)
-    //46 Entities 57 fps    17.5 ms (attribs)
-    //46 Entities 57 fps    17.5 ms (bind)
-    //3080
-    //67 Entities 17 ms (32 bits)
-    //67 Entities 18 ms (16 bits)
-    //1.1 / 900
+
     //fragTexCoord = get_uv(mesh.uvsAddress, gl_VertexIndex);
 
     fragTexCoord = inTexCoord;

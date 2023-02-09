@@ -22,7 +22,6 @@ layout(constant_id = 1) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 2) const uint renderTargetImageFormat = R16G16B16A16F;
 layout(constant_id = 3) const uint numRows = 1;
 layout(constant_id = 4) const bool dynamicRayAllocationEnabled = false;
-layout(constant_id = 5) const bool ReSTIREnabled = false;
 
 
 
@@ -51,7 +50,7 @@ void main()
     DDGIVolume volume = ddgiVolumes[pushConstants.constants.ddgiBinding].volume[pushConstants.constants.ddgiIndex];
     uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
 
-    uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y);
+    const uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y);
     uint globalRayIdx = launchIdx.x + (launchIdx.y << renderTargetImageWidthBits);
         
     uint rayIdx = 0;
@@ -111,7 +110,12 @@ void main()
             //High compile time here
             //Probable cause was loop end condition in an SSBO
 		    diffuse += diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData);
-		    diffuse += diffuse_indirect_lighting(volume, shadingData);
+		    diffuse += diffuse_indirect_lighting(volume, shadingData
+            #ifdef RAYTRACE_DDGI_VOLUMES
+                , accelerationStructures[pushConstants.constants.accBinding]
+			#endif
+            
+            );
         }
     }
      

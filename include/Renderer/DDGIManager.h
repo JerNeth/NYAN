@@ -47,7 +47,6 @@ namespace nyan {
 			bool classificationEnabled{ false };
 			bool dynamicRayAllocation{ false };
 			bool biasedEstimator{ false };
-			bool useReSTIR{ false };
 			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
@@ -121,8 +120,26 @@ namespace nyan {
 			Math::vec3 spacing{ 10.f, 10.f, 10.f };
 			Math::vec3 origin{ 0.f, 0.f, 0.f };
 			Math::uvec3 probeCount{ 16, 4, 16 };
+			uint32_t samplesPerProbe{ 128 };
+			uint32_t irradianceProbeSize{ 8 };
+			uint32_t depthProbeSize{ 16 };
+			uint32_t fixedRayCount{ 32 };
+			bool validationEnabled{ true };
+			bool recurse{ true };
 			bool enabled{ true };
 
+			uint32_t temporalReservoirCountX{ 8 };
+			uint32_t temporalReservoirCountY{ 8 };
+
+			RenderResource::Id depthResource{};
+			RenderResource::Id irradianceResource{};
+			RenderResource::Id reservoirResource{};
+
+			uint32_t renderTargetImageFormat{ nyan::shaders::R16G16B16A16F };
+			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
+			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
+
+			uint32_t maximumReservoirAge{ 32 };
 			uint32_t frames{ 0 };
 			uint32_t gpuVolume{ nyan::InvalidBinding };
 			bool dirty{ true };

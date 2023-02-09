@@ -24,6 +24,7 @@ void main()
 	payload.opacity = 1.f;
 	payload.hitT = 1e27f;
 	payload.hitkind = HitKindMiss;
-
+	
+	//payload.albedo = vec3(0, 1, 0);
 	pld = pack_payload(payload);
 }

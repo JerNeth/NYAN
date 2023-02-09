@@ -142,7 +142,9 @@ namespace Math {
 		}
 		constexpr friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
 			//Vec<Scalar, 3> result = Scalar(2) * dot(m_imaginary, rhs) * m_imaginary + (square(m_real) - dot(m_imaginary, m_imaginary)) * rhs + Scalar(2) * m_real * (cross(m_imaginary, rhs));
-			return Scalar(2) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(rhs);
+			return Scalar(2.) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary 
+				+ (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs 
+				+ Scalar(2.) * lhs.m_real * lhs.m_imaginary.cross(rhs);
 			/* As suggested by Horn, I don't know which one is right
 			Scalar xx = lhs.m_imaginary[0] * lhs.m_imaginary[0];
 			Scalar xy = lhs.m_imaginary[0] * lhs.m_imaginary[1];
@@ -165,7 +167,7 @@ namespace Math {
 			//Quaternion result = lhs * Quaternion(0, Vec<Scalar, 3>({ rhs[0], rhs[1], rhs[2] })) * lhs.inverse();
 			//return Vec<Scalar, 4>({result.m_imaginary[0], result.m_imaginary[1], result.m_imaginary[2], Scalar(1)});
 			auto tmp = Vec<Scalar, 3>(rhs);
-			tmp = Scalar(2) * lhs.m_imaginary.dot(tmp) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * tmp + Scalar(2) * lhs.m_real * lhs.m_imaginary.cross(tmp);
+			tmp = Scalar(2.) * lhs.m_imaginary.dot(tmp) * lhs.m_imaginary + (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * tmp + Scalar(2.) * lhs.m_real * lhs.m_imaginary.cross(tmp);
 			return Vec<Scalar, 4>({ tmp.x(), tmp.y(), tmp.z(), rhs[3]});
 		}
 		constexpr friend inline Quaternion operator/(const Quaternion& lhs, const Scalar& rhs) noexcept {

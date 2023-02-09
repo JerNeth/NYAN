@@ -115,7 +115,7 @@ namespace Utility {
 	}
 	inline Logger log_error(const std::string_view message)
 	{
-		return Logger(Logger::Type::Error).message(message);
+		return Logger{ Logger::Type::Error }.message(message);
 	}
 }
 #endif !UTILITYLOG_H

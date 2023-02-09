@@ -188,7 +188,7 @@ bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation
 		//instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
 		//instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
 		//instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+		instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 
 		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
 	}

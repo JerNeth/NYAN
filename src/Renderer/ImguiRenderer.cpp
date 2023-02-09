@@ -13,6 +13,7 @@ using namespace vulkan;
 
 static nyan::MaterialManager* manager;
 static nyan::DDGIManager* ddgiManager;
+static nyan::DDGIReSTIRManager* ddgiReSTIRManager;
 
 
 
@@ -128,7 +129,7 @@ namespace MM {
 		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32,"%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Fixed Ray Count", reinterpret_cast<int*>(&volume.fixedRayCount), 1, 0, volume.raysPerProbe, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Backface Threshold", &volume.relocationBackfaceThreshold, 0.001f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Min Front Face Distance", &volume.minFrontFaceDistance, 0.1f, 0.f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
@@ -167,7 +168,7 @@ namespace MM {
 		}
 
 		{
-			static constexpr const char* irradianceFormats[] = {"R16G16B16A16F", "R10G10B10A2F", "R11G11B10F", "R9G9B9E5F" };
+			static constexpr const char* irradianceFormats[] = { "R16G16B16A16F", "R10G10B10A2F", "R11G11B10F", "R9G9B9E5F" };
 			static const char* currentIrradianceFormat = irradianceFormats[0];
 			if (ImGui::BeginCombo("##Irradiance Format", currentIrradianceFormat))
 			{
@@ -263,6 +264,44 @@ namespace MM {
 		//ImGui::ColorEdit3("F0", &mat.F0_R);
 	}
 	template <>
+	void ComponentEditorWidget<nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters>(entt::registry& reg, entt::registry::entity_type e)
+	{
+		auto& volume = reg.get<nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters>(e);
+		//auto& mat = manager->get_material(t);
+		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
+		ImGui::DragFloat3("Spacing", &volume.spacing.x());
+		ImGui::DragFloat3("Origin", &volume.origin.x());
+		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Samples per Probe", reinterpret_cast<int*>(&volume.samplesPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		//ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Maximum Reservoir Age", reinterpret_cast<int*>(&volume.maximumReservoirAge), 1, 1, 16384, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Checkbox("Sample Validation Enabled", &volume.validationEnabled);
+		ImGui::Checkbox("Recurse", &volume.recurse);
+		ImGui::Checkbox("Enabled", &volume.enabled);
+
+
+		if (volume.gpuVolume != ~0) {
+			auto& devvolume = ddgiReSTIRManager->get(volume.gpuVolume);
+			auto ratio = static_cast<float>(volume.probeCount.y()) / static_cast<float>(volume.probeCount.x());
+			ImGui::Text("Irradiance Texture");
+			static int layer = 0;
+
+			ImGui::InputInt("Layer", &layer, 1);
+			layer = std::max(layer, 0);
+			layer = std::min(static_cast<uint32_t>(layer), volume.probeCount.z());
+			if (devvolume.irradianceTextureBinding != ~0) {
+				uint64_t image = (devvolume.irradianceTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
+				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
+					ImGui::EndTooltip();
+				}
+			}
+		}
+		//ImGui::ColorEdit3("F0", &mat.F0_R);
+	}
+	template <>
 	void ComponentEditorWidget<nyan::CameraMovement>(entt::registry& reg, entt::registry::entity_type e)
 	{
 		auto& movement = reg.get<nyan::CameraMovement>(e);
@@ -305,6 +344,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	pass.add_swapchain_attachment();
 	manager = &renderManager.get_material_manager();
 	ddgiManager = &renderManager.get_ddgi_manager();
+	ddgiReSTIRManager =&renderManager.get_ddgi_restir_manager();
 
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
@@ -335,6 +375,7 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<Forward>("Forward");
 	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
 	m_editor.registerComponent<DDGIManager::DDGIVolumeParameters>("DDGI Volume");
+	m_editor.registerComponent<DDGIReSTIRManager::DDGIReSTIRVolumeParameters>("DDGI ReSTIR Volume");
 	m_editor.registerComponent<CameraMovement>("Camera Controller");
 	m_editor.registerComponent<Directionallight>("Directional Light");
 	m_editor.registerComponent<Pointlight>("Point Light");
@@ -508,8 +549,8 @@ void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 						}
 					};
 					auto data = static_cast<long long>(pcmd->TextureId) ;
-					auto tex = (data & (std::numeric_limits<uint32_t>::max())) - 1;
-					auto texInfo = ((data >> 32) & (std::numeric_limits<uint32_t>::max())) - 1;
+					int tex = (data & (std::numeric_limits<uint32_t>::max())) - 1;
+					int texInfo = ((data >> 32) & (std::numeric_limits<uint32_t>::max())) - 1;
 					if (tex != -1) {
 						push.texId = tex;
 						push.arrayLayer = texInfo;

@@ -1,0 +1,115 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+#include "raycommon.glsl"
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "extracts.glsl"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "lighting.glsl"
+#include "debug.glsl"
+#include "hash.glsl"
+#include "ddgi_restir_common.glsl"
+#define RAYTRACE_DDGI_RESTIR_VOLUMES
+#include "ddgi_restir_sample.glsl"
+#include "ddgi_restir_push_constants.h"
+
+layout(location = 0) rayPayloadEXT PackedPayload pld;
+
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
+
+
+
+//struct DDGIReSTIRPushConstants {
+//	uint accBinding;
+//	uint sceneBinding;
+//	uint meshBinding;
+//	uint ddgiReSTIRBinding;
+//	uint ddgiReSTIRCount;
+//	uint ddgiReSTIRIndex;
+//	uint renderTarget;
+//	uint resampleTarget;
+//	vec4 randomRotation;
+//  uint rngSeed;
+//};
+
+
+//#define SHADOW_RAY_PAYLOAD_LOCATION 1 Optional for different locations
+#include "raytrace_lighting.glsl"
+
+void main() {
+    Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+    DDGIReSTIRVolume volume = ddgiReSTIRVolumes[pushConstants.constants.ddgiReSTIRBinding].volume[pushConstants.constants.ddgiReSTIRIndex];
+    //const uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+    const uvec2 launchIdx = uvec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y);
+    uint globalRayIdx = launchIdx.x + (launchIdx.y << 11);
+    uint rayIdx =globalRayIdx % volume.samplesPerProbe;
+    uint probeIdx =globalRayIdx / volume.samplesPerProbe;
+            
+    vec3 probeCords = get_probe_coordinates(probeIdx, volume);
+    
+	uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+	float u = uint_to_u01_float(hash1_mut(rngSeed));
+	float v = uint_to_u01_float(hash1_mut(rngSeed));
+	float w = uint_to_u01_float(hash1_mut(rngSeed));
+	vec4 rotation = create_random_quaternion_rotation(u, v, w);
+    vec3 direction = get_ray_direction(rotation, rayIdx, volume.samplesPerProbe);
+    //vec3 direction = get_ray_direction(pushConstants.constants.randomRotation, rayIdx, volume.samplesPerProbe);
+
+    uint  rayFlags = gl_RayFlagsNoneEXT;
+    float tMin     = 0.0001;
+    float tMax     = 1e7f;
+    traceRayEXT(accelerationStructures[pushConstants.constants.accBinding], // acceleration structure
+            rayFlags,       // rayFlags
+            0xFF,           // cullMask
+            0,              // sbtRecordOffset
+            0,              // sbtRecordStride
+            0,              // missIndex
+            probeCords.xyz, // ray origin
+            tMin,           // ray min range
+            direction.xyz,  // ray direction
+            tMax,           // ray max range
+            0               // payload (location = 0)
+        );
+	Payload payload = unpack_payload(pld);
+    
+	vec3 diffuse = vec3(0.f);
+
+	float hitDistance = payload.hitT;
+
+    
+	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
+	{
+	    hitDistance *= -1.0;
+	} 
+    else if(payload.hitkind == HitKindMiss) 
+	{
+		diffuse = payload.albedo;
+	} 
+	else {
+        ShadingData shadingData;
+        shadingData.albedo = payload.albedo;
+        shadingData.alpha = payload.roughness * payload.roughness;
+        shadingData.outLightDir = -direction;
+        shadingData.metalness = payload.metallic;
+        shadingData.shadingNormal = payload.shadingNormal;
+        shadingData.worldPos = payload.worldPos;
+        //High compile time here
+        //Probable cause was loop end condition in an SSBO
+		diffuse += diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData);
+        if(volume.recurse != 0) {
+		    diffuse += diffuse_indirect_lighting(volume, shadingData
+            #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
+                        , accelerationStructures[pushConstants.constants.accBinding]
+		    #endif 
+                         );
+        }
+    }
+    //diffuse = payload.albedo;
+    //diffuse = pld.worldPos;
+    //if(length(diffuse) < 0.001)
+    //diffuse = debugColors[(gl_LaunchIDEXT.x + gl_LaunchIDEXT.y)%debugColors.length()].xyz;
+    //diffuse = debugColors[(probeIdx)%debugColors.length()].xyz;
+    imageStore(imagesRGBA32F[pushConstants.constants.renderTarget], ivec2(launchIdx), vec4(diffuse, hitDistance));
+}

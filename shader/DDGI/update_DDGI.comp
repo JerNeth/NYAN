@@ -25,7 +25,6 @@ layout(constant_id = 7) const uint imageFormat = R16G16B16A16F;
 layout(constant_id = 8) const uint renderTargetImageWidthBits = 10;
 layout(constant_id = 9) const uint subgroupSize = 32;
 layout(constant_id = 10) const bool dynamicRayAllocationEnabled = false;
-layout(constant_id = 11) const bool ReSTIREnabled = false;
 
 shared vec3 rayDirection[maxRayCount];
 shared vec3 rayRadiance[maxRayCount * (filterIrradiance? 1: 0) + (filterIrradiance? 0: 1)]; //zero sized arrays are apparently not valid SPIR-V
@@ -175,6 +174,7 @@ void main()
 		float rayDist = rayDistance[rayIdx];
 
 		float weight = max(0.f, dot(rayDir, texelDir));
+
 		resultWeight += weight;
 
 		if(filterIrradiance) {
@@ -241,7 +241,9 @@ void main()
 		#ifdef DO_GAMMA
 		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
 			
-		biasedResult.rgb = pow(biasedResult.rgb, vec3(1.f / 5.f));
+		if (filterIrradiance && (volume.biasedEstimator != 0)){
+			biasedResult.rgb = pow(biasedResult.rgb, vec3(1.f / 5.f));
+		}
 		#endif		
 
 		//MultiscaleMeanEstimator from Ray Tracing Gems
@@ -359,6 +361,7 @@ void main()
 		result = vec4(mix(result, previous, hysteresis));
 	}
 
+	
 	if(imageFormat == R11G11B10F)
 		imageStore(imagesArrayR11G11B10F[imageBinding], texCoord, result);
 	else if(imageFormat == R10G10B10A2F)

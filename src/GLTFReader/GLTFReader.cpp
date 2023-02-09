@@ -47,14 +47,15 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 			assert(model.textures[material.pbrMetallicRoughness.baseColorTexture.index].extensions.empty());
 		}
 	}
-	for (const auto& sampler : model.samplers) {
-		//Ignore for now
-	}
-	for (const auto& light : model.lights) {
-		//assert(false);
-	}
-	for (const auto& node : model.nodes) {
-	}
+	//for (const auto& sampler : model.samplers) {
+	//	//Ignore for now
+	//}
+	//for (const auto& light : model.lights) {
+	//	//assert(false);
+	//}
+	//for (const auto& node : model.nodes) {
+	//	//
+	//}
 	std::vector<std::string> textureMap;
 	for (const auto& texture : model.textures) {
 		if (texture.source != -1) {
@@ -87,6 +88,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 		if (mode == "MASK") return AlphaMode::AlphaTest;
 		if (mode == "BLEND") return AlphaMode::AlphaBlend;
 		assert(false);
+		return AlphaMode::Opaque;
 	};
 	std::vector<nyan::MaterialId> materialMap;
 	for (size_t matIdx{ 0 }; matIdx < model.materials.size(); ++matIdx) {
@@ -191,11 +193,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								position[j] = *fPtr;
+								position[j] = static_cast<decltype(nMesh.positions)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								position[j] = *dPtr;
+								position[j] = static_cast<decltype(nMesh.positions)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);
@@ -214,11 +216,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								normal[j] = *fPtr;
+								normal[j] = static_cast<decltype(nMesh.normals)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								normal[j] = *dPtr;
+								normal[j] = static_cast<decltype(nMesh.normals)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);
@@ -237,11 +239,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								tangent[j] = *fPtr;
+								tangent[j] = static_cast<decltype(nMesh.tangents)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								tangent[j] = *dPtr;
+								tangent[j] = static_cast<decltype(nMesh.tangents)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);
@@ -260,11 +262,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								uv[j] = *fPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs0)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								uv[j] = *dPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs0)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);
@@ -282,11 +284,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								uv[j] = *fPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs1)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								uv[j] = *dPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs1)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);
@@ -305,11 +307,11 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						for (size_t j{ 0 }; j < numComponents; ++j) {
 							if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
 								auto* fPtr = reinterpret_cast<float*>(ptr) + j;
-								uv[j] = *fPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs2)::value_type::value_type>(*fPtr);
 							}
 							else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_DOUBLE) {
 								auto* dPtr = reinterpret_cast<double*>(ptr) + j;
-								uv[j] = *dPtr;
+								uv[j] = static_cast<decltype(nMesh.uvs2)::value_type::value_type>(*dPtr);
 							}
 							else
 								assert(false);

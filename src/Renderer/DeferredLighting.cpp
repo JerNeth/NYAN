@@ -118,6 +118,7 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 	r_pass.add_write(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	r_pass.add_write(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
 	renderManager.get_ddgi_manager().add_read(pass.get_id());
+	renderManager.get_ddgi_restir_manager().add_read(pass.get_id());
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_raytracing_pipeline(m_pipeline);
@@ -130,6 +131,7 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bind)
 {
 	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
+	const auto& ddgiReSTIRManager = r_renderManager.get_ddgi_restir_manager();
 	auto writeBindDiffuse = r_pass.get_write_bind(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	auto writeBindSpecular = r_pass.get_write_bind(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBindDiffuse != InvalidBinding);
@@ -145,6 +147,10 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 		.ddgiBinding {ddgiManager.get_binding()},
 		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 		.ddgiIndex {0},
+		.ddgiReSTIRBinding {ddgiReSTIRManager.get_binding()},
+		.ddgiReSTIRCount {static_cast<uint32_t>(ddgiReSTIRManager.slot_count())},
+		.ddgiReSTIRIndex {0},
+		.useDDGIReSTIR {m_useDDGIReSTIR},
 		.albedoBinding {r_pass.get_read_bind(m_gbuffer.albedo)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalBinding {r_pass.get_read_bind(m_gbuffer.normal)},
@@ -173,6 +179,11 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 	bind.push_constants(constants);
 	bind.trace_rays(m_pipeline, width, height, 1);
 
+}
+
+void nyan::DeferredRayShadowsLighting::set_use_ddgi_restir(bool use)
+{
+	m_useDDGIReSTIR = use;
 }
 
 vulkan::RaytracingPipelineConfig nyan::DeferredRayShadowsLighting::generate_config()
@@ -230,9 +241,15 @@ void nyan::LightComposite::render(vulkan::GraphicsPipelineBind& bind)
 		.specularSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.diffuseBinding {r_pass.get_read_bind(m_lighting.diffuse)},
 		.diffuseSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
+		.tonemapping {static_cast<uint32_t>(m_tonemappingType)}
 	};
 	bind.push_constants(constants);
 	bind.draw(3, 1);
+}
+
+void nyan::LightComposite::set_tonemapping(ToneMapping type)
+{
+	m_tonemappingType = type;
 }
 
 void nyan::LightComposite::create_pipeline()

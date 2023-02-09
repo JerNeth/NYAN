@@ -66,7 +66,6 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
 			.biasedEstimator {parameters.biasedEstimator},
-			.useReSTIR {parameters.useReSTIR},
 	};
 	update_spacing(volume);
 	update_depth_texture(volume);
@@ -215,8 +214,7 @@ void nyan::DDGIManager::update()
 			(constDeviceVolume.relocationEnabled != 0) != parameters.relocationEnabled ||
 			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled ||
 			(constDeviceVolume.dynamicRayAllocationEnabled != 0) != parameters.dynamicRayAllocation ||
-			(constDeviceVolume.biasedEstimator != 0) != parameters.biasedEstimator ||
-			(constDeviceVolume.useReSTIR != 0) != parameters.useReSTIR)
+			(constDeviceVolume.biasedEstimator != 0) != parameters.biasedEstimator)
 			parameters.dirty = true;
 		parameters.frames++;
 		if (!parameters.dirty)
@@ -260,8 +258,7 @@ void nyan::DDGIManager::update()
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
-			.biasedEstimator {parameters.biasedEstimator},
-			.useReSTIR {parameters.useReSTIR},
+			.biasedEstimator {parameters.biasedEstimator}
 		};
 		if (deviceVolume.fixedRayCount > deviceVolume.raysPerProbe)
 			deviceVolume.fixedRayCount = deviceVolume.raysPerProbe;
@@ -661,6 +658,15 @@ uint32_t nyan::DDGIReSTIRManager::add_volume(const DDGIReSTIRVolumeParameters& p
 			.probeCountX {parameters.probeCount[0]},
 			.probeCountY {parameters.probeCount[1]},
 			.probeCountZ {parameters.probeCount[2]},
+			.samplesPerProbe {parameters.samplesPerProbe},
+			.irradianceProbeSize {parameters.irradianceProbeSize},
+			.irradianceTextureSizeX {parameters.probeCount[0] * (parameters.irradianceProbeSize + 2)},
+			.irradianceTextureSizeY {parameters.probeCount[1] * (parameters.irradianceProbeSize + 2)},
+			.temporalReservoirCountX {parameters.temporalReservoirCountX},
+			.temporalReservoirCountY {parameters.temporalReservoirCountY},
+			.maximumReservoirAge {parameters.maximumReservoirAge},
+			.validationEnabled {parameters.validationEnabled},
+			.recurse {parameters.recurse},
 			.enabled {parameters.enabled},
 	};
 	return add(volume);
@@ -712,7 +718,14 @@ void nyan::DDGIReSTIRManager::update()
 			constDeviceVolume.gridOriginZ != parameters.origin[2] ||
 			constDeviceVolume.probeCountX != parameters.probeCount[0] ||
 			constDeviceVolume.probeCountY != parameters.probeCount[1] ||
-			constDeviceVolume.probeCountZ != parameters.probeCount[2])
+			constDeviceVolume.probeCountZ != parameters.probeCount[2] ||
+			constDeviceVolume.samplesPerProbe != parameters.samplesPerProbe ||
+			constDeviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
+			constDeviceVolume.temporalReservoirCountX != parameters.temporalReservoirCountX ||
+			constDeviceVolume.temporalReservoirCountY != parameters.temporalReservoirCountY ||
+			constDeviceVolume.maximumReservoirAge != parameters.maximumReservoirAge || 
+			constDeviceVolume.validationEnabled != parameters.validationEnabled ||
+			constDeviceVolume.recurse != parameters.recurse)
 			parameters.dirty = true;
 		parameters.frames++;
 		if (!parameters.dirty)
@@ -724,43 +737,56 @@ void nyan::DDGIReSTIRManager::update()
 						.spacingX {parameters.spacing[0]},
 						.spacingY {parameters.spacing[1]},
 						.spacingZ {parameters.spacing[2]},
+						.inverseSpacingX {1.f / parameters.spacing[0]},
+						.inverseSpacingY {1.f / parameters.spacing[1]},
+						.inverseSpacingZ {1.f / parameters.spacing[2]},
 						.gridOriginX {parameters.origin[0]},
 						.gridOriginY {parameters.origin[1]},
 						.gridOriginZ {parameters.origin[2]},
 						.probeCountX {parameters.probeCount[0]},
 						.probeCountY {parameters.probeCount[1]},
 						.probeCountZ {parameters.probeCount[2]},
-						.enabled {parameters.enabled},
+						.samplesPerProbe {parameters.samplesPerProbe},
+						.irradianceProbeSize {parameters.irradianceProbeSize},
+						.irradianceTextureSizeX {deviceVolume.probeCountX * (deviceVolume.irradianceProbeSize + 2)},
+						.irradianceTextureSizeY {deviceVolume.probeCountY * (deviceVolume.irradianceProbeSize + 2)},
+						.irradianceSamplerBinding {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
+						.temporalReservoirCountX {parameters.temporalReservoirCountX},
+						.temporalReservoirCountY {parameters.temporalReservoirCountY},
+						.maximumReservoirAge {parameters.maximumReservoirAge},
+						.validationEnabled {parameters.validationEnabled},
+						.recurse {parameters.recurse},
+						.enabled {parameters.enabled}
 						};
 		parameters.dirty = false;
-		//if (parameters.depthResource) {
-		//	auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
-		//	assert(depthResource.m_type == nyan::RenderResource::Type::Image);
-		//	auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
-		//	imageAttachment.arrayLayers = deviceVolume.probeCountZ;
-		//	imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
-		//	imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
-		//	imageAttachment.format = depthFormat;
-		//}
-		//else {
-		//	parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
-		//		.format{depthFormat},
-		//		//VK_FORMAT_R16G16B16A16_SFLOAT},
-		//		//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
-		//		.size{nyan::ImageAttachment::Size::Absolute},
-		//		.arrayLayers {deviceVolume.probeCountZ},
-		//		.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
-		//		.height {static_cast<float>(deviceVolume.depthTextureSizeY)}
-		//		});
-		//	for (const auto& read : m_reads) {
-		//		auto& pass = r_rendergraph.get_pass(read);
-		//		pass.add_read(parameters.depthResource);
-		//	}
-		//	for (const auto& [write, type] : m_writes) {
-		//		auto& pass = r_rendergraph.get_pass(write);
-		//		pass.add_write(parameters.depthResource, type);
-		//	}
-		//}
+		if (parameters.irradianceResource) {
+			auto& irradianceResource = r_rendergraph.get_resource(parameters.irradianceResource);
+			assert(irradianceResource.m_type == nyan::RenderResource::Type::Image);
+			auto& imageAttachment = std::get< ImageAttachment>(irradianceResource.attachment);
+			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+			imageAttachment.width = static_cast<float>(deviceVolume.irradianceTextureSizeX);
+			imageAttachment.height = static_cast<float>(deviceVolume.irradianceTextureSizeY);
+			imageAttachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+		}
+		else {
+			parameters.irradianceResource = r_rendergraph.add_ressource(std::format("DDGI_ReSTIR_Irradiance_{}", parameters.gpuVolume), nyan::ImageAttachment{
+				.format{VK_FORMAT_R16G16B16A16_SFLOAT},
+				//VK_FORMAT_R16G16B16A16_SFLOAT},
+				//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
+				.size{nyan::ImageAttachment::Size::Absolute},
+				.arrayLayers {deviceVolume.probeCountZ},
+				.width {static_cast<float>(deviceVolume.irradianceTextureSizeX)},
+				.height {static_cast<float>(deviceVolume.irradianceTextureSizeY)}
+				});
+			for (const auto& read : m_reads) {
+				auto& pass = r_rendergraph.get_pass(read);
+				pass.add_read(parameters.irradianceResource);
+			}
+			for (const auto& [write, type] : m_writes) {
+				auto& pass = r_rendergraph.get_pass(write);
+				pass.add_write(parameters.irradianceResource, type);
+			}
+		}
 	}
 }
 
@@ -773,16 +799,19 @@ void nyan::DDGIReSTIRManager::begin_frame()
 		}
 		const auto& constDeviceVolume = DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume);
 		if (!m_writes.empty()) {
+
+			auto& writePass = r_rendergraph.get_pass(m_writes.front().pass);
 			//update write binds
-			//auto depthImageBind = writePass.get_write_bind(parameters.depthResource, Renderpass::Write::Type::Compute);
-			//if (constDeviceVolume.depthImageBinding != depthImageBind)
-			//	DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthImageBinding = depthImageBind;
+			auto irradianceImageBinding = writePass.get_write_bind(parameters.irradianceResource, Renderpass::Write::Type::Compute);
+			if (constDeviceVolume.irradianceImageBinding != irradianceImageBinding)
+				DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume).irradianceImageBinding = irradianceImageBinding;
 		}
 		if (!m_reads.empty()) {
+			auto& readPass = r_rendergraph.get_pass(m_reads.front());
 			//update read binds
-			//auto depthTextureBinding = readPass.get_read_bind(parameters.depthResource);
-			//if (constDeviceVolume.depthTextureBinding != depthTextureBinding)
-			//	DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthTextureBinding = depthTextureBinding;
+			auto irradianceTextureBinding = readPass.get_read_bind(parameters.irradianceResource);
+			if (constDeviceVolume.irradianceTextureBinding != irradianceTextureBinding)
+				DataManager<nyan::shaders::DDGIReSTIRVolume>::get(parameters.gpuVolume).irradianceTextureBinding = irradianceTextureBinding;
 		}
 	}
 }

@@ -88,20 +88,6 @@ vec3 diffuse_direct_lighting(in accelerationStructureEXT accelerationStructure, 
     }
     return diffuse;
 }
-//#define SAMPLE_DDGI
-vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData)
-{
-//#ifdef SAMPLE_DDGI
-    float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, bias, shadingData.shadingNormal, volume);
-        vec3 radiance = shadingData.albedo.xyz * irradiance * ((1.f - shadingData.metalness) * brdf_lambert() * volumeWeight); //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
-        return radiance;
-    }
-//#endif
-    return vec3(0.f);
-}
 
 #ifdef SHADOW_RAY_PAYLOAD_TEMPORARY_DEFINE
 #undef SHADOW_RAY_PAYLOAD_TEMPORARY_DEFINE

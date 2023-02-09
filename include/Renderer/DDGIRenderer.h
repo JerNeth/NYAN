@@ -5,6 +5,8 @@
 #include "Renderer.h"
 #include "VulkanForwards.h"
 #include "RayTracePipeline.h"
+#include "ddgi_restir_push_constants.h"
+#include "ddgi_push_constants.h"
 #include "RenderGraph.h"
 #include <random>
 #include <memory>
@@ -12,19 +14,8 @@
 namespace nyan {
 
 
-	class DDGIRenderer : Renderer {
+	class DDGIRenderer : public Renderer {
 	private:
-		struct PushConstants
-		{
-			uint32_t accBinding;
-			uint32_t sceneBinding;
-			uint32_t meshBinding;
-			uint32_t ddgiBinding;
-			uint32_t ddgiCount;
-			uint32_t ddgiIndex;
-			uint32_t renderTarget;
-			Math::vec4 randomRotation{ 0.4f, 0.6f, 0.8f, 1.f };
-		};
 		struct PushConstantsDynamic
 		{
 			VkDeviceAddress targetAddress;
@@ -66,6 +57,9 @@ namespace nyan {
 					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits;
 			}
 		};
+		struct ReSTIRPipelineConfig {
+
+		};
 		struct BorderPipelineConfig
 		{
 			uint32_t workSizeX;
@@ -74,16 +68,31 @@ namespace nyan {
 			VkBool32 columns;
 			VkBool32 filterIrradiance;
 			uint32_t imageFormat;
+			uint32_t probeCountX;
+			uint32_t probeCountY;
+			uint32_t probeCountZ;
+			uint32_t probeSize;
+			uint32_t imageBinding;
 			static constexpr const char* columnsShaderName{ "columns" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
 			static constexpr const char* imageFormatShaderName{ "imageFormat" };
+			static constexpr const char* probeCountXShaderName{ "probeCountX" };
+			static constexpr const char* probeCountYShaderName{ "probeCountY" };
+			static constexpr const char* probeCountZShaderName{ "probeCountZ" };
+			static constexpr const char* probeSizeShaderName{ "probeSize" };
+			static constexpr const char* imageBindingShaderName{ "imageBinding" };
 			friend bool operator==(const BorderPipelineConfig& lhs, const BorderPipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
 					lhs.workSizeZ == rhs.workSizeZ &&
 					lhs.columns == rhs.columns &&
 					lhs.filterIrradiance == rhs.filterIrradiance &&
-					lhs.imageFormat == rhs.imageFormat;
+					lhs.imageFormat == rhs.imageFormat &&
+					lhs.probeCountX == rhs.probeCountX &&
+					lhs.probeCountY == rhs.probeCountY &&
+					lhs.probeCountZ == rhs.probeCountZ &&
+					lhs.probeSize == rhs.probeSize &&
+					lhs.imageBinding == rhs.imageBinding;
 			}
 		};
 		struct RelocatePipelineConfig
@@ -180,11 +189,14 @@ namespace nyan {
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
 	private:
-		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t numRays, uint32_t numProbes);
-		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, VkDeviceAddress address);
-		void filter_volume(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
-		void copy_borders(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t probeCountX, uint32_t probeCountY, uint32_t probeCountZ);
-		void relocate_probes(vulkan::ComputePipelineBind& bind, const PushConstants& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+		void render(vulkan::CommandBuffer& cmd, nyan::Renderpass&);
+		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const DDGIPushConstants& constants, uint32_t numRays, uint32_t numProbes);
+		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const DDGIPushConstants& constants, VkDeviceAddress address);
+		void filter_volume(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants);
+		void copy_borders(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants);
+		void dispatch_compute(vulkan::ComputePipelineBind& bind, const DDGIPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
+		void bind_and_dispatch_compute(vulkan::CommandBuffer& cmd, vulkan::PipelineId pipelineId, const DDGIPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
+		void relocate_probes(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants, bool reset);
 		void sum_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void gather_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void prefix_sum(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
@@ -220,7 +232,7 @@ namespace nyan {
 		std::unordered_map<GatherPipelineConfig, vulkan::PipelineId, Utility::Hash<GatherPipelineConfig>> m_gatherPipelines;
 		std::unordered_map<PrefixSumPipelineConfig, vulkan::PipelineId, Utility::Hash<PrefixSumPipelineConfig>> m_prefixSumPipelines;
 		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_rtPipelines;
-		std::mt19937 m_generator{ 420 };
+		std::unique_ptr<std::mt19937> m_generator{ new std::mt19937(420) };
 		std::uniform_real_distribution<float> m_dist {0.f, 1.f};
 	};
 
@@ -243,27 +255,113 @@ namespace nyan {
 		bool m_enabled;
 		Lighting m_lighting;
 		nyan::RenderResource::Id m_depth;
-		std::mt19937 m_generator{ 420 };
+		std::unique_ptr<std::mt19937> m_generator{ new std::mt19937(420) };
 		std::uniform_real_distribution<float> m_dist{ 0.f, 1.f };
 	};
 
-	class DDGIReSTIRRenderer : Renderer {
+	class DDGIReSTIRRenderer : public Renderer {
 	private:
-		struct PushConstants
+		struct PipelineConfig
 		{
-			uint32_t accBinding;
-			uint32_t sceneBinding;
-			uint32_t meshBinding;
-			uint32_t renderTarget;
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			uint32_t sampleCount;
+			static constexpr const char* sampleCountShaderName{ "sampleCount" };
+			friend bool operator==(const PipelineConfig& lhs, const PipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ &&
+					lhs.sampleCount == rhs.sampleCount;
+			}
+		};
+		struct ShadePipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			friend bool operator==(const ShadePipelineConfig& lhs, const ShadePipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ;
+			}
+		};
+
+		struct BorderPipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			VkBool32 columns;
+			VkBool32 filterIrradiance;
+			uint32_t imageFormat;
+			uint32_t probeCountX;
+			uint32_t probeCountY;
+			uint32_t probeCountZ;
+			uint32_t probeSize;
+			uint32_t imageBinding;
+			static constexpr const char* columnsShaderName{ "columns" };
+			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
+			static constexpr const char* imageFormatShaderName{ "imageFormat" };
+			static constexpr const char* probeCountXShaderName{ "probeCountX" };
+			static constexpr const char* probeCountYShaderName{ "probeCountY" };
+			static constexpr const char* probeCountZShaderName{ "probeCountZ" };
+			static constexpr const char* probeSizeShaderName{ "probeSize" };
+			static constexpr const char* imageBindingShaderName{ "imageBinding" };
+			friend bool operator==(const BorderPipelineConfig& lhs, const BorderPipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ &&
+					lhs.columns == rhs.columns &&
+					lhs.filterIrradiance == rhs.filterIrradiance &&
+					lhs.imageFormat == rhs.imageFormat &&
+					lhs.probeCountX == rhs.probeCountX &&
+					lhs.probeCountY == rhs.probeCountY &&
+					lhs.probeCountZ == rhs.probeCountZ &&
+					lhs.probeSize == rhs.probeSize &&
+					lhs.imageBinding == rhs.imageBinding;
+			}
 		};
 	public:
 		DDGIReSTIRRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
+		void dump_to_disk();
+		void clear_buffers();
 	private:
-		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const PushConstants& constants, uint32_t xCount, uint32_t yCount, uint32_t zCount);
-		vulkan::RaytracingPipelineConfig generate_config();
+		void render(vulkan::CommandBuffer& cmd, nyan::Renderpass&);
+		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
+		vulkan::PipelineId create_shade_pipeline(const ShadePipelineConfig& config);
+		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
+		vulkan::RaytracingPipelineConfig generate_sample_generation_config();
+		vulkan::RaytracingPipelineConfig generate_sample_validation_config();
+		void generate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void validate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void resample(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void copy_borders(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume);
+		void shade(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void temporal_reuse(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void spatial_reuse(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void dispatch_compute(vulkan::ComputePipelineBind& bind, const DDGIReSTIRPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
+		void bind_and_dispatch_compute(vulkan::CommandBuffer& cmd, vulkan::PipelineId pipelineId, const DDGIReSTIRPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
+		void bind_and_dispatch_compute(vulkan::CommandBuffer& cmd, vulkan::PipelineId pipelineId, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
 
-		std::unique_ptr<vulkan::RTPipeline> m_rtPipeline;
+
+		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_filterPipelines;
+		std::unordered_map<ShadePipelineConfig, vulkan::PipelineId, Utility::Hash<ShadePipelineConfig>> m_shadePipelines;
+		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
+		std::unique_ptr<vulkan::RTPipeline> m_sampleGenerationPipeline;
+		std::unique_ptr<vulkan::RTPipeline> m_sampleValidationPipeline;
+		nyan::RenderResource::Id m_renderTarget;
+		std::unique_ptr<std::mt19937> m_generator{new std::mt19937(420)};
+		std::unique_ptr<vulkan::BufferHandle> m_temporalReservoirs;
+		std::unique_ptr<vulkan::BufferHandle> m_screenshotBuffer;
+		bool m_dirtyReservoirs{ false };
+		bool m_screenshot{ false };
+		int m_screenshotWidth{ 0 };
+		int m_screenshotHeight{ 0 };
+		bool m_dumpToDisk{ false };
+		bool m_clear{ false };
+		size_t m_currentReservoir{ 0 };
 	};
 }
 

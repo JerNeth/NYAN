@@ -8,6 +8,7 @@
 
 namespace nyan {
 
+
 	class Profiler {
 	public:
 		Profiler(vulkan::LogicalDevice& device);

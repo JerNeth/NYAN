@@ -18,6 +18,7 @@
 #include "Buffer.h"
 #include "AccelerationStructure.h"
 #include "QueryPool.hpp"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	const vulkan::PhysicalDevice& physicalDevice,
@@ -1540,7 +1541,7 @@ void vulkan::LogicalDevice::create_vma_allocator()
 		.device = m_device,
 		.pAllocationCallbacks = m_allocator,
 		.pVulkanFunctions = &vulkanFunctions,
-		.instance = r_instance.m_instance,
+		.instance = r_instance,
 		.vulkanApiVersion = VK_API_VERSION_1_3,
 	};
 #ifdef VMA_RECORDING_ENABLED

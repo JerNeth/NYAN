@@ -50,6 +50,10 @@ namespace nyan {
 			uint32_t ddgiBinding;
 			uint32_t ddgiCount;
 			uint32_t ddgiIndex;
+			uint32_t ddgiReSTIRBinding;
+			uint32_t ddgiReSTIRCount;
+			uint32_t ddgiReSTIRIndex;
+			uint32_t useDDGIReSTIR;
 			uint32_t albedoBinding;
 			uint32_t albedoSampler;
 			uint32_t normalBinding;
@@ -67,6 +71,7 @@ namespace nyan {
 		DeferredRayShadowsLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
 			const GBuffer& gBuffer, const Lighting& lighting);
 		void render(vulkan::RaytracingPipelineBind& bind);
+		void set_use_ddgi_restir(bool use);
 	private:
 		vulkan::RaytracingPipelineConfig generate_config();
 
@@ -75,6 +80,7 @@ namespace nyan {
 		GBuffer m_gbuffer;
 
 		Lighting m_lighting;
+		bool m_useDDGIReSTIR;
 	};
 
 	class LightComposite : Renderer {
@@ -83,17 +89,27 @@ namespace nyan {
 			uint32_t specularSampler;
 			uint32_t diffuseBinding;
 			uint32_t diffuseSampler;
+			uint32_t tonemapping;
+		};
+	public:
+		enum class ToneMapping : uint32_t {
+			None,
+			ACESFilm,
+			Reinhard,
+			Uncharted
 		};
 	public:
 		LightComposite(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass
 			, const Lighting& lighting);
 		void render(vulkan::GraphicsPipelineBind& bind);
+		void set_tonemapping(ToneMapping type);
 	private:
 		void create_pipeline();
 
 		vulkan::PipelineId m_compositePipeline;
 
 		Lighting m_lighting;
+		ToneMapping m_tonemappingType;
 	};
 }
 #endif !RDDEFERREDLIGHTING_H

@@ -76,7 +76,7 @@ struct PackedPayload {
 	uvec4 packed1;
 };
 
-Payload unpack_payload(PackedPayload packed) {
+Payload unpack_payload(in PackedPayload packed) {
 	Payload payload;
 	payload.hitT = packed.hitT;
 	payload.worldPos = packed.worldPos;

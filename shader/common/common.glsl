@@ -148,6 +148,16 @@ vec3 computeTangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec4 
     }
 }
 
+vec4 create_random_quaternion_rotation(float u, float v, float w) {
+    //Assumes u, v, w are [0, 1]
+    const float sqrt1MinusU = sqrt(1 - u);
+    const float sqrtU = sqrt(u);
+    const float pi_2 = 1.57079632679489661923;
+    const float w_pi_2 = w * pi_2;
+    return vec4(sqrt1MinusU * sin(pi_2 * v), sqrt1MinusU * cos(pi_2 * v),
+                sqrtU * sin(w_pi_2), sqrtU * cos(w_pi_2));
+}
+
 vec3 quaternion_rotate(vec4 q, vec3 v)
 {
     return cross(q.xyz, v) * (2.f * q.w) + 
@@ -175,5 +185,36 @@ float max_component(vec4 v) {
 	return max(v.w, max(v.z, max(v.x, v.y)));
 }
 
+vec3 spherical_fibonacci(float i, float n) {
+	const float pi = 3.14159265359f;
+    const float PHI = sqrt(5.f) * 0.5 + 0.5;
+#define madfrac(A, B) ((A)*(B)-floor((A)*(B)))
+    float phi = 2.0 * pi * madfrac(i, PHI - 1);
+    float cosTheta = 1.0 - (2.0 * i + 1.0) * (1.0 / n);
+    float sinTheta = sqrt(max(min(1.0 - cosTheta*cosTheta, 1.0), 0.0));
+
+    return vec3(
+        cos(phi) * sinTheta,
+        sin(phi) * sinTheta,
+        cosTheta);
+
+#undef madfrac
+}
+
+vec2 get_normalized_octahedral_coords(ivec2 texCoords, int numTexels) 
+{
+	vec2 uv = vec2(texCoords.x % numTexels, texCoords.y % numTexels);
+
+	uv += vec2(0.5f);
+	uv /= vec2(numTexels);
+	uv *= 2.f;
+	uv -= vec2(1.f);
+	return uv;
+}
+
+
+float luminance(in vec3 color) {
+	return dot(color, vec3(0.299f, 0.587f, 0.114f));
+}
 
 #endif

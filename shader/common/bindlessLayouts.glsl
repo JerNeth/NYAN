@@ -18,6 +18,10 @@ layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer DDGIVo
 	DDGIVolume volume[];
 } ddgiVolumes[SSBO_COUNT];
 
+layout(set = 0, binding = STORAGE_BUFFER_BINDING, std430) readonly buffer DDGIReSTIRVolumes {
+	DDGIReSTIRVolume volume[];
+} ddgiReSTIRVolumes[SSBO_COUNT];
+
 //No real performance gain here
 //layout(set = 0, binding = UNIFORM_BUFFER_BINDING, std140) readonly uniform DDGIVolumes {
 //	DDGIVolume volume[2];

@@ -1,6 +1,5 @@
-#ifndef DDGI_PUSH_CONSTANTS_GLSL
-#define DDGI_PUSH_CONSTANTS_GLSL
-
+#ifndef DDGI_RESTIR_PUSH_CONSTANTS_GLSL
+#define DDGI_RESTIR_PUSH_CONSTANTS_GLSL
 
 #ifdef __cplusplus
 #include "LinAlg.h"
@@ -32,24 +31,27 @@
 #define dmat4x3 Math::dmat34
 #define dmat3x4 Math::dmat43
 #endif
-struct DDGIPushConstants {
+
+struct DDGIReSTIRPushConstants {
 	uint accBinding;
 	uint sceneBinding;
 	uint meshBinding;
-	uint ddgiBinding;
-	uint ddgiCount;
-	uint ddgiIndex;
+	uint ddgiReSTIRBinding;
+	uint ddgiReSTIRCount;
+	uint ddgiReSTIRIndex;
 	uint renderTarget;
+	uint rngSeed;
+	uint64_t reservoirs;
+	uint64_t pad;
 	vec4 randomRotation;
 };
 #ifndef __cplusplus
-	layout(std430, push_constant) uniform PushConstants
-	{
-		DDGIPushConstants constants;
-	} pushConstants;
-#endif
+layout(std430, push_constant) uniform PushConstants
+{
+	DDGIReSTIRPushConstants constants;
+} pushConstants;
 
-#ifdef __cplusplus
+#else
 #undef uint
 #undef int
 #undef ivec4

@@ -9,6 +9,8 @@
 #include "extracts.glsl"
 #include "lighting.glsl"
 #include "DDGI/ddgi_sampling.glsl"
+#define RAYTRACE_DDGI_RESTIR_VOLUMES
+#include "DDGIReSTIR/ddgi_restir_sample.glsl"
 #include "gbuffer.glsl"
 
 layout(std430, push_constant) uniform PushConstants
@@ -19,6 +21,11 @@ layout(std430, push_constant) uniform PushConstants
     uint ddgiBinding;
     uint ddgiCount;
     uint ddgiIndex;
+
+	uint ddgiReSTIRBinding;
+	uint ddgiReSTIRCount;
+	uint ddgiReSTIRIndex;
+	uint useDDGIReSTIR;
 
     uint albedoBinding;
     uint albedoSampler;
@@ -117,7 +124,6 @@ void main()
     const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
 
     Scene scene = scenes[constants.sceneBinding].scene;
-	DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
 	DirectionalLight light = scene.dirLight;
     
     uint stencil = texelFetch( usampler2D(utextures2D[constants.stencilBinding], samplers[constants.stencilSampler]), ivec2(gl_LaunchIDEXT.xy), 0).x;
@@ -149,13 +155,37 @@ void main()
         shadingData.shadingNormal = materialData.shadingNormal;
         direct_lighting(scene, shadingData, diffuseAccum.xyz, specularAccum.xyz);
         
-        float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-        if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+        if(constants.useDDGIReSTIR != 0) {
+	        DDGIReSTIRVolume volume = ddgiReSTIRVolumes[constants.ddgiReSTIRBinding].volume[constants.ddgiReSTIRIndex];
+            float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
+            if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+                       
+                vec3 irradiance = sample_ddgi_restir(shadingData.worldPos.xyz, shadingData.shadingNormal, volume
+	                #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
+                    , accelerationStructures[constants.accBinding]
+	                #endif
+                );
+                vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+                diffuseAccum.xyz += radiance;
+            
+            }
+        }
+        else {
+	        DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
+            float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
+            if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
            
-            vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-            vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume);
-            vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
-            diffuseAccum.xyz += radiance;
+                vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
+            
+                vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume
+	                #ifdef RAYTRACE_DDGI_VOLUMES
+                    , accelerationStructures[constants.accBinding]
+	                #endif
+                );
+                vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
+                diffuseAccum.xyz += radiance;
+            
+            }
         }
         specularAccum.xyz += materialData.emissive.xyz;
         specularAccum.xyz = vec3(0.f);

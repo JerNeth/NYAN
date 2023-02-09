@@ -80,7 +80,7 @@ namespace vulkan {
 		//ShaderId get_shader_instance_id(const std::string& name) const noexcept;
 
 	private:
-		void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ, uint32_t maxInv) noexcept(false);
+		static void throw_size_error(uint32_t x, uint32_t y, uint32_t z, uint32_t maxX, uint32_t maxY, uint32_t maxZ, uint32_t maxInv) noexcept(false);
 		void load_shaders(const std::filesystem::path& shaderDirectory);
 		//Shader* request_shader(const std::string& filename);
 		LogicalDevice& r_device;

@@ -5,6 +5,7 @@
 #include "VulkanWrapper/CommandBuffer.h"
 #include "VulkanWrapper/AccelerationStructure.h"
 #include "VulkanWrapper/Shader.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 
 nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing, const std::filesystem::path& directory) :
 	r_device(device),
@@ -281,6 +282,7 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 	}
 	//Order doesn't matter
 	m_ddgiManager.update();
+	m_ddgiReSTIRManager.update();
 }
 
 void nyan::RenderManager::begin_frame()
@@ -288,6 +290,7 @@ void nyan::RenderManager::begin_frame()
 	//Skeletal animations have to be before the mesh manager build
 	//Has to be before instance manager build and instance manager update
 	m_ddgiManager.begin_frame();
+	m_ddgiReSTIRManager.begin_frame();
 
 	m_meshManager.build();
 
@@ -296,6 +299,7 @@ void nyan::RenderManager::begin_frame()
 	vulkan::CommandBuffer& transferCmd = transferCmdHandle;
 
 	needsSemaphore |= m_ddgiManager.upload(transferCmd);
+	needsSemaphore |= m_ddgiReSTIRManager.upload(transferCmd);
 	needsSemaphore |= m_meshManager.upload(transferCmd);
 	needsSemaphore |= m_materialManager.upload(transferCmd);
 	needsSemaphore |= m_sceneManager.upload(transferCmd);
@@ -313,4 +317,5 @@ void nyan::RenderManager::begin_frame()
 void nyan::RenderManager::end_frame()
 {
 	m_ddgiManager.end_frame();
+	m_ddgiReSTIRManager.end_frame();
 }

@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "Utility/Exceptions.h"
 #include "descriptors.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 
 namespace vulkan {
 	static constexpr uint32_t storageBufferBinding = STORAGE_BUFFER_BINDING;
@@ -414,7 +415,7 @@ VkDescriptorSet vulkan::DescriptorSet::get_set() const noexcept
 	return m_vkHandle;
 }
 
-VkDescriptorType vulkan::DescriptorSet::bindless_binding_to_type(uint32_t binding) noexcept
+constexpr VkDescriptorType vulkan::DescriptorSet::bindless_binding_to_type(uint32_t binding) noexcept
 {
 	switch (binding) {
 	case storageBufferBinding:

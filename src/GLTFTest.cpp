@@ -1,6 +1,7 @@
 #include <iostream>
 #include <Util>
 #include "Application.h"
+#include <span>
 
 #include "Renderer/Mesh.h"
 #include "Renderer/Material.h"
@@ -15,7 +16,21 @@
 
 using namespace nyan;
 
-int main() {
+enum class ExitCode : int {
+	Success = EXIT_SUCCESS,
+	Failure = EXIT_FAILURE
+};
+
+int main(const int argc, char const * const * const argv)
+{
+	[[nodiscard]] ExitCode better_main(std::span<const std::string_view>);
+	std::vector<std::string_view>
+		args(argv, std::next(argv, static_cast<std::ptrdiff_t>(argc)));
+
+	return static_cast<int>(better_main(args));
+}
+
+[[nodiscard]] ExitCode better_main([[maybe_unused]] std::span<const std::string_view> args) {
 	auto name = "Demo";
 	nyan::Application application(name);
 	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
@@ -30,7 +45,6 @@ int main() {
 	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
-
 	std::filesystem::path file;
 	file = "sponza-gltf-pbr/sponza.glb";
 	file = "Sponza/glTF/Sponza.gltf";
@@ -97,6 +111,12 @@ int main() {
 			.visualization {false},
 			.relocationEnabled {true},
 		}); //Sponza
+	registry.emplace<nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters>(parent, nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters{
+			.spacing {1.02f, 0.5f, 0.45f},
+			.origin {-0.4f - 12.f * 1.02f, 5.4f - 0.5f * 11.f, -0.25f - 0.45f * 12.f},
+			.probeCount {24, 22, 24},
+			.samplesPerProbe {256},
+		}); //Sponza
 
 	registry.emplace<Directionallight>(parent, Directionallight
 		{
@@ -137,6 +157,7 @@ int main() {
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
 
 	nyan::DDGIRenderer ddgiRenderer(device, registry, renderManager, ddgiPass);
+	nyan::DDGIReSTIRRenderer ddgiReSTIRRenderer(device, registry, renderManager, ddgiPass);
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
 	nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
@@ -144,7 +165,7 @@ int main() {
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
-
+	bool ddgiRestir = false;
 	rendergraph.build();
 
 	application.each_update([&](std::chrono::nanoseconds dt)
@@ -158,8 +179,33 @@ int main() {
 			imgui.begin_frame();
 
 			renderManager.get_profiler().begin_frame();
+			ImGui::Begin("Render Config");
+			ImGui::Checkbox("Use DDGIReSTIR", &ddgiRestir);
+			if (ImGui::Button("Screenshot DDGI ReSTIR Buffer"))
+				ddgiReSTIRRenderer.dump_to_disk();
+			if (ImGui::Button("Clear DDGI ReSTIR Buffers"))
+				ddgiReSTIRRenderer.clear_buffers();
+			static constexpr std::array tonemappingOptions = {"None", "ACESFilm", "Reinhard" , "Uncharted" };
+			static uint32_t current_tonemapping = 0;
+			if (ImGui::BeginCombo("##Tonemapping", tonemappingOptions[current_tonemapping])) {
+				for (uint32_t item = 0; item < tonemappingOptions.size(); item++) {
+					bool selected = (current_tonemapping == item);
+					if (ImGui::Selectable(tonemappingOptions[item], selected))
+						current_tonemapping = item;
+					if (selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			
+			ImGui::End();
+			lightComposite.set_tonemapping(static_cast<nyan::LightComposite::ToneMapping>(current_tonemapping));
+			ddgiRenderer.set_enable(!ddgiRestir);
+			ddgiReSTIRRenderer.set_enable(ddgiRestir);
+			deferredLighting2.set_use_ddgi_restir(ddgiRestir);
 
 			ddgiRenderer.begin_frame();
+			ddgiReSTIRRenderer.begin_frame();
 			rendergraph.begin_frame();
 
 			//ImGui::Begin("Input");
@@ -180,5 +226,5 @@ int main() {
 		});
 	application.main_loop();
 
-
+	return ExitCode::Success;
 }

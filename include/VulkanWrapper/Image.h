@@ -21,7 +21,7 @@ namespace vulkan {
 		"VK_IMAGE_LAYOUT_PREINITIALIZED"
 	};
 	
-	inline uint32_t format_block_size(VkFormat format) {
+	static inline constexpr uint32_t format_block_size(VkFormat format) {
 		switch (format) {
 			case VK_FORMAT_R4G4_UNORM_PACK8	 :
 			case VK_FORMAT_R8_UNORM			 :
@@ -211,7 +211,7 @@ namespace vulkan {
 				return 0;
 		}
 	}
-	inline std::pair<uint32_t, uint32_t> format_to_block_size(VkFormat format) {
+	static inline constexpr std::pair<uint32_t, uint32_t> format_to_block_size(VkFormat format) {
 		switch (format) {
 		case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
 		case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
@@ -244,7 +244,7 @@ namespace vulkan {
 			return { 1, 1 };
 		}
 	}
-	inline uint32_t calculate_mip_levels(uint32_t width, uint32_t height = 0, uint32_t depth = 0)
+	static inline constexpr uint32_t calculate_mip_levels(uint32_t width, uint32_t height = 0, uint32_t depth = 0)
 	{
 		uint32_t size = Math::max(Math::max(width, height), depth);
 		uint32_t mipLevels = 0;

@@ -1317,6 +1317,8 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 	}
 	else {
 		VkImageUsageFlags usage = 0;
+		if (debug)
+			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		bool first = true;
 		Utility::bitset<static_cast<size_t>(RenderResource::ImageUse::Size), RenderResource::ImageUse> totalUses;
@@ -1329,6 +1331,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 			//	&& ) {
 			//	usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 			//}
+
 			if (use.any_of(RenderResource::ImageUse::BlitTarget, RenderResource::ImageUse::CopyTarget)) {
 				usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 				if (first) {

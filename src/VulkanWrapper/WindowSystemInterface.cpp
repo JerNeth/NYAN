@@ -1,9 +1,9 @@
-#include "WindowSystemInterface.h"
-
+#include "VulkanWrapper/WindowSystemInterface.h"
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/Instance.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 #include "Utility/Exceptions.h"
 
-#include "LogicalDevice.h"
-#include "Instance.h"
 
 vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Instance& instance, VkPresentModeKHR preferedPresentMode)
 	:r_device(device),
@@ -112,10 +112,10 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	usableFormats.reserve(surfaceFormats.size());
 
 	VkImageUsageFlags usage{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT };
-
+	
 	for (const auto& format : surfaceFormats) {
 		if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
-			r_instance.get_physical_device().get_image_format_properties(format.format,
+			r_device.get_physical_device().get_image_format_properties(format.format,
 				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
 			usableFormats.push_back(format);
 	}
@@ -123,7 +123,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		for (const auto& format : surfaceFormats) {
 			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
-				r_instance.get_physical_device().get_image_format_properties(format.format,
+				r_device.get_physical_device().get_image_format_properties(format.format,
 					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
 				usableFormats.push_back(format);
 		}

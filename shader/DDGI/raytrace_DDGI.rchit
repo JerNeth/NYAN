@@ -51,6 +51,5 @@ void main()
 	payload.shadingNormal = vertexData.normal;
 	#endif
 
-	//payload.albedo = vec3(1,0, 0);
 	pld = pack_payload(payload);
 }

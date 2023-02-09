@@ -1,8 +1,9 @@
 #include "Renderer/Profiler.hpp"
-#include "LogicalDevice.h"
-#include "Instance.h"
-#include "CommandBuffer.h"
-#include "QueryPool.hpp"
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/Instance.h"
+#include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/QueryPool.hpp"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 #include "imgui.h"
 #include "implot.h"
 

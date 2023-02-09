@@ -1,0 +1,214 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_buffer_reference2 : require
+
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "formats.h"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "hash.glsl"
+#include "debug.glsl"
+#include "ddgi_restir_common.glsl"
+#include "ddgi_restir_push_constants.h"
+
+//struct DDGIReSTIRPushConstants {
+//	uint accBinding;
+//	uint sceneBinding;
+//	uint meshBinding;
+//	uint ddgiReSTIRBinding;
+//	uint ddgiReSTIRCount;
+//	uint ddgiReSTIRIndex;
+//	uint renderTarget;
+//	uint64_t prevReservoirs;
+//	uint64_t reservoirs;
+//	vec4 randomRotation;
+//	uint rngSeed;
+//};
+
+
+
+layout(local_size_x_id = 1) in;
+layout(local_size_y_id = 2) in;
+layout(local_size_z_id = 3) in;
+layout(constant_id = 4) const uint sampleCount = 64;
+
+
+bool update_reservoir(in float weight, inout uint rngSeed, inout DDGIReSTIRTemporalReservoir dstReservoir) {
+	dstReservoir.weightSum += weight;
+	dstReservoir.M += 1;
+	float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
+	bool update = (randomFloat * dstReservoir.weightSum) <= weight;
+	return update;
+}
+
+
+
+bool combine_reservoir(in float weight, inout uint rngSeed, in DDGIReSTIRTemporalReservoir srcReservoir, inout DDGIReSTIRTemporalReservoir dstReservoir) {
+	float M_0 = dstReservoir.M;
+	bool update = update_reservoir(weight * srcReservoir.W * srcReservoir.M, rngSeed, dstReservoir);
+	
+	dstReservoir.weightSum += weight;
+	return update;
+}
+
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalReservoirs {
+	DDGIReSTIRTemporalReservoir res[]; 
+};
+//
+//layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer TemporalReservoirs {
+//	DDGIReSTIRTemporalReservoir res[]; 
+//};
+//
+
+shared vec3 rayDirection[sampleCount];
+shared vec4 rayData[sampleCount];
+
+void main() {
+	Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+	DDGIReSTIRVolume volume = ddgiReSTIRVolumes[pushConstants.constants.ddgiReSTIRBinding].volume[pushConstants.constants.ddgiReSTIRIndex];
+	TemporalReservoirs reservoirs = TemporalReservoirs(pushConstants.constants.reservoirs);
+	//TemporalReservoirs previousReservoirs = TemporalReservoirs(pushConstants.constants.prevReservoirs);
+
+	const uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
+	const uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+	
+	const vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
+	
+	const vec3 texelDir = get_octahedral_direction(uv);
+	
+	const uint globalRayBeginIdx = probeIdx * sampleCount;
+	
+	const int iMax = int(ceil(float(sampleCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
+	const int offset = int(gl_LocalInvocationIndex)* iMax;
+	
+	uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+	float u = uint_to_u01_float(hash1_mut(rngSeed));
+	float v = uint_to_u01_float(hash1_mut(rngSeed));
+	float w = uint_to_u01_float(hash1_mut(rngSeed));
+	vec4 rotation = create_random_quaternion_rotation(u, v, w);
+	//vec4 rotation = pushConstants.constants.randomRotation;
+
+	for(int i = 0; i < iMax; i++) {
+		const int rayIdx = offset + i;
+		if(rayIdx >= sampleCount) break;
+		
+		rayDirection[rayIdx] = get_ray_direction(rotation, rayIdx, sampleCount);
+		vec4 data = vec4(0);
+		
+		uint globalRayIdx = globalRayBeginIdx + rayIdx;
+		ivec2 renderTargetIdx = ivec2(globalRayIdx & ((1 << 11)-1), globalRayIdx >> 11 );
+		rayData[rayIdx] = imageLoad(imagesRGBA32F[pushConstants.constants.renderTarget], renderTargetIdx);
+	}
+	barrier();
+	const uint reservoirIdx = probeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
+	//DDGIReSTIRTemporalReservoir previousReservoir = previousReservoirs[reservoirIdx];
+	DDGIReSTIRTemporalReservoir reservoir;
+
+	rngSeed = pushConstants.constants.rngSeed+ probeIdx;
+	
+	//const float p_q = 1 / sampleCount;
+	
+	int selectedSample = -1;
+	float p_hat_q_sel = 0;
+
+	for(int rayIdx = 0; rayIdx < sampleCount; rayIdx++) {
+		const vec3 rayDir = rayDirection[rayIdx];
+		const vec3 rayRadiance = rayData[rayIdx].xyz;
+		const float rayDist = rayData[rayIdx].w;
+//		if(rayDist < 0)
+//			continue;
+		float p_hat_q = max(0.f, dot(rayDir, texelDir))
+						* max(0.f, luminance(rayRadiance))
+						* 1.f/3.14f
+						* step(0, rayDist);
+		//weight = p_hat_q / p_q
+		float weight = p_hat_q * sampleCount; //since p_q is 1 / sampleCount;
+		if(update_reservoir(weight, rngSeed, reservoir)) {
+			selectedSample = rayIdx;
+			p_hat_q_sel = p_hat_q;
+		}
+		//R.W = R.weightSum / (R.M * p_hat(R.z))
+	}
+	DDGIReSTIRTemporalReservoir prevReservoir = reservoirs.res[reservoirIdx]; //In place should be possible, no need for flip flop
+
+	
+	float prev_p_hat_q = prevReservoir.M / max(1e-8, prevReservoir.weightSum * prevReservoir.W);
+
+	// From the ReSTIR paper:
+    // With temporal reuse, the number of candidates M contributing to the
+    // pixel can in theory grow unbounded, as each frame always combines
+    // its reservoir with the previous frame’s. This causes (potentially stale)
+    // temporal samples to be weighted disproportionately high during
+    // resampling. To fix this, we simply clamp the previous frame’s M
+    // to at most 20× of the current frame’s reservoir’s M
+	
+	//prevReservoir.M = max(0, min(prevReservoir.M, 20 * reservoir.M));
+	
+	DDGIReSTIRTemporalReservoir combined;
+
+	if(prevReservoir.M > 0) {
+		float combineWeight = prev_p_hat_q * prevReservoir.W * prevReservoir.M;
+		reservoir.weightSum += combineWeight;
+	
+		float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
+		bool update = (randomFloat * reservoir.weightSum) <= combineWeight;
+		if(update) {
+			p_hat_q_sel = prev_p_hat_q;
+			selectedSample = -1;
+		}
+		reservoir.M += prevReservoir.M;
+		reservoir.W = reservoir.weightSum / max(1e-8, reservoir.M * p_hat_q_sel);  //stream.p_hat_q_sel
+
+	}
+	vec3 rayDir;
+	if(selectedSample > 0) {
+		const vec4 rayData = rayData[selectedSample].xyzw; 
+		rayDir = rayDirection[selectedSample];
+		reservoir.irradianceR = rayData.r;
+		reservoir.irradianceG = rayData.g;
+		reservoir.irradianceB = rayData.b;
+		reservoir.hitDistance = rayData.w;
+		reservoir.probeId = probeIdx;
+		reservoir.rayId = selectedSample;
+		reservoir.rngSeed = pushConstants.constants.rngSeed + probeIdx;
+		reservoir.rngSeed = pushConstants.constants.rngSeed;
+	} else {
+		uint rngSeed = prevReservoir.rngSeed;
+		float u = uint_to_u01_float(hash1_mut(rngSeed));
+		float v = uint_to_u01_float(hash1_mut(rngSeed));
+		float w = uint_to_u01_float(hash1_mut(rngSeed));
+		rayDir = get_ray_direction(create_random_quaternion_rotation(u, v, w), prevReservoir.rayId, volume.samplesPerProbe);
+		reservoir.irradianceR = prevReservoir.irradianceR;
+		reservoir.irradianceG = prevReservoir.irradianceG;
+		reservoir.irradianceB = prevReservoir.irradianceB;
+		reservoir.hitDistance = prevReservoir.hitDistance;
+		reservoir.probeId = prevReservoir.probeId;
+		reservoir.rayId	= prevReservoir.rayId;	
+		reservoir.rngSeed = prevReservoir.rngSeed;
+		reservoir.age = prevReservoir.age;
+	}
+	reservoir.age++;
+	
+	ivec3 texCoord = get_probe_texel_coords(ivec3(gl_WorkGroupID.xyz), ivec2(gl_WorkGroupSize.xy), volume);
+	texCoord.xy += ivec2(gl_LocalInvocationID.xy);
+
+	reservoirs.res[reservoirIdx] = reservoir;
+	float weight = 1.f/3.14f * max(0.f, dot(rayDir, texelDir));
+	//float weight = max(0.f, dot(rayDir, texelDir));
+	//float weight = 1.f;
+	imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
+	//rngSeed += probeIdx + gl_LocalInvocationIndex;
+	//uint coord = globalRayBeginIdx + uint(uint_to_u01_float(hash1_mut(rngSeed)) * sampleCount);
+	//uint coord = globalRayBeginIdx + 0;
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(imageLoad(imagesRGBA32F[pushConstants.constants.renderTarget], ivec2(coord & ((1 << 11)-1), coord >> 11 )).xyz, 1.f));
+	
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(1,0,0, 1));
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, debugColors[probeIdx% debugColors.length()]);
+
+}

@@ -116,6 +116,22 @@ namespace Math {
 			bits |= sign >> bitDiff;
 			data = static_cast<uint16_t>(bits);
 		}
+
+		//constexpr explicit half(double d) {
+		//	float f = static_cast<float> (d);
+		//	constexpr auto bias = std::bit_cast<float>(halfExpBias << floatMantissaBits);
+		//	f *= bias;
+		//	auto bits = std::bit_cast<uint32_t>(f);
+		//	auto sign = bits & floatSignBit;
+		//	bits ^= sign;
+		//	auto isNan = static_cast<uint32_t>(-static_cast<int32_t>(floatInf < bits));
+		//	bits >>= mantissaDiff;
+		//	bits ^= static_cast<uint32_t>(-static_cast<int32_t>(halfInf < bits)) & (halfInf ^ bits);
+		//	bits ^= isNan & (halfQnan ^ bits);
+		//	bits |= sign >> bitDiff;
+		//	data = static_cast<uint16_t>(bits);
+		//}
+
 		operator float() const {
 			constexpr auto bias = std::bit_cast<float>((2u * floatExpBias - halfExpBias) << floatMantissaBits);
 			uint32_t bits = data;
@@ -128,6 +144,18 @@ namespace Math {
 			bits |= -!isNorm & floatInf;
 			return std::bit_cast<float>(bits);
 		}
+		//operator double() const {
+		//	constexpr auto bias = std::bit_cast<float>((2u * floatExpBias - halfExpBias) << floatMantissaBits);
+		//	uint32_t bits = data;
+		//	auto sign = bits & halfSignBit;
+		//	bits ^= sign;
+		//	auto isNorm = bits < halfInf;
+		//	bits = (sign << bitDiff) | (bits << mantissaDiff);
+		//	auto val = std::bit_cast<float>(bits) * bias;
+		//	bits = std::bit_cast<uint32_t>(val);
+		//	bits |= -!isNorm & floatInf;
+		//	return static_cast<double>(std::bit_cast<float>(bits));
+		//}
 		uint16_t data;
 	};
 	//template<Unsigned T, size_t size>

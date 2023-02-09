@@ -142,7 +142,11 @@ void main() {
     if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
            
         vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume);
+        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume
+        		#ifdef RAYTRACE_DDGI_VOLUMES
+                , accelerationStructures[constants.accBinding]
+				#endif
+        );
         vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
         diffuseAccum.xyz += radiance;
     }

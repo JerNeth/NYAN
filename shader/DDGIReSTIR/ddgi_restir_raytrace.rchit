@@ -7,23 +7,15 @@
 #include "extracts.glsl"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
+#include "ddgi_restir_push_constants.h"
 
-layout(std430, push_constant) uniform PushConstants
-{
-	uint accBinding;
-	uint sceneBinding;
-	uint meshBinding;
-	uint renderTarget;
-
-} constants;
-
-layout(location = 0) rayPayloadEXT PackedPayload pld;
+layout(location = 0) rayPayloadInEXT PackedPayload pld;
 
 hitAttributeEXT vec2 baryCoord;
 
 void main() {
-    Scene scene = scenes[constants.sceneBinding].scene;
-	Mesh mesh = meshData[nonuniformEXT(constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
+    Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+	Mesh mesh = meshData[nonuniformEXT(pushConstants.constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
 	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
 		
 	#ifdef COMPLEX
@@ -57,6 +49,5 @@ void main() {
 	payload.shadingNormal = vertexData.normal;
 	#endif
 
-	//payload.albedo = vec3(1,0, 0);
 	pld = pack_payload(payload);
 }

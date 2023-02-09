@@ -173,7 +173,6 @@ struct DDGIVolume {
 	uint classificationEnabled;
 	uint dynamicRayAllocationEnabled;
 	uint biasedEstimator;
-	uint useReSTIR;
 };
 
 struct DDGIReSTIRVolume {
@@ -193,9 +192,35 @@ struct DDGIReSTIRVolume {
 	uint probeCountX;
 	uint probeCountY;
 	uint probeCountZ;
+	uint samplesPerProbe;
 
+	uint irradianceProbeSize;
+	uint irradianceTextureSizeX;
+	uint irradianceTextureSizeY;
+	uint irradianceImageBinding;
+	uint irradianceTextureBinding;
+	uint irradianceSamplerBinding;
+
+	uint temporalReservoirCountX;
+	uint temporalReservoirCountY;
+
+	uint maximumReservoirAge;
+	uint validationEnabled;
+	uint recurse;
 	uint enabled;
 
+};
+
+struct DDGIReSTIRTemporalReservoir { //TODO: pack tightly
+	float irradianceR, irradianceG, irradianceB; //12B //I don't know whether that's goint to be radiance or irradiance 
+	float hitDistance; //16B
+	uint probeId; //20B 
+	uint rayId; //24B
+	uint rngSeed; //28B
+	float weightSum; //32B
+	float M; //36B
+	float W; //40B
+	uint age; //44B
 };
 
 #endif

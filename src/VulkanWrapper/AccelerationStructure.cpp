@@ -2,6 +2,8 @@
 #include "Instance.h"
 #include "LogicalDevice.h"
 #include "CommandBuffer.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
+
 
 
 vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAccelerationStructureKHR handle, BufferHandle buffer, VkAccelerationStructureCreateInfoKHR info) :

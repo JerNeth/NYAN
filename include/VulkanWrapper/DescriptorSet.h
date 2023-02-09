@@ -53,7 +53,7 @@ namespace vulkan {
 		void free_acceleration_structure(uint32_t set);
 		operator VkDescriptorSet() const noexcept;
 		VkDescriptorSet get_set() const noexcept;
-		static VkDescriptorType bindless_binding_to_type(uint32_t) noexcept;
+		static constexpr VkDescriptorType bindless_binding_to_type(uint32_t) noexcept;
 	private:
 		struct Write {
 			enum class Type {

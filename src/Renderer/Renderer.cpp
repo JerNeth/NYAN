@@ -118,10 +118,21 @@
 //{
 //}
 
+void nyan::Renderer::set_enable(bool enabled) noexcept
+{
+	m_enabled = enabled;
+}
+
+bool nyan::Renderer::enabled() noexcept
+{
+	return m_enabled;
+}
+
 nyan::Renderer::Renderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
 	r_device(device),
 	r_registry(registry),
 	r_renderManager(renderManager),
-	r_pass(pass)
+	r_pass(pass),
+	m_enabled(true)
 {
 }
