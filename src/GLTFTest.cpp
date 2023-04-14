@@ -33,7 +33,6 @@ int main(const int argc, char const * const * const argv)
 [[nodiscard]] ExitCode better_main([[maybe_unused]] std::span<const std::string_view> args) {
 	auto name = "Demo";
 	nyan::Application application(name);
-	//TODO Tonemap: https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
 
 	auto& device = application.get_device();
 	auto& window = application.get_window();

@@ -49,7 +49,10 @@ void main() {
             
     vec3 probeCords = get_probe_coordinates(probeIdx, volume);
     
+	//uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+    
 	uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+	rngSeed = hash1_mut(rngSeed);
 	float u = uint_to_u01_float(hash1_mut(rngSeed));
 	float v = uint_to_u01_float(hash1_mut(rngSeed));
 	float w = uint_to_u01_float(hash1_mut(rngSeed));

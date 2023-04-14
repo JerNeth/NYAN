@@ -31,6 +31,8 @@ vec3 ACESFilm(vec3 x)
 
 vec3 UnchartedFilm(vec3 x)
 {
+
+	//https://www.slideshare.net/ozlael/hable-john-uncharted2-hdr-lighting
     const float a = 0.22;
     const float b = 0.30f;
     const float c = 0.10f;

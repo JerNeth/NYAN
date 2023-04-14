@@ -63,6 +63,26 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalRese
 //	DDGIReSTIRTemporalReservoir res[]; 
 //};
 //
+vec3 generate_ray_dir(in DDGIReSTIRTemporalReservoir reservoir, in DDGIReSTIRVolume volume) {
+	uint rngSeed = reservoir.rngSeed;
+	float u = uint_to_u01_float(hash1_mut(rngSeed));
+	float v = uint_to_u01_float(hash1_mut(rngSeed));
+	float w = uint_to_u01_float(hash1_mut(rngSeed));
+	return get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
+}
+
+float calc_p_hat_q(in vec3 radiance, in vec3 rayDir, in vec3 normal, in float rayDist) {
+	return max(0.f, dot(rayDir, normal))
+				* max(0.f, luminance(radiance))
+				* 1.f/3.14f
+				* step(0, rayDist);
+}
+float calc_p_hat_q(in DDGIReSTIRTemporalReservoir reservoir, in vec3 normal, in DDGIReSTIRVolume volume) {
+	return calc_p_hat_q(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB),
+						generate_ray_dir(reservoir, volume),
+						normal,
+						reservoir.hitDistance);
+}
 
 shared vec3 rayDirection[sampleCount];
 shared vec4 rayData[sampleCount];
@@ -85,7 +105,8 @@ void main() {
 	const int iMax = int(ceil(float(sampleCount) / float(gl_WorkGroupSize.x * gl_WorkGroupSize.y)));
 	const int offset = int(gl_LocalInvocationIndex)* iMax;
 	
-	uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+	//uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+	uint rngSeed = hash1(pushConstants.constants.rngSeed + probeIdx);
 	float u = uint_to_u01_float(hash1_mut(rngSeed));
 	float v = uint_to_u01_float(hash1_mut(rngSeed));
 	float w = uint_to_u01_float(hash1_mut(rngSeed));
@@ -107,9 +128,12 @@ void main() {
 	const uint reservoirIdx = probeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
 	//DDGIReSTIRTemporalReservoir previousReservoir = previousReservoirs[reservoirIdx];
 	DDGIReSTIRTemporalReservoir reservoir;
-
-	rngSeed = pushConstants.constants.rngSeed+ probeIdx;
+	reservoir.M = 0;
+	reservoir.weightSum = 0;
+	reservoir.W = 0;
+	//rngSeed = hash1_mut(pushConstants.constants.rngSeed + probeIdx);
 	
+	rngSeed = hash1(pushConstants.constants.rngSeed + probeIdx + gl_LocalInvocationIndex);
 	//const float p_q = 1 / sampleCount;
 	
 	int selectedSample = -1;
@@ -121,10 +145,7 @@ void main() {
 		const float rayDist = rayData[rayIdx].w;
 //		if(rayDist < 0)
 //			continue;
-		float p_hat_q = max(0.f, dot(rayDir, texelDir))
-						* max(0.f, luminance(rayRadiance))
-						* 1.f/3.14f
-						* step(0, rayDist);
+		float p_hat_q =	calc_p_hat_q(rayRadiance, rayDir, texelDir, rayDist);
 		//weight = p_hat_q / p_q
 		float weight = p_hat_q * sampleCount; //since p_q is 1 / sampleCount;
 		if(update_reservoir(weight, rngSeed, reservoir)) {
@@ -136,7 +157,8 @@ void main() {
 	DDGIReSTIRTemporalReservoir prevReservoir = reservoirs.res[reservoirIdx]; //In place should be possible, no need for flip flop
 
 	
-	float prev_p_hat_q = prevReservoir.M / max(1e-8, prevReservoir.weightSum * prevReservoir.W);
+	//float prev_p_hat_q = prevReservoir.M / max(1e-8, prevReservoir.weightSum * prevReservoir.W);
+	float prev_p_hat_q = calc_p_hat_q(prevReservoir, texelDir, volume);
 
 	// From the ReSTIR paper:
     // With temporal reuse, the number of candidates M contributing to the
@@ -146,7 +168,7 @@ void main() {
     // resampling. To fix this, we simply clamp the previous frame’s M
     // to at most 20× of the current frame’s reservoir’s M
 	
-	//prevReservoir.M = max(0, min(prevReservoir.M, 20 * reservoir.M));
+	prevReservoir.M = max(0, min(prevReservoir.M, volume.maximumReservoirAge * reservoir.M));
 	
 	DDGIReSTIRTemporalReservoir combined;
 
@@ -162,7 +184,6 @@ void main() {
 		}
 		reservoir.M += prevReservoir.M;
 		reservoir.W = reservoir.weightSum / max(1e-8, reservoir.M * p_hat_q_sel);  //stream.p_hat_q_sel
-
 	}
 	vec3 rayDir;
 	if(selectedSample > 0) {
@@ -174,8 +195,10 @@ void main() {
 		reservoir.hitDistance = rayData.w;
 		reservoir.probeId = probeIdx;
 		reservoir.rayId = selectedSample;
-		reservoir.rngSeed = pushConstants.constants.rngSeed + probeIdx;
-		reservoir.rngSeed = pushConstants.constants.rngSeed;
+		uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
+		reservoir.rngSeed = hash1_mut(rngSeed);
+		//reservoir.rngSeed = pushConstants.constants.rngSeed + probeIdx;
+		//reservoir.rngSeed = pushConstants.constants.rngSeed;
 	} else {
 		uint rngSeed = prevReservoir.rngSeed;
 		float u = uint_to_u01_float(hash1_mut(rngSeed));
@@ -197,10 +220,17 @@ void main() {
 	texCoord.xy += ivec2(gl_LocalInvocationID.xy);
 
 	reservoirs.res[reservoirIdx] = reservoir;
+	//Is way too bright otherwise
 	float weight = 1.f/3.14f * max(0.f, dot(rayDir, texelDir));
 	//float weight = max(0.f, dot(rayDir, texelDir));
 	//float weight = 1.f;
-	imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
+	vec4 irradiance = vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f);
+	//vec4 prevIrradiance = imageLoad(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord);
+//	irradiance = mix(irradiance, prevIrradiance, 0.95);
+	imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, irradiance);
+
+	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
+
 	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
 	//rngSeed += probeIdx + gl_LocalInvocationIndex;
 	//uint coord = globalRayBeginIdx + uint(uint_to_u01_float(hash1_mut(rngSeed)) * sampleCount);

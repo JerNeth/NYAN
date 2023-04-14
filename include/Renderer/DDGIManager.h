@@ -28,6 +28,7 @@ namespace nyan {
 			float hysteresis{ 9.5e-1f };
 			float irradianceThreshold{0.25f};
 			float lightToDarkThreshold{ 0.8f };
+			float depthExponent{ 5.f };
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
 			RenderResource::Id irradianceResource{};
@@ -126,6 +127,8 @@ namespace nyan {
 			uint32_t fixedRayCount{ 32 };
 			bool validationEnabled{ true };
 			bool recurse{ true };
+			bool spatialReuse{ false };
+			bool spatialReuseValidation{ false };
 			bool enabled{ true };
 
 			uint32_t temporalReservoirCountX{ 8 };

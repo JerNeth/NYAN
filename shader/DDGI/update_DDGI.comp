@@ -70,13 +70,11 @@ float MultiscaleMeanEstimator(vec3 y,
   
 	vec3 shortDiff = mean - shortMean;
   
-	float relativeDiff = dot( vec3(0.299f, 0.587f, 0.114f),
-		abs(shortDiff) / max(1e-5f.xxx, dev) );
+	float relativeDiff = luminance(abs(shortDiff) / max(1e-5f.xxx, dev));
 	inconsistency = mix(inconsistency, relativeDiff, 0.08f);
   
 	float varianceBasedBlendReduction =
-		clamp( dot( vec3(0.299, 0.587, 0.114),
-		0.5 * shortMean / max(1e-5f.xxx, dev) ), 1.0/32.f, 1.f );
+		clamp( luminance(0.5 * shortMean / max(1e-5f.xxx, dev) ), 1.0/32.f, 1.f );
   
 	float catchUpBlend = clamp(smoothstep(0.f, 1.f,
 		relativeDiff * max(0.02f, inconsistency - 0.2)), 1.0f/256.f, 1.f);
@@ -124,6 +122,7 @@ void main()
 	//float maxRayDist = length(get_volume_spacing(volume)) * 2.f;
 	for(int i = 0; i < iMax; i++) {
 		const int rayIdx = offset + i;
+		//const int rayIdx = int(gl_LocalInvocationIndex) + i * int(gl_WorkGroupSize.x * gl_WorkGroupSize.y); //Coalesced reads apparently not as important for texture reads, maybe investigate buffers
 		if(rayIdx >= rayCount) break;
 		
 		rayDirection[rayIdx] = get_ray_direction(pushConstants.constants.randomRotation, rayIdx, volume.raysPerProbe, volume);
@@ -157,7 +156,7 @@ void main()
 		biasedResult.xyz *= weightNormalization;
 	}
 
-	vec4 result = vec4(0.f);
+	vec4 result = vec4(0.f, 0.f, 0.f, 1.f);
 	float resultWeight = 0.f;
 	int rayIdx = 0;
 	if ((volume.relocationEnabled != 0) || (volume.classificationEnabled != 0))
@@ -175,7 +174,6 @@ void main()
 
 		float weight = max(0.f, dot(rayDir, texelDir));
 
-		resultWeight += weight;
 
 		if(filterIrradiance) {
 			if(rayDist < 0.f){
@@ -192,10 +190,12 @@ void main()
 			result += vec4(rayRadiance * weight, 0.f);
 		}
 		else {
+			weight = step(pow(weight, volume.depthExponent), 0.8);
 			rayDist = min(abs(rayDist), 1);
 			const float rayDistSqarred = rayDist * rayDist;
 			result += vec4(rayDist, rayDistSqarred, rayDistSqarred * rayDist, rayDistSqarred * rayDistSqarred) * weight;
 		}
+		resultWeight += weight;
 	}
 	float epsilon = float(rayCount) * 1e-9f;
 	float hysteresis = volume.hysteresis;
@@ -237,7 +237,7 @@ void main()
 	if(filterIrradiance) {
 	
 		#undef DO_GAMMA
-		#define DO_GAMMA
+		#define DO_GAMMA // I don't like it but it converges way faster than otherwise
 		#ifdef DO_GAMMA
 		result.rgb = pow(result.rgb, vec3(1.f / 5.f));
 			
@@ -294,7 +294,8 @@ void main()
 				writeFloats[volume.dynamicRayBufferBinding].f[(probeCount) * 2 + probeIdx + 1] = rayVariance;
 		}
 
-	//Biased shadow-preserving temporal hysteresis. from GI-1.0
+		//Nearly instant convergence, basically no temporal stability
+		//Biased shadow-preserving temporal hysteresis. from GI-1.0
 //		float l1 = dot(result.xyz, vec3(1.f / 3.f));
 //		float l2 = dot(previous.xyz, vec3(1.f / 3.f));
 //
@@ -304,7 +305,7 @@ void main()
 //
 //		result = vec4(mix(result.xyz, previous.xyz, alpha), 1.f);
 
-
+		//Slow convergence, worse temporal stability
 		// From the 2021 paper
 //		vec3 delta = result.xyz - previous.xyz;
 //
@@ -319,8 +320,9 @@ void main()
 //
 //		result.rgb = mix(result.rgb, previous.rgb, hysteresis);
 //		result.a = 1.f;
-//
 
+
+		//Slow convergence, worse temporal stability, but different from 2021 paper
 		//From RTXGI SDK
 //		vec3 delta = result.xyz - previous.xyz;
 //		if(length(delta) > volume.lightToDarkThreshold)

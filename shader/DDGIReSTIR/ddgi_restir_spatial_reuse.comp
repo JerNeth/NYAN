@@ -1,0 +1,158 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_ray_query : require
+
+#include "bufferReferences.glsl"
+#include "structs.h"
+#include "formats.h"
+#include "bindlessLayouts.glsl"
+#include "common.glsl"
+#include "hash.glsl"
+#include "debug.glsl"
+#include "ddgi_restir_common.glsl"
+#include "ddgi_restir_push_constants.h"
+
+//struct DDGIReSTIRPushConstants {
+//	uint accBinding;
+//	uint sceneBinding;
+//	uint meshBinding;
+//	uint ddgiReSTIRBinding;
+//	uint ddgiReSTIRCount;
+//	uint ddgiReSTIRIndex;
+//	uint renderTarget;
+//	uint64_t prevReservoirs;
+//	uint64_t reservoirs;
+//	vec4 randomRotation;
+//	uint rngSeed;
+//};
+//struct DDGIReSTIRTemporalReservoir { //TODO: pack tightly
+//	float irradianceR, irradianceG, irradianceB; //12B //I don't know whether that's goint to be radiance or irradiance 
+//	float hitDistance; //16B
+//	uint probeId; //20B 
+//	uint rayId; //24B
+//	uint rngSeed; //28B
+//	float weightSum; //32B
+//	float M; //36B
+//	float W; //40B
+//	uint age; //44B
+//};
+//
+
+layout(local_size_x_id = 1) in;
+layout(local_size_y_id = 2) in;
+layout(local_size_z_id = 3) in;
+
+
+layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalReservoirs {
+	DDGIReSTIRTemporalReservoir res[]; 
+};
+layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
+
+vec3 generate_ray_dir(in DDGIReSTIRTemporalReservoir reservoir, in DDGIReSTIRVolume volume) {
+	uint rngSeed = reservoir.rngSeed;
+	float u = uint_to_u01_float(hash1_mut(rngSeed));
+	float v = uint_to_u01_float(hash1_mut(rngSeed));
+	float w = uint_to_u01_float(hash1_mut(rngSeed));
+	return get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
+}
+float calc_p_hat_q(in vec3 radiance, in vec3 rayDir, in vec3 normal, in float rayDist) {
+	return max(0.f, dot(rayDir, normal))
+				* max(0.f, luminance(radiance))
+				* 1.f/3.14f
+				* step(0, rayDist);
+}
+float calc_p_hat_q(in DDGIReSTIRTemporalReservoir reservoir, in vec3 normal, in DDGIReSTIRVolume volume) {
+	return calc_p_hat_q(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB),
+						generate_ray_dir(reservoir, volume),
+						normal,
+						reservoir.hitDistance);
+}
+
+void main() {
+
+	Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
+	DDGIReSTIRVolume volume = ddgiReSTIRVolumes[pushConstants.constants.ddgiReSTIRBinding].volume[pushConstants.constants.ddgiReSTIRIndex];
+	TemporalReservoirs reservoirs = TemporalReservoirs(pushConstants.constants.reservoirs);
+	//TemporalReservoirs previousReservoirs = TemporalReservoirs(pushConstants.constants.prevReservoirs);
+
+	const uint probeIdx = get_probe_index(gl_WorkGroupID, volume);
+	const uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+
+	uint rngSeed = hash1(pushConstants.constants.rngSeed + probeIdx);
+
+	const uint reservoirIdx = probeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
+	DDGIReSTIRTemporalReservoir prevReservoir = reservoirs.res[reservoirIdx]; //In place should be possible, no need for flip flop
+
+	
+	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
+	uint randomNeighbourProbeIdx = hash1_mut(rngSeed) % 8;
+	ivec3 adjacentProbeIdxOffset = ivec3(randomNeighbourProbeIdx, randomNeighbourProbeIdx >> 1, randomNeighbourProbeIdx >> 2) & ivec3(1);
+	
+	const uvec3 resampleProbeId = clamp(gl_WorkGroupID + adjacentProbeIdxOffset, ivec3(0), probeCountsMinusOne);
+	const uint resampleProbeIdx = get_probe_index(resampleProbeId, volume);
+	const uint resampleIdx = resampleProbeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
+	DDGIReSTIRTemporalReservoir resampleReservoir = reservoirs.res[resampleIdx];
+	
+	prevReservoir.M = max(0, min(prevReservoir.M, volume.maximumReservoirAge * volume.samplesPerProbe));
+
+	resampleReservoir.M = max(0, min(resampleReservoir.M, volume.maximumReservoirAge * volume.samplesPerProbe));
+
+
+	if(volume.spatialReuseValidation != 0) {
+	
+		const vec3 probeCoords = get_probe_coordinates(probeIdx, volume);
+		const vec3 resampleProbeCoords = get_probe_coordinates(probeIdx, volume);
+		vec3 probeDir = resampleProbeCoords - probeCoords;
+		float probeDist = length(probeDir);
+		probeDir *= 1.f / probeDist;
+
+		rayQueryEXT rq;
+		const float tMin = 0.01;
+		const float tMax = probeDist * 1.01;
+		rayQueryInitializeEXT(rq, accelerationStructures[pushConstants.constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT , 0xFF, 
+					probeCoords, tMin, probeDir.xyz, tMax);
+
+		// Traverse the acceleration structure and store information about the first intersection (if any)
+		rayQueryProceedEXT(rq);
+
+		if (rayQueryGetIntersectionTypeEXT(rq, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+			return;
+		}
+	}
+	
+	//float prev_p_hat_q = prevReservoir.M / max(1e-8, prevReservoir.weightSum * prevReservoir.W);
+	//float res_p_hat_q = resampleReservoir.M / max(1e-8, resampleReservoir.weightSum * resampleReservoir.W);
+	const vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
+	const vec3 texelDir = get_octahedral_direction(uv);
+
+	float prev_p_hat_q = calc_p_hat_q(prevReservoir, texelDir, volume);
+	float res_p_hat_q = calc_p_hat_q(resampleReservoir, texelDir, volume);
+
+	if(prevReservoir.M > 0) {
+		float combineWeight = prev_p_hat_q * prevReservoir.W * prevReservoir.M;
+		prevReservoir.weightSum += combineWeight;
+	
+		float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
+		bool update = (randomFloat * prevReservoir.weightSum) <= combineWeight;
+		if(update) {
+			prev_p_hat_q = res_p_hat_q;
+			prevReservoir.irradianceR = resampleReservoir.irradianceR;
+			prevReservoir.irradianceG = resampleReservoir.irradianceG;
+			prevReservoir.irradianceB = resampleReservoir.irradianceB;
+			prevReservoir.hitDistance = resampleReservoir.hitDistance;
+			prevReservoir.probeId = resampleReservoir.probeId;
+			prevReservoir.rayId	= resampleReservoir.rayId;	
+			prevReservoir.rngSeed = resampleReservoir.rngSeed;
+			prevReservoir.age = resampleReservoir.age;
+		}
+		prevReservoir.M += resampleReservoir.M;
+		prevReservoir.W = prevReservoir.weightSum / max(1e-8, prevReservoir.M * prev_p_hat_q);  
+	}
+	
+	reservoirs.res[reservoirIdx] = prevReservoir;
+
+}

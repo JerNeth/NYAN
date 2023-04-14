@@ -150,6 +150,7 @@ namespace vulkan {
 		//void bind_descriptor_set(DescriptorSet)
 		template<typename T>
 		void push_constants(const T& t) {
+			static_assert(sizeof(T) < 128);
 			vkCmdPushConstants(m_cmd, m_layout, VK_SHADER_STAGE_ALL, 0, sizeof(T), &t);
 		}
 	protected:

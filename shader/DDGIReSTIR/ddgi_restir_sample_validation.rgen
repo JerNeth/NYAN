@@ -10,6 +10,7 @@
 #include "hash.glsl"
 #include "lighting.glsl"
 #include "ddgi_restir_common.glsl"
+#define RAYTRACE_DDGI_RESTIR_VOLUMES
 #include "ddgi_restir_sample.glsl"
 #include "ddgi_restir_push_constants.h"
 
@@ -53,12 +54,19 @@ void main() {
     if(reservoir.M == 0)
         return;
 
+
+        
+    vec3 sampleProbeCords = get_probe_coordinates(reservoir.probeId, volume);
     vec3 probeCords = get_probe_coordinates(probeIdx, volume);
     uint rngSeed = reservoir.rngSeed;
     float u = uint_to_u01_float(hash1_mut(rngSeed));
     float v = uint_to_u01_float(hash1_mut(rngSeed));
     float w = uint_to_u01_float(hash1_mut(rngSeed));
     vec3 direction = get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
+    vec3 sampleHitPos = sampleProbeCords + direction * reservoir.hitDistance;
+    vec3 reprojectedSampleDir = sampleHitPos - probeCords;
+    float reprojectedT = length(reprojectedSampleDir);
+    reprojectedSampleDir *= 1.f / reprojectedT;
 
     uint  rayFlags = gl_RayFlagsNoneEXT;
     float tMin     = 0.0001;
@@ -71,7 +79,7 @@ void main() {
             0,              // missIndex
             probeCords.xyz, // ray origin
             tMin,           // ray min range
-            direction.xyz,  // ray direction
+            reprojectedSampleDir.xyz,  // ray direction
             tMax,           // ray max range
             0               // payload (location = 0)
         );
@@ -94,7 +102,7 @@ void main() {
         ShadingData shadingData;
         shadingData.albedo = payload.albedo;
         shadingData.alpha = payload.roughness * payload.roughness;
-        shadingData.outLightDir = -direction;
+        shadingData.outLightDir = -reprojectedSampleDir;
         shadingData.metalness = payload.metallic;
         shadingData.shadingNormal = payload.shadingNormal;
         shadingData.worldPos = payload.worldPos;
@@ -103,17 +111,17 @@ void main() {
 		diffuse += diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData);
         if(volume.recurse != 0) {
             diffuse += diffuse_indirect_lighting(volume, shadingData
-            #ifdef RAYTRACE_DDGI_VOLUMES
+            #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
                 , accelerationStructures[pushConstants.constants.accBinding]
 		    #endif
             );
         }
     }
 
-    vec3 irradiance = vec3(reservoir.irradianceR, reservoir.irradianceB, reservoir.irradianceG);
+    vec3 irradiance = vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB);
     //rngSeed += probeIdx;
     //reservoir.age > uint_to_u01_float(hash1_mut(rngSeed)) * volume.maximumReservoirAge 
-    if(luminance(diffuse) < (luminance(irradiance) * 0.8) || luminance(diffuse) > (luminance(irradiance)* 1.2) || hitDistance < (reservoir.hitDistance * 0.9) || hitDistance > (reservoir.hitDistance * 1.1f)) {
+    if(luminance(diffuse) < (luminance(irradiance) * 0.8) || luminance(diffuse) > (luminance(irradiance)* 1.2) || hitDistance < (reprojectedT * 0.9) || hitDistance > (reprojectedT * 1.1f)) {
         reservoir.M = 0;
         reservoir.weightSum = 0;
         reservoir.W = 0;

@@ -139,6 +139,7 @@ namespace MM {
 		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("Depth Cosine Power", &volume.depthExponent, 1.f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Use Moments", &volume.useMoments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
@@ -276,6 +277,9 @@ namespace MM {
 		//ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Maximum Reservoir Age", reinterpret_cast<int*>(&volume.maximumReservoirAge), 1, 1, 16384, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Sample Validation Enabled", &volume.validationEnabled);
+		//if (ImGui::Checkbox("Spatial Resample", &volume.spatialReuse))
+		ImGui::Checkbox("Spatial Resample", &volume.spatialReuse);
+		ImGui::Checkbox("Spatial Resample Validation", &volume.spatialReuseValidation);
 		ImGui::Checkbox("Recurse", &volume.recurse);
 		ImGui::Checkbox("Enabled", &volume.enabled);
 

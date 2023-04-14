@@ -162,6 +162,7 @@ struct DDGIVolume {
 	float hysteresis;
 	float irradianceThreshold;
 	float lightToDarkThreshold;
+	float depthExponent;
 
 	float visualizerRadius;
 
@@ -207,6 +208,8 @@ struct DDGIReSTIRVolume {
 	uint maximumReservoirAge;
 	uint validationEnabled;
 	uint recurse;
+	uint spatialReuse;
+	uint spatialReuseValidation;
 	uint enabled;
 
 };

@@ -219,7 +219,7 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 
 		filter_volume(cmd, volume, constants);
 
-		relocate_probes(cmd, volume, constants, parameters.frames <= 1);
+		relocate_probes(cmd, volume, constants, parameters.frames);
 
 		copy_borders(cmd, volume, constants);
 
@@ -426,9 +426,10 @@ void nyan::DDGIRenderer::bind_and_dispatch_compute(vulkan::CommandBuffer& cmd, v
 	bind.dispatch(dispatchCountX, dispatchCountY, dispatchCountZ);
 }
 
-void nyan::DDGIRenderer::relocate_probes(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants, bool reset)
+void nyan::DDGIRenderer::relocate_probes(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants, uint32_t numFrames)
 {
-	if (!reset && !volume.relocationEnabled)
+	bool reset = numFrames <= 1;
+	if ((!reset && !volume.relocationEnabled) || numFrames > 15)
 		return;
 
 	r_renderManager.get_profiler().begin_profile(cmd, "DDGI Relocate");
@@ -965,6 +966,8 @@ void nyan::DDGIReSTIRRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpa
 		.dstAccessMask {VK_ACCESS_2_SHADER_READ_BIT},
 	});
 
+	spatial_resample(cmd, deviceVolume, constants);
+
 	copy_borders(cmd, deviceVolume);
 }
 
@@ -1036,6 +1039,28 @@ vulkan::PipelineId nyan::DDGIReSTIRRenderer::create_border_pipeline(const Border
 		};
 		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
 		m_borderPipelines.emplace(config, pipelineId);
+	}
+	return pipelineId;
+}
+
+vulkan::PipelineId nyan::DDGIReSTIRRenderer::create_spatial_reuse_pipeline(const SpatialResamplePipelineConfig& config)
+{
+	vulkan::PipelineId pipelineId;
+	if (auto it = m_spatialResamplePipelines.find(config); it != m_spatialResamplePipelines.end()) {
+		pipelineId = it->second;
+	}
+	else {
+		vulkan::ComputePipelineConfig pipelineConfig{
+				.shaderInstance {r_renderManager.get_shader_manager().get_shader_instance_id_workgroup_size("ddgi_restir_spatial_reuse_comp"
+				,config.workSizeX
+				,config.workSizeY
+				,config.workSizeZ
+					//,vulkan::ShaderStorage::SpecializationConstant{GatherPipelineConfig::numRowsShaderName, config.numRows}
+					)},
+					.pipelineLayout {r_device.get_bindless_pipeline_layout()}
+		};
+		pipelineId = r_device.get_pipeline_storage().add_pipeline(pipelineConfig);
+		m_spatialResamplePipelines.emplace(config, pipelineId);
 	}
 	return pipelineId;
 }
@@ -1161,6 +1186,20 @@ void nyan::DDGIReSTIRRenderer::resample(vulkan::CommandBuffer& cmd, const nyan::
 		.workSizeY {volume.irradianceProbeSize},
 		.workSizeZ {1},
 		.sampleCount {volume.samplesPerProbe}
+		}), constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
+	r_renderManager.get_profiler().end_profile(cmd);
+}
+
+void nyan::DDGIReSTIRRenderer::spatial_resample(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants)
+{
+	if (!volume.spatialReuse)
+		return;
+
+	r_renderManager.get_profiler().begin_profile(cmd, "Spatial Resampling");
+	bind_and_dispatch_compute(cmd, create_spatial_reuse_pipeline(SpatialResamplePipelineConfig{
+		.workSizeX {volume.irradianceProbeSize},
+		.workSizeY {volume.irradianceProbeSize},
+		.workSizeZ {1},
 		}), constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 	r_renderManager.get_profiler().end_profile(cmd);
 }

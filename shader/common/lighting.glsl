@@ -151,8 +151,8 @@ void diffuse_light(in LightData light, in ShadingData shadingData, inout vec3 di
 
 void calc_light(in LightData light, in ShadingData shadingData, inout vec3 diffuse, inout vec3 specular)
 {
-    diffuse_light(light, shadingData, diffuse);
-    return;
+//    diffuse_light(light, shadingData, diffuse);
+//    return;
 
 
     float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);

@@ -196,7 +196,7 @@ namespace nyan {
 		void copy_borders(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants);
 		void dispatch_compute(vulkan::ComputePipelineBind& bind, const DDGIPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
 		void bind_and_dispatch_compute(vulkan::CommandBuffer& cmd, vulkan::PipelineId pipelineId, const DDGIPushConstants& constants, uint32_t dispatchCountX, uint32_t dispatchCountY, uint32_t dispatchCountZ);
-		void relocate_probes(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants, bool reset);
+		void relocate_probes(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIVolume& volume, const DDGIPushConstants& constants, uint32_t numFrames);
 		void sum_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void gather_variance(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 		void prefix_sum(vulkan::ComputePipelineBind& bind, const PushConstantsDynamic& constants, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
@@ -286,6 +286,17 @@ namespace nyan {
 					lhs.workSizeZ == rhs.workSizeZ;
 			}
 		};
+		struct SpatialResamplePipelineConfig
+		{
+			uint32_t workSizeX;
+			uint32_t workSizeY;
+			uint32_t workSizeZ;
+			friend bool operator==(const SpatialResamplePipelineConfig& lhs, const SpatialResamplePipelineConfig& rhs) {
+				return lhs.workSizeX == rhs.workSizeX &&
+					lhs.workSizeY == rhs.workSizeY &&
+					lhs.workSizeZ == rhs.workSizeZ;
+			}
+		};
 
 		struct BorderPipelineConfig
 		{
@@ -332,11 +343,13 @@ namespace nyan {
 		vulkan::PipelineId create_filter_pipeline(const PipelineConfig& config);
 		vulkan::PipelineId create_shade_pipeline(const ShadePipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
+		vulkan::PipelineId create_spatial_reuse_pipeline(const SpatialResamplePipelineConfig& config);
 		vulkan::RaytracingPipelineConfig generate_sample_generation_config();
 		vulkan::RaytracingPipelineConfig generate_sample_validation_config();
 		void generate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void validate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void resample(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
+		void spatial_resample(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void copy_borders(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume);
 		void shade(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void temporal_reuse(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
@@ -349,6 +362,7 @@ namespace nyan {
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_filterPipelines;
 		std::unordered_map<ShadePipelineConfig, vulkan::PipelineId, Utility::Hash<ShadePipelineConfig>> m_shadePipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
+		std::unordered_map<SpatialResamplePipelineConfig, vulkan::PipelineId, Utility::Hash<SpatialResamplePipelineConfig>> m_spatialResamplePipelines;
 		std::unique_ptr<vulkan::RTPipeline> m_sampleGenerationPipeline;
 		std::unique_ptr<vulkan::RTPipeline> m_sampleValidationPipeline;
 		nyan::RenderResource::Id m_renderTarget;

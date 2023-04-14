@@ -157,11 +157,13 @@ vec3 sample_ddgi(in vec3 worldPos,
 			weight *= weight * weight * (1.f / (threshold * threshold));
 		}
 		#undef DO_GAMMA
-		#define DO_GAMMA
+		#define DO_GAMMA // I don't like it but it converges way faster than otherwise
+		//#define DO_GAMMA2
 		#ifdef DO_GAMMA
 		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f * 5.f));
-		#endif		
+		#elif defined(DO_GAMMA2)
 		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f));
+		#endif
 		weight *= trilinearWeight;
 		irradiance += weight * probeIrradiance;
 		weightSum += weight;
@@ -172,8 +174,9 @@ vec3 sample_ddgi(in vec3 worldPos,
 	irradiance *= 1.f / weightSum; //Normalize
 	#ifdef DO_GAMMA
 	irradiance *= irradiance; //sRGB blending, I don't like it
-	#endif	
+	#elif defined(DO_GAMMA2)
 	irradiance *= irradiance; //sRGB blending, I don't like it
+	#endif	
 	irradiance *= 3.14159265359 * 2;
 
 	return irradiance;

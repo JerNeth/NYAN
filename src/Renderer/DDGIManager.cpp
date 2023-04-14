@@ -57,6 +57,7 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
+			.depthExponent{parameters.depthExponent},
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
@@ -207,6 +208,7 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.hysteresis != parameters.hysteresis ||
 			constDeviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
 			constDeviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
+			constDeviceVolume.depthExponent != parameters.depthExponent ||
 			constDeviceVolume.visualizerRadius != parameters.visualizerRadius ||
 			(constDeviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
 			(constDeviceVolume.visualizeDirections != 0) != parameters.visualizeDirections ||
@@ -250,6 +252,7 @@ void nyan::DDGIManager::update()
 			.hysteresis {parameters.hysteresis},
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
+			.depthExponent{parameters.depthExponent},
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
@@ -667,6 +670,8 @@ uint32_t nyan::DDGIReSTIRManager::add_volume(const DDGIReSTIRVolumeParameters& p
 			.maximumReservoirAge {parameters.maximumReservoirAge},
 			.validationEnabled {parameters.validationEnabled},
 			.recurse {parameters.recurse},
+			.spatialReuse {parameters.spatialReuse},
+			.spatialReuseValidation {parameters.spatialReuseValidation},
 			.enabled {parameters.enabled},
 	};
 	return add(volume);
@@ -725,7 +730,9 @@ void nyan::DDGIReSTIRManager::update()
 			constDeviceVolume.temporalReservoirCountY != parameters.temporalReservoirCountY ||
 			constDeviceVolume.maximumReservoirAge != parameters.maximumReservoirAge || 
 			constDeviceVolume.validationEnabled != parameters.validationEnabled ||
-			constDeviceVolume.recurse != parameters.recurse)
+			constDeviceVolume.recurse != parameters.recurse ||
+			constDeviceVolume.spatialReuse != parameters.spatialReuse ||
+			constDeviceVolume.spatialReuseValidation != parameters.spatialReuseValidation )
 			parameters.dirty = true;
 		parameters.frames++;
 		if (!parameters.dirty)
@@ -756,6 +763,8 @@ void nyan::DDGIReSTIRManager::update()
 						.maximumReservoirAge {parameters.maximumReservoirAge},
 						.validationEnabled {parameters.validationEnabled},
 						.recurse {parameters.recurse},
+						.spatialReuse {parameters.spatialReuse},
+						.spatialReuseValidation {parameters.spatialReuseValidation},
 						.enabled {parameters.enabled}
 						};
 		parameters.dirty = false;
