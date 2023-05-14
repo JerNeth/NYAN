@@ -43,6 +43,7 @@ namespace vulkan {
 		bool m_vsyncEnabled = false;
 		bool m_staleSwapchain = true;
 		VkFormat m_format = VK_FORMAT_UNDEFINED;
+		VkImageUsageFlags m_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	};
 }
 

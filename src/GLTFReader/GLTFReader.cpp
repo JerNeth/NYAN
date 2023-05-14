@@ -2,6 +2,7 @@
 #include "tiny_gltf.h"
 #include "Renderer/MeshRenderer.h"
 #include <vector>
+#include "Renderer/Light.h"
 
 nyan::GLTFReader::GLTFReader(nyan::RenderManager& renderManager) :
 	r_renderManager(renderManager)
@@ -14,6 +15,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 	auto& textureManager = r_renderManager.get_texture_manager();
 	auto& materialManager = r_renderManager.get_material_manager();
 	auto& instanceManager = r_renderManager.get_instance_manager();
+	auto& sceneManager = r_renderManager.get_scene_manager();
 	auto& meshManager = r_renderManager.get_mesh_manager();
 	auto& registry = r_renderManager.get_registry();
 	tinygltf::TinyGLTF loader;
@@ -50,9 +52,9 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 	//for (const auto& sampler : model.samplers) {
 	//	//Ignore for now
 	//}
-	//for (const auto& light : model.lights) {
-	//	//assert(false);
-	//}
+	for (const auto& light : model.lights) {
+		//assert(false);
+	}
 	//for (const auto& node : model.nodes) {
 	//	//
 	//}
@@ -351,9 +353,9 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				Utility::log_warning().format("{}: has no positions, skipping mesh", nMesh.name);
 				//continue;
 			}
-			assert(nMesh.tangents.size() == nMesh.uvs0.size());
-			assert(nMesh.normals.size() == nMesh.uvs0.size());
-			assert(nMesh.positions.size() == nMesh.uvs0.size());
+			assert(nMesh.tangents.size() == nMesh.uvs0.size() || nMesh.uvs0.size() == 0);
+			assert(nMesh.normals.size() == nMesh.uvs0.size() || nMesh.uvs0.size() == 0);
+			assert(nMesh.positions.size() == nMesh.uvs0.size() || nMesh.uvs0.size() == 0);
 
 			if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_TEST_FLAG))
 				nMesh.type = nyan::Mesh::RenderType::AlphaTest;
@@ -399,12 +401,17 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				Math::vec3 pos{};
 				Math::vec3 scale{ 1.f };
 				Math::vec3 orientation{};
+
+				Math::vec3 tmpX2{};
+				Math::vec3 tmpY2{};
+				Math::vec3 tmpZ2{};
 				if (!node->translation.empty())
 					pos = Math::vec3{ node->translation };
 				if (!node->scale.empty())
 					scale = Math::vec3{ node->scale };
 				if (!node->rotation.empty())
-					orientation = Math::vec3{ Math::quat(Math::vec4(node->rotation)).to_euler_angles() };
+					orientation = Math::Mat<float, 3, 3, true>(Math::quat(Math::vec4(node->rotation[1], node->rotation[2], node->rotation[3], node->rotation[0]))).euler();
+					//orientation = Math::vec3{ Math::quat(Math::vec4(node->rotation[1], node->rotation[2], node->rotation[3], node->rotation[0])).normalize().to_euler_angles()};
 				if (!node->matrix.empty()) {
 					Math::mat44 mat{ node->matrix };
 					pos = Math::vec3{ mat.col(3) };
@@ -415,11 +422,30 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 					tmpX *= 1.f / scale.x();
 					tmpY *= 1.f / scale.y();
 					tmpZ *= 1.f / scale.z();
+					tmpX2 = tmpX;
+					tmpY2 = tmpY;
+					tmpZ2 = tmpZ;
 					mat.set_col(tmpX, 0);
-					mat.set_col(tmpY, 0);
-					mat.set_col(tmpZ, 0);
-					Math::quat a{ mat };
-					orientation = Math::vec3{ a.to_euler_angles() };
+					mat.set_col(tmpY, 1);
+					mat.set_col(tmpZ, 2);
+					//Math::quat a{ mat };
+					//orientation = Math::vec3{ a.to_euler_angles() };
+					orientation = mat.euler();
+					//if (Math::close(tmpX[2], -1.0f)) {
+					//	orientation = Math::vec3{ Math::pi_2 * Math::rad_to_deg,
+					//		Math::pi_2 * Math::rad_to_deg,
+					//		std::atan2(tmpY[0], -tmpY[1]) * Math::rad_to_deg };
+					//}
+					//else if (Math::close(tmpX[2], 1.0f)) {
+					//	orientation = Math::vec3{ Math::pi_2 * Math::rad_to_deg,
+					//		-Math::pi_2 * Math::rad_to_deg,
+					//		std::atan2(tmpY[0], -tmpY[1]) * Math::rad_to_deg };
+					//}
+					//else {
+					//	orientation = Math::vec3{ std::atan2(tmpY[2] , tmpZ[2]) * Math::rad_to_deg,
+					//		std::atan2(-tmpX[2] , std::sqrt(tmpY[2] * tmpY[2] + tmpZ[2] * tmpZ[2])) * Math::rad_to_deg,
+					//		std::atan2(tmpX[1], tmpX[0]) * Math::rad_to_deg };
+					//}
 				}
 
 				registry.emplace<Transform>(entity,
@@ -434,6 +460,8 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						auto meshEntity = registry.create();
 						const auto& mesh = meshManager.get_shader_mesh(meshId);
 						const auto& material = materialManager.get_material(mesh.materialId);
+						if (test(material.flags, nyan::shaders::MATERIAL_ALPHA_BLEND_FLAG))
+							continue;
 						registry.emplace<MeshID>(meshEntity, meshId);
 						registry.emplace<MaterialId>(meshEntity, mesh.materialId);
 						auto instance = InstanceData{
@@ -473,6 +501,72 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 								registry.emplace<Deferred>(meshEntity);
 					}
 				}
+
+				if (auto light = node->extensions.find("KHR_lights_punctual"); light != node->extensions.end()) {
+					const auto& lightData = model.lights[light->second.Get("light").GetNumberAsInt()];
+					float range = static_cast<float>(lightData.range);
+					if (range == 0)
+						range = 1e8;
+					registry.emplace<nyan::Pointlight>(entity, Pointlight
+						{
+							.shadows{ true },
+							.color {lightData.color[0], lightData.color[1], lightData.color[2]},
+							.intensity {static_cast<float>(lightData.intensity)},
+							.attenuation {range}
+						});
+//	light.range;
+//	light.intensity;
+				}
+				//light.
+				//	registry.emplace<Transform>(entity,
+				//		Transform{
+				//			.position{light.translate},
+				//			.scale{1.f},
+				//			.orientation{light.rotate},
+				//		});
+				//registry.emplace<Parent>(entity,
+				//	Parent{
+				//		.parent {parent},
+				//	});
+				//registry.emplace<std::string>(entity, light.name);
+				//if (light.type == LightParameters::Type::Directional)
+				//	registry.emplace<nyan::Directionallight>(entity, Directionallight
+				//		{
+				//			.enabled {true},
+				//			.shadows{ true },
+				//			.color {light.color},
+				//			//.intensity {light.intensity},
+				//			.intensity {1},
+				//			.direction {light.direction},
+				//		});
+				//if (light.type == LightParameters::Type::Point)
+				//	registry.emplace<nyan::Pointlight>(entity, Pointlight
+				//		{
+				//			.shadows{ true },
+				//			.color {light.color},
+				//			.intensity {light.intensity},
+				//			.attenuation {500}
+				//		});
+				//if (light.type == LightParameters::Type::Spot)
+				//	registry.emplace<nyan::Spotlight>(entity, Spotlight
+				//		{
+				//			.shadows{ true },
+				//			.color {light.color},
+				//			.intensity {light.intensity},
+				//			.direction {Math::vec3 {0, 0, 1}},
+				//			.cone {45},
+				//			.attenuation {500},
+				//		});
+				//if (light.type == "point") {
+				//	sceneManager.add_point_light(nyan::shaders::PointLight{});
+				//	light.color;
+				//	light.range;
+				//	light.intensity;
+				//}
+				//else {
+				//	Utility::log_warning().format("Light Type not supported: {}", light.type);
+				//}
+				
 			}
 
 		}

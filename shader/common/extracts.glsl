@@ -51,8 +51,7 @@ VertexData get_vertex_data(in Mesh mesh, in vec2 barycentricCoords, in uint prim
         + get_normal(mesh.normalsAddress, ind.y) * barycentrics.y 
         + get_normal(mesh.normalsAddress, ind.z) * barycentrics.z));
 
-    orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
-    vertexData.bitangent *= tangent.w;
+    orthonormalize(vertexData, sign(tangent.w));
 
     vertexData.worldPos = objectToWorld * vec4(pos, 1.0);
     
@@ -137,9 +136,9 @@ MaterialData get_material_data(in Material material, in VertexData vertexData)
         materialData.shadingNormal = tangentSpaceNormal(normalSample, vertexData.normal, vertexData.tangent, vertexData.bitangent);
     }//Temporary fix for wrong sampling of linear textures
 
-    vec3 emissive = vec3(0.f);
+    vec3 emissive = vec3(1.f);
     if(material.emissiveTexId != INVALID_BINDING)
-        emissive = pow(texture(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv).rgb, vec3(1.f /2.2));
+        emissive = texture(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv).rgb;
         //emissive = pow(textureLod(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv, 0).rgb, vec3(1.f /2.2));
     emissive *= vec3(material.emissive_R, material.emissive_G, material.emissive_B);
     materialData.emissive = emissive;
@@ -180,6 +179,13 @@ MaterialData get_albedo_data(in Material material, in VertexData vertexData)
     albedo *= vec4(material.albedo_R, material.albedo_G, material.albedo_B, material.albedo_A);
     materialData.albedo = albedo.xyz;
     materialData.opacity = albedo.w;
+    
+    vec3 emissive = vec3(1.f);
+    if(material.emissiveTexId != INVALID_BINDING)
+        emissive = texture(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv).rgb;
+        //emissive = pow(textureLod(sampler2D(textures2D[nonuniformEXT(material.emissiveTexId)], samplers[nonuniformEXT(material.emissiveSampler)]), vertexData.uv, 0).rgb, vec3(1.f /2.2));
+    emissive *= vec3(material.emissive_R, material.emissive_G, material.emissive_B);
+    materialData.emissive = emissive;
     
     return materialData;
 }

@@ -349,6 +349,16 @@ void vulkan::CommandBuffer::barrier2(const VkMemoryBarrier2& global, VkDependenc
 	barrier2(1, &global, 0, nullptr, 0, nullptr, dependencyFlags);
 }
 
+void vulkan::CommandBuffer::barrier2(const VkBufferMemoryBarrier2& bufferBarrier, VkDependencyFlags dependencyFlags)
+{
+	barrier2(0, nullptr, 1, &bufferBarrier, 0, nullptr, dependencyFlags);
+}
+
+void vulkan::CommandBuffer::barrier2(const VkImageMemoryBarrier2& imageBarrier, VkDependencyFlags dependencyFlags)
+{
+	barrier2(0, nullptr, 0, nullptr, 1, &imageBarrier, dependencyFlags);
+}
+
 void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals,
 	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
 	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)

@@ -38,6 +38,7 @@ void main() {
 	payload.normal = vertexData.normal;
 	payload.hitT = gl_HitTEXT;
 	payload.hitkind = gl_HitKindEXT;
+	payload.emissive = materialData.emissive;
 
 	#ifdef COMPLEX
 	payload.roughness = materialData.roughness;
@@ -48,6 +49,9 @@ void main() {
 	payload.metallic = 0.f;
 	payload.shadingNormal = vertexData.normal;
 	#endif
+	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT &&
+	((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG))
+		payload.hitkind = gl_HitKindFrontFacingTriangleEXT;
 
 	pld = pack_payload(payload);
 }

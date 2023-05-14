@@ -115,6 +115,7 @@ namespace nyan {
 		void set_mask(InstanceId id, uint32_t mask);
 		void set_instance_custom_index(InstanceId id, uint32_t instanceCustomIndex);
 		void set_instance(InstanceId id, const InstanceData& instance);
+		const InstanceData& get_instance(InstanceId id) const;
 		InstanceId add_instance(const InstanceData& instanceData = { .transform {.transformMatrix = Math::Mat<float, 3, 4, false>::identity()} });
 		void build();
 		std::optional<vulkan::AccelerationStructureHandle> get_tlas();
@@ -135,6 +136,7 @@ namespace nyan {
 		void set_dirlight(const nyan::shaders::DirectionalLight& light);
 		void set_sky_light(const nyan::shaders::SkyLight& light);
 		void set_view_pos(const Math::vec3& pos);
+		Math::vec3 get_view_pos() const;
 		void set_camera_up(const Math::vec3& up);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view);
 		void set_view_matrix(const Math::Mat<float, 4, 4, true>& view, const Math::Mat<float, 4, 4, true>& viewInverse);

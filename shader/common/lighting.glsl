@@ -41,24 +41,27 @@ float G2_smith(float NdotL, float NdotV, float alpha) {
 //    return 1.0 / (1.0 + lambdaV + lambdaL);
     return 1.0f /  mix(2 * NdotL * NdotV, NdotL + NdotV, alpha);
 }
+
 //[E. Hammon, 2017] "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
 vec3 brdf_hammon_diffuse(float NdotL, float NdotV,float NdotH, float VdotL, float VdotH, vec3 diffuseColor, float alpha)
 {
 
     float facing = 0.5 + 0.5 * VdotL;
 
-    float energyBias = mix(0.0, 0.5, alpha);
-    float f90 = energyBias + 2.0 * VdotH * VdotH * alpha;
-    float fNdotL = (0.04 + (f90 - 0.04) * exp2((-5.55473 * NdotL - 6.98316) *NdotL));
-    float fNdotV = (0.04 + (f90 - 0.04) * exp2((-5.55473 * NdotV - 6.98316) *NdotV));
+//    float energyBias = mix(0.0, 0.5, alpha);
+//    float f90 = energyBias + 2.0 * VdotH * VdotH * alpha;
+//    float fNdotL = (0.04 + (f90 - 0.04) * exp2((-5.55473 * NdotL - 6.98316) *NdotL));
+//    float fNdotV = (0.04 + (f90 - 0.04) * exp2((-5.55473 * NdotV - 6.98316) *NdotV));
+    //float surfaceRough =  mix( 0.0, (facing * (0.9 - 0.4 * facing) * (0.5 + NdotH) / NdotH), NdotH <= 0.0 );
+    //float surfaceSmooth = 1.05 * ((1.0 - fNdotL) * (1.0 - fNdotV));
 
-    float surfaceRough =  mix( 0.0, (facing * (0.9 - 0.4 * facing) * (0.5 + NdotH) / NdotH), NdotH <= 0.0 );
-    float surfaceSmooth = 1.05 * ((1.0 - fNdotL) * (1.0 - fNdotV));
-    //float smoothV = 1.05 * (1-intPow5(1-NdotL)) * (1- intPow5(1-NdotV));
-    float single = 1 / 3.1415926 * mix(surfaceSmooth, surfaceRough, alpha);
+    float surfaceRough =  facing * (0.9 - 0.4 * facing) * (0.5 + NdotH) / max(NdotH, 1e-8f);
+    float surfaceSmooth = 1.05 * (1. - 0.04) * (1.0 - pow5(1.f - NdotL)) * (1.0 - pow5(1.f - NdotV));
+    float single = 1. / 3.1415926 * mix(surfaceSmooth, surfaceRough, alpha);
     float multi = 0.1159 * alpha;
+    //float multi = 0.3641 * alpha;
 
-    return diffuseColor.xyz * (single + diffuseColor.xyz * multi);
+    return diffuseColor.xyz * (single + diffuseColor.xyz * multi);// * sign(NdotV)* sign(NdotL);
 }
 
 //[Stephen McAuley, 2018] "A Journey Through Implementing BRDFs & Area Lights"
@@ -82,15 +85,25 @@ float brdf_lambert()
     return  single;
 }
 
-float brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float LdotH, vec3 specularColor, float alpha) {
+vec3 brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float LdotH, vec3 specularColor, float alpha) {
     float NDF = NDF_GGX(NdotH, alpha);
     
     float G2 = G2_smith(NdotL, NdotV, alpha);
 
-    //vec3 F = F_sphericalGaussian(LdotH, specularColor);
+    vec3 F = F_sphericalGaussian(LdotH, specularColor);
 
-    return (NDF * G2 * 0.5); // /  4.0 * NdotV * NdotL Canceled out with G2
+    return max((NDF * G2 * 0.5)* F, vec3(0.f)); // /  4.0 * NdotV * NdotL Canceled out with G2
 }
+//
+//float brdf_cook_torrance_specular(float NdotL, float NdotV, float NdotH, float LdotH, vec3 specularColor, float alpha) {
+//    float NDF = NDF_GGX(NdotH, alpha);
+//    
+//    float G2 = G2_smith(NdotL, NdotV, alpha);
+//
+//    //vec3 F = F_sphericalGaussian(LdotH, specularColor);
+//
+//    return max(0, NDF * G2 * 0.5); // /  4.0 * NdotV * NdotL Canceled out with G2
+//}
 
 void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec3 viewDir, in vec3 normal, in DirectionalLight light, inout vec4 specular, inout vec4 diffuse) {
     
@@ -129,10 +142,10 @@ void calcDirLight(in vec3 albedo, in float metalness, in float roughness, in vec
 void diffuse_light(in LightData light, in ShadingData shadingData, inout vec3 diffuse)
 {
     float NdotL = max(dot(shadingData.shadingNormal, light.dir), 0.0);
-    //if(NdotL <= 0)
-    //    return;
+    if(NdotL <= 0)
+        return;
 
-    float LdotV = dot(light.dir, shadingData.outLightDir);
+    float LdotV = max(dot(light.dir, shadingData.outLightDir), 0.0);
     float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
     float rcpLenLV = inversesqrt(2 + 2 * LdotV);
     float NdotH = (NdotL + NdotV) * rcpLenLV;
@@ -145,7 +158,9 @@ void diffuse_light(in LightData light, in ShadingData shadingData, inout vec3 di
     //    diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * NdotL * shadingData.albedo.xyz ) * (vec3(1.f) -F) * light.color ; 
     //diffuse += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity  * NdotL)* (vec3(1.f) -F) * shadingData.albedo.xyz * light.color;
     //diffuse += brdf_lambert()*( (1- shadingData.metalness) * light.intensity * NdotL)* (vec3(1.f) -F) * shadingData.albedo.xyz  * light.color;
-    diffuse += brdf_lambert()*(light.intensity * NdotL) * shadingData.albedo.xyz * light.color;
+    //diffuse += brdf_lambert()*(light.intensity * NdotL) * shadingData.albedo.xyz * light.color;
+    //diffuse.xyz += (21.f/ (20.0f * 3.1415926f)) * (1- specularColor) * shadingData.albedo.xyz * (1- pow(1- NdotL, 5))* (1- pow(1- NdotV, 5))* light.intensity* light.color;
+    diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, dot(normalize( shadingData.outLightDir + light.dir ), shadingData.outLightDir ), shadingData.albedo.xyz, sqrt(shadingData.alpha) )*( (1- shadingData.metalness) * light.intensity * NdotL) * light.color ; 
 
 }
 
@@ -159,20 +174,23 @@ void calc_light(in LightData light, in ShadingData shadingData, inout vec3 diffu
     if(NdotL <= 0)
         return;
         
-    float LdotV = dot(light.dir, shadingData.outLightDir);
+    float LdotV = max(dot(light.dir, shadingData.outLightDir), 0.0);
     float NdotV = max(dot(shadingData.shadingNormal, shadingData.outLightDir), 0.0);
     float rcpLenLV = inversesqrt(2 + 2 * LdotV);
     float NdotH = (NdotL + NdotV) * rcpLenLV;
     float LdotH = rcpLenLV * LdotV + rcpLenLV;
     
     vec3 specularColor = mix( vec3(0.04), shadingData.albedo.xyz, shadingData.metalness);
+    //vec3 F = F_Schlick(NdotV, specularColor);
 
-    vec3 F = F_Schlick(NdotV, specularColor);
-    if( shadingData.metalness < 1.f)
-        diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * NdotL * shadingData.albedo.xyz ) * (vec3(1.f) -F) * light.color ; 
+    //if( shadingData.metalness < 1.f)
+        //diffuse.xyz += (21.f/ (20.0f * 3.1415926f)) * (1- specularColor) * shadingData.albedo.xyz * (1- pow(1- NdotL, 5))* (1- pow(1- NdotV, 5))* light.intensity* light.color;;
+        //diffuse.xyz += multi_scattering_diffuse_brdf(NdotL, NdotV, NdotH, LdotH, shadingData.alpha)*( (1- shadingData.metalness) * light.intensity * NdotL * shadingData.albedo.xyz ) * (vec3(1.f) -F) * light.color ; 
+    diffuse.xyz += brdf_hammon_diffuse(NdotL, NdotV, NdotH, LdotV, dot(normalize( shadingData.outLightDir + light.dir ), shadingData.outLightDir ), shadingData.albedo.xyz, sqrt(shadingData.alpha) )*( (1- shadingData.metalness) * light.intensity * NdotL) * light.color ; 
     //diffuse.xyz += brdf_lambert()* light.intensity * NdotL *(shadingData.albedo.xyz * light.color) ; 
     
-    specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, shadingData.alpha) * light.intensity * NdotL) * F * light.color ;
+    specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, shadingData.alpha) * light.intensity * NdotL) * light.color ;
+    //specular.xyz += (brdf_cook_torrance_specular(NdotL, NdotV, NdotH, LdotH, specularColor, shadingData.alpha) * light.intensity * NdotL) * light.color ;
 }
 
 

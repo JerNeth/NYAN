@@ -15,6 +15,7 @@
 #include "ddgi_restir_push_constants.h"
 
 layout(location = 0) rayPayloadEXT PackedPayload pld;
+layout(constant_id = 4) const uint maxPathLength = 10;
 
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
@@ -40,6 +41,21 @@ layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStruct
 layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalReservoirs {
 	DDGIReSTIRTemporalReservoir res[]; 
 };
+
+/**
+* Compute a cosine distributed random direction on the hemisphere about the given (normal) direction.
+*/
+vec3 random_cosine(vec3 direction, inout uint rngSeed)
+{
+    // Choose random points on the unit sphere offset along the surface normal
+    // to produce a cosine distribution of random directions.
+    float a = uint_to_u01_float(hash1_mut(rngSeed)) * 3.1415926f * 2.f;
+    float z = uint_to_u01_float(hash1_mut(rngSeed)) * 2.f - 1.f;
+    float r = sqrt(1.f - z * z);
+
+    vec3 p = vec3(r * cos(a), r * sin(a), z) + direction;
+    return normalize(p);
+}
 void main() {
     Scene scene = scenes[pushConstants.constants.sceneBinding].scene;
     DDGIReSTIRVolume volume = ddgiReSTIRVolumes[pushConstants.constants.ddgiReSTIRBinding].volume[pushConstants.constants.ddgiReSTIRIndex];
@@ -56,72 +72,86 @@ void main() {
 
 
         
-    vec3 sampleProbeCords = get_probe_coordinates(reservoir.probeId, volume);
-    vec3 probeCords = get_probe_coordinates(probeIdx, volume);
-    uint rngSeed = reservoir.rngSeed;
-    float u = uint_to_u01_float(hash1_mut(rngSeed));
-    float v = uint_to_u01_float(hash1_mut(rngSeed));
-    float w = uint_to_u01_float(hash1_mut(rngSeed));
-    vec3 direction = get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
-    vec3 sampleHitPos = sampleProbeCords + direction * reservoir.hitDistance;
-    vec3 reprojectedSampleDir = sampleHitPos - probeCords;
-    float reprojectedT = length(reprojectedSampleDir);
-    reprojectedSampleDir *= 1.f / reprojectedT;
+    vec3 probeCoords = get_probe_coordinates(probeIdx, volume);
+    vec3 direction = vec3(reservoir.rayDirX, reservoir.rayDirY, reservoir.rayDirZ );
 
     uint  rayFlags = gl_RayFlagsNoneEXT;
     float tMin     = 0.0001;
     float tMax     = 1e7f;
-    traceRayEXT(accelerationStructures[pushConstants.constants.accBinding], // acceleration structure
-            rayFlags,       // rayFlags
-            0xFF,           // cullMask
-            0,              // sbtRecordOffset
-            0,              // sbtRecordStride
-            0,              // missIndex
-            probeCords.xyz, // ray origin
-            tMin,           // ray min range
-            reprojectedSampleDir.xyz,  // ray direction
-            tMax,           // ray max range
-            0               // payload (location = 0)
-        );
-	Payload payload = unpack_payload(pld);
+    uint rngSeed = reservoir.rngSeed;
     
 	vec3 diffuse = vec3(0.f);
+	vec3 specular = vec3(0.f);
+    vec3 tracedBRDF = vec3(1.f);
+	float hitDistance = 0.f;
 
-	float hitDistance = payload.hitT;
+    for(int i = 0; i < maxPathLength; i++) {
+        traceRayEXT(accelerationStructures[pushConstants.constants.accBinding], // acceleration structure
+                rayFlags,       // rayFlags
+                0xFF,           // cullMask
+                0,              // sbtRecordOffset
+                0,              // sbtRecordStride
+                0,              // missIndex
+                probeCoords.xyz, // ray origin
+                tMin,           // ray min range
+                direction.xyz,  // ray direction
+                tMax,           // ray max range
+                0               // payload (location = 0)
+            );
+	    Payload payload = unpack_payload(pld);
+    
+        
+        if(i == 0)
+	        hitDistance = payload.hitT;
 
     
-	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
-	{
-	    hitDistance *= -1.0;
-	} 
-    else if(payload.hitkind == HitKindMiss) 
-	{
-		diffuse = payload.albedo;
-	} 
-	else {
-        ShadingData shadingData;
-        shadingData.albedo = payload.albedo;
-        shadingData.alpha = payload.roughness * payload.roughness;
-        shadingData.outLightDir = -reprojectedSampleDir;
-        shadingData.metalness = payload.metallic;
-        shadingData.shadingNormal = payload.shadingNormal;
-        shadingData.worldPos = payload.worldPos;
-        //High compile time here
-        //Probable cause was loop end condition in an SSBO
-		diffuse += diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData);
-        if(volume.recurse != 0) {
-            diffuse += diffuse_indirect_lighting(volume, shadingData
-            #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
-                , accelerationStructures[pushConstants.constants.accBinding]
-		    #endif
-            );
+	    if(payload.hitkind == gl_HitKindBackFacingTriangleEXT  ) 
+	    {
+            if(i == 0)
+	            hitDistance *= -1.0;
+            break;
+	    } 
+        else if(payload.hitkind == HitKindMiss) 
+	    {
+		    diffuse += payload.albedo * tracedBRDF;
+            break;
+	    } 
+	    else {
+            ShadingData shadingData;
+            shadingData.albedo = payload.albedo;
+            shadingData.alpha = payload.roughness * payload.roughness;
+            shadingData.outLightDir = -direction;
+            shadingData.metalness = payload.metallic;
+            shadingData.shadingNormal = payload.shadingNormal;
+            shadingData.worldPos = payload.worldPos;
+            //High compile time here
+            //Probable cause was loop end condition in an SSBO
+	        vec3 currentDiffuse = vec3(0.f);
+	        vec3 currentSpecular = vec3(0.f);
+		    diffuse_direct_lighting(accelerationStructures[pushConstants.constants.accBinding], scene, shadingData, currentDiffuse, currentSpecular);
+            //currentDiffuse += payload.emissive * (1.f / ((payload.hitT* payload.hitT + 1) * 3.1415926f));
+            currentDiffuse += payload.emissive;
+           // currentDiffuse += payload.emissive* (1.f / 3.1415926f);
+            diffuse += (currentDiffuse + currentSpecular) * tracedBRDF;
+            tracedBRDF *= min(payload.albedo, vec3(0.99f));
+            if(volume.recurse != 0) {
+		        diffuse += diffuse_indirect_lighting(volume, shadingData
+                #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
+                            , accelerationStructures[pushConstants.constants.accBinding]
+		        #endif 
+                             );
+            }
+            if(max(max(tracedBRDF.x, tracedBRDF.y), tracedBRDF.z) < 0.005f)
+                break;
+            rngSeed += i;
+            probeCoords.xyz = shadingData.worldPos;
+            direction.xyz = random_cosine(shadingData.shadingNormal, rngSeed);
+            
         }
     }
-
     vec3 irradiance = vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB);
-    //rngSeed += probeIdx;
-    //reservoir.age > uint_to_u01_float(hash1_mut(rngSeed)) * volume.maximumReservoirAge 
-    if(luminance(diffuse) < (luminance(irradiance) * 0.8) || luminance(diffuse) > (luminance(irradiance)* 1.2) || hitDistance < (reprojectedT * 0.9) || hitDistance > (reprojectedT * 1.1f)) {
+
+    if(luminance(diffuse) < (luminance(irradiance) * 0.95) || luminance(diffuse) > (luminance(irradiance)* 1.05) || hitDistance < (reservoir.hitDistance * 0.99) || hitDistance > (reservoir.hitDistance * 1.01f)) {
         reservoir.M = 0;
         reservoir.weightSum = 0;
         reservoir.W = 0;

@@ -27,8 +27,9 @@ void main()
     const VertexData vertexData = get_uv_data(mesh, baryCoord, gl_PrimitiveID, gl_ObjectToWorldEXT);
     const MaterialData materialData = get_albedo_data(material, vertexData);
 
-	if(materialData.opacity > material.alphaDiscard)
-		terminateRayEXT;
-	else
+	if(materialData.opacity < material.alphaDiscard)
 		ignoreIntersectionEXT;
+//		terminateRayEXT;
+//	else
+//		ignoreIntersectionEXT;
 }

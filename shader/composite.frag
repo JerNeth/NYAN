@@ -65,6 +65,7 @@ void main() {
     else if(constants.tonemapping == 3)
         combined.xyz = UnchartedFilm(combined.xyz) / UnchartedFilm(vec3(11.2));
     outColor = fromLinear(combined);
+    //outColor = specular;
     //outColor.xyz = outColor.xyz / (1 + outColor.xyz);
     //outColor.xyz = ACESFilm(outColor.xyz);
     

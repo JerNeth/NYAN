@@ -176,9 +176,21 @@ nyan::ForwardMeshRenderer::ForwardMeshRenderer(vulkan::LogicalDevice& device, en
 			}
 			pipelineBind.set_depth_write_enabled(false);
 			auto transparentView = r_registry.view<const MeshID, const InstanceId, const ForwardTransparent>();
+			auto& instanceManager = r_renderManager.get_instance_manager();
+			auto viewPos = r_renderManager.get_scene_manager().get_view_pos();
+			std::vector<std::tuple<float, MeshID, InstanceId>> sorted{};
 			for (const auto& [entity, meshID, instanceId] : transparentView.each()) {
+				auto dist = (viewPos - instanceManager.get_instance(instanceId).transform.transformMatrix.col(3)).L2_norm();
+				auto posInfo = std::lower_bound(sorted.begin(), sorted.end(), dist,
+					[](const auto& val, float value)
+					{
+						return std::get<0>(val) < value;
+					});
+				sorted.insert(posInfo, std::tuple<float, MeshID, InstanceId>{dist, meshID, instanceId});
+			}
+			for (const auto& [dist, meshId, instanceId] : sorted) {
 				instance.instanceId = instanceId;
-				render(pipelineBind, meshID, instance);
+				render(pipelineBind, meshId, instance);
 			}
 		}, true);
 }
@@ -227,62 +239,98 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 }
 
 
-nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, nyan::RenderResource::Id rendertarget) :
+nyan::RTMeshRenderer::RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting):
 	Renderer(device, registry, renderManager, pass),
-	m_pipeline(device, generate_config()),
-	m_rendertarget(rendertarget)
+	m_lighting(lighting)
 {
-	r_pass.add_swapchain_write(Math::vec4{ 0.4f, 0.6f, 0.8f, 1.f }, nyan::Renderpass::Write::Type::Compute);
-	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
-		{
-			auto pipelineBind = cmd.bind_raytracing_pipeline(m_pipeline);
-			
-			render(pipelineBind);
-			
-		}, false);
+	r_pass.add_write(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
+	r_pass.add_write(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
+	pass.add_renderfunction(std::bind(&RTMeshRenderer::render, this, std::placeholders::_1, std::placeholders::_2), false);
 }
 
-void nyan::RTMeshRenderer::render(vulkan::RaytracingPipelineBind& bind)
+void nyan::RTMeshRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 {
-	auto writeBind = r_pass.get_write_bind(m_rendertarget, nyan::Renderpass::Write::Type::Compute);
-	assert(writeBind != InvalidBinding);
+	RTConfig rtConfig{
+		.maxPathLength{m_maxPathLength},
+		.antialiasing{m_antialising},
+	};
+	auto& diffuseResource = r_pass.get_graph().get_resource(m_lighting.diffuse);
+	auto writeBindDiffuse = r_pass.get_write_bind(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
+	auto writeBindSpecular = r_pass.get_write_bind(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
+	assert(writeBindDiffuse != InvalidBinding);
+	assert(writeBindSpecular != InvalidBinding);
+	assert(diffuseResource.handle);
 	PushConstants constants{
 		.accBinding {*r_renderManager.get_instance_manager().get_tlas_bind()}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
 		.meshBinding {r_renderManager.get_mesh_manager().get_binding()}, //1
-		.imageBinding {writeBind}, //0
+		.diffuseImageBinding {writeBindDiffuse}, //0
+		.specularImageBinding {writeBindSpecular}, //0
+		.rngSeed {(*m_generator)()},
+		.frameCount {++m_frameCount}
 	};
+	auto& rtPipeline = get_rt_pipeline(rtConfig);
+	auto bind = cmd.bind_raytracing_pipeline(rtPipeline);
 	bind.push_constants(constants);
-	bind.trace_rays(m_pipeline, 1920, 1080, 1);
+	bind.trace_rays(rtPipeline, diffuseResource.handle->get_info().width, diffuseResource.handle->get_info().height, 1);
 }
 
-vulkan::RaytracingPipelineConfig nyan::RTMeshRenderer::generate_config()
+void nyan::RTMeshRenderer::reset()
 {
-	return vulkan::RaytracingPipelineConfig {
-		.rgenGroups {
-			vulkan::Group
-			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rgen")},
-			},
+	m_frameCount = 0;
+}
+
+void nyan::RTMeshRenderer::set_antialiasing(bool antialising)
+{
+	m_antialising = antialising;
+}
+
+void nyan::RTMeshRenderer::set_max_path_length(uint32_t maxPathLength)
+{
+	m_maxPathLength = maxPathLength;
+}
+
+vulkan::RTPipeline& nyan::RTMeshRenderer::get_rt_pipeline(const RTConfig& config)
+{
+	if (auto it = m_rtPipelines.find(config); it != m_rtPipelines.end()) {
+		assert(it->second);
+		return *it->second;
+	}
+	else {
+		return *m_rtPipelines.emplace(config, std::make_unique< vulkan::RTPipeline>(r_device, generate_rt_config(config))).first->second;
+	}
+}
+
+vulkan::RaytracingPipelineConfig nyan::RTMeshRenderer::generate_rt_config(const RTConfig& config)
+{
+	return vulkan::RaytracingPipelineConfig{
+	.rgenGroups {
+		vulkan::Group
+		{
+			.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rgen",
+				vulkan::ShaderStorage::SpecializationConstant{"maxPathLength", config.maxPathLength},
+				vulkan::ShaderStorage::SpecializationConstant{"antialiasing", config.antialiasing}
+			)},
 		},
-		.hitGroups {
-			vulkan::Group
-			{
-				.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rchit")},
-				.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
-			},
+	},
+	.hitGroups {
+		vulkan::Group
+		{
+			.closestHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rchit")},
+			.anyHitShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_alpha_test_rahit")},
 		},
-		.missGroups {
-			vulkan::Group
-			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rmiss")},
-			},
-			vulkan::Group
-			{
-				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
-			},
+	},
+	.missGroups {
+		vulkan::Group
+		{
+			.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_rmiss")},
 		},
-		.recursionDepth {2},
-		.pipelineLayout = r_device.get_bindless_pipeline_layout()
+		vulkan::Group
+		{
+			.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("raytrace_shadows_rmiss")},
+		},
+	},
+	.recursionDepth {1},
+	.pipelineLayout = r_device.get_bindless_pipeline_layout()
 	};
 }

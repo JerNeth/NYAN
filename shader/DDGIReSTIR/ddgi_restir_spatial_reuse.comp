@@ -1,6 +1,6 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-
+#extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
@@ -8,6 +8,7 @@
 
 #include "bufferReferences.glsl"
 #include "structs.h"
+#include "extracts.glsl"
 #include "formats.h"
 #include "bindlessLayouts.glsl"
 #include "common.glsl"
@@ -15,32 +16,7 @@
 #include "debug.glsl"
 #include "ddgi_restir_common.glsl"
 #include "ddgi_restir_push_constants.h"
-
-//struct DDGIReSTIRPushConstants {
-//	uint accBinding;
-//	uint sceneBinding;
-//	uint meshBinding;
-//	uint ddgiReSTIRBinding;
-//	uint ddgiReSTIRCount;
-//	uint ddgiReSTIRIndex;
-//	uint renderTarget;
-//	uint64_t prevReservoirs;
-//	uint64_t reservoirs;
-//	vec4 randomRotation;
-//	uint rngSeed;
-//};
-//struct DDGIReSTIRTemporalReservoir { //TODO: pack tightly
-//	float irradianceR, irradianceG, irradianceB; //12B //I don't know whether that's goint to be radiance or irradiance 
-//	float hitDistance; //16B
-//	uint probeId; //20B 
-//	uint rayId; //24B
-//	uint rngSeed; //28B
-//	float weightSum; //32B
-//	float M; //36B
-//	float W; //40B
-//	uint age; //44B
-//};
-//
+#include "raycommon.glsl"
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
@@ -52,24 +28,23 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalRese
 };
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-vec3 generate_ray_dir(in DDGIReSTIRTemporalReservoir reservoir, in DDGIReSTIRVolume volume) {
-	uint rngSeed = reservoir.rngSeed;
-	float u = uint_to_u01_float(hash1_mut(rngSeed));
-	float v = uint_to_u01_float(hash1_mut(rngSeed));
-	float w = uint_to_u01_float(hash1_mut(rngSeed));
-	return get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
-}
 float calc_p_hat_q(in vec3 radiance, in vec3 rayDir, in vec3 normal, in float rayDist) {
 	return max(0.f, dot(rayDir, normal))
 				* max(0.f, luminance(radiance))
-				* 1.f/3.14f
+				//* 1.f/3.14f
 				* step(0, rayDist);
 }
-float calc_p_hat_q(in DDGIReSTIRTemporalReservoir reservoir, in vec3 normal, in DDGIReSTIRVolume volume) {
-	return calc_p_hat_q(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB),
-						generate_ray_dir(reservoir, volume),
-						normal,
-						reservoir.hitDistance);
+//float calc_p_hat_q(in DDGIReSTIRTemporalReservoir reservoir, in vec3 normal, in DDGIReSTIRVolume volume) {
+//	return calc_p_hat_q(vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB),
+//						generate_ray_dir(reservoir, volume),
+//						normal,
+//						reservoir.hitDistance);
+//}
+
+float mis_weight(float n_0, float p_0, float n_1, float p_1) {
+	float weightA = n_0 * p_0;
+	float weightB = n_1 * p_1;
+	return weightA / ( weightA + weightB);
 }
 
 void main() {
@@ -94,65 +69,113 @@ void main() {
 	
 	const uvec3 resampleProbeId = clamp(gl_WorkGroupID + adjacentProbeIdxOffset, ivec3(0), probeCountsMinusOne);
 	const uint resampleProbeIdx = get_probe_index(resampleProbeId, volume);
-	const uint resampleIdx = resampleProbeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
+	//const uint resampleIdx = resampleProbeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + gl_LocalInvocationIndex;
+	const uvec2 resampleTexelIdx = uvec2(hash1_mut(rngSeed) % volume.irradianceProbeSize,
+										hash1_mut(rngSeed) % volume.irradianceProbeSize);
+	const uint resampleIdx = resampleProbeIdx * volume.temporalReservoirCountX * volume.temporalReservoirCountY + resampleTexelIdx.x + resampleTexelIdx.y * volume.irradianceProbeSize;
 	DDGIReSTIRTemporalReservoir resampleReservoir = reservoirs.res[resampleIdx];
 	
 	prevReservoir.M = max(0, min(prevReservoir.M, volume.maximumReservoirAge * volume.samplesPerProbe));
 
 	resampleReservoir.M = max(0, min(resampleReservoir.M, volume.maximumReservoirAge * volume.samplesPerProbe));
+		
+	const vec3 probeCoords = get_probe_coordinates(probeIdx, volume);
+	const vec3 resampleProbeCoords = get_probe_coordinates(probeIdx, volume);
+	vec3 direction = vec3(resampleReservoir.rayDirX, resampleReservoir.rayDirY, resampleReservoir.rayDirZ);
+	vec3 sampleHitPos = resampleProbeCoords + direction * resampleReservoir.hitDistance;
+	vec3 reprojectedSampleDir = sampleHitPos - probeCoords;
+	float reprojectedT = length(reprojectedSampleDir);
+	
+	const vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
+	const vec3 texelDir = get_octahedral_direction(uv);
 
+	float NdotW = dot(texelDir, reprojectedSampleDir);
 
+	if(NdotW < 0 || reprojectedT < 1e-6f || resampleReservoir.M == 0 )
+		return;
+
+		
+	vec3 surfaceNormal;
 	if(volume.spatialReuseValidation != 0) {
 	
-		const vec3 probeCoords = get_probe_coordinates(probeIdx, volume);
-		const vec3 resampleProbeCoords = get_probe_coordinates(probeIdx, volume);
-		vec3 probeDir = resampleProbeCoords - probeCoords;
-		float probeDist = length(probeDir);
-		probeDir *= 1.f / probeDist;
+		reprojectedSampleDir *= 1.f / reprojectedT;
 
 		rayQueryEXT rq;
 		const float tMin = 0.01;
-		const float tMax = probeDist * 1.01;
+		const float tMax = reprojectedT * 1.01;
 		rayQueryInitializeEXT(rq, accelerationStructures[pushConstants.constants.accBinding], gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT , 0xFF, 
-					probeCoords, tMin, probeDir.xyz, tMax);
+					probeCoords, tMin, reprojectedSampleDir.xyz, tMax);
 
 		// Traverse the acceleration structure and store information about the first intersection (if any)
 		rayQueryProceedEXT(rq);
 
-		if (rayQueryGetIntersectionTypeEXT(rq, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+		float hitT = rayQueryGetIntersectionTEXT(rq, true);
+		if (hitT < reprojectedT * 0.99) {
 			return;
 		}
+		vec2 baryCoords = rayQueryGetIntersectionBarycentricsEXT(rq, true);
+		int instanceIndex = rayQueryGetIntersectionInstanceCustomIndexEXT(rq, true);
+		int primitiveIndex = rayQueryGetIntersectionPrimitiveIndexEXT(rq, true);
+		mat4x3 objectToWorld = rayQueryGetIntersectionObjectToWorldEXT(rq, true);
+		Mesh mesh = meshData[pushConstants.constants.meshBinding].meshes[nonuniformEXT(instanceIndex)];
+		VertexData vertexData = get_vertex_data_simple(mesh, baryCoords, primitiveIndex, objectToWorld);
+		surfaceNormal = vertexData.normal;
 	}
 	
 	//float prev_p_hat_q = prevReservoir.M / max(1e-8, prevReservoir.weightSum * prevReservoir.W);
 	//float res_p_hat_q = resampleReservoir.M / max(1e-8, resampleReservoir.weightSum * resampleReservoir.W);
-	const vec2 uv = get_normalized_octahedral_coords(ivec2(gl_LocalInvocationID.xy), int(volume.irradianceProbeSize));
-	const vec3 texelDir = get_octahedral_direction(uv);
+	const vec2 resampleUV = get_normalized_octahedral_coords(ivec2(resampleTexelIdx), int(volume.irradianceProbeSize));
+	const vec3 resampleTexelDir = get_octahedral_direction(uv);
 
-	float prev_p_hat_q = calc_p_hat_q(prevReservoir, texelDir, volume);
-	float res_p_hat_q = calc_p_hat_q(resampleReservoir, texelDir, volume);
+	//float prev_p_hat_q = calc_p_hat_q(vec3(prevReservoir.irradianceR, prevReservoir.irradianceG, prevReservoir.irradianceB), reprojectedSampleDir, texelDir, prevReservoir.hitDistance);
+	float prev_p_hat_q = calc_p_hat_q(vec3(prevReservoir.irradianceR, prevReservoir.irradianceG, prevReservoir.irradianceB), 
+									vec3(prevReservoir.rayDirX, prevReservoir.rayDirY, prevReservoir.rayDirZ), texelDir, prevReservoir.hitDistance);
+	//float jacobian = NdotW / max(0, dot(resampleTexelDir, direction));
+	//float res_p_hat_q = calc_p_hat_q(vec3(resampleReservoir.irradianceR, resampleReservoir.irradianceG, resampleReservoir.irradianceB), direction, resampleTexelDir, resampleReservoir.hitDistance) * jacobian;
+	float res_p_hat_q = calc_p_hat_q(vec3(resampleReservoir.irradianceR, resampleReservoir.irradianceG, resampleReservoir.irradianceB), reprojectedSampleDir, texelDir, reprojectedT);
+	float p_hat_old = calc_p_hat_q(vec3(resampleReservoir.irradianceR, resampleReservoir.irradianceG, resampleReservoir.irradianceB), direction, resampleTexelDir, resampleReservoir.hitDistance);
+	
+	float jacobian = abs(dot(surfaceNormal, reprojectedSampleDir)	//* (resampleReservoir.hitDistance * resampleReservoir.hitDistance)
+						/ (dot(surfaceNormal, direction)			//* (reprojectedT * reprojectedT)
+						));
+						
+	if(volume.spatialReuseValidation == 0)
+		jacobian = 1;
+	if(	res_p_hat_q > 0) {
+		//float jacobian = abs((dot(texelDir, reprojectedSampleDir.xyz) * resampleReservoir.hitDistance* resampleReservoir.hitDistance )/
+		//				(dot(resampleTexelDir, direction)  * reprojectedT * reprojectedT));
+		//float combineWeight = res_p_hat_q * resampleReservoir.W * resampleReservoir.M;
+//		float combineWeight = res_p_hat_q * resampleReservoir.W * resampleReservoir.M;
+//		prevReservoir.weightSum = prev_p_hat_q * prevReservoir.W * prevReservoir.M
+//								+ combineWeight;
+//For some reason we require M here, do not ask me why
+		float misWeight = mis_weight(p_hat_old* jacobian, resampleReservoir.M, prev_p_hat_q, prevReservoir.M);
+		float combineWeight = misWeight * res_p_hat_q * resampleReservoir.W * (1. / jacobian);
 
-	if(prevReservoir.M > 0) {
-		float combineWeight = prev_p_hat_q * prevReservoir.W * prevReservoir.M;
-		prevReservoir.weightSum += combineWeight;
+		float misWeightResample = mis_weight(prev_p_hat_q, prevReservoir.M, p_hat_old, resampleReservoir.M);
+		prevReservoir.weightSum = misWeightResample * prev_p_hat_q * prevReservoir.W
+								+ combineWeight;
 	
 		float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
-		bool update = (randomFloat * prevReservoir.weightSum) <= combineWeight;
+		bool update = (randomFloat * prevReservoir.weightSum) < combineWeight;
 		if(update) {
 			prev_p_hat_q = res_p_hat_q;
 			prevReservoir.irradianceR = resampleReservoir.irradianceR;
 			prevReservoir.irradianceG = resampleReservoir.irradianceG;
 			prevReservoir.irradianceB = resampleReservoir.irradianceB;
-			prevReservoir.hitDistance = resampleReservoir.hitDistance;
-			prevReservoir.probeId = resampleReservoir.probeId;
-			prevReservoir.rayId	= resampleReservoir.rayId;	
+			prevReservoir.hitDistance = reprojectedT;
 			prevReservoir.rngSeed = resampleReservoir.rngSeed;
+			prevReservoir.rayDirX = reprojectedSampleDir.x;
+			prevReservoir.rayDirY = reprojectedSampleDir.y;
+			prevReservoir.rayDirZ = reprojectedSampleDir.z;
 			prevReservoir.age = resampleReservoir.age;
 		}
+		//float m = step(0.f, prev_p_hat_q) * prevReservoir.M +resampleReservoir.M;
 		prevReservoir.M += resampleReservoir.M;
-		prevReservoir.W = prevReservoir.weightSum / max(1e-8, prevReservoir.M * prev_p_hat_q);  
+		//prevReservoir.W = prevReservoir.weightSum / max(1e-8, m * prev_p_hat_q);  
+		prevReservoir.W = prevReservoir.weightSum / max(1e-8, prev_p_hat_q);  
+		reservoirs.res[reservoirIdx] = prevReservoir;
 	}
 	
-	reservoirs.res[reservoirIdx] = prevReservoir;
 
 }

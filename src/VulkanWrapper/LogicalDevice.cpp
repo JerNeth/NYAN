@@ -128,12 +128,12 @@ void vulkan::LogicalDevice::aquired_image(uint32_t index, VkSemaphore semaphore)
 	m_wsiState.index = index;
 }
 
-void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format)
+void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage)
 {
 	m_wsiState.swapchainImages.clear();
 	wait_idle();
 	auto info = ImageInfo::render_target(width, height, format);
-	info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+	info.usage = usage;
 	info.isSwapchainImage = true;
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
 		if (aquire != VK_NULL_HANDLE) {

@@ -1,5 +1,6 @@
 #ifndef DDGI_SAMPLING_GLSL
 #define DDGI_SAMPLING_GLSL
+#define RAYTRACE_DDGI_VOLUMES
 #undef RAYTRACE_DDGI_VOLUMES
 #ifdef RAYTRACE_DDGI_VOLUMES
 #extension GL_EXT_ray_query : require
@@ -66,9 +67,10 @@ vec3 sample_ddgi(in vec3 worldPos,
 	ivec3 probeCountsMinusOne = get_volume_probe_count_minus_one(volume);
 	ivec3 baseProbeIdx = get_volume_base_probe(biasedWorldPos, volume);
 	
-	vec3 baseProbeWorldPos = get_probe_coordinates(baseProbeIdx, volume) ;
+	vec3 baseProbeWorldPos = get_probe_coordinates_not_offset(baseProbeIdx, volume) ;
 
-	vec3 delta = biasedWorldPos - baseProbeWorldPos;
+	//vec3 delta = biasedWorldPos - baseProbeWorldPos;
+	vec3 delta = worldPos - baseProbeWorldPos;
 	vec3 alpha = clamp( delta * inverseSpacing,vec3(0.f), vec3(1.f));
 
 
@@ -78,8 +80,10 @@ vec3 sample_ddgi(in vec3 worldPos,
 		ivec3 adjacentProbeIdx = clamp(baseProbeIdx + adjacentProbeIdxOffset, ivec3(0), probeCountsMinusOne);
 
 		vec3 adjacentProbeWorldPos = get_probe_coordinates(adjacentProbeIdx, volume);
+		//vec3 adjacentUnbiasedProbeWorldPos = get_probe_coordinates_not_offset(adjacentProbeIdx, volume);
 		
 		vec3 worldPosToAdjacentProbe = adjacentProbeWorldPos - worldPos;
+		//vec3 worldPosToUnbiasedAdjacentProbe = normalize(adjacentUnbiasedProbeWorldPos - worldPos);
 		float worldPosToAdjacentProbeDist = length(worldPosToAdjacentProbe);
 		worldPosToAdjacentProbe *= 1.f / worldPosToAdjacentProbeDist;
 		vec3 biasedWorldPosToAdjacentProbe = biasedWorldPos - adjacentProbeWorldPos;
@@ -97,6 +101,7 @@ vec3 sample_ddgi(in vec3 worldPos,
 		weight *= fma(backFaceWeight, backFaceWeight, 0.2f);
 		#else
 		weight *= max(0.001f, dot(worldPosToAdjacentProbe, direction));
+		//weight *= step(0,  dot(worldPosToUnbiasedAdjacentProbe, direction));
 		#endif
 
 
@@ -128,11 +133,26 @@ vec3 sample_ddgi(in vec3 worldPos,
 		#else
 
 		float maxRayDist = get_volume_max_distance(volume); //Normalize distance
+		//maxRayDist = 1.f; //Normalize distance
 		biasedWorldPosToAdjacentProbeDist = biasedWorldPosToAdjacentProbeDist / maxRayDist;
 		if(volume.useMoments != 0) {
-			vec4 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
-			float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
-			weight *= max(0.05f, shadowValue);
+			if(volume.use6Moments != 0) {
+				vec4 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
+				vec4 filteredDistance2 = textureLod(sampler2DArray(textures2DArray[volume.depth2TextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
+				//							* vec4( maxRayDist, maxRayDist * maxRayDist, maxRayDist* maxRayDist *maxRayDist, maxRayDist* maxRayDist* maxRayDist* maxRayDist);
+				float b[6] = {filteredDistance.x, filteredDistance.y, filteredDistance.z, filteredDistance.w,
+								filteredDistance2.x, filteredDistance2.y};
+				float shadowValue = Hamburger6MSM(b, biasedWorldPosToAdjacentProbeDist, volume.momentOverestimation);
+				//float shadowValue =  Hausdorff4MSM(clamp(filteredDistance, vec4(0.f), vec4(1.f)), clamp(biasedWorldPosToAdjacentProbeDist, 0.f, 1.f));
+				weight *= max(0.001f, shadowValue);
+			}
+			else {
+				vec4 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rgba;
+				//							* vec4( maxRayDist, maxRayDist * maxRayDist, maxRayDist* maxRayDist *maxRayDist, maxRayDist* maxRayDist* maxRayDist* maxRayDist);
+				float shadowValue = sample_moments(filteredDistance, biasedWorldPosToAdjacentProbeDist);
+				//float shadowValue =  Hausdorff4MSM(clamp(filteredDistance, vec4(0.f), vec4(1.f)), clamp(biasedWorldPosToAdjacentProbeDist, 0.f, 1.f));
+				weight *= max(0.001f, shadowValue);
+			}
 		}
 		else {
 			vec2 filteredDistance = textureLod(sampler2DArray(textures2DArray[volume.depthTextureBinding], samplers[volume.depthTextureSampler]), depthUV, 0).rg;
@@ -144,11 +164,11 @@ vec3 sample_ddgi(in vec3 worldPos,
 				//Pretty sure we don't need max here since variance is positive and v² is also positive
 				chebyshev = chebyshev * chebyshev * chebyshev;
 			}
-			weight *= max(0.05f, chebyshev);
+			weight *= max(0.001f, chebyshev);
 		}
 		#endif
 
-		weight = max(1e-6f, weight);
+		weight = max(1e-8f, weight);
 
 //		Originally crush tiny weights because of log perception
 		const float threshold = 0.2f;
@@ -158,11 +178,11 @@ vec3 sample_ddgi(in vec3 worldPos,
 		}
 		#undef DO_GAMMA
 		#define DO_GAMMA // I don't like it but it converges way faster than otherwise
-		//#define DO_GAMMA2
 		#ifdef DO_GAMMA
-		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f * 5.f));
-		#elif defined(DO_GAMMA2)
+		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(5.f));
+		#ifdef DO_SRGB
 		probeIrradiance.xyz = pow(probeIrradiance.xyz, vec3(0.5f));
+		#endif
 		#endif
 		weight *= trilinearWeight;
 		irradiance += weight * probeIrradiance;
@@ -172,12 +192,11 @@ vec3 sample_ddgi(in vec3 worldPos,
 	if(weightSum <= 1e-9) return vec3(0.f);
 
 	irradiance *= 1.f / weightSum; //Normalize
-	#ifdef DO_GAMMA
-	irradiance *= irradiance; //sRGB blending, I don't like it
-	#elif defined(DO_GAMMA2)
+	#ifdef DO_SRGB
 	irradiance *= irradiance; //sRGB blending, I don't like it
 	#endif	
-	irradiance *= 3.14159265359 * 2;
+	//irradiance *= 3.14159265359 * 2;
+	irradiance *= 3.14159265359;
 
 	return irradiance;
 
@@ -193,7 +212,8 @@ vec3 diffuse_indirect_lighting(in DDGIVolume volume, in ShadingData shadingData
 {
 //#ifdef SAMPLE_DDGI
     float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+    //if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+    if(volumeWeight > 0.f) {
         vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
         vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz, bias, shadingData.shadingNormal, volume        		
             #ifdef RAYTRACE_DDGI_VOLUMES

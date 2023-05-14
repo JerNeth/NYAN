@@ -112,15 +112,14 @@ void main() {
     VertexData vertexData;
     vertexData.normal = fragNormal;
     vertexData.tangent = fragTangent.xyz;
-    orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
-    vertexData.bitangent *= fragTangent.w;
+    orthonormalize(vertexData, sign(fragTangent.w));
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
     
     //computeTangentSpace(vertexData, dFdxFine(fragWorldPos), dFdyFine(fragWorldPos), dFdxFine(vertexData.uv),  dFdyFine(vertexData.uv));
     
-    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
-                                        && !gl_FrontFacing);
+//    flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG)
+//                                        && !gl_FrontFacing);
 
 
     MaterialData materialData = get_material_data(material, vertexData);

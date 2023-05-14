@@ -191,7 +191,7 @@ namespace vulkan {
 		VkQueue get_graphics_queue()  const noexcept;
 		void aquired_image(uint32_t index, VkSemaphore semaphore) noexcept;
 
-		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format);
+		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage);
 		const ImageView* get_swapchain_image_view() const noexcept;
 		ImageView* get_swapchain_image_view() noexcept;
 		ImageView* get_swapchain_image_view(size_t idx) noexcept;

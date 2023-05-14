@@ -743,7 +743,8 @@ namespace Math {
 
             vec3 pos({ dist_pos(rng), dist_pos(rng) ,dist_pos(rng) });
             vec3 result1 = mat33::rotation_matrix(angles) * pos;
-            vec3 result2 = rot * pos;
+           // vec3 result2 = rot * pos;
+            vec3 result2 = yaw_m * (pitch_m * (roll_m * pos));
            
             if (!close(result1, result2, 0.01f))
                 counter1_2++;
@@ -751,6 +752,218 @@ namespace Math {
         EXPECT_EQ(counter1_2, 0);
         
     }
+    TEST(Matrices, X2) {
+        std::vector input{ 1.0000000221841605 ,
+                            0.0 ,
+                            0.0,
+                            0.0,
+                            0.0 ,
+                            0.99619472166546763 ,
+                            0.087155727833476249,
+                            0.0,
+                            0.0,
+                            -0.087155727833476249,
+                            0.99619472166546763,
+                            0.0,
+                            -5.0000000000000000,
+                            0.0,
+                            0.0,
+                            1.0 };
+        Math::vec3 expected(5, 0, 0);
+
+        Math::mat44 mat{ input };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        Math::mat33 matSmall;
+        Math::vec3 tmpX{ mat.col(0) };
+        Math::vec3 tmpY{ mat.col(1) };
+        Math::vec3 tmpZ{ mat.col(2) };
+        matSmall.set_col(tmpX, 0);
+        matSmall.set_col(tmpY, 1);
+        matSmall.set_col(tmpZ, 2);
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        Math::vec3 orientation = matSmall.euler();
+        Math::quat quaternion{ matSmall };
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(Math::vec3{ orientation });
+        for (auto val : vals) {
+          //  EXPECT_TRUE(close(matSmall * val, expectedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+          //  EXPECT_TRUE(close(matSmall * val, quaternion * val)) << (matSmall * val).convert_to_string() << " not equal to " << (quaternion * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, inferedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+    TEST(Matrices, Y2) {
+        std::vector input{ 0.97814764136552634 ,
+                            0.0 ,
+                            0.20791169731909154,
+                            0.0,
+                            0.0 ,
+                            1.0000000410955230 ,
+                            0.0,
+                            0.0,
+                            -0.20791169731909154,
+                            0.0,
+                            0.97814764136552634,
+                            0.0,
+                            0.0,
+                            -5.0,
+                            0.0,
+                            1.0 };
+        Math::vec3 expected(0, -12, 0);
+
+        Math::mat44 mat{ input };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        Math::mat33 matSmall;
+        Math::vec3 tmpX{ mat.col(0) };
+        Math::vec3 tmpY{ mat.col(1) };
+        Math::vec3 tmpZ{ mat.col(2) };
+        matSmall.set_col(tmpX, 0);
+        matSmall.set_col(tmpY, 1);
+        matSmall.set_col(tmpZ, 2);
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        Math::vec3 orientation = matSmall.euler();
+        Math::quat quaternion{ matSmall };
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(Math::vec3{ orientation });
+        for (auto val : vals) {
+           // EXPECT_TRUE(close(matSmall * val, expectedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+           // EXPECT_TRUE(close(matSmall * val, quaternion * val)) << (matSmall * val).convert_to_string() << " not equal to " << (quaternion * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, inferedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+    TEST(Matrices, Z2) {
+        std::vector input{ 0.95630478637671223 ,
+                            -0.29237168909633660 ,
+                            0.0,
+                            0.0,
+                            0.29237168909633660 ,
+                            0.95630478637671223 ,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0000000245160268,
+                            0.0,
+                            0.0,
+                            0.0,
+                            -5.0,
+                            1.0 };
+        Math::vec3 expected(0, 0, -17);
+
+        Math::mat44 mat{ input };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        Math::mat33 matSmall;
+        Math::vec3 tmpX{ mat.col(0) };
+        Math::vec3 tmpY{ mat.col(1) };
+        Math::vec3 tmpZ{ mat.col(2) };
+        matSmall.set_col(tmpX, 0);
+        matSmall.set_col(tmpY, 1);
+        matSmall.set_col(tmpZ, 2);
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        Math::vec3 orientation = matSmall.euler();
+        Math::quat quaternion{ matSmall };
+        auto inferedMat = Math::Mat<float, 3, 3, false>::rotation_matrix(Math::vec3{ orientation });
+        for (auto val : vals) {
+           // EXPECT_TRUE(close(matSmall * val, expectedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+            //EXPECT_TRUE(close(matSmall * val, quaternion * val)) << (matSmall * val).convert_to_string() << " not equal to " << (quaternion * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, inferedMat * val)) << (matSmall * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+
+    TEST(Quaternions, X1) {
+        std::vector input{ -0.30070576071739197, 0.0, -0.0, 0.95371699333190918 };
+        Math::vec3 expected(-35, 0, 0);
+        Math::quat quaternion(Math::vec4(input[1], input[2], input[3], input[0]));
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        //auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(quaternion.to_euler_angles());
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(Math::Mat<float, 3, 3, true>(quaternion).euler());
+        for (auto val : vals) {
+            EXPECT_TRUE(close(quaternion * val, expectedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+            EXPECT_TRUE(close(quaternion * val, inferedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+    TEST(Quaternions, Y1) {
+        std::vector input{ 0.0, -0.57357645034790039, -0.0, 0.81915205717086792 };
+        Math::vec3 expected(0, -70, 0);
+        Math::quat quaternion(Math::vec4(input[1], input[2], input[3], input[0]));
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        //auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(quaternion.to_euler_angles());
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(Math::Mat<float, 3, 3, true>(quaternion).euler());
+        for (auto val : vals) {
+            EXPECT_TRUE(close(quaternion * val, expectedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+            EXPECT_TRUE(close(quaternion * val, inferedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+    TEST(Quaternions, Z1) {
+        std::vector input{ 0.0, 0.0, 0.13052621483802795, 0.99144494533538818 };
+        Math::vec3 expected(0, 0, 15);
+        Math::quat quaternion(Math::vec4(input[1], input[2], input[3], input[0]));
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        auto eulers = quaternion.to_euler_angles();
+        //auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(quaternion.to_euler_angles());
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(Math::Mat<float, 3, 3, true>(quaternion).euler());
+        for (auto val : vals) {
+            EXPECT_TRUE(close(quaternion * val, expectedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+            EXPECT_TRUE(close(quaternion * val, inferedMat * val, 1e-3f)) << (quaternion * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+        }
+    }
+    TEST(Quaternions, Z3) {
+        std::vector input{ 0.4402274, 0.1760909, 0.114917, 0.8729181 };
+        Math::vec3 expected(52.9134602, 24.1172412, 2.862872);
+        std::vector inputM{ 0.9116 ,
+                            -0.04555 ,
+                            0.4086,
+                            0.3556 ,
+                            0.5860 ,
+                            -0.7280,
+                            -0.2063,
+                            0.8090,
+                            0.5504 };
+        Math::mat33 matSmall{ inputM };
+        matSmall = matSmall.transpose();
+        Math::vec3 orientation = matSmall.euler();
+        Math::quat quaternion(Math::vec4(input[1], input[2], input[3], input[0]));
+        std::array vals{
+            Math::vec3(0, 0, 1),
+            Math::vec3(0, 1, 0),
+            Math::vec3(1, 0, 0)
+        };
+        auto expectedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(expected);
+        auto eulers = quaternion.to_euler_angles();
+        auto inferedMat = Math::Mat<float, 3, 3, true>::rotation_matrix(eulers);
+        auto inferedMatExtract = Math::Mat<float, 3, 3, true>::rotation_matrix(orientation);
+        for (auto val : vals) {
+            //EXPECT_TRUE(close(matSmall * val, expectedMat * val, 1e-3f)) << (matSmall * val).convert_to_string() << " not equal to " << (expectedMat * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, quaternion * val, 1e-3f)) << (matSmall * val).convert_to_string() << " not equal to " << (quaternion * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, inferedMat * val, 1e-3f)) << (matSmall * val).convert_to_string() << " not equal to " << (inferedMat * val).convert_to_string();
+            EXPECT_TRUE(close(matSmall * val, inferedMatExtract * val, 1e-3f)) << (matSmall * val).convert_to_string() << " not equal to " << (inferedMatExtract * val).convert_to_string();
+        }
+    }
+
     TEST(Quaternions, Dot) {
         quat a, b;
         EXPECT_EQ(dot(a,b), 0);

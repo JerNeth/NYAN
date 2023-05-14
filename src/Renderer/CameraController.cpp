@@ -23,4 +23,16 @@ void nyan::CameraController::update(std::chrono::nanoseconds dt)
 
 	transform.position += mat * perspectiveCamera.right * dtf * movement.speed * r_input.get_axis(Input::Axis::MoveRight);
 	transform.position += mat * perspectiveCamera.forward * dtf * movement.speed * r_input.get_axis(Input::Axis::MoveForward);
+
+	static constexpr float maxError = 1e-4f;
+	m_changed = std::abs(r_input.get_axis(Input::Axis::LookUp)) > maxError ||
+		std::abs(r_input.get_axis(Input::Axis::LookRight)) > maxError ||
+		std::abs(r_input.get_axis(Input::Axis::MoveRight)) > maxError ||
+		std::abs(r_input.get_axis(Input::Axis::MoveForward)) > maxError;
+	
+}
+
+bool nyan::CameraController::changed() const
+{
+	return m_changed;
 }

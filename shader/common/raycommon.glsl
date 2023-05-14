@@ -1,3 +1,5 @@
+#ifndef RAYCOMMON_GLSL
+#define RAYCOMMON_GLSL
 struct hitPayload
 {
 	vec3 hitValue;
@@ -66,6 +68,7 @@ struct Payload {
 	vec3 normal;
 	float roughness;
 	vec3 shadingNormal;
+	vec3 emissive;
 	float hitT;
 	uint hitkind;
 };
@@ -81,12 +84,12 @@ Payload unpack_payload(in PackedPayload packed) {
 	payload.hitT = packed.hitT;
 	payload.worldPos = packed.worldPos;
 
-	payload.albedo.xy = unpackHalf2x16(packed.packed0.x);
 	{
-		const vec2 tmp = unpackHalf2x16(packed.packed0.y);
-		payload.albedo.z = tmp.x;
-		payload.opacity = tmp.y;
+		const vec4 tmp = unpackUnorm4x8(packed.packed0.x);
+		payload.albedo.xyz = tmp.xyz;
+		payload.opacity = tmp.w;
 	}
+	payload.emissive.xy = unpackHalf2x16(packed.packed0.y);
 	payload.normal.xy = unpackHalf2x16(packed.packed0.z);
 	{	
 		const vec2 tmp = unpackHalf2x16(packed.packed0.w);
@@ -99,6 +102,10 @@ Payload unpack_payload(in PackedPayload packed) {
 		payload.shadingNormal.z = tmp.x;
 		payload.roughness = tmp.y;
 	}
+	{
+		const vec2 tmp = unpackHalf2x16(packed.packed1.z);
+		payload.emissive.z = tmp.x;
+	}
 	payload.hitkind = packed.packed1.w;
 	return payload;
 }
@@ -107,14 +114,15 @@ PackedPayload pack_payload(Payload payload) {
 	PackedPayload packed;
 	packed.hitT = payload.hitT;
 	packed.worldPos = payload.worldPos;
-	packed.packed0.x = packHalf2x16(payload.albedo.xy);
-	packed.packed0.y = packHalf2x16(vec2(payload.albedo.z, payload.opacity));
+	packed.packed0.x = packUnorm4x8(vec4(payload.albedo, payload.opacity));
+	packed.packed0.y = packHalf2x16(payload.emissive.xy);
 	packed.packed0.z = packHalf2x16(payload.normal.xy);
 	packed.packed0.w = packHalf2x16(vec2(payload.normal.z, payload.metallic));
 	packed.packed1.x = packHalf2x16(payload.shadingNormal.xy);
 	packed.packed1.y = packHalf2x16(vec2(payload.shadingNormal.z, payload.roughness));
-	packed.packed1.z = payload.hitkind;
+	packed.packed1.z = packHalf2x16(vec2(payload.emissive.z, 1.0f));
 	packed.packed1.w = payload.hitkind;
 
 	return packed;
 }
+#endif

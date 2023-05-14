@@ -149,7 +149,7 @@ void main()
 	if(myTile != 0)
 		prefix = sharedPrefix;
 	
-	if(localIdx / subgroupSize > 0)
+	if((localIdx / subgroupSize) > 0)
 		prefix += chunks[(localIdx / subgroupSize) - 1];
 	
 

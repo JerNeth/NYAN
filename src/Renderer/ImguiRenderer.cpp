@@ -141,7 +141,9 @@ namespace MM {
 		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Depth Cosine Power", &volume.depthExponent, 1.f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragFloat("6 Moment Overestimation", &volume.momentOverestimation, 0.1f, 0.0f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Use Moments", &volume.useMoments);
+		ImGui::Checkbox("Use 6 Moments", &volume.use6Moments);
 		ImGui::Checkbox("Enabled", &volume.enabled);
 
 		{
@@ -198,8 +200,8 @@ namespace MM {
 			ImGui::Text("Irradiance Format");
 		}
 		{
-			static constexpr const char* depthFormats[] = { "R16G16B16A16F", "R32G32B32A32F" };
-			static const char* currentDepthFormat = depthFormats[1];
+			static constexpr const char* depthFormats[] = { "R16G16F", "R16G16B16A16F", "R32G32B32A32F" };
+			static const char* currentDepthFormat = depthFormats[2];
 			if (ImGui::BeginCombo("##Depth Format", currentDepthFormat))
 			{
 				for (const auto& format : depthFormats) {
@@ -212,7 +214,10 @@ namespace MM {
 				ImGui::EndCombo();
 			}
 			if (currentDepthFormat == depthFormats[0]) {
-				volume.depthImageFormat = nyan::shaders::R16G16B16A16F;
+				volume.depthImageFormat = nyan::shaders::R16G16F;
+			}
+			else if (currentDepthFormat == depthFormats[1]) {
+				volume.depthImageFormat = nyan::shaders::R32G32B32A32F;
 			}
 			else if (currentDepthFormat == depthFormats[1]) {
 				volume.depthImageFormat = nyan::shaders::R32G32B32A32F;
@@ -274,8 +279,9 @@ namespace MM {
 		ImGui::DragFloat3("Origin", &volume.origin.x());
 		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Samples per Probe", reinterpret_cast<int*>(&volume.samplesPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		//ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::DragInt("Maximum Reservoir Age", reinterpret_cast<int*>(&volume.maximumReservoirAge), 1, 1, 16384, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
+		ImGui::DragInt("Maximum Path Length", reinterpret_cast<int*>(&volume.maxPathLength), 1, 1, 64, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
 		ImGui::Checkbox("Sample Validation Enabled", &volume.validationEnabled);
 		//if (ImGui::Checkbox("Spatial Resample", &volume.spatialReuse))
 		ImGui::Checkbox("Spatial Resample", &volume.spatialReuse);

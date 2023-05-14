@@ -90,6 +90,7 @@ layout(set = 0, binding = SAMPLED_IMAGE_BINDING) uniform utexture2DArray utextur
 
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgb10_a2) uniform image2D imagesRGB10_A2[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, r11f_g11f_b10f) uniform image2D imagesR11G11B10F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, rg16f) uniform image2D imagesRG16F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba16f) uniform image2D imagesRGBA16F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba32f) uniform image2D imagesRGBA32F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, r32f) uniform image2D imagesR32F[IMAGE_COUNT];
@@ -97,6 +98,9 @@ layout(set = 0, binding = STORAGE_IMAGE_BINDING, r32ui) uniform uimage2D imagesR
 
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgb10_a2) uniform image2DArray imagesArrayRGB10_A2[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, r11f_g11f_b10f) uniform image2DArray imagesArrayR11G11B10F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, rg16f) uniform image2DArray imagesArrayRG16F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, rg16f) readonly uniform image2DArray imagesArrayReadRG16F[IMAGE_COUNT];
+layout(set = 0, binding = STORAGE_IMAGE_BINDING, rg16f) writeonly uniform image2DArray imagesArrayWriteRG16F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba16f) uniform image2DArray imagesArrayRGBA16F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, rgba32f) uniform image2DArray imagesArrayRGBA32F[IMAGE_COUNT];
 layout(set = 0, binding = STORAGE_IMAGE_BINDING, r32f) uniform image2DArray imagesArrayR32F[IMAGE_COUNT];

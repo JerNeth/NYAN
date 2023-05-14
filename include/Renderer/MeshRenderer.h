@@ -5,6 +5,9 @@
 #include "Renderer.h"
 #include "RayTracePipeline.h"
 #include "RenderManager.h"
+#include <random>
+#include <memory>
+
 
 namespace nyan {
 	
@@ -73,18 +76,37 @@ namespace nyan {
 			uint32_t accBinding;
 			uint32_t sceneBinding;
 			uint32_t meshBinding;
-			uint32_t imageBinding;
-			Math::vec4 col{ 0.4f, 0.3f, 0.8f, 1.0f };
-			Math::vec4 col2{ 0.4f, 0.6f, 0.8f, 1.f };
+			uint32_t diffuseImageBinding;
+			uint32_t specularImageBinding;
+			uint32_t rngSeed;
+			uint32_t frameCount;
+		};		
+		struct RTConfig
+		{
+			uint32_t maxPathLength;
+			VkBool32 antialiasing;
+			static constexpr const char* maxPathLengthShaderName{ "maxPathLength" };
+			static constexpr const char* antialiasingShaderName{ "antialiasing" };
+			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
+				return lhs.maxPathLength == rhs.maxPathLength &&
+					lhs.antialiasing == rhs.antialiasing;
+			}
 		};
 	public:
-		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, nyan::RenderResource::Id rendertarget);
-		void render(vulkan::RaytracingPipelineBind& bind);
+		RTMeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const Lighting& lighting);
+		void render(vulkan::CommandBuffer& cmd, nyan::Renderpass&);
+		void reset();
+		void set_antialiasing(bool antialising);
+		void set_max_path_length(uint32_t maxPathLength);
 	private:
-		vulkan::RaytracingPipelineConfig generate_config();
-
-		vulkan::RTPipeline m_pipeline;
-		nyan::RenderResource::Id m_rendertarget;
+		vulkan::RTPipeline& get_rt_pipeline(const RTConfig& config);
+		vulkan::RaytracingPipelineConfig generate_rt_config(const RTConfig& config);
+		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_rtPipelines;
+		Lighting m_lighting;
+		std::unique_ptr<std::mt19937> m_generator{ new std::mt19937(420) };
+		uint32_t m_frameCount{ 0 };
+		uint32_t m_maxPathLength{ 10 };
+		bool m_antialising{ true };
 	};
 }
 

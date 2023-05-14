@@ -185,6 +185,7 @@ namespace Math {
 		constexpr inline Mat transpose() const;
 		constexpr inline Scalar determinante() const;
 		constexpr inline bool inverse(Mat& res) const;
+		constexpr inline Vec<Scalar, 3> euler() const;
 
 		constexpr static Mat eye(const Scalar& val) 
 		{

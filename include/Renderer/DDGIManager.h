@@ -29,13 +29,16 @@ namespace nyan {
 			float irradianceThreshold{0.25f};
 			float lightToDarkThreshold{ 0.8f };
 			float depthExponent{ 5.f };
+			float momentOverestimation{ 0.5f };
 			float visualizerRadius{ 1.0f };
 			RenderResource::Id depthResource{};
+			RenderResource::Id depth2Resource{};
 			RenderResource::Id irradianceResource{};
 			RenderResource::Id data0Resource{};
 			RenderResource::Id data1Resource{};
 			RenderResource::Id data2Resource{};
 			uint32_t fixedRayCount{ 32 };
+			uint32_t usedEstimator{ 0 };
 			float relocationBackfaceThreshold{ 0.25f };
 			float backfaceThreshold{ 0.1f };
 			float minFrontFaceDistance{ 1.f };
@@ -44,6 +47,7 @@ namespace nyan {
 			bool visualizeDepth{ false };
 			bool visualizeDirections{ false };
 			bool useMoments{ false };
+			bool use6Moments{ false };
 			bool relocationEnabled{ false };
 			bool classificationEnabled{ false };
 			bool dynamicRayAllocation{ false };
@@ -126,7 +130,7 @@ namespace nyan {
 			uint32_t depthProbeSize{ 16 };
 			uint32_t fixedRayCount{ 32 };
 			bool validationEnabled{ true };
-			bool recurse{ true };
+			bool recurse{ false };
 			bool spatialReuse{ false };
 			bool spatialReuseValidation{ false };
 			bool enabled{ true };
@@ -142,6 +146,7 @@ namespace nyan {
 			uint32_t irradianceImageFormat{ nyan::shaders::R16G16B16A16F };
 			uint32_t depthImageFormat{ nyan::shaders::R32G32B32A32F };
 
+			uint32_t maxPathLength{ 10 };
 			uint32_t maximumReservoirAge{ 32 };
 			uint32_t frames{ 0 };
 			uint32_t gpuVolume{ nyan::InvalidBinding };

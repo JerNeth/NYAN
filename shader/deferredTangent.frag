@@ -38,8 +38,7 @@ void main() {
     VertexData vertexData;
     vertexData.normal = fragNormal;
     vertexData.tangent = fragTangent.xyz;
-    orthonormalize(vertexData.normal, vertexData.tangent, vertexData.bitangent);
-    vertexData.bitangent *= fragTangent.w;
+    orthonormalize(vertexData, sign(fragTangent.w));
     vertexData.worldPos = fragWorldPos;
     vertexData.uv = fragTexCoord;
     

@@ -83,6 +83,20 @@ vec3 get_probe_coordinates(uint probeIdx, DDGIVolume volume)
 	return get_probe_coordinates(idx, volume);
 }
 
+vec3 get_probe_coordinates_not_offset(in uvec3 idx,in DDGIVolume volume)
+{
+	vec3 origin = get_volume_origin(volume);
+	vec3 spacing = get_volume_spacing(volume);
+	return origin + idx * spacing;
+}
+
+
+vec3 get_probe_coordinates_not_offset(uint probeIdx, DDGIVolume volume) 
+{
+	uvec3 idx = get_probe_index(probeIdx, volume);
+	return get_probe_coordinates_not_offset(idx, volume);
+}
+
 vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount, in DDGIVolume volume)
 {
 	float maxCount = rayCount;
@@ -102,7 +116,7 @@ vec3 get_ray_direction(in vec4 randomRotation, in uint rayIdx, in uint rayCount,
 
 float get_volume_max_distance(in DDGIVolume volume)
 {
-	return length(get_volume_spacing(volume)) * 1.5f; //Get maximum possible distance
+	return length(get_volume_spacing(volume) * 2.f); //Get maximum possible distance
 }
 
 ivec3 get_probe_texel_coords(ivec3 probeIdx, in ivec2 probeTexelSize, in DDGIVolume volume) {
@@ -117,4 +131,8 @@ vec3 get_probe_uv(in ivec3 probeIdx, in vec2 octahedralCoords, in uint probeTexe
 	vec2 texSize = vec2(volume.probeCountX, volume.probeCountY) * (probeTexelSize + 2);
 	return vec3(uv / texSize, texelCoords.z);
 }
+
+const float DDGIBackfaceFactor = -0.2f;
+const float DDGIInverseBackfaceFactor = 1.f / DDGIBackfaceFactor;
+
 #endif

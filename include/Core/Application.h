@@ -30,6 +30,7 @@ namespace nyan {
 		void each_frame_end(std::function<void()> endFrame);
 		void each_update(std::function<void(std::chrono::nanoseconds)> update);
 		void update();
+		void quit_after(uint64_t numFrames);
 	private:
 		bool setup_glfw();
 		bool setup_glfw_window();
@@ -56,6 +57,7 @@ namespace nyan {
 		std::chrono::time_point<std::chrono::steady_clock> lastUpdate;
 		uint64_t m_frameCount {0};
 		uint64_t m_tickCount {0};
+		uint64_t m_maxFrameCount{ 0 };
 	};
 }
 

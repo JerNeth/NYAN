@@ -1,4 +1,3 @@
-#include "Matrix.h"
 #include "Math/Matrix.h"
 #include "Math/LinAlg.h"
 using namespace Math;
@@ -25,23 +24,25 @@ constexpr Math::Mat<Scalar, Size_y, Size_x, column_major>::Mat(const Quaternion<
 {
 	assert(("Rotation matrices from Quaternions are inherently 3D or 3D homogeneous", (Size_x == 3 || Size_x == 4) && (Size_y == 3 || Size_y == 4)));
 	Scalar s2 = Scalar(2) / quaternion.squared_norm();
+	//auto normQuat = quaternion.normalize();
+	
+	Scalar qr = quaternion.m_real;
+	Scalar qi = quaternion.m_imaginary[0];
+	Scalar qj = quaternion.m_imaginary[1];
+	Scalar qk = quaternion.m_imaginary[2];
 
-	Scalar q0 = quaternion.m_real;
-	Scalar q1 = quaternion.m_imaginary[0];
-	Scalar q2 = quaternion.m_imaginary[1];
-	Scalar q3 = quaternion.m_imaginary[2];
+	at(0, 0) = 1 - s2 * (qj * qj + qk * qk );
+	at(0, 1) = s2 * (qi * qj + qk * qr);
+	at(0, 2) = s2 * (qi * qk - qj * qr);
 
-	at(0, 0) = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
-	at(0, 1) = s2 * (q1 * q2 + q0 * q3);
-	at(0, 2) = s2 * (q1 * q3 - q0 * q2);
+	at(1, 0) = s2 * (qi * qj - qk * qr);
+	at(1, 1) = 1 - s2 * (qi * qi + qk * qk );
+	at(1, 2) = s2 * (qj * qk + qi * qr);
 
-	at(1, 0) = s2 * (q1 * q2 - q0 * q3);
-	at(1, 1) = q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3;
-	at(1, 2) = s2 * (q0 * q1 + q2 * q3);
+	at(2, 0) = s2 * (qi * qk + qj * qr);
+	at(2, 1) = s2 * (qj * qk - qi * qr);
+	at(2, 2) = 1 - s2 * (qi * qi + qj * qj);
 
-	at(2, 0) = s2 * (q0 * q2 + q1 * q3);
-	at(2, 1) = s2 * (q2 * q3 - q0 * q1);
-	at(2, 2) = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
 
 	if constexpr (Size_x == 4) {
 		at(3, 0) = Scalar(0);
@@ -378,6 +379,31 @@ inline constexpr bool Math::Mat<Scalar, Size_y, Size_x, column_major>::inverse(M
 }
 
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
+inline constexpr Vec<Scalar, 3> Math::Mat<Scalar, Size_y, Size_x, column_major>::euler() const
+{
+	assert(Size_x > 2 && Size_y > 2);
+	assert(Size_x < 5 && Size_y < 5);
+	//Math::vec3 tmpX{ col(0) };
+	//Math::vec3 tmpY{ col(1) };
+	//Math::vec3 tmpZ{ col(2) };
+	if (Math::close(col(0)[2], Scalar (- 1.0f))) {
+		return Vec<Scalar, 3>{ Math::pi_2 * Math::rad_to_deg,
+			Math::pi_2 * Math::rad_to_deg,
+			std::atan2(col(1)[0], -col(1)[1]) * Math::rad_to_deg };
+	}
+	else if (Math::close(col(0)[2], Scalar(1.0f))) {
+		return Vec<Scalar, 3>{ Math::pi_2 * Math::rad_to_deg,
+			-Math::pi_2 * Math::rad_to_deg,
+			std::atan2(col(1)[0], -col(1)[1]) * Math::rad_to_deg };
+	}
+	else {
+		return Vec<Scalar, 3>{ std::atan2(col(1)[2] , col(2)[2]) * Math::rad_to_deg,
+			std::atan2(-col(0)[2] , std::sqrt(col(1)[2] * col(1)[2] + col(2)[2] * col(2)[2])) * Math::rad_to_deg,
+			std::atan2(col(0)[1], col(0)[0]) * Math::rad_to_deg };
+	}
+}
+
+template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 inline constexpr void Math::Mat<Scalar, Size_y, Size_x, column_major>::set_to_identity()
 {
 	for (int i = 0; i < Size_y * Size_x; i++)
@@ -390,6 +416,9 @@ inline constexpr void Math::Mat<Scalar, Size_y, Size_x, column_major>::set_to_id
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 Mat<Scalar, 3, 3, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>::rotation_matrix(Scalar roll, Scalar pitch, Scalar yaw) {
 
+	// roll		[x]
+	// pitch	[y]
+	// yaw		[z]
 	//TODO use doubles until return for more precision
 	auto cy = cos(yaw * deg_to_rad);
 	auto sy = sin(yaw * deg_to_rad);
@@ -421,7 +450,7 @@ Mat<Scalar, 4, 4, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>:
 
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 Mat<Scalar, 4, 4, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>::affine_transformation_matrix(Vec<Scalar, 3>  roll_pitch_yaw, Vec<Scalar, 3>  translation_vector, Vec<Scalar, 3>  scale) { // roll (x), pitch (y), yaw (z)
-	Mat<Scalar, 4, 4, column_major> mat = affine_transformation_matrix(roll_pitch_yaw, translation_vector);
+	Mat<Scalar, 4, 4, column_major> mat = Math::Mat<Scalar, Size_y, Size_x, column_major>::affine_transformation_matrix(roll_pitch_yaw, translation_vector);
 
 	for (size_t col = 0; col < 3; ++col)
 		for (size_t row = 0; row < 3; ++row)

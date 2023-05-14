@@ -142,9 +142,10 @@ namespace Math {
 		}
 		constexpr friend inline Vec<Scalar, 3> operator*(const Quaternion& lhs, const Vec<Scalar, 3>& rhs) noexcept {
 			//Vec<Scalar, 3> result = Scalar(2) * dot(m_imaginary, rhs) * m_imaginary + (square(m_real) - dot(m_imaginary, m_imaginary)) * rhs + Scalar(2) * m_real * (cross(m_imaginary, rhs));
-			return Scalar(2.) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary 
-				+ (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs 
-				+ Scalar(2.) * lhs.m_real * lhs.m_imaginary.cross(rhs);
+/*			return Scalar(2.) * lhs.m_imaginary.dot(rhs) * lhs.m_imaginary
+				+ (square(lhs.m_real) - lhs.m_imaginary.dot(lhs.m_imaginary)) * rhs
+				+ Scalar(2.) * lhs.m_real * lhs.m_imaginary.cross(rhs);		*/	
+			return rhs + ((lhs.m_imaginary.cross(rhs) * lhs.m_real) + lhs.m_imaginary.cross(lhs.m_imaginary.cross(rhs))) * 2.f;
 			/* As suggested by Horn, I don't know which one is right
 			Scalar xx = lhs.m_imaginary[0] * lhs.m_imaginary[0];
 			Scalar xy = lhs.m_imaginary[0] * lhs.m_imaginary[1];
@@ -248,23 +249,54 @@ namespace Math {
 			// roll (x)
 			Scalar sinr_cosp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[0] + m_imaginary[1] * m_imaginary[2]);
 			Scalar cosr_cosp = static_cast<Scalar>(1.0) - static_cast<Scalar>(2.0) * static_cast<Scalar>(square(m_imaginary[0]) + square(m_imaginary[1]));
-			result[1] = Scalar(std::atan2(sinr_cosp, cosr_cosp) * rad_to_deg);
+			result[0] = Scalar(std::atan2(sinr_cosp, cosr_cosp) * rad_to_deg);
 
 			// pitch (y)
-			
+			//
+			//Scalar sinp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[2] + m_imaginary[1] * m_imaginary[0]);
+			//if (std::abs(sinp) >= static_cast<Scalar>(0.999))
+			//	return Vec<Scalar, 3> { Scalar(std::copysign(2 * std::atan2(m_imaginary[0], m_real), sinp)* rad_to_deg),
+			//						Scalar(std::copysign(pi_2, sinp)* rad_to_deg),
+			//						0.f};
+			//else
+			//	result[1] = Scalar(std::asin(sinp) * rad_to_deg);
 			Scalar sinp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[1] - m_imaginary[2] * m_imaginary[0]);
 			if (std::abs(sinp) >= static_cast<Scalar>(1.0))
-				result[2] = Scalar(std::copysign(pi_2, sinp) * rad_to_deg);
+				result[1] = Scalar(std::copysign(pi_2, sinp) * rad_to_deg);
 			else
-				result[2] = Scalar(std::asin(sinp) * rad_to_deg);
+				result[1] = Scalar(std::asin(sinp) * rad_to_deg);
+			//auto p = Scalar(2.0) * (m_real * m_imaginary[1] - m_imaginary[0] * m_imaginary[2]);
+			//Scalar sinp = std::sqrt(Scalar(1.0) + p);
+			//Scalar cosp = std::sqrt(Scalar(1.0) - p);
+			//result[1] = Scalar((Scalar(2.0) * std::atan2(sinp, cosp) - Math::pi_2) * rad_to_deg);
 			
 			// yaw (z)
 
 			Scalar siny_cosp = static_cast<Scalar>(2.0) * static_cast<Scalar>(m_real * m_imaginary[2] + m_imaginary[1] * m_imaginary[0]);
 			Scalar cosy_cosp = static_cast<Scalar>(1.0) - static_cast<Scalar>(2.0) * static_cast<Scalar>(square(m_imaginary[1]) + square(m_imaginary[2]));
-			result[0] = Scalar(std::atan2(siny_cosp, cosy_cosp) * rad_to_deg);
+			result[2] = Scalar(std::atan2(siny_cosp, cosy_cosp) * rad_to_deg);
 
 			return result;
+			//float x = m_imaginary[0];
+			//float y = m_imaginary[1];
+			//float z = m_imaginary[2];
+			//float w = m_real;
+			//auto t0 = 2.0 * (w * x + y * z);
+			//auto t1 = 1.0 - 2.0 * (x * x + y * y);
+			//auto roll_x = std::atan2(t0, t1) * rad_to_deg;
+
+			//auto t2 = 2.0 * (w * y - z * x);
+			//if (t2 > 1.0)
+			//	t2 = 1.0;
+			//if (t2 < -1.0)
+			//	t2 = -1.0;
+			//auto pitch_y = std::asin(t2) * rad_to_deg;
+
+			//auto t3 = 2.0 * (w * z + x * y);
+			//auto t4 = 1.0 - 2.0 * (y * y + z * z);
+			//auto yaw_z = std::atan2(t3, t4) * rad_to_deg;
+
+			//return Vec<Scalar, 3>{ roll_x, pitch_y, yaw_z };
 		}
 		// ============================================================================================================
 		// Frens

@@ -65,22 +65,35 @@ vec2 get_octahedral_coords(in vec3 direction)
 	return uv;
 }
 
+//Taken from [Cigolle 2014 A Survey of Efficient Representations for Independent Unit Vectors]
 vec3 pack1212(vec2 val) 
 {
-    vec2 val1212 = floor(val * 4095);
-    vec2 high = floor(val1212 / 256);
-    vec2 low = val1212 - high * 256;
-    vec3 val888 = vec3(low, high.x + high.y * 16);
-    return clamp(val888 / 255, 0, 1);
+//    vec2 val1212 = floor(val * 4095);
+//    vec2 high = floor(val1212 / 256);
+//    vec2 low = val1212 - high * 256;
+//    vec3 val888 = vec3(low, high.x + high.y * 16);
+//    return clamp(val888 / 255, 0, 1);
+    vec2 u = vec2(round(clamp(val, -1.0f, 1.0f) * 2047 + 2047));
+    float t = floor(u.y / 256.0f);
+
+    return floor(vec3(u.x / 16.0f,
+                fract(u.x / 16.0f) * 256.0f + t,
+                u.y - t * 256.0f)) / 255.0;
 }
 
 vec2 unpack1212(vec3 val)
 {
-    vec3 val888 = floor(val*255);
-    float high = floor(val888.z / 16);
-    float low = val888.z - high * 16;
-    vec2 val1212 = val888.xy + vec2(low, high) * 256;
-    return clamp(val1212 / 4095, 0, 1);
+//    vec3 val888 = floor(val*255);
+//    float high = floor(val888.z / 16);
+//    float low = val888.z - high * 16;
+//    vec2 val1212 = val888.xy + vec2(low, high) * 256;
+//    return clamp(val1212 / 4095, 0, 1);
+    val *= 255.f;
+    val.y *= (1.0f / 16.0f);
+    vec2 s = vec2(val.x * 16.0f + floor(val.y),
+                    fract(val.y) * (16.0f * 256.f) + val.z);
+    return clamp(s * (1.0f / 2047.f) - 1.0, vec2(-1.0f), vec2(1.0f));
+
 }
 
 //void calculateTBN(inout vec3 normal, inout vec3 tangent, inout vec3 bitangent, vec3 position, vec2 uv)
@@ -92,15 +105,28 @@ vec2 unpack1212(vec3 val)
 //	bitangent = -normalize(cross(normal, tangent));
 //}
 
-void orthonormalize(inout vec3 normal, inout vec3 tangent, out vec3 bitangent) {
+void orthonormalize(inout VertexData vertexData, float bSign) {
     //normal = normalize(normal);
     //tangent = normalize(tangent - dot(normal, tangent) * normal);
     //bitangent = normalize(bitangent - dot(normal, bitangent) * normal - dot(tangent, bitangent) * tangent);
-    normal = normalize(normal);
-    tangent = normalize(tangent);
-    tangent = normalize(tangent - dot(tangent, normal) * normal);
-    bitangent = normalize(cross(normal, tangent));
+    #define ORTHONORMALIZE
+    #ifdef ORTHONORMALIZE
+    vertexData.normal = normalize(vertexData.normal);
+    vertexData.tangent = normalize(vertexData.tangent);
+    vertexData.tangent = normalize(vertexData.tangent - dot(vertexData.tangent, vertexData.normal) * vertexData.normal);
+    vertexData.bitangent = normalize(cross(vertexData.normal, vertexData.tangent)) * bSign;
+    #else
+    vertexData.bitangent = cross(vertexData.normal, vertexData.tangent) * bSign;
+    #endif
 }
+
+//vec3 mikktspace(in vec3 vN, inout vec3 vT, in float bSign, in vec2 vNt) {
+//    //normal = normalize(normal);
+//    //tangent = normalize(tangent - dot(normal, tangent) * normal);
+//    //bitangent = normalize(bitangent - dot(normal, bitangent) * normal - dot(tangent, bitangent) * tangent);
+//    vec3 vB = bSign * cross(vN, vT);
+//    return normalize(vNt.x * vT + vNt.y * vB + vNt.z * vN);
+//}
 
 vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec3 tangent, in vec3 bitangent)
 {
@@ -108,11 +134,11 @@ vec3 tangentSpaceNormal(in vec2 normalMapSample, in vec3 normal, in vec3 tangent
     vec2 convertedNormalMapSample = fma(normalMapSample,vec2(2.0), vec2(-1.0));
     vec3 tangentNormal = vec3(convertedNormalMapSample.xy, sqrt(1.0-convertedNormalMapSample.x*convertedNormalMapSample.x - convertedNormalMapSample.y*convertedNormalMapSample.y));
 
-	mat3 tangentFrame = mat3(tangent , bitangent , normal);
-    return tangentFrame * tangentNormal;
+
+    
+    return normalize(tangentNormal.x * tangent + tangentNormal.y * bitangent + tangentNormal.z * normal);
 
 
-    return normalize(normal);
 }
 
 

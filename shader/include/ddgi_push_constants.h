@@ -40,6 +40,8 @@ struct DDGIPushConstants {
 	uint ddgiCount;
 	uint ddgiIndex;
 	uint renderTarget;
+	uint pad;
+	uint64_t renderBufferAddress;
 	vec4 randomRotation;
 };
 #ifndef __cplusplus

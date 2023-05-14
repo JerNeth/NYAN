@@ -5,6 +5,7 @@
 #include "VulkanWrapper/Sampler.h"
 #include "Utility/Exceptions.h"
 #include "entt/entt.hpp"
+#include <ctime>
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
 	nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
@@ -229,9 +230,140 @@ nyan::LightComposite::LightComposite(vulkan::LogicalDevice& device, entt::regist
 			pipelineBind.set_scissor_with_count(1, &scissor);
 			pipelineBind.set_viewport_with_count(1, &viewport);
 
-
 			render(pipelineBind);
 		}, true);
+		pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
+			{
+				if (m_dumpToDisk) {
+					m_dumpToDisk = false;
+					auto* data = (*m_screenshotBuffer)->map_data();
+					std::vector<uint32_t> convData(m_screenshotWidth * m_screenshotHeight);
+					if (m_screenshotFormat == VK_FORMAT_A2B10G10R10_UNORM_PACK32) {
+						for (size_t i = 0; i < convData.size(); ++i) {
+							uint32_t A2BGR10 = reinterpret_cast<uint32_t*>(data)[i];
+							uint32_t R8 = static_cast<uint8_t>(((A2BGR10 >> 0) & (0x3FF)) * (1.f / 1023.f) * 255.f);
+							uint32_t G8 = static_cast<uint8_t>(((A2BGR10 >> 10) & (0x3FF)) * (1.f / 1023.f) * 255.f);
+							uint32_t B8 = static_cast<uint8_t>(((A2BGR10 >> 20) & (0x3FF)) * (1.f / 1023.f) * 255.f);
+							uint32_t A8 = static_cast<uint8_t>(((A2BGR10 >> 30) & (0x3)) * (1.f / 3.f) * 255.f);
+							uint32_t RGBA8 = (A8 << (24)) |
+								(B8 << (16)) |
+								(G8 << (8)) |
+								(R8 << (0));
+							convData[i] = RGBA8;
+						}
+					}
+					else if (m_screenshotFormat == VK_FORMAT_B8G8R8A8_UNORM){
+						for (size_t i = 0; i < convData.size(); ++i) {
+							uint32_t B8G8R8A8 = reinterpret_cast<uint32_t*>(data)[i];
+							uint32_t R8 = (B8G8R8A8 >> 16) & (0xFF);
+							uint32_t G8 = (B8G8R8A8 >> 8) & (0xFF);
+							uint32_t B8 = (B8G8R8A8 >> 0) & (0xFF);
+							uint32_t A8 = (B8G8R8A8 >> 24) & (0xFF);
+							uint32_t RGBA8 = (A8 << (24)) |
+								(B8 << (16)) |
+								(G8 << (8)) |
+								(R8 << (0));
+							convData[i] = RGBA8;
+						}
+					}
+					else {
+						return;
+					}
+					time_t rawtime;
+					struct tm* timeinfo;
+					char buffer[80];
+
+					time(&rawtime);
+					timeinfo = localtime(&rawtime);
+
+					//strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S.png", timeinfo);
+					strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S.bmp", timeinfo);
+					std::string str(buffer);
+					if (m_seriesOffset <= (m_seriesCounter -1 ) && (m_seriesCounter - 1) < (m_seriesMax + m_seriesOffset))
+						str = (m_seriesFolder / (std::to_string(m_seriesCounter - 1) + ".bmp")).string();
+						//str = (m_seriesFolder / (std::to_string(m_seriesCounter - 1) + ".png")).string();
+					//str = "Screenshot_" + str + ".png";
+					//str = "Screenshot.png";
+					//stbi_write_png(str.c_str(), m_screenshotWidth, m_screenshotHeight, 4, convData.data(), m_screenshotWidth * 4);
+					stbi_write_bmp(str.c_str(), m_screenshotWidth, m_screenshotHeight, 4, convData.data());
+				}
+				if (m_screenshot || (m_seriesCounter <( m_seriesMax + m_seriesOffset)))
+				{
+					if (m_seriesCounter < (m_seriesMax + m_seriesOffset))
+						m_seriesCounter++;
+					else
+						m_screenshot = false;
+					if (m_seriesCounter < m_seriesOffset)
+						return;
+
+					m_dumpToDisk = true;
+					auto& swapchain = r_pass.get_graph().get_resource(r_pass.get_graph().get_swapchain_resource());
+					auto& img = *swapchain.handle;
+					std::vector copy{ VkBufferImageCopy{
+						.bufferOffset {0},
+						.bufferRowLength {0},
+						.bufferImageHeight {0},
+						.imageSubresource {
+							.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+							.mipLevel {0},
+							.baseArrayLayer {0},
+							.layerCount {1}
+						},
+						.imageOffset {0, 0, 0},
+						.imageExtent {img.get_info().width, img.get_info().height, img.get_info().depth},
+					} };
+					cmd.barrier2(VkImageMemoryBarrier2{
+						.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+						.pNext {nullptr},
+						.srcStageMask {VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT},
+						.srcAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT},
+						.dstStageMask {VK_PIPELINE_STAGE_2_TRANSFER_BIT},
+						.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT},
+						.oldLayout{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+						.newLayout{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL},
+						.image{img},
+						.subresourceRange{
+							.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+							.baseMipLevel {0},
+							.levelCount {VK_REMAINING_MIP_LEVELS},
+							.baseArrayLayer {0},
+							.layerCount {VK_REMAINING_ARRAY_LAYERS}
+						}
+						});
+					m_screenshotFormat = img.get_format();
+					m_screenshotWidth = img.get_info().width;
+					m_screenshotHeight = img.get_info().height;
+					auto bufferSize = vulkan::format_block_size(img.get_format()) * img.get_info().width * img.get_info().height * img.get_info().depth;
+					if (!m_screenshotBuffer || (*m_screenshotBuffer)->get_size() < bufferSize) {
+						m_screenshotBuffer = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(vulkan::BufferInfo{
+							.size {bufferSize},
+							.usage {VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+							.offset {0},
+							.memoryUsage {VMA_MEMORY_USAGE_CPU_ONLY},
+							}, {}));
+					}
+					cmd.copy_image_to_buffer(img, *m_screenshotBuffer, copy, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+					cmd.barrier2(VkImageMemoryBarrier2{
+						.sType {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2},
+						.pNext {nullptr},
+						.srcStageMask {VK_PIPELINE_STAGE_2_TRANSFER_BIT},
+						.srcAccessMask {VK_ACCESS_2_MEMORY_READ_BIT},
+						.dstStageMask {VK_PIPELINE_STAGE_2_TRANSFER_BIT},
+						.dstAccessMask {VK_ACCESS_2_NONE},
+						.oldLayout{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL },
+						.newLayout{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+						.image{img},
+						.subresourceRange{
+							.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+							.baseMipLevel {0},
+							.levelCount {VK_REMAINING_MIP_LEVELS},
+							.baseArrayLayer {0},
+							.layerCount {VK_REMAINING_ARRAY_LAYERS}
+						}
+						});
+				}
+			}, false);
 }
 
 void nyan::LightComposite::render(vulkan::GraphicsPipelineBind& bind)
@@ -250,6 +382,19 @@ void nyan::LightComposite::render(vulkan::GraphicsPipelineBind& bind)
 void nyan::LightComposite::set_tonemapping(ToneMapping type)
 {
 	m_tonemappingType = type;
+}
+
+void nyan::LightComposite::queue_screenshot()
+{
+	m_screenshot = true;
+}
+
+void nyan::LightComposite::queue_recording(const std::filesystem::path& folder, uint32_t count, uint32_t recordingOffset)
+{
+	m_seriesFolder = folder;
+	m_seriesMax = count;
+	m_seriesCounter = 0;
+	m_seriesOffset = recordingOffset;
 }
 
 void nyan::LightComposite::create_pipeline()

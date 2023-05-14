@@ -103,7 +103,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.transformBuffer { VK_NULL_HANDLE },
 			.transformOffset { 0 },
 			.indexType { mesh.mesh.indexType },
-			.geometryFlags {(data.type == nyan::Mesh::RenderType::Opaque) ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{0}},
+			.geometryFlags {(data.type == nyan::Mesh::RenderType::Opaque) ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_NV }},
 		};
 		auto ret = m_builder->queue_item(blasInfo);
 		if(ret)
@@ -207,6 +207,10 @@ void nyan::InstanceManager::set_instance_custom_index(InstanceId id, uint32_t in
 void nyan::InstanceManager::set_instance(InstanceId id, const InstanceData& instance)
 {
 	set(id, instance);
+}
+const InstanceData& nyan::InstanceManager::get_instance(InstanceId id) const
+{
+	return get(id);
 }
 InstanceId nyan::InstanceManager::add_instance(const InstanceData& instanceData)
 {
@@ -379,6 +383,11 @@ void nyan::SceneManager::set_view_pos(const Math::vec3& pos)
 	get(0).viewerPosX = pos[0];
 	get(0).viewerPosY = pos[1];
 	get(0).viewerPosZ = pos[2];
+}
+
+Math::vec3 nyan::SceneManager::get_view_pos() const
+{
+	return Math::vec3{ get(0).viewerPosX , get(0).viewerPosY ,get(0).viewerPosZ };
 }
 
 void nyan::SceneManager::set_camera_up(const Math::vec3& up)

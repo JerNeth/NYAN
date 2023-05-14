@@ -8,10 +8,12 @@
 #include "common.glsl"
 #include "extracts.glsl"
 #include "lighting.glsl"
+#define RAYTRACE_DDGI_VOLUMES
 #include "DDGI/ddgi_sampling.glsl"
 #define RAYTRACE_DDGI_RESTIR_VOLUMES
 #include "DDGIReSTIR/ddgi_restir_sample.glsl"
 #include "gbuffer.glsl"
+#include "raytrace_lighting.glsl"
 
 layout(std430, push_constant) uniform PushConstants
 {
@@ -42,7 +44,7 @@ layout(std430, push_constant) uniform PushConstants
 } constants;
 layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-layout(location = 1) rayPayloadEXT float visibility;
+//layout(location = 1) rayPayloadEXT float visibility;
 
 
 float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax) 
@@ -65,7 +67,7 @@ float light_visibility(in ShadingData shadingData, in vec3 dir, in float tMax)
     return visibility;
     //return 1.0f;
 }
-const float minLight = 1e-5;
+//const float minLight = 1e-5;
 void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse, inout vec3 specular) 
 {
     for(int i = 0; i < maxNumPointLights; i++) 
@@ -91,8 +93,8 @@ void point_lights(in Scene scene, in ShadingData shadingData, inout vec3 diffuse
         lightData.dir = lightDir;
         lightData.intensity = light.intensity * falloff;
         lightData.color = light.color.rgb;
-        calc_light(lightData, shadingData, diffuse, specular);
-        //diffuse_light(lightData, shadingData, diffuse);
+        //calc_light(lightData, shadingData, diffuse, specular);
+        diffuse_light(lightData, shadingData, diffuse);
     }
 }
 
@@ -108,8 +110,8 @@ void direct_lighting(in Scene scene, in ShadingData shadingData, out vec3 diffus
             lightData.dir = -scene.dirLight.dir;
             lightData.intensity = scene.dirLight.intensity;
             lightData.color = scene.dirLight.color;
-            calc_light(lightData, shadingData, diffuse, specular);
-            //diffuse_light(lightData, shadingData, diffuse);
+            //calc_light(lightData, shadingData, diffuse, specular);
+            diffuse_light(lightData, shadingData, diffuse);
         }
     }
     if(scene.numPointLights > 0)
@@ -143,22 +145,26 @@ void main()
         vec4 viewSpacePos = scene.invProj * clipSpacePos;
         viewSpacePos /= viewSpacePos.w;
         vec4 worldSpacePos = scene.invView * viewSpacePos;
-
-        vec4 diffuseAccum  = vec4(0.f, 0.f, 0.f, 1.f);
-        vec4 specularAccum = vec4(0.f, 0.f, 0.f, 1.f);
+        
+        //vec4 diffuseAccum  = vec4(0.f, 0.f, 0.f, 1.f);
+        //vec4 specularAccum = vec4(0.f, 0.f, 0.f, 1.f);
+        vec3 diffuseAccum  = vec3(0.f, 0.f, 0.f);
+        vec3 specularAccum = vec3(0.f, 0.f, 0.f);
         ShadingData shadingData;
         shadingData.albedo = materialData.albedo.xyz;
-        shadingData.alpha = materialData.roughness * materialData.roughness;
+        shadingData.alpha = materialData.roughness;
         shadingData.worldPos = worldSpacePos.xyz;
         shadingData.outLightDir = normalize(get_viewer_pos(scene) - shadingData.worldPos.xyz);
         shadingData.metalness = materialData.metalness;
         shadingData.shadingNormal = materialData.shadingNormal;
         direct_lighting(scene, shadingData, diffuseAccum.xyz, specularAccum.xyz);
+        //diffuse_direct_lighting(accelerationStructures[constants.accBinding], scene, shadingData, diffuseAccum, specularAccum);
         
         if(constants.useDDGIReSTIR != 0) {
 	        DDGIReSTIRVolume volume = ddgiReSTIRVolumes[constants.ddgiReSTIRBinding].volume[constants.ddgiReSTIRIndex];
             float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-            if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+            //if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+            if(volumeWeight > 0.f) {
                        
                 vec3 irradiance = sample_ddgi_restir(shadingData.worldPos.xyz, shadingData.shadingNormal, volume
 	                #ifdef RAYTRACE_DDGI_RESTIR_VOLUMES
@@ -173,7 +179,8 @@ void main()
         else {
 	        DDGIVolume volume = ddgiVolumes[constants.ddgiBinding].volume[constants.ddgiIndex];
             float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-            if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+            //if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
+            if(volumeWeight > 0.f) {
            
                 vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
             
@@ -187,11 +194,14 @@ void main()
             
             }
         }
-        specularAccum.xyz += materialData.emissive.xyz;
-        specularAccum.xyz = vec3(0.f);
-        imageStore(imagesRGBA16F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
-        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
+        specularAccum.xyz += materialData.emissive.xyz;// * (1.f / (3.1415926f));
+        //specularAccum.xyz = vec3(0.f);
+        //imageStore(imagesRGBA16F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), diffuseAccum);
+        //imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), specularAccum);
+        imageStore(imagesRGBA16F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(diffuseAccum, 1.f));
+        imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(specularAccum, 1.f));
     #else
+        //imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(materialData.albedo.xyz, 1.f));
         imageStore(imagesRGBA16F[constants.specularImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(materialData.shadingNormal, 1.f));
         imageStore(imagesRGBA16F[constants.diffuseImageBinding], ivec2(gl_LaunchIDEXT.xy), vec4(0));
     #endif

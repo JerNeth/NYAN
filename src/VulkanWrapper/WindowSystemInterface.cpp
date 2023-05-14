@@ -11,7 +11,7 @@ vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Inst
 	m_preferredPresentMode(preferedPresentMode)
 {
 	init_swapchain();
-	r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
+	r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format, m_usage);
 }
 
 vulkan::WindowSystemInterface::~WindowSystemInterface()
@@ -41,7 +41,7 @@ void vulkan::WindowSystemInterface::update_swapchain()
 	drain_swapchain();
 
 	if(init_swapchain())//; Not sure if this was intentional
-		r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format);
+		r_device.init_swapchain(m_swapchainImages, m_swapchainExtent.width, m_swapchainExtent.height, m_format, m_usage);
 }
 
 void vulkan::WindowSystemInterface::begin_frame()
@@ -111,13 +111,49 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 	std::vector<VkSurfaceFormatKHR> usableFormats;
 	usableFormats.reserve(surfaceFormats.size());
 
-	VkImageUsageFlags usage{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT };
+	VkImageUsageFlags usage{ VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT };
 	
 	for (const auto& format : surfaceFormats) {
 		if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
 			r_device.get_physical_device().get_image_format_properties(format.format,
 				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
 			usableFormats.push_back(format);
+	}
+	if (usableFormats.empty()) {
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+		for (const auto& format : surfaceFormats) {
+			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+				r_device.get_physical_device().get_image_format_properties(format.format,
+					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+				usableFormats.push_back(format);
+		}
+	}
+	if (usableFormats.empty()) {
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		for (const auto& format : surfaceFormats) {
+			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+				r_device.get_physical_device().get_image_format_properties(format.format,
+					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+				usableFormats.push_back(format);
+		}
+	}
+	if (usableFormats.empty()) {
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		for (const auto& format : surfaceFormats) {
+			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+				r_device.get_physical_device().get_image_format_properties(format.format,
+					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+				usableFormats.push_back(format);
+		}
+	}
+	if (usableFormats.empty()) {
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		for (const auto& format : surfaceFormats) {
+			if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+				r_device.get_physical_device().get_image_format_properties(format.format,
+					VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0))
+				usableFormats.push_back(format);
+		}
 	}
 	if (usableFormats.empty()) {
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -128,6 +164,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 				usableFormats.push_back(format);
 		}
 	}
+	m_usage = usage;
 	VkSurfaceFormatKHR surfaceFormat{ usableFormats.front()};
 
 	
@@ -186,7 +223,7 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.imageColorSpace = surfaceFormat.colorSpace,
 		.imageExtent = m_swapchainExtent,
 		.imageArrayLayers = 1,
-		.imageUsage = usage,
+		.imageUsage = m_usage, 
 		.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
 		.queueFamilyIndexCount = 0,
 		.pQueueFamilyIndices = nullptr,

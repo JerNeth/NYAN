@@ -27,7 +27,8 @@ nyan::DDGIRenderer::DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& 
 	//auto probecount = (24 * 22 * 24 + 1);
 	//auto uintPart = probecount * 2;
 	//auto floatPart = probecount * 3 + 1;
-	//info.size = uintPart * sizeof(uint32_t) + sizeof(float) * floatPart;
+	//
+	//info.size = probecount * (sizeof(uint32_t) * 2 + sizeof(float)) + sizeof(uint32_t) + sizeof(float);
 	//dstBuf2 = std::make_unique< vulkan::BufferHandle>(r_device.create_buffer(info, {}));
 
 	pass.add_renderfunction(std::bind(&DDGIRenderer::render, this, std::placeholders::_1, std::placeholders::_2), false);
@@ -37,6 +38,7 @@ void nyan::DDGIRenderer::begin_frame()
 {
 	uint32_t maxRays = 0;
 	uint32_t maxScratchSize = 0;
+	size_t formatSize = 0;
 	VkFormat renderTargetFormat{ VK_FORMAT_UNDEFINED };
 	auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	for (uint32_t i = 0; i < ddgiManager.slot_count(); ++i) {
@@ -51,12 +53,14 @@ void nyan::DDGIRenderer::begin_frame()
 		switch (volume.renderTargetImageFormat) {
 		case nyan::shaders::R32G32B32A32F:
 			renderTargetFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+			formatSize = 4;
 			break;
 		default:
 			assert(false);
 			[[fallthrough]];
 		case nyan::shaders::R16G16B16A16F:
 			renderTargetFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+			formatSize = 2;
 			break;
 		}
 	}
@@ -64,25 +68,22 @@ void nyan::DDGIRenderer::begin_frame()
 	auto& renderGraph = r_renderManager.get_render_graph();
 	auto width = static_cast<float>(1 << m_renderTargetWidthBits);
 	auto height = std::ceil(static_cast<float>(maxRays) / static_cast<float>(1 << m_renderTargetWidthBits));
-	if (!m_renderTarget) {
-		m_renderTarget = renderGraph.add_ressource("DDGI_RenderTarget", nyan::ImageAttachment
-			{
-				.format{renderTargetFormat},//VK_FORMAT_R16G16B16A16_SFLOAT},
-				.size {ImageAttachment::Size::Absolute},
-				.width { width},
-				.height { height},
-				.clearColor{0.f, 0.f, 0.f, 0.f},
-			});
-		r_pass.add_write(m_renderTarget, nyan::Renderpass::Write::Type::Compute);
+	if (!m_renderBuffer || ((*m_renderBuffer)->get_size() < maxRays * 4 * formatSize)){
+		vulkan::BufferInfo info{
+			.size {maxRays * 4 * formatSize },
+			.usage {VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT },
+			.memoryUsage {VMA_MEMORY_USAGE_GPU_ONLY },
+		};
+		//dstBuf = std::make_unique< vulkan::BufferHandle>(r_device.create_buffer(info, {}));
+		//auto probecount = (24 * 22 * 24 + 1);
+		//auto uintPart = probecount * 2;
+		//auto floatPart = probecount * 3 + 1;
+		//
+		//info.size = probecount * (sizeof(uint32_t) * 2 + sizeof(float)) + sizeof(uint32_t) + sizeof(float);
+		m_renderBuffer = std::make_unique< vulkan::BufferHandle>(r_device.create_buffer(info, {}));
+		m_renderBufferAddress = (*m_renderBuffer)->get_address();
 	}
-	else {
-		auto& resource = renderGraph.get_resource(m_renderTarget);
-		auto& image = std::get<nyan::ImageAttachment>(resource.attachment);
-		image.width = width;
-		image.height = height;
-		image.format = renderTargetFormat;
 
-	}
 	if (maxScratchSize > 0 && !m_scratchBuffer) {
 		vulkan::BufferInfo info{
 			.size {maxScratchSize * sizeof(uint32_t) * 4},
@@ -95,6 +96,16 @@ void nyan::DDGIRenderer::begin_frame()
 		m_scratchBufferBinding = r_device.get_bindless_set().set_storage_buffer(VkDescriptorBufferInfo{(*m_scratchBuffer)->get_handle(), 0, info.size});
 		
 	}
+}
+
+void nyan::DDGIRenderer::screen_shot()
+{
+	m_screenShot = true;
+}
+
+void nyan::DDGIRenderer::clear()
+{
+	m_clear = true;
 }
 
 void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
@@ -122,7 +133,7 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		.ddgiBinding {ddgiManager.get_binding()},
 		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
 		.ddgiIndex {0},
-		.renderTarget {r_pass.get_write_bind(m_renderTarget, nyan::Renderpass::Write::Type::Compute)},
+		.renderBufferAddress{m_renderBufferAddress},
 		.randomRotation {sqrt(1 - u) * sin(Math::pi_2 * v), sqrt(1 - u) * cos(Math::pi_2 * v),
 							sqrt(u) * sin(Math::pi_2 * w), sqrt(u) * cos(Math::pi_2 * w)}
 	};
@@ -153,6 +164,36 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 			.numRows {rtConfig.numRows}
 		};
 		auto& rtPipeline = get_rt_pipeline(rtConfig);
+		if (m_clear) {
+			auto& res = r_renderManager.get_render_graph().get_resource(parameters.irradianceResource);
+			auto& res0 = r_renderManager.get_render_graph().get_resource(parameters.data0Resource);
+			auto& res1 = r_renderManager.get_render_graph().get_resource(parameters.data1Resource);
+			auto& res2 = r_renderManager.get_render_graph().get_resource(parameters.data2Resource);
+			auto& resD = r_renderManager.get_render_graph().get_resource(parameters.depthResource);
+			if (res.handle && res0.handle && res1.handle && resD.handle) {
+				m_clear = false;
+				auto& img = *res.handle;
+				auto& img0 = *res0.handle;
+				auto& img1 = *res1.handle;
+				auto& imgD = *resD.handle;
+				VkClearColorValue val{
+					.float32{0, 0,0 ,0}
+				};
+				cmd.clear_color_image(img, VK_IMAGE_LAYOUT_GENERAL, &val);
+				cmd.clear_color_image(img0, VK_IMAGE_LAYOUT_GENERAL, &val);
+				cmd.clear_color_image(img1, VK_IMAGE_LAYOUT_GENERAL, &val);
+				cmd.clear_color_image(imgD, VK_IMAGE_LAYOUT_GENERAL, &val);
+				static constexpr VkMemoryBarrier2 global{
+					.sType {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2},
+					.pNext {nullptr},
+					.srcStageMask {VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT},
+					.srcAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT},
+					.dstStageMask {VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR},
+					.dstAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT},
+				};
+				cmd.barrier2(1, &global);
+			}
+		}
 		if (volume.dynamicRayAllocationEnabled) {
 			r_renderManager.get_profiler().begin_profile(cmd, "Dynamic Ray Allocation");
 			//if (parameters.dynamicRayAllocation) {
@@ -192,13 +233,16 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 			//auto& srcBuf2 = r_renderManager.get_ddgi_manager().get_ray_count_device_addressC(i);
 			//cmd.copy_buffer(*dstBuf, srcbuf);
 			//cmd.copy_buffer(*dstBuf2, srcBuf2);
+			//auto probecount = (24 * 22 * 24 + 1);
+			//auto uintPart = probecount * 2;
+			//auto floatPart = probecount * 3 + 1;
 			//std::vector<uint32_t> dataA(uintPart);
 			//std::vector<float> dataB(floatPart);
 			//std::memcpy(dataA.data(), (*dstBuf2)->map_data(), uintPart * sizeof(uint32_t));
 			//std::memcpy(dataB.data(), reinterpret_cast<float*>((*dstBuf2)->map_data()) + uintPart, floatPart * sizeof(uint32_t));
 			////assert(dataA[25344] == 0 || dataA[25344] == 3244032);
-			//assert(dataA[25344] == 0 || dataA[25344] == 3244032);
-			//assert(dataA[25343] == 0 || dataA[25343] == 3244032);
+			////assert(dataA[25344] == 0 || dataA[25344] == 3244032);
+			////assert(dataA[25343] == 0 || dataA[25343] == 3244032);
 			//auto b = *reinterpret_cast<VkTraceRaysIndirectCommandKHR*>((*dstBuf)->map_data());
 			//assert(b.height == 0 || b.height == 3168);
 			r_renderManager.get_profiler().end_profile(cmd);
@@ -262,6 +306,126 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 				r_renderManager.get_profiler().end_profile(cmd);
 			}
 		}
+		if (m_dumpToDisk) {
+			m_dumpToDisk = false;
+			auto* data = (*m_screenshotBuffer)->map_data();
+			auto* dataDepth = (*m_screenshotBufferDepth)->map_data();
+			std::vector<float> irradianceData(4ull * m_screenShotWidth * m_screenShotHeight * m_screenShotLayers);
+			std::vector<float> depthData(4ull * m_screenShotWidthDepth * m_screenShotHeightDepth * m_screenShotLayersDepth);
+			auto* halfPtr = reinterpret_cast<Math::half*>(data);
+			for (auto i = 0ull; i < irradianceData.size(); ++i) {
+				irradianceData[i] = halfPtr[i];
+			}
+			for (auto layer = 0; layer < m_screenShotLayers; ++layer) {
+				for (auto height = 0; height < m_screenShotHeight; ++height) {
+					for (auto width = 0; width < m_screenShotWidth; ++width) {
+						for (auto channel = 0; channel < 4; ++channel) {
+							irradianceData[(height * (m_screenShotWidth * m_screenShotLayers) + layer * m_screenShotWidth + width) * 4 + channel]
+							= halfPtr[(layer * (m_screenShotWidth * m_screenShotHeight) + height * m_screenShotWidth + width) * 4 + channel];
+						}
+					}
+				}
+			}
+			for (auto layer = 0; layer < m_screenShotLayersDepth; ++layer) {
+				for (auto height = 0; height < m_screenShotHeightDepth; ++height) {
+					for (auto width = 0; width < m_screenShotWidthDepth; ++width) {
+						for (auto channel = 0; channel < 4; ++channel){
+							depthData[(height * (m_screenShotWidthDepth * m_screenShotLayersDepth) + layer * m_screenShotWidthDepth + width)* 4 + channel]
+								= reinterpret_cast<const float*>(dataDepth)[(layer * (m_screenShotWidthDepth * m_screenShotHeightDepth) + height * m_screenShotWidthDepth + width) * 4 + channel];
+						}
+					}
+				}
+			}
+
+			std::string name = std::string("DDGI_SAMPLES_IRRADIANCE.hdr");
+			stbi_write_hdr(name.c_str(), m_screenShotWidth * m_screenShotLayers, m_screenShotHeight, 4,
+				reinterpret_cast<const float*>(irradianceData.data()) + (m_screenShotWidth * m_screenShotHeight * 4 * 0));
+			//for (auto layer = 0; layer < m_screenShotLayers; ++layer) {
+			//	std::string name = std::string("DDGI_SAMPLES_IRRADIANCE_") + std::to_string(layer) + ".hdr";
+			//	stbi_write_hdr(name.c_str(), m_screenShotWidth, m_screenShotHeight, 4, reinterpret_cast<const float*>(irradianceData.data()) + (m_screenShotWidth * m_screenShotHeight * 4 * layer));
+			//}
+
+			name = std::string("DDGI_SAMPLES_DEPTH.hdr");
+			stbi_write_hdr(name.c_str(), m_screenShotWidthDepth * m_screenShotLayersDepth, m_screenShotHeightDepth, 4, 
+				reinterpret_cast<const float*>(depthData.data()) + (m_screenShotWidthDepth * m_screenShotHeightDepth * 4 * 0));
+			//for (auto layer = 0; layer < m_screenShotLayersDepth; ++layer) {
+			//	std::string name = std::string("DDGI_SAMPLES_DEPTH_") + std::to_string(layer) + ".hdr";
+			//	stbi_write_hdr(name.c_str(), m_screenShotWidthDepth, m_screenShotHeightDepth, 4, reinterpret_cast<const float*>(dataDepth) + (m_screenShotWidthDepth * m_screenShotHeightDepth * 4 * layer));
+			//}
+		}	
+		auto& res = r_renderManager.get_render_graph().get_resource(parameters.irradianceResource);
+		auto& res2 = r_renderManager.get_render_graph().get_resource(parameters.depthResource);
+		if (res.handle && res2.handle && m_screenShot) {
+			cmd.barrier2(VkMemoryBarrier2{
+				.sType {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2},
+				.pNext {nullptr},
+				.srcStageMask {VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT},
+				.srcAccessMask {VK_ACCESS_2_SHADER_WRITE_BIT},
+				.dstStageMask {VK_PIPELINE_STAGE_2_TRANSFER_BIT},
+				.dstAccessMask {VK_ACCESS_2_MEMORY_READ_BIT},
+				});
+			m_dumpToDisk = true;
+			m_screenShot = false;
+			auto& img = *res.handle;
+			m_screenShotLayers = img.get_info().arrayLayers;
+			m_screenShotWidth = img.get_info().width;
+			m_screenShotHeight = img.get_info().height;
+			std::vector copy{ VkBufferImageCopy{
+				.bufferOffset {0},
+				.bufferRowLength {0},
+				.bufferImageHeight {0},
+				.imageSubresource {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+					.mipLevel {0},
+					.baseArrayLayer {0},
+					.layerCount {m_screenShotLayers}
+				},
+				.imageOffset {0, 0, 0},
+				.imageExtent {m_screenShotWidth, m_screenShotHeight, img.get_info().depth},
+			}
+			};
+			auto bufferSize = vulkan::format_block_size(img.get_format()) * m_screenShotWidth * m_screenShotHeight * img.get_info().depth * m_screenShotLayers;
+			if (!m_screenshotBuffer || (*m_screenshotBuffer)->get_size() < bufferSize) {
+
+				m_screenshotBuffer = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(vulkan::BufferInfo{
+					.size {bufferSize},
+					.usage {VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+					.offset {0},
+					.memoryUsage {VMA_MEMORY_USAGE_CPU_ONLY},
+					}, {}));
+			}
+			cmd.copy_image_to_buffer(img, *m_screenshotBuffer, copy, VK_IMAGE_LAYOUT_GENERAL);
+
+			auto& imgDepth = *res2.handle;
+			m_screenShotLayersDepth = imgDepth.get_info().arrayLayers;
+			m_screenShotWidthDepth = imgDepth.get_info().width;
+			m_screenShotHeightDepth = imgDepth.get_info().height;
+			std::vector copyDepth{ VkBufferImageCopy{
+				.bufferOffset {0},
+				.bufferRowLength {0},
+				.bufferImageHeight {0},
+				.imageSubresource {
+					.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
+					.mipLevel {0},
+					.baseArrayLayer {0},
+					.layerCount {m_screenShotLayersDepth}
+				},
+				.imageOffset {0, 0, 0},
+				.imageExtent {m_screenShotWidthDepth, m_screenShotHeightDepth, imgDepth.get_info().depth},
+			}
+			};
+			bufferSize = vulkan::format_block_size(imgDepth.get_format()) * m_screenShotWidthDepth * m_screenShotHeightDepth * imgDepth.get_info().depth * m_screenShotLayersDepth;
+			if (!m_screenshotBufferDepth || (*m_screenshotBufferDepth)->get_size() < bufferSize) {
+
+				m_screenshotBufferDepth = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(vulkan::BufferInfo{
+					.size {bufferSize},
+					.usage {VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+					.offset {0},
+					.memoryUsage {VMA_MEMORY_USAGE_CPU_ONLY},
+					}, {}));
+			}
+			cmd.copy_image_to_buffer(imgDepth, *m_screenshotBufferDepth, copyDepth, VK_IMAGE_LAYOUT_GENERAL);
+		}
 
 	}
 }
@@ -320,7 +484,8 @@ void nyan::DDGIRenderer::filter_volume(vulkan::CommandBuffer& cmd, const nyan::s
 		.renderTargetImageFormat {volume.renderTargetImageFormat},
 		.imageFormat {volume.irradianceImageFormat},
 		.renderTargetImageWidthBits{m_renderTargetWidthBits},
-		.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled}
+		.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
+		.usedEstimator{volume.usedEstimator}
 		}), constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 	r_renderManager.get_profiler().end_profile(cmd);
 	r_renderManager.get_profiler().begin_profile(cmd, "Depth");
@@ -334,7 +499,8 @@ void nyan::DDGIRenderer::filter_volume(vulkan::CommandBuffer& cmd, const nyan::s
 		.renderTargetImageFormat {volume.renderTargetImageFormat},
 		.imageFormat {volume.depthImageFormat},
 		.renderTargetImageWidthBits{m_renderTargetWidthBits},
-		.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled}
+		.dynamicRayAllocationEnabled {volume.dynamicRayAllocationEnabled},
+		.usedEstimator{volume.usedEstimator}
 		}), constants, volume.probeCountX, volume.probeCountY, volume.probeCountZ);
 	cmd.barrier2(1, &global);
 	r_renderManager.get_profiler().end_profile(cmd);
@@ -389,7 +555,7 @@ void nyan::DDGIRenderer::copy_borders(vulkan::CommandBuffer& cmd, const nyan::sh
 			.probeSize{2 + volume.depthProbeSize},
 			.imageBinding{volume.depthImageBinding}
 		}), constants, static_cast<uint32_t>(std::ceil(volume.probeCountX / static_cast<float>(m_borderSizeX))),
-			static_cast<uint32_t>(std::ceil(volume.depthTextureSizeY / static_cast<float>(m_borderSizeY))), volume.probeCountZ);
+		static_cast<uint32_t>(std::ceil(volume.depthTextureSizeY / static_cast<float>(m_borderSizeY))), volume.probeCountZ);
 	bind_and_dispatch_compute(cmd, create_border_pipeline(
 		BorderPipelineConfig{
 			.workSizeX {m_borderSizeX},
@@ -404,7 +570,39 @@ void nyan::DDGIRenderer::copy_borders(vulkan::CommandBuffer& cmd, const nyan::sh
 			.probeSize{2 + volume.depthProbeSize},
 			.imageBinding{volume.depthImageBinding}
 		}), constants, static_cast<uint32_t>(std::ceil(volume.depthTextureSizeX / static_cast<float>(m_borderSizeX))),
+		static_cast<uint32_t>(std::ceil(volume.probeCountY / static_cast<float>(m_borderSizeY))), volume.probeCountZ);
+	if (volume.use6Moments) {
+		bind_and_dispatch_compute(cmd, create_border_pipeline(
+			BorderPipelineConfig{
+				.workSizeX {m_borderSizeX},
+				.workSizeY {m_borderSizeY},
+				.workSizeZ {1},
+				.columns {true},
+				.filterIrradiance {false},
+				.imageFormat{volume.depthImageFormat},
+				.probeCountX{volume.probeCountX},
+				.probeCountY{volume.probeCountY},
+				.probeCountZ{volume.probeCountZ},
+				.probeSize{2 + volume.depthProbeSize},
+				.imageBinding{volume.depth2ImageBinding}
+			}), constants, static_cast<uint32_t>(std::ceil(volume.probeCountX / static_cast<float>(m_borderSizeX))),
+			static_cast<uint32_t>(std::ceil(volume.depthTextureSizeY / static_cast<float>(m_borderSizeY))), volume.probeCountZ);
+		bind_and_dispatch_compute(cmd, create_border_pipeline(
+			BorderPipelineConfig{
+				.workSizeX {m_borderSizeX},
+				.workSizeY {m_borderSizeY},
+				.workSizeZ {1},
+				.columns {false},
+				.filterIrradiance {false},
+				.imageFormat{volume.depthImageFormat},
+				.probeCountX{volume.probeCountX},
+				.probeCountY{volume.probeCountY},
+				.probeCountZ{volume.probeCountZ},
+				.probeSize{2 + volume.depthProbeSize},
+				.imageBinding{volume.depth2ImageBinding}
+			}), constants, static_cast<uint32_t>(std::ceil(volume.depthTextureSizeX / static_cast<float>(m_borderSizeX))),
 			static_cast<uint32_t>(std::ceil(volume.probeCountY / static_cast<float>(m_borderSizeY))), volume.probeCountZ);
+	}
 	r_renderManager.get_profiler().end_profile(cmd);
 
 }
@@ -494,7 +692,8 @@ vulkan::PipelineId nyan::DDGIRenderer::create_filter_pipeline(const PipelineConf
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat},
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::imageFormatShaderName, config.imageFormat },
 			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::renderTargetImageWidthBitsShaderName, config.renderTargetImageWidthBits },
-			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled}
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::dynamicRayAllocationEnabledShaderName, config.dynamicRayAllocationEnabled},
+			vulkan::ShaderStorage::SpecializationConstant{PipelineConfig::usedEstimatorShaderName, config.usedEstimator}
 			)},
 			.pipelineLayout {r_device.get_bindless_pipeline_layout()}
 		};
@@ -748,9 +947,7 @@ void nyan::DDGIVisualizer::create_pipeline()
 
 
 nyan::DDGIReSTIRRenderer::DDGIReSTIRRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass) :
-	Renderer(device, registry, renderManager, pass),
-	m_sampleGenerationPipeline(std::make_unique< vulkan::RTPipeline>(r_device, generate_sample_generation_config())),
-	m_sampleValidationPipeline(std::make_unique< vulkan::RTPipeline>(r_device, generate_sample_validation_config()))
+	Renderer(device, registry, renderManager, pass)
 {
 	auto& ddgiRestirManager = r_renderManager.get_ddgi_restir_manager();
 	ddgiRestirManager.add_write(r_pass.get_id(), nyan::Renderpass::Write::Type::Compute);
@@ -859,7 +1056,6 @@ void nyan::DDGIReSTIRRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpa
 	}
 	auto& res = r_pass.get_graph().get_resource(m_renderTarget);
 	if (m_screenshot) {
-		auto& img = *res.handle;
 		m_screenshot = false;
 		auto* data = (*m_screenshotBuffer)->map_data();
 		stbi_write_hdr("DDGI_ReSTIR_SAMPLES.hdr", m_screenshotWidth, m_screenshotHeight, 4, reinterpret_cast<const float*>(data));
@@ -1065,14 +1261,37 @@ vulkan::PipelineId nyan::DDGIReSTIRRenderer::create_spatial_reuse_pipeline(const
 	return pipelineId;
 }
 
-vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_generation_config()
+vulkan::RTPipeline& nyan::DDGIReSTIRRenderer::get_sample_generation_pipeline(const RTConfig& config)
+{
+	if (auto it = m_sampleGenerationPipelines.find(config); it != m_sampleGenerationPipelines.end()) {
+		assert(it->second);
+		return *it->second;
+	}
+	else {
+		return *m_sampleGenerationPipelines.emplace(config, std::make_unique< vulkan::RTPipeline>(r_device, generate_sample_generation_config(config))).first->second;
+	}
+}
+
+vulkan::RTPipeline& nyan::DDGIReSTIRRenderer::get_sample_validation_pipeline(const RTConfig& config)
+{
+	if (auto it = m_sampleValidationPipelines.find(config); it != m_sampleValidationPipelines.end()) {
+		assert(it->second);
+		return *it->second;
+	}
+	else {
+		return *m_sampleValidationPipelines.emplace(config, std::make_unique< vulkan::RTPipeline>(r_device, generate_sample_validation_config(config))).first->second;
+	}
+}
+
+vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_generation_config(const RTConfig& config)
 {
 	return vulkan::RaytracingPipelineConfig{
 		.rgenGroups {
 			vulkan::Group
 			{
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_restir_sample_generation_rgen"
-				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
+				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::maxPathLengthShaderName, config.maxPathLength}
+				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::maxPathLengthShaderName, 10u}
 				)},
 			},
 		},
@@ -1098,14 +1317,15 @@ vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_gener
 	};
 }
 
-vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_validation_config()
+vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_validation_config(const RTConfig& config)
 {
 	return vulkan::RaytracingPipelineConfig{
 		.rgenGroups {
 			vulkan::Group
 			{
 				.generalShader {r_renderManager.get_shader_manager().get_shader_instance_id("ddgi_restir_sample_validation_rgen"
-				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::renderTargetImageFormatShaderName, config.renderTargetImageFormat}
+				//,vulkan::ShaderStorage::SpecializationConstant{RTConfig::maxPathLengthShaderName, config.maxPathLength}
+				,vulkan::ShaderStorage::SpecializationConstant{RTConfig::maxPathLengthShaderName, 10u}
 				)},
 			},
 		},
@@ -1134,6 +1354,10 @@ vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_valid
 void nyan::DDGIReSTIRRenderer::generate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants)
 {
 
+	RTConfig rtConfig{
+		.maxPathLength {volume.maxPathLength},
+	};
+	auto& rtPipeline = get_sample_generation_pipeline(rtConfig);
 	r_renderManager.get_profiler().begin_profile(cmd, "Generate Samples");
 	static constexpr auto renderTargetWidth = 11ul;
 	const std::array dispatch{
@@ -1149,14 +1373,18 @@ void nyan::DDGIReSTIRRenderer::generate_samples(vulkan::CommandBuffer& cmd, cons
 	assert(dispatch[2] <= r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize[2]
 		* r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount[2]);
 	assert(dispatch[0] > 0 && dispatch[1] > 0 &&dispatch[2] > 0);
-	auto bind = cmd.bind_raytracing_pipeline(*m_sampleGenerationPipeline);
+	auto bind = cmd.bind_raytracing_pipeline(rtPipeline);
 	bind.push_constants(constants);
-	bind.trace_rays(*m_sampleGenerationPipeline, dispatch[0], dispatch[1], dispatch[2]);
+	bind.trace_rays(rtPipeline, dispatch[0], dispatch[1], dispatch[2]);
 	r_renderManager.get_profiler().end_profile(cmd);
 }
 
 void nyan::DDGIReSTIRRenderer::validate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants)
 {
+	RTConfig rtConfig{
+		.maxPathLength {volume.maxPathLength},
+	};
+	auto& rtPipeline = get_sample_validation_pipeline(rtConfig);
 	r_renderManager.get_profiler().begin_profile(cmd, "Validate Samples");
 	const std::array dispatch{
 		volume.probeCountX * volume.irradianceProbeSize,
@@ -1171,9 +1399,9 @@ void nyan::DDGIReSTIRRenderer::validate_samples(vulkan::CommandBuffer& cmd, cons
 	assert(dispatch[2] <= r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupSize[2]
 		* r_device.get_physical_device().get_properties().limits.maxComputeWorkGroupCount[2]);
 	assert(dispatch[0] > 0 && dispatch[1] > 0 && dispatch[2] > 0);
-	auto bind = cmd.bind_raytracing_pipeline(*m_sampleValidationPipeline);
+	auto bind = cmd.bind_raytracing_pipeline(rtPipeline);
 	bind.push_constants(constants);
-	bind.trace_rays(*m_sampleValidationPipeline, dispatch[0], dispatch[1], dispatch[2]);
+	bind.trace_rays(rtPipeline, dispatch[0], dispatch[1], dispatch[2]);
 	r_renderManager.get_profiler().end_profile(cmd);
 }
 

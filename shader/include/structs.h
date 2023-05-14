@@ -147,11 +147,15 @@ struct DDGIVolume {
 	uint depthImageBinding;
 	uint depthImageFormat;
 
+	uint depth2TextureBinding;
+	uint depth2ImageBinding;
+
 	uint renderTargetImageFormat;
 
 	uint offsetBufferBinding;
 	uint dynamicRayBufferBinding;
 	uint fixedRayCount;
+	uint usedEstimator;
 	float relocationBackfaceThreshold;
 	float backfaceThreshold;
 	float minFrontFaceDistance;
@@ -163,6 +167,7 @@ struct DDGIVolume {
 	float irradianceThreshold;
 	float lightToDarkThreshold;
 	float depthExponent;
+	float momentOverestimation;
 
 	float visualizerRadius;
 
@@ -170,6 +175,7 @@ struct DDGIVolume {
 	uint visualizeDepth;
 	uint visualizeDirections;
 	uint useMoments;
+	uint use6Moments;
 	uint relocationEnabled;
 	uint classificationEnabled;
 	uint dynamicRayAllocationEnabled;
@@ -195,6 +201,7 @@ struct DDGIReSTIRVolume {
 	uint probeCountZ;
 	uint samplesPerProbe;
 
+
 	uint irradianceProbeSize;
 	uint irradianceTextureSizeX;
 	uint irradianceTextureSizeY;
@@ -204,6 +211,8 @@ struct DDGIReSTIRVolume {
 
 	uint temporalReservoirCountX;
 	uint temporalReservoirCountY;
+
+	uint maxPathLength;
 
 	uint maximumReservoirAge;
 	uint validationEnabled;
@@ -217,8 +226,9 @@ struct DDGIReSTIRVolume {
 struct DDGIReSTIRTemporalReservoir { //TODO: pack tightly
 	float irradianceR, irradianceG, irradianceB; //12B //I don't know whether that's goint to be radiance or irradiance 
 	float hitDistance; //16B
-	uint probeId; //20B 
-	uint rayId; //24B
+	float rayDirX, rayDirY, rayDirZ;
+	//uint probeId; //20B 
+	//uint rayId; //24B
 	uint rngSeed; //28B
 	float weightSum; //32B
 	float M; //36B

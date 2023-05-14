@@ -46,9 +46,12 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.depthTextureSampler {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 			.depthImageBinding {},
 			.depthImageFormat {parameters.depthImageFormat},
+			.depth2TextureBinding {},
+			.depth2ImageBinding {},
 			.renderTargetImageFormat {parameters.renderTargetImageFormat},
 			.offsetBufferBinding {},
 			.fixedRayCount {parameters.fixedRayCount},
+			.usedEstimator {parameters.usedEstimator},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.backfaceThreshold {parameters.backfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
@@ -58,11 +61,13 @@ uint32_t nyan::DDGIManager::add_ddgi_volume(const DDGIVolumeParameters& paramete
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
 			.depthExponent{parameters.depthExponent},
+			.momentOverestimation{ parameters.momentOverestimation },
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
 			.useMoments {parameters.useMoments},
+			.use6Moments {parameters.use6Moments},
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
@@ -199,6 +204,7 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.depthProbeSize != parameters.depthProbeSize ||
 			constDeviceVolume.offsetBufferBinding == 0 || //Might not be ideal
 			constDeviceVolume.fixedRayCount != parameters.fixedRayCount ||
+			constDeviceVolume.usedEstimator != parameters.usedEstimator ||
 			constDeviceVolume.relocationBackfaceThreshold != parameters.relocationBackfaceThreshold ||
 			constDeviceVolume.backfaceThreshold != parameters.backfaceThreshold ||
 			constDeviceVolume.minFrontFaceDistance != parameters.minFrontFaceDistance ||
@@ -209,10 +215,12 @@ void nyan::DDGIManager::update()
 			constDeviceVolume.irradianceThreshold != parameters.irradianceThreshold ||
 			constDeviceVolume.lightToDarkThreshold != parameters.lightToDarkThreshold ||
 			constDeviceVolume.depthExponent != parameters.depthExponent ||
+			constDeviceVolume.momentOverestimation != parameters.momentOverestimation ||
 			constDeviceVolume.visualizerRadius != parameters.visualizerRadius ||
 			(constDeviceVolume.visualizeDepth != 0) != parameters.visualizeDepth ||
 			(constDeviceVolume.visualizeDirections != 0) != parameters.visualizeDirections ||
 			(constDeviceVolume.useMoments != 0) != parameters.useMoments ||
+			(constDeviceVolume.use6Moments != 0) != parameters.use6Moments ||
 			(constDeviceVolume.relocationEnabled != 0) != parameters.relocationEnabled ||
 			(constDeviceVolume.classificationEnabled != 0) != parameters.classificationEnabled ||
 			(constDeviceVolume.dynamicRayAllocationEnabled != 0) != parameters.dynamicRayAllocation ||
@@ -243,6 +251,7 @@ void nyan::DDGIManager::update()
 			.depthImageFormat {parameters.depthImageFormat},
 			.renderTargetImageFormat {parameters.renderTargetImageFormat},
 			.fixedRayCount {parameters.fixedRayCount},
+			.usedEstimator {parameters.usedEstimator},
 			.relocationBackfaceThreshold {parameters.relocationBackfaceThreshold},
 			.backfaceThreshold {parameters.backfaceThreshold},
 			.minFrontFaceDistance {parameters.minFrontFaceDistance},
@@ -253,11 +262,13 @@ void nyan::DDGIManager::update()
 			.irradianceThreshold {parameters.irradianceThreshold},
 			.lightToDarkThreshold {parameters.lightToDarkThreshold},
 			.depthExponent{parameters.depthExponent},
+			.momentOverestimation{parameters.momentOverestimation},
 			.visualizerRadius {parameters.visualizerRadius},
 			.enabled {parameters.enabled},
 			.visualizeDepth {parameters.visualizeDepth},
 			.visualizeDirections {parameters.visualizeDirections},
 			.useMoments {parameters.useMoments},
+			.use6Moments {parameters.use6Moments},
 			.relocationEnabled {parameters.relocationEnabled},
 			.classificationEnabled {parameters.classificationEnabled},
 			.dynamicRayAllocationEnabled {parameters.dynamicRayAllocation},
@@ -287,15 +298,20 @@ void nyan::DDGIManager::update()
 		case nyan::shaders::R16G16B16A16F:
 			depthFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 			break;
+		case nyan::shaders::R16G16F:
+			depthFormat = VK_FORMAT_R16G16_SFLOAT;
+			break;
 		}
 		if (parameters.depthResource) {
-			auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
-			assert(depthResource.m_type == nyan::RenderResource::Type::Image);
-			auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
-			imageAttachment.arrayLayers = deviceVolume.probeCountZ;
-			imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
-			imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
-			imageAttachment.format = depthFormat;
+			{
+				auto& depthResource = r_rendergraph.get_resource(parameters.depthResource);
+				assert(depthResource.m_type == nyan::RenderResource::Type::Image);
+				auto& imageAttachment = std::get< ImageAttachment>(depthResource.attachment);
+				imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+				imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
+				imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+				imageAttachment.format = depthFormat;
+			}
 		}
 		else {
 			parameters.depthResource = r_rendergraph.add_ressource(std::format("DDGI_Depth_{}", parameters.ddgiVolume), nyan::ImageAttachment{
@@ -314,6 +330,38 @@ void nyan::DDGIManager::update()
 			for (const auto& [write, type] : m_writes) {
 				auto& pass = r_rendergraph.get_pass(write);
 				pass.add_write(parameters.depthResource, type);
+			}
+		}
+
+		if (parameters.use6Moments) {
+			if (parameters.depth2Resource) {
+
+				auto& depth2Resource = r_rendergraph.get_resource(parameters.depth2Resource);
+				assert(depth2Resource.m_type == nyan::RenderResource::Type::Image);
+				auto& imageAttachment = std::get< ImageAttachment>(depth2Resource.attachment);
+				imageAttachment.arrayLayers = deviceVolume.probeCountZ;
+				imageAttachment.width = static_cast<float>(deviceVolume.depthTextureSizeX);
+				imageAttachment.height = static_cast<float>(deviceVolume.depthTextureSizeY);
+				imageAttachment.format = depthFormat;
+			}
+			else {
+				parameters.depth2Resource = r_rendergraph.add_ressource(std::format("DDGI_Depth2_{}", parameters.ddgiVolume), nyan::ImageAttachment{
+					.format{depthFormat},
+					//VK_FORMAT_R16G16B16A16_SFLOAT},
+					//.format{VK_FORMAT_R32G32B32A32_SFLOAT},
+					.size{nyan::ImageAttachment::Size::Absolute},
+					.arrayLayers {deviceVolume.probeCountZ},
+					.width {static_cast<float>(deviceVolume.depthTextureSizeX)},
+					.height {static_cast<float>(deviceVolume.depthTextureSizeY)}
+					});
+				for (const auto& read : m_reads) {
+					auto& pass = r_rendergraph.get_pass(read);
+					pass.add_read(parameters.depth2Resource);
+				}
+				for (const auto& [write, type] : m_writes) {
+					auto& pass = r_rendergraph.get_pass(write);
+					pass.add_write(parameters.depth2Resource, type);
+				}
 			}
 		}
 		VkFormat irradianceFormat{ VK_FORMAT_UNDEFINED };
@@ -459,6 +507,11 @@ void nyan::DDGIManager::begin_frame()
 			auto depthImageBind = writePass.get_write_bind(parameters.depthResource, Renderpass::Write::Type::Compute);
 			if (constDeviceVolume.depthImageBinding != depthImageBind)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthImageBinding = depthImageBind;
+			if (constDeviceVolume.use6Moments) {
+				auto depth2ImageBind = writePass.get_write_bind(parameters.depth2Resource, Renderpass::Write::Type::Compute);
+				if (constDeviceVolume.depth2ImageBinding != depth2ImageBind)
+					DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depth2ImageBinding = depth2ImageBind;
+			}
 			auto irradianceImageBind = writePass.get_write_bind(parameters.irradianceResource, Renderpass::Write::Type::Compute);
 			if (constDeviceVolume.irradianceImageBinding != irradianceImageBind)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceImageBinding = irradianceImageBind;
@@ -479,6 +532,11 @@ void nyan::DDGIManager::begin_frame()
 			auto depthTextureBinding = readPass.get_read_bind(parameters.depthResource);
 			if (constDeviceVolume.depthTextureBinding != depthTextureBinding)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depthTextureBinding = depthTextureBinding;
+			if (constDeviceVolume.use6Moments) {
+				auto depth2TextureBinding = readPass.get_read_bind(parameters.depth2Resource);
+				if (constDeviceVolume.depth2TextureBinding != depth2TextureBinding)
+					DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).depth2TextureBinding = depth2TextureBinding;
+			}
 			auto irradianceTextureBinding = readPass.get_read_bind(parameters.irradianceResource);
 			if (constDeviceVolume.irradianceTextureBinding != irradianceTextureBinding)
 				DataManager<nyan::shaders::DDGIVolume>::get(parameters.ddgiVolume).irradianceTextureBinding = irradianceTextureBinding;
@@ -667,6 +725,7 @@ uint32_t nyan::DDGIReSTIRManager::add_volume(const DDGIReSTIRVolumeParameters& p
 			.irradianceTextureSizeY {parameters.probeCount[1] * (parameters.irradianceProbeSize + 2)},
 			.temporalReservoirCountX {parameters.temporalReservoirCountX},
 			.temporalReservoirCountY {parameters.temporalReservoirCountY},
+			.maxPathLength {parameters.maxPathLength},
 			.maximumReservoirAge {parameters.maximumReservoirAge},
 			.validationEnabled {parameters.validationEnabled},
 			.recurse {parameters.recurse},
@@ -728,7 +787,8 @@ void nyan::DDGIReSTIRManager::update()
 			constDeviceVolume.irradianceProbeSize != parameters.irradianceProbeSize ||
 			constDeviceVolume.temporalReservoirCountX != parameters.temporalReservoirCountX ||
 			constDeviceVolume.temporalReservoirCountY != parameters.temporalReservoirCountY ||
-			constDeviceVolume.maximumReservoirAge != parameters.maximumReservoirAge || 
+			constDeviceVolume.maxPathLength != parameters.maxPathLength ||
+			constDeviceVolume.maximumReservoirAge != parameters.maximumReservoirAge ||
 			constDeviceVolume.validationEnabled != parameters.validationEnabled ||
 			constDeviceVolume.recurse != parameters.recurse ||
 			constDeviceVolume.spatialReuse != parameters.spatialReuse ||
@@ -760,6 +820,7 @@ void nyan::DDGIReSTIRManager::update()
 						.irradianceSamplerBinding {static_cast<uint32_t>(vulkan::DefaultSampler::LinearClamp)},
 						.temporalReservoirCountX {parameters.temporalReservoirCountX},
 						.temporalReservoirCountY {parameters.temporalReservoirCountY},
+						.maxPathLength {parameters.maxPathLength},
 						.maximumReservoirAge {parameters.maximumReservoirAge},
 						.validationEnabled {parameters.validationEnabled},
 						.recurse {parameters.recurse},

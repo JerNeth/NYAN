@@ -180,7 +180,8 @@ void main()
 		if(idx == (probeCount - 1)) {
 			uint numRays = prefix;
 			writeUInts[volume.dynamicRayBufferBinding].u[writeOffset + idx + 1] = numRays;
-			uint width =  (1 << renderTargetImageWidthBits) / constants.numRows;
+			//uint width =  (1 << renderTargetImageWidthBits) / constants.numRows;
+			uint width =  (1 << renderTargetImageWidthBits);
 			TraceRaysIndirect indirectBuffer = TraceRaysIndirect(constants.targetAddress);
 			indirectBuffer.width = width;
 			indirectBuffer.height = (numRays + (width -1)) >> renderTargetImageWidthBits;

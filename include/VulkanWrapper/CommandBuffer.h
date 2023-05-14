@@ -41,6 +41,8 @@ namespace vulkan {
 			const VkMemoryBarrier* globals = nullptr, uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier* bufferBarriers = nullptr,
 			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier* imageBarriers = nullptr);
 		void barrier2(const VkMemoryBarrier2& global, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void barrier2(const VkBufferMemoryBarrier2& bufferBarrier, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
+		void barrier2(const VkImageMemoryBarrier2& imageBarrier, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });
 		void barrier2(uint32_t barrierCount = 0, const VkMemoryBarrier2* globals = nullptr,
 			uint32_t bufferBarrierCounts = 0, const VkBufferMemoryBarrier2* bufferBarriers = nullptr,
 			uint32_t imageBarrierCounts = 0, const VkImageMemoryBarrier2* imageBarriers = nullptr, VkDependencyFlags dependencyFlags = VkDependencyFlags{ 0 });

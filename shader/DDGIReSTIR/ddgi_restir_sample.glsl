@@ -99,6 +99,7 @@ vec3 sample_ddgi_restir(in vec3 worldPos,
 		const float tMax = worldPosToAdjacentProbeDist;
 		rayQueryInitializeEXT(rq, acc, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT , 0xFF, 
 					worldPos, tMin, worldPosToAdjacentProbe, tMax);
+					//worldPos, tMin, worldPosToAdjacentProbe + 0.1 * direction, tMax);
 
 		// Traverse the acceleration structure and store information about the first intersection (if any)
 		rayQueryProceedEXT(rq);
@@ -110,7 +111,11 @@ vec3 sample_ddgi_restir(in vec3 worldPos,
 		}
 		#else
 		#endif
-
+		const float threshold = 0.2f;
+		if(weight < threshold)
+		{
+			weight *= weight * weight * (1.f / (threshold * threshold));
+		}
 		weight = max(1e-6f, weight);
 
 		weight *= trilinearWeight;

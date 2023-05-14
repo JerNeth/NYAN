@@ -103,11 +103,23 @@ namespace nyan {
 			, const Lighting& lighting);
 		void render(vulkan::GraphicsPipelineBind& bind);
 		void set_tonemapping(ToneMapping type);
+		void queue_screenshot();
+		void queue_recording(const std::filesystem::path& folder, uint32_t count, uint32_t offset);
 	private:
 		void create_pipeline();
 
 		vulkan::PipelineId m_compositePipeline;
 
+		bool m_screenshot{ false };
+		bool m_dumpToDisk{ false };
+		uint32_t m_screenshotFormat{ 0 };
+		uint32_t m_screenshotWidth{ 0 };
+		uint32_t m_screenshotHeight{ 0 };
+		std::filesystem::path m_seriesFolder{};
+		uint32_t m_seriesMax{ 0 };
+		uint32_t m_seriesCounter{ 0 };
+		uint32_t m_seriesOffset{ 0 };
+		std::unique_ptr<vulkan::BufferHandle> m_screenshotBuffer;
 		Lighting m_lighting;
 		ToneMapping m_tonemappingType;
 	};

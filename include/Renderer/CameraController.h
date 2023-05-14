@@ -15,9 +15,11 @@ namespace nyan {
 	public:
 		CameraController(RenderManager& renderManager, Input& input);
 		void update(std::chrono::nanoseconds dt);
+		bool changed() const;
 	private:
 		RenderManager& r_renderManager;
 		Input& r_input;
+		bool m_changed;
 	};
 }
 

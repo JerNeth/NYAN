@@ -143,7 +143,7 @@ target_link_libraries(Engine PUBLIC shaders)
 #target_link_libraries(Demo2 Engine)
 #target_link_libraries(FBXTest Engine FBXReader)
 target_link_libraries(GLTFTest Engine)
-target_link_libraries(RTTest Engine FBXReader)
+target_link_libraries(RTTest Engine)
 target_link_libraries(HybridTest Engine FBXReader)
 target_link_libraries(DDGITest Engine FBXReader)
 

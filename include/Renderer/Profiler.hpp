@@ -18,6 +18,27 @@ namespace nyan {
 		void begin_profile(const std::string& name);
 		void end_profile();
 	private:
+		template<size_t N>
+		struct Average {
+		private:
+			std::array<float, N> samples{};
+			size_t index;
+			float sum;
+		public:
+			void add_sample(float sample) {
+				auto localIdx = index++ % N;
+				sum -= samples[localIdx];
+				samples[localIdx] = sample;
+				sum += sample;
+			}
+			float average() const {
+				return sum / std::max(std::min(index, N), 1ull);
+			}
+			void clear() {
+				index = 0;
+				sum = 0.f;
+			}
+		};
 		struct Profile {
 			std::chrono::steady_clock::time_point firstTimepoint{};
 			std::chrono::steady_clock::time_point secondTimepoint{};
@@ -45,5 +66,6 @@ namespace nyan {
 		float m_timestampPeriod;
 		std::unordered_map<std::thread::id, ThreadData> m_profiles;
 		std::unordered_map<std::thread::id, GPUThreadData> m_GPUprofiles;
+		std::unordered_map<std::string, Average<1000> > m_averages;
 	};
 }

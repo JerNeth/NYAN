@@ -10,69 +10,63 @@
 #include "lighting.glsl"
 #include "raycommon.glsl"
 
-
 layout(std430, push_constant) uniform PushConstants
 {
     uint accBinding;
     uint sceneBinding;
     uint meshBinding;
-    uint imageBinding;
-	vec4 col;
+    uint diffuseImageBinding;
+    uint specularImageBinding;
+    uint rngSeed;
+    uint frameCount;
 } constants;
-layout(set = 0, binding = 5) uniform accelerationStructureEXT accelerationStructures[ACC_COUNT];
 
-layout(location = 0) rayPayloadInEXT hitPayload hitValue;
-layout(location = 1) rayPayloadInEXT float shadowed;
+layout(location = 0) rayPayloadInEXT PackedPayload pld;
+
 
 hitAttributeEXT vec2 baryCoord;
 
-
 void main()
 {
-    Scene scene = scenes[constants.sceneBinding].scene;
-	Mesh mesh = meshData[nonuniformEXT(constants.meshBinding)].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
-	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
 
+    Scene scene = scenes[constants.sceneBinding].scene;
+	Mesh mesh = meshData[constants.meshBinding].meshes[nonuniformEXT(gl_InstanceCustomIndexEXT)];
+	Material material = materials[nonuniformEXT(mesh.materialBinding)].materials[nonuniformEXT(mesh.materialId)];
+	
+	#define COMPLEX
+	#ifdef COMPLEX
     VertexData vertexData = get_vertex_data(mesh, baryCoord, gl_PrimitiveID, gl_ObjectToWorldEXT);
+	#else
+    VertexData vertexData = get_vertex_data_simple(mesh, baryCoord, gl_PrimitiveID, gl_ObjectToWorldEXT);
+	#endif
     flip_backfacing_normal(vertexData, ((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG) &&
 										(gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT));
+	#ifdef COMPLEX
     const MaterialData materialData = get_material_data(material, vertexData);
-    
-	DirectionalLight light = scene.dirLight;
-    vec3 viewPos = get_viewer_pos(scene);
-    vec3 viewVec = normalize(viewPos - vertexData.worldPos.xyz);
-    
-    vec4 diffuse = vec4(0.0);
-    vec4 specular= vec4(0.0);
-    float NdotL = max(dot(materialData.shadingNormal, light.dir), 0.0);
-    if(NdotL > 0) {
-            
+	#else
+	const MaterialData materialData = get_albedo_data(material, vertexData);
+	#endif
+	Payload payload;
 
-        specular.a = materialData.opacity;
-        diffuse.a = materialData.opacity;
-        uint  rayFlags = gl_RayFlagsSkipClosestHitShaderEXT | gl_RayFlagsTerminateOnFirstHitEXT;
-        float tMin     = 0.01;
-        float tMax     = 10000.0;
-        shadowed = 0.0;
-        traceRayEXT(accelerationStructures[constants.accBinding], // acceleration structure
-                rayFlags,       // rayFlags
-                0xFF,           // cullMask
-                0,              // sbtRecordOffset
-                0,              // sbtRecordStride
-                1,              // missIndex
-                vertexData.worldPos.xyz,     // ray origin
-                tMin,           // ray min range
-                light.dir,  // ray direction
-                tMax,           // ray max range
-                1               // payload (location = 0)
-        );
-        //if(shadowed > 0)
-        //    calcDirLight(materialData.albedo.xyz, materialData.metalness, materialData.roughness, viewVec, materialData.shadingNormal, light, specular, diffuse);
-        specular.xyz = materialData.albedo;
-        diffuse.xyz = materialData.albedo;
-        specular.rgb *= shadowed;
-        diffuse.rgb *= shadowed;
-    }
-	
-	hitValue.hitValue = diffuse.xyz + specular.xyz;
+	payload.albedo = materialData.albedo;
+	payload.opacity = materialData.opacity;
+	payload.worldPos = vertexData.worldPos;
+	payload.normal = vertexData.normal;
+	payload.hitT = gl_HitTEXT;
+	payload.hitkind = gl_HitKindEXT;
+	payload.emissive = materialData.emissive;
+	#ifdef COMPLEX
+	payload.roughness = materialData.roughness;
+	payload.metallic = materialData.metalness;
+	payload.shadingNormal = materialData.shadingNormal;
+	#else
+	payload.roughness = 1.f;
+	payload.metallic = 0.f;
+	payload.shadingNormal = vertexData.normal;
+	#endif
+	if(payload.hitkind == gl_HitKindBackFacingTriangleEXT &&
+	((material.flags & MATERIAL_DOUBLE_SIDED_FLAG) == MATERIAL_DOUBLE_SIDED_FLAG))
+		payload.hitkind = gl_HitKindFrontFacingTriangleEXT;
+
+	pld = pack_payload(payload);
 }

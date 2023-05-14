@@ -1,5 +1,4 @@
 #include "Application.h"
-#include "Application.h"
 #include "Utility/Exceptions.h"
 #include <chrono>
 nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
@@ -87,16 +86,16 @@ void nyan::Application::end_frame()
 void nyan::Application::main_loop()
 {
 	lastUpdate = std::chrono::steady_clock::now();
-	while (!m_window->should_close())
+	while (!m_window->should_close() && (!m_maxFrameCount || (m_frameCount < m_maxFrameCount)))
 	{
 		update();
-		if (!m_window->is_iconified()) {
+		//if (!m_window->is_iconified()) {
 
 			next_frame();
 
 
 			end_frame();
-		}
+		//}
 	}
 }
 
@@ -128,6 +127,11 @@ void nyan::Application::update()
 		update(delta);
 	}
 	m_tickCount++;
+}
+
+void nyan::Application::quit_after(uint64_t numFrames)
+{
+	m_maxFrameCount = numFrames;
 }
 
 bool nyan::Application::setup_glfw()

@@ -15,6 +15,7 @@ nyan::Profiler::Profiler(vulkan::LogicalDevice& device) :
 
 void nyan::Profiler::begin_frame()
 {
+	size_t index{ 0 };
 	ImGui::Begin("Profiler");
 	if(ImGui::CollapsingHeader("GPU"))
 	{
@@ -26,7 +27,9 @@ void nyan::Profiler::begin_frame()
 					profile.secondQueryId < timestamps.size()) {
 					std::chrono::duration<float, std::nano> fp_ns{ (timestamps[profile.secondQueryId] - timestamps[profile.firstQueryId]) * m_timestampPeriod };
 					std::chrono::duration<float, std::milli> fp_ms = fp_ns;
-					ImGui::Text("%s%s : %f ms", tabs.c_str(), profile.name.c_str(), fp_ms.count());
+
+					m_averages[profile.name].add_sample(fp_ms.count());
+					ImGui::Text("%s%s : %f ms (avg: %f)", tabs.c_str(), profile.name.c_str(), fp_ms.count(), m_averages[profile.name].average());
 				}
 			}
 			threadData.timestamp.clear();
@@ -39,7 +42,8 @@ void nyan::Profiler::begin_frame()
 			for (const auto& profile : threadData.timestamp) {
 				std::string tabs(profile.depth, '\t');
 				std::chrono::duration<float, std::milli> fp_ms = profile.secondTimepoint - profile.firstTimepoint;
-				ImGui::Text("%s%s : %f ms", tabs.c_str(), profile.name.c_str(), fp_ms.count());
+				m_averages[profile.name + "CPU"].add_sample(fp_ms.count());
+				ImGui::Text("%s%s : %f ms (avg: %f)", tabs.c_str(), profile.name.c_str(), fp_ms.count(), m_averages[profile.name + "CPU"].average());
 			}
 			threadData.timestamp.clear();
 			threadData.stack.clear();

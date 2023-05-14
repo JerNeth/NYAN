@@ -37,6 +37,7 @@ namespace nyan {
 			uint32_t renderTargetImageWidthBits;
 			VkBool32 dynamicRayAllocationEnabled;
 			VkBool32 ReSTIREnabled;
+			uint32_t usedEstimator;
 			static constexpr const char* rayCountShaderName{ "maxRayCount" };
 			static constexpr const char* filterIrradianceShaderName{ "filterIrradiance" };
 			static constexpr const char* renderTargetImageFormatShaderName{ "renderTargetImageFormat" };
@@ -44,6 +45,7 @@ namespace nyan {
 			static constexpr const char* renderTargetImageWidthBitsShaderName{ "renderTargetImageWidthBits" };
 			static constexpr const char* dynamicRayAllocationEnabledShaderName{ "dynamicRayAllocationEnabled" };
 			static constexpr const char* ReSTIREnabledShaderName{ "ReSTIREnabled" };
+			static constexpr const char* usedEstimatorShaderName{ "usedEstimator" };
 			friend bool operator==(const PipelineConfig& lhs, const PipelineConfig& rhs) {
 				return lhs.workSizeX == rhs.workSizeX &&
 					lhs.workSizeY == rhs.workSizeY &&
@@ -54,7 +56,8 @@ namespace nyan {
 					lhs.renderTargetImageFormat == rhs.renderTargetImageFormat &&
 					lhs.imageFormat == rhs.imageFormat &&
 					lhs.dynamicRayAllocationEnabled == rhs.dynamicRayAllocationEnabled &&
-					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits;
+					lhs.renderTargetImageWidthBits == rhs.renderTargetImageWidthBits &&
+					lhs.usedEstimator == rhs.usedEstimator;;
 			}
 		};
 		struct ReSTIRPipelineConfig {
@@ -188,6 +191,8 @@ namespace nyan {
 	public:
 		DDGIRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
+		void screen_shot();
+		void clear();
 	private:
 		void render(vulkan::CommandBuffer& cmd, nyan::Renderpass&);
 		void render_volume(vulkan::RaytracingPipelineBind& bind, const vulkan::RTPipeline& pipeline, const DDGIPushConstants& constants, uint32_t numRays, uint32_t numProbes);
@@ -211,7 +216,8 @@ namespace nyan {
 		vulkan::RaytracingPipelineConfig generate_config(const RTConfig& config);
 
 		//vulkan::RTPipeline m_rtPipeline;
-		nyan::RenderResource::Id m_renderTarget;
+		std::unique_ptr<vulkan::BufferHandle> m_renderBuffer;
+		VkDeviceAddress m_renderBufferAddress;
 		uint32_t m_renderTargetWidthBits {10};
 		uint32_t m_borderSizeX{ 8 };
 		uint32_t m_borderSizeY{ 8 };
@@ -225,6 +231,19 @@ namespace nyan {
 		uint32_t m_gatherNumRows{ 16ul };
 		uint32_t m_prefixSumGroupSize{ 1024ul };
 		uint32_t m_prefixSumNumRows{ 16ul };
+
+		bool m_screenShot{ false };
+		bool m_dumpToDisk{ false };
+		bool m_clear{ false };
+		uint32_t m_screenShotWidth{ 1024ul };
+		uint32_t m_screenShotHeight{ 16ul };
+		uint32_t m_screenShotLayers{ 16ul };
+		std::unique_ptr<vulkan::BufferHandle> m_screenshotBuffer;
+
+		uint32_t m_screenShotWidthDepth{ 0ul };
+		uint32_t m_screenShotHeightDepth{ 0ul };
+		uint32_t m_screenShotLayersDepth{ 0ul };
+		std::unique_ptr<vulkan::BufferHandle> m_screenshotBufferDepth;
 		std::unordered_map<PipelineConfig, vulkan::PipelineId, Utility::Hash<PipelineConfig>> m_pipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
 		std::unordered_map<RelocatePipelineConfig, vulkan::PipelineId, Utility::Hash<RelocatePipelineConfig>> m_relocatePipelines;
@@ -333,6 +352,14 @@ namespace nyan {
 					lhs.imageBinding == rhs.imageBinding;
 			}
 		};
+		struct RTConfig
+		{
+			uint32_t maxPathLength;
+			static constexpr const char* maxPathLengthShaderName{ "maxPathLength" };
+			friend bool operator==(const RTConfig& lhs, const RTConfig& rhs) {
+				return lhs.maxPathLength == rhs.maxPathLength;
+			}
+		};
 	public:
 		DDGIReSTIRRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass);
 		void begin_frame();
@@ -344,8 +371,10 @@ namespace nyan {
 		vulkan::PipelineId create_shade_pipeline(const ShadePipelineConfig& config);
 		vulkan::PipelineId create_border_pipeline(const BorderPipelineConfig& config);
 		vulkan::PipelineId create_spatial_reuse_pipeline(const SpatialResamplePipelineConfig& config);
-		vulkan::RaytracingPipelineConfig generate_sample_generation_config();
-		vulkan::RaytracingPipelineConfig generate_sample_validation_config();
+		vulkan::RTPipeline& get_sample_generation_pipeline(const RTConfig& config);
+		vulkan::RTPipeline& get_sample_validation_pipeline(const RTConfig& config);
+		vulkan::RaytracingPipelineConfig generate_sample_generation_config(const RTConfig& config);
+		vulkan::RaytracingPipelineConfig generate_sample_validation_config(const RTConfig& config);
 		void generate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void validate_samples(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
 		void resample(vulkan::CommandBuffer& cmd, const nyan::shaders::DDGIReSTIRVolume& volume, const DDGIReSTIRPushConstants& constants);
@@ -363,8 +392,8 @@ namespace nyan {
 		std::unordered_map<ShadePipelineConfig, vulkan::PipelineId, Utility::Hash<ShadePipelineConfig>> m_shadePipelines;
 		std::unordered_map<BorderPipelineConfig, vulkan::PipelineId, Utility::Hash<BorderPipelineConfig>> m_borderPipelines;
 		std::unordered_map<SpatialResamplePipelineConfig, vulkan::PipelineId, Utility::Hash<SpatialResamplePipelineConfig>> m_spatialResamplePipelines;
-		std::unique_ptr<vulkan::RTPipeline> m_sampleGenerationPipeline;
-		std::unique_ptr<vulkan::RTPipeline> m_sampleValidationPipeline;
+		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_sampleGenerationPipelines;
+		std::unordered_map<RTConfig, std::unique_ptr<vulkan::RTPipeline>, Utility::Hash<RTConfig>> m_sampleValidationPipelines;
 		nyan::RenderResource::Id m_renderTarget;
 		std::unique_ptr<std::mt19937> m_generator{new std::mt19937(420)};
 		std::unique_ptr<vulkan::BufferHandle> m_temporalReservoirs;

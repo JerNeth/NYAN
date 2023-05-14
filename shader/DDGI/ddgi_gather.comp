@@ -50,13 +50,15 @@ void main()
 			variances[i] = 0.f;
 	}
 
-	uint totalRayCount = probeCount * ((volume.raysPerProbe >> 1) - min(volume.fixedRayCount * 2, volume.raysPerProbe >> 1));
+	uint totalRayCount = probeCount * (volume.raysPerProbe - min(volume.fixedRayCount * 2, volume.raysPerProbe));
 
 	
 	for(uint i = 0; i < numRows; ++i) {
 		uint idx = globalIdx * numRows + i;
-		uint numRays = volume.fixedRayCount * 2;
-		numRays += uint((totalRayCount *variances[i]) / totalVariance);
+		uint oldRay = readUInts[volume.dynamicRayBufferBinding].u[idx];
+		uint numRays = min(volume.fixedRayCount * 2, volume.raysPerProbe);
+		numRays += uint((totalRayCount) * (variances[i] /totalVariance));
+		numRays = uint(mix(oldRay, numRays, 0.6f));
 		if(idx < probeCount)
 			writeUInts[volume.dynamicRayBufferBinding].u[idx] = min(numRays, volume.raysPerProbe);
 	}

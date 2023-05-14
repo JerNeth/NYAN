@@ -42,6 +42,15 @@ void main() {
     vec3 viewPos = get_viewer_pos(scene);
     vec3 dir = normalize(offsetWorldPos - viewPos);
 	float radius = volume.visualizerRadius;
+    if(volume.dynamicRayAllocationEnabled != 0) {
+	    uint probeIdx1 = get_probe_index(probeIdx, volume);
+	    uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
+        uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx1];
+	    uint probeEnd = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx1 + 1];
+	    uint rayCount = int(probeEnd - probeBegin);
+        //probeColor = mix(vec3(1, 0, 0), vec3(0, 1, 0), vec3(float(rayCount - volume.fixedRayCount)/ volume.raysPerProbe));
+        radius *=  float(rayCount)/ volume.raysPerProbe;
+    }
     float rayHit = sphIntersect(viewPos, dir, vec4(centerWorldPos, radius));
     if( rayHit == -1)
         discard;
@@ -71,18 +80,11 @@ void main() {
             }
         }
     }
-	if(volume.dynamicRayAllocationEnabled != 0) {
-	    uint probeIdx1 = get_probe_index(probeIdx, volume);
-	    uint probeCount = volume.probeCountX * volume.probeCountY * volume.probeCountZ;
-        uint probeBegin = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx1];
-	    uint probeEnd = readUInts[volume.dynamicRayBufferBinding].u[probeCount + probeIdx1 + 1];
-	    uint rayCount = int(probeEnd - probeBegin);
-        probeColor = mix(vec3(1, 0, 0), vec3(0, 1, 0), vec3(float(rayCount * 2)/ volume.raysPerProbe));
-    }
     vec4 pos = vec4(scene.proj * scene.view * vec4(surfacePos, 1.0));
 	gl_FragDepth = pos.z / pos.w;
 
     outSpecular =  vec4(0, 0, 0, 0);
-    outDiffuse =vec4(probeColor, 1); 
+    outDiffuse = vec4(probeColor, 1); 
+
    // outDiffuse = vec4(0, 1, 0, alpha);
 }

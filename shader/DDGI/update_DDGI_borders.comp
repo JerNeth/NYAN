@@ -47,6 +47,9 @@ void copy_border_rows(uvec3 globalId) {
 	else if(imageFormat == R16G16B16A16F)
 		imageStore(imagesArrayRGBA16F[imageBinding], ivec3(texelCoord), 
 			imageLoad(imagesArrayRGBA16F[imageBinding], copyLoad));
+	else if(imageFormat == R16G16F)
+		imageStore(imagesArrayRG16F[imageBinding], ivec3(texelCoord), 
+			imageLoad(imagesArrayRG16F[imageBinding], copyLoad));
 	else if(imageFormat == R32G32B32A32F)
 		imageStore(imagesArrayRGBA32F[imageBinding], ivec3(texelCoord), 
 			imageLoad(imagesArrayRGBA32F[imageBinding], copyLoad));
@@ -68,6 +71,9 @@ void copy_border_rows(uvec3 globalId) {
 	else if(imageFormat == R16G16B16A16F)
 		imageStore(imagesArrayRGBA16F[imageBinding], ivec3(texelCoord), 
 			imageLoad(imagesArrayRGBA16F[imageBinding], copyLoad));
+	else if(imageFormat == R16G16F)
+		imageStore(imagesArrayRG16F[imageBinding], ivec3(texelCoord), 
+			imageLoad(imagesArrayRG16F[imageBinding], copyLoad));
 	else if(imageFormat == R32G32B32A32F)
 		imageStore(imagesArrayRGBA32F[imageBinding], ivec3(texelCoord), 
 			imageLoad(imagesArrayRGBA32F[imageBinding], copyLoad));
@@ -129,6 +135,12 @@ void copy_border_columns(uvec3 globalId) {
 			imageLoad(imagesArrayRGBA16F[imageBinding], copyLoadFirst));
 		imageStore(imagesArrayRGBA16F[imageBinding], texelCoordSecond, 
 			imageLoad(imagesArrayRGBA16F[imageBinding], copyLoadSecond));
+	}
+	else if(imageFormat == R16G16F) {
+		imageStore(imagesArrayRG16F[imageBinding], ivec3(texelCoordFirst), 
+			imageLoad(imagesArrayRG16F[imageBinding], copyLoadFirst));
+		imageStore(imagesArrayRG16F[imageBinding], texelCoordSecond, 
+			imageLoad(imagesArrayRG16F[imageBinding], copyLoadSecond));
 	}
 	else if(imageFormat == R32G32B32A32F) {			
 		imageStore(imagesArrayRGBA32F[imageBinding], ivec3(texelCoordFirst), 

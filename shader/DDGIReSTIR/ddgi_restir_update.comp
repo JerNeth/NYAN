@@ -41,7 +41,7 @@ bool update_reservoir(in float weight, inout uint rngSeed, inout DDGIReSTIRTempo
 	dstReservoir.weightSum += weight;
 	dstReservoir.M += 1;
 	float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
-	bool update = (randomFloat * dstReservoir.weightSum) <= weight;
+	bool update = (randomFloat * dstReservoir.weightSum) < weight;
 	return update;
 }
 
@@ -64,17 +64,12 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) buffer TemporalRese
 //};
 //
 vec3 generate_ray_dir(in DDGIReSTIRTemporalReservoir reservoir, in DDGIReSTIRVolume volume) {
-	uint rngSeed = reservoir.rngSeed;
-	float u = uint_to_u01_float(hash1_mut(rngSeed));
-	float v = uint_to_u01_float(hash1_mut(rngSeed));
-	float w = uint_to_u01_float(hash1_mut(rngSeed));
-	return get_ray_direction(create_random_quaternion_rotation(u, v, w), reservoir.rayId, volume.samplesPerProbe);
+	return vec3(reservoir.rayDirX, reservoir.rayDirY, reservoir.rayDirZ);
 }
 
 float calc_p_hat_q(in vec3 radiance, in vec3 rayDir, in vec3 normal, in float rayDist) {
 	return max(0.f, dot(rayDir, normal))
 				* max(0.f, luminance(radiance))
-				* 1.f/3.14f
 				* step(0, rayDist);
 }
 float calc_p_hat_q(in DDGIReSTIRTemporalReservoir reservoir, in vec3 normal, in DDGIReSTIRVolume volume) {
@@ -134,7 +129,7 @@ void main() {
 	//rngSeed = hash1_mut(pushConstants.constants.rngSeed + probeIdx);
 	
 	rngSeed = hash1(pushConstants.constants.rngSeed + probeIdx + gl_LocalInvocationIndex);
-	//const float p_q = 1 / sampleCount;
+	//const float p_q = 1 / 2 * 3.14159;
 	
 	int selectedSample = -1;
 	float p_hat_q_sel = 0;
@@ -143,16 +138,15 @@ void main() {
 		const vec3 rayDir = rayDirection[rayIdx];
 		const vec3 rayRadiance = rayData[rayIdx].xyz;
 		const float rayDist = rayData[rayIdx].w;
-//		if(rayDist < 0)
-//			continue;
+		if(rayDist < 0)
+			continue;
 		float p_hat_q =	calc_p_hat_q(rayRadiance, rayDir, texelDir, rayDist);
 		//weight = p_hat_q / p_q
-		float weight = p_hat_q * sampleCount; //since p_q is 1 / sampleCount;
+		float weight = p_hat_q * 2 * 3.14159; //since p_q is 1 / 2pi;
 		if(update_reservoir(weight, rngSeed, reservoir)) {
 			selectedSample = rayIdx;
 			p_hat_q_sel = p_hat_q;
 		}
-		//R.W = R.weightSum / (R.M * p_hat(R.z))
 	}
 	DDGIReSTIRTemporalReservoir prevReservoir = reservoirs.res[reservoirIdx]; //In place should be possible, no need for flip flop
 
@@ -171,47 +165,42 @@ void main() {
 	prevReservoir.M = max(0, min(prevReservoir.M, volume.maximumReservoirAge * reservoir.M));
 	
 	DDGIReSTIRTemporalReservoir combined;
-
+	
 	if(prevReservoir.M > 0) {
-		float combineWeight = prev_p_hat_q * prevReservoir.W * prevReservoir.M;
-		reservoir.weightSum += combineWeight;
+		float prevWeight = prev_p_hat_q * prevReservoir.W * prevReservoir.M;
+		//float prevWeight = prev_p_hat_q * prevReservoir.W;
+		reservoir.weightSum += prevWeight;
 	
 		float randomFloat = uint_to_u01_float(hash1_mut(rngSeed));
-		bool update = (randomFloat * reservoir.weightSum) <= combineWeight;
+		bool update = (randomFloat * reservoir.weightSum) <= prevWeight;
 		if(update) {
 			p_hat_q_sel = prev_p_hat_q;
 			selectedSample = -1;
 		}
 		reservoir.M += prevReservoir.M;
-		reservoir.W = reservoir.weightSum / max(1e-8, reservoir.M * p_hat_q_sel);  //stream.p_hat_q_sel
 	}
-	vec3 rayDir;
+	reservoir.W = reservoir.weightSum / max(1e-8, reservoir.M * p_hat_q_sel);
+	//reservoir.W = reservoir.weightSum / max(1e-8,  p_hat_q_sel);
 	if(selectedSample > 0) {
 		const vec4 rayData = rayData[selectedSample].xyzw; 
-		rayDir = rayDirection[selectedSample];
+		const vec3 rayDir = rayDirection[selectedSample].xyz;
 		reservoir.irradianceR = rayData.r;
 		reservoir.irradianceG = rayData.g;
 		reservoir.irradianceB = rayData.b;
 		reservoir.hitDistance = rayData.w;
-		reservoir.probeId = probeIdx;
-		reservoir.rayId = selectedSample;
-		uint rngSeed = pushConstants.constants.rngSeed + probeIdx;
-		reservoir.rngSeed = hash1_mut(rngSeed);
-		//reservoir.rngSeed = pushConstants.constants.rngSeed + probeIdx;
-		//reservoir.rngSeed = pushConstants.constants.rngSeed;
+		reservoir.rngSeed = hash1(pushConstants.constants.rngSeed + probeIdx + selectedSample);
+		reservoir.rayDirX = rayDir.x;
+		reservoir.rayDirY = rayDir.y;
+		reservoir.rayDirZ = rayDir.z;
 	} else {
-		uint rngSeed = prevReservoir.rngSeed;
-		float u = uint_to_u01_float(hash1_mut(rngSeed));
-		float v = uint_to_u01_float(hash1_mut(rngSeed));
-		float w = uint_to_u01_float(hash1_mut(rngSeed));
-		rayDir = get_ray_direction(create_random_quaternion_rotation(u, v, w), prevReservoir.rayId, volume.samplesPerProbe);
 		reservoir.irradianceR = prevReservoir.irradianceR;
 		reservoir.irradianceG = prevReservoir.irradianceG;
 		reservoir.irradianceB = prevReservoir.irradianceB;
 		reservoir.hitDistance = prevReservoir.hitDistance;
-		reservoir.probeId = prevReservoir.probeId;
-		reservoir.rayId	= prevReservoir.rayId;	
 		reservoir.rngSeed = prevReservoir.rngSeed;
+		reservoir.rayDirX = prevReservoir.rayDirX;
+		reservoir.rayDirY = prevReservoir.rayDirY;
+		reservoir.rayDirZ = prevReservoir.rayDirZ;
 		reservoir.age = prevReservoir.age;
 	}
 	reservoir.age++;
@@ -220,13 +209,9 @@ void main() {
 	texCoord.xy += ivec2(gl_LocalInvocationID.xy);
 
 	reservoirs.res[reservoirIdx] = reservoir;
-	//Is way too bright otherwise
-	float weight = 1.f/3.14f * max(0.f, dot(rayDir, texelDir));
-	//float weight = max(0.f, dot(rayDir, texelDir));
-	//float weight = 1.f;
-	vec4 irradiance = vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f);
+	vec4 irradiance = vec4(reservoir.W * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f);
 	//vec4 prevIrradiance = imageLoad(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord);
-//	irradiance = mix(irradiance, prevIrradiance, 0.95);
+	//irradiance = mix(irradiance, prevIrradiance, 0.95);
 	imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, irradiance);
 
 	//imageStore(imagesArrayRGBA16F[volume.irradianceImageBinding], texCoord, vec4(reservoir.W * weight * vec3(reservoir.irradianceR, reservoir.irradianceG, reservoir.irradianceB), 1.f));
