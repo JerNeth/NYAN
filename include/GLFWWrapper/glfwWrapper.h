@@ -4,6 +4,7 @@
 
 #include "imgui.h"
 #include "glfwIncludes.h"
+#include "GLFW/glfw3native.h"
 #include "Utility/Log.h"
 #include <vector>
 #include <string>
@@ -55,7 +56,8 @@ namespace glfww {
 	};
 	enum class WindowMode {
 		Windowed,
-		FullscreenWindowed,
+		WindowedBorderless, //good enough, low latency in actual use cases
+		WindowedFullscreen, //kinda useless, ngl
 		Fullscreen,
 		Size
 	};
@@ -75,7 +77,6 @@ namespace glfww {
 			if (!mode)
 				throw std::runtime_error("GLFW: Couldn't find video mode for monitor");
 			m_defaultMode = *mode;
-
 			const auto* name = glfwGetMonitorName(m_monitor);
 			if (!name)
 				throw std::runtime_error("GLFW: Couldn't find name for monitor");
@@ -143,7 +144,19 @@ namespace glfww {
 				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), nullptr, nullptr);
 				break;
 			}
-			case WindowMode::FullscreenWindowed: {
+			case WindowMode::WindowedBorderless: {
+				auto mode_ = monitor.get_default_mode();
+				m_width = mode_->width;
+				m_height = mode_->height;
+				glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); 
+				glfwWindowHint(GLFW_RED_BITS, mode_->redBits);
+				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
+				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
+				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), nullptr, nullptr);
+				break;
+			}
+			case WindowMode::WindowedFullscreen: {
 				auto mode_ = monitor.get_default_mode();
 				m_width = mode_->width;
 				m_height = mode_->height;
@@ -151,6 +164,7 @@ namespace glfww {
 				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
 				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
 				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				glfwWindowHint(GLFW_AUTO_ICONIFY, false);
 				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), monitor, nullptr);
 				break;
 			}
@@ -179,18 +193,30 @@ namespace glfww {
 			m_mode = mode;
 			switch (mode) {
 			case WindowMode::Windowed: {
+				glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 				auto [width, height] = ptr_monitor->get_default_extent();
 				auto x = (width - m_width) / 2;
 				auto y = (height - m_height) / 2;
 				glfwSetWindowMonitor(m_window, nullptr, x, y, m_width, m_height, GLFW_DONT_CARE);
 				break;
 			}
-			case WindowMode::FullscreenWindowed: {
+			case WindowMode::WindowedBorderless: {
+				glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 				auto mode_ = ptr_monitor->get_default_mode();
 				glfwWindowHint(GLFW_RED_BITS, mode_->redBits);
 				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
 				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
 				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				glfwSetWindowMonitor(m_window, nullptr, 0, 0, mode_->width, mode_->height, mode_->refreshRate);
+				break;
+			}
+			case WindowMode::WindowedFullscreen: {
+				auto mode_ = ptr_monitor->get_default_mode();
+				glfwWindowHint(GLFW_RED_BITS, mode_->redBits);
+				glfwWindowHint(GLFW_GREEN_BITS, mode_->greenBits);
+				glfwWindowHint(GLFW_BLUE_BITS, mode_->blueBits);
+				glfwWindowHint(GLFW_REFRESH_RATE, mode_->refreshRate);
+				glfwWindowHint(GLFW_AUTO_ICONIFY, false);
 				glfwSetWindowMonitor(m_window, *ptr_monitor, 0, 0, mode_->width, mode_->height, mode_->refreshRate);
 				break;
 			}
@@ -210,7 +236,10 @@ namespace glfww {
 				m_height = height;
 				glfwSetWindowSize(m_window, m_width, m_height);
 				break;
-			case WindowMode::FullscreenWindowed:
+			case WindowMode::WindowedBorderless:
+				assert(false);
+				break;
+			case WindowMode::WindowedFullscreen:
 				assert(false);
 				break;
 			case WindowMode::Fullscreen:
@@ -228,7 +257,7 @@ namespace glfww {
 		inline HWND get_win32_window() {
 			return glfwGetWin32Window(m_window);
 		}
-#else
+#elif X_PROTOCOL
 		inline Display* get_x11_display() {
 			return glfwGetX11Display();
 		}

@@ -468,7 +468,7 @@ namespace vulkan {
 		return VK_FORMAT_R64G64B64A64_SFLOAT;
 	}
 	template<typename T>
-	constexpr VkFormat get_format(T t) {
+	constexpr VkFormat get_format([[maybe_unused]]T t) {
 		return get_format<T>();
 	}
 

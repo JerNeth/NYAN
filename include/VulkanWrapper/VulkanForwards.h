@@ -72,11 +72,12 @@ namespace vulkan {
 
 	class QueryPool;
 	class TimestampQueryPool;
-
+	
 	class Shader;
 	class ShaderInstance;
 	class ShaderStorage;
 	class Sampler;
+	class Swapchain;
 
 	using ShaderId = uint32_t;
 	constexpr ShaderId invalidShaderId = ~ShaderId{ 0 };

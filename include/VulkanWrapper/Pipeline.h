@@ -6,6 +6,8 @@
 #include "VulkanForwards.h"
 #include "PipelineConfig.h"
 
+#include <filesystem>
+
 namespace vulkan {
 
 	constexpr DynamicGraphicsPipelineState defaultDynamicGraphicsPipelineState{
@@ -105,15 +107,40 @@ namespace vulkan {
 	};
 
 	class PipelineCache: public VulkanObject<VkPipelineCache>   {
+		//Curtesy of https://zeux.io/2019/07/17/serializing-pipeline-cache/
+		struct PipelineCachePrefixHeader {
+			static constexpr uint32_t magicNumberValue = 0x68636163u;
+			uint32_t magicNumber; // an arbitrary magic header to make sure this is actually our file
+			uint32_t dataSize; // equal to *pDataSize returned by vkGetPipelineCacheData
+			uint64_t dataHash; // a hash of pipeline cache data, including the header
+
+			uint32_t vendorID; // equal to VkPhysicalDeviceProperties::vendorID
+			uint32_t deviceID; // equal to VkPhysicalDeviceProperties::deviceID
+			uint32_t driverVersion; // equal to VkPhysicalDeviceProperties::driverVersion
+			uint32_t driverABI; // equal to sizeof(void*)
+
+			std::array<uint8_t, VK_UUID_SIZE>  uuid; // equal to VkPhysicalDeviceProperties::pipelineCacheUUID
+
+			friend bool operator==(const PipelineCachePrefixHeader& left, const PipelineCachePrefixHeader& right) {
+				return left.magicNumber == right.magicNumber &&
+					left.dataSize == right.dataSize &&
+					left.dataHash == right.dataHash &&
+					left.vendorID == right.vendorID &&
+					left.deviceID == right.deviceID &&
+					left.driverVersion == right.driverVersion &&
+					left.driverABI == right.driverABI &&
+					left.uuid == right.uuid;
+			}
+		};
 	public:
-		PipelineCache(LogicalDevice& device, const std::string& path);
+		PipelineCache(LogicalDevice& device, std::filesystem::path path);
 		PipelineCache(PipelineCache&) = delete;
 		PipelineCache(PipelineCache&&) = delete;
 		PipelineCache& operator=(PipelineCache&) = delete;
 		PipelineCache& operator=(PipelineCache&&) = delete;
 		~PipelineCache() noexcept;
 	private:
-		std::string m_path;
+		std::filesystem::path m_path;
 	};
 	class Pipeline2 : public VulkanObject<VkPipeline> {
 	public:

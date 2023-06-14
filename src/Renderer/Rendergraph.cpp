@@ -38,7 +38,7 @@ void nyan::Renderpass::add_read(RenderResource::Id id, Renderpass::Read::Type re
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
-	m_reads.push_back(Read{ resource.m_id, readType, VK_NULL_HANDLE });
+	m_reads.push_back(Read{ resource.m_id, readType });
 
 	if (resource.uses.size() <= m_id.id) {
 		resource.uses.resize(m_id.id + 1ull);
@@ -149,6 +149,7 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 	assert(r_graph.resource_exists(id));
 	if (std::find_if(m_writes.cbegin(), m_writes.cend(), [id, writeType](const auto& write) { return write.id == id && writeType == write.type; }) != m_writes.cend())
 		return;
+
 	if (r_graph.m_state != Rendergraph::State::Setup)
 		r_graph.m_state = Rendergraph::State::Dirty;
 	auto& resource = r_graph.get_resource(id);
@@ -160,7 +161,7 @@ void nyan::Renderpass::add_write(RenderResource::Id id, Renderpass::Write::Type 
 		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
 
-	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE});
+	m_writes.push_back(Write{ resource.m_id , writeType});
 }
 
 void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Write::Type writeType, bool clear)
@@ -185,7 +186,7 @@ void nyan::Renderpass::add_swapchain_write(Math::vec4 clearColor, Renderpass::Wr
 		resource.uses[m_id.id].set(RenderResource::ImageUse::Clear);
 
 	assert(std::find(m_attachments.begin(), m_attachments.end(), resource.m_id) == m_attachments.end());
-	m_writes.push_back(Write{ resource.m_id , writeType, VK_NULL_HANDLE });
+	m_writes.push_back(Write{ resource.m_id , writeType });
 	m_rendersSwap = true;
 }
 
@@ -211,7 +212,6 @@ void nyan::Renderpass::copy(RenderResource::Id source, RenderResource::Id target
 
 void nyan::Renderpass::update() 
 {
-	update_views();
 	update_rendering_info();
 	update_image_barriers();
 	update_binds();
@@ -364,10 +364,9 @@ uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type typ
 	assert(res != m_writes.cend());
 	if (res != m_writes.cend())
 		return res->binding;
-	else {
-		Utility::log_warning().format("Resource ({}): invalid write bind", resource.name);
-		return InvalidResourceId.id;
-	}
+
+	Utility::log_warning().format("Resource ({}): invalid write bind", resource.name);
+	return InvalidResourceId.id;
 }
 
 uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
@@ -378,11 +377,9 @@ uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
 	assert(res != m_reads.cend());
 	if (res != m_reads.cend())
 		return res->binding;
-	else {
-		Utility::log_warning().format("Resource ({}): invalid read bind", resource.name);
-		return InvalidResourceId.id;
-	}
 
+	Utility::log_warning().format("Resource ({}): invalid read bind", resource.name);
+	return InvalidResourceId.id;
 }
 
 void nyan::Renderpass::add_wait(VkSemaphore wait, VkPipelineStageFlags2 stage)
@@ -415,27 +412,27 @@ void nyan::Renderpass::clear_dependencies()
 	m_signals.clear();
 }
 
-void nyan::Renderpass::clear_resource_references(RenderResource::Id id)
+void nyan::Renderpass::clear_resource_references(const RenderResource::Id id)
 {
-	for (auto it = m_writes.begin(); it != m_writes.end();) {
+	for (auto it = m_writes.begin(); it != m_writes.end(); ++it) {
 		if (it->id == id) {
 			m_writes.erase(it);
 			break;
 		}
 	}
-	for (auto it = m_reads.begin(); it != m_reads.end();) {
+	for (auto it = m_reads.begin(); it != m_reads.end(); ++it) {
 		if (it->id == id) {
 			m_reads.erase(it);
 			break;
 		}
 	}
-	for (auto it = m_copies.begin(); it != m_copies.end();) {
+	for (auto it = m_copies.begin(); it != m_copies.end(); ++it) {
 		if (it->dst == id || it->src == id) {
 			m_copies.erase(it);
 			break;
 		}
 	}
-	for (auto it = m_attachments.begin(); it != m_attachments.end();) {
+	for (auto it = m_attachments.begin(); it != m_attachments.end(); ++it) {
 		if (it->id == id.id) {
 			assert(false && "Attachment deletion not supported yet");
 			return;
@@ -458,18 +455,6 @@ void nyan::Renderpass::build_rendering_info()
 		m_renderInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
 		m_renderingCreateInfo.colorAttachmentCount = 0;
 		m_renderInfo.colorAttachmentCount = 0;
-		for (auto& [readId, readType, readView, readBinding] : m_reads) {
-			auto& resource = r_graph.m_renderresources.get(readId);
-			if (resource.m_type == RenderResource::Type::Image) {
-				readView = VK_NULL_HANDLE;
-			}
-		}
-		for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
-			auto& resource = r_graph.m_renderresources.get(writeId);
-			if (resource.m_type == RenderResource::Type::Image) {
-				writeView = VK_NULL_HANDLE;
-			}
-		}
 		for (auto attachmentId : m_attachments) {
 			auto& resource = r_graph.m_renderresources.get(attachmentId);
 			if (resource.m_type == RenderResource::Type::Image) {
@@ -545,22 +530,18 @@ void nyan::Renderpass::build_pipelines()
 }
 
 
-void nyan::Renderpass::update_binds() {
+void nyan::Renderpass::update_binds()
+{
 
-
-	//for (auto readId : m_reads) {
-	//	const auto& read = r_graph.get_resource(readId);
-	//	if (read.binding != ~0u) {
-	//		if(is_attachment(readId))
-	//			r_graph.r_device.get_bindless_set().set_storage_image(read.binding, VkDescriptorImageInfo{ .imageView = read.handle->get_image_view(), .imageLayout = VK_IMAGE_LAYOUT_GENERAL });
-	//	}
-	//	else {
-	//		assert(false);
-	//	}
-	//}
-	for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
+	for (auto& [writeId, writeType, writeBinding] : m_writes) {
 		const auto& write = r_graph.get_resource(writeId);
+		auto& resource = r_graph.m_renderresources.get(writeId);
 		if (write.m_type == RenderResource::Type::Image) {
+			VkImageView writeView{ VK_NULL_HANDLE };
+			assert(resource.handle);
+			if (!resource.handle)
+				continue;
+			writeView = *resource.handle->get_view();
 			assert(is_write(writeId));
 			if (writeBinding != ~0u) {
 				assert(writeView != VK_NULL_HANDLE);
@@ -577,9 +558,29 @@ void nyan::Renderpass::update_binds() {
 			assert(false);
 		}
 	}
-	for (auto& [readId, readType, readView, readBinding] : m_reads) {
+	for (auto& [readId, readType, readBinding] : m_reads) {
 		const auto& read = r_graph.get_resource(readId);
+		auto& resource = r_graph.m_renderresources.get(readId);
 		if (read.m_type == RenderResource::Type::Image) {
+			VkImageView readView{ VK_NULL_HANDLE };
+			assert(resource.handle);
+			if (readType == Renderpass::Read::Type::ImageColor) {
+				readView = *resource.handle->get_view();
+			}
+			else if (readType == Renderpass::Read::Type::ImageDepth) {
+				const auto* tmp = resource.handle->get_depth_view();
+				assert(tmp);
+				if (!tmp)
+					continue;
+				readView = *tmp;
+			}
+			else if (readType == Renderpass::Read::Type::ImageStencil) {
+				const auto* tmp = resource.handle->get_stencil_view();
+				assert(tmp);
+				if (!tmp)
+					continue;
+				readView = *tmp;
+			}
 			assert(is_read(readId));
 			if (readBinding != ~0u) {
 				assert(readView != VK_NULL_HANDLE);
@@ -672,45 +673,6 @@ void nyan::Renderpass::update_rendering_info()
 		}
 	}
 }
-
-void nyan::Renderpass::update_views()
-{
-	for (auto& [readId, readType, readView, readBinding] : m_reads) {
-		auto& resource = r_graph.m_renderresources.get(readId);
-		if (resource.m_type == RenderResource::Type::Image) {
-			assert(resource.handle);
-			if (readType == Renderpass::Read::Type::ImageColor) {
-				readView = *resource.handle->get_view();
-
-			}
-			else if (readType == Renderpass::Read::Type::ImageDepth) {
-				auto* tmp = resource.handle->get_depth_view();
-				assert(tmp);
-				if (!tmp)
-					continue;
-				readView = *tmp;
-			}
-			else if (readType == Renderpass::Read::Type::ImageStencil) {
-				auto* tmp = resource.handle->get_stencil_view();
-				assert(tmp);
-				if (!tmp)
-					continue;
-				readView = *tmp;
-			}
-
-		}
-	}
-	for (auto& [writeId, writeType, writeView, writeBinding] : m_writes) {
-		auto& resource = r_graph.m_renderresources.get(writeId);
-		if (resource.m_type == RenderResource::Type::Image) {
-			assert(resource.handle);
-			if (!resource.handle)
-				continue;
-			writeView = *resource.handle->get_view();
-		}
-	}
-}
-
 
 bool nyan::Renderpass::is_read(RenderResource::Id id) const
 {
@@ -830,7 +792,7 @@ void nyan::Rendergraph::end_frame()
 			p_profiler->begin_profile(cmd, pass.m_name);
 		cmd.begin_region(pass.m_name.c_str());
 		pass.apply_pre_barriers(cmd);
-		for (auto [id, type, view, binding] : pass.m_writes) {
+		for (auto &[id, type, binding] : pass.m_writes) {
 			auto& resource = m_renderresources.get(id);
 			auto& attachment = std::get<ImageAttachment>(resource.attachment);
 			if (resource.m_type == RenderResource::Type::Image && !vulkan::ImageInfo::is_depth_or_stencil_format(attachment.format)) {
@@ -1382,8 +1344,10 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 		if (!totalUses.none())
 			resource.handle = r_device.request_render_target(width, height, attachment.format, resource.m_id.id, usage, initialLayout, VK_SAMPLE_COUNT_1_BIT, attachment.arrayLayers);
 	}
-	resource.handle->set_debug_label(resource.name.data());
-	resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
+	if constexpr (debugMarkers) {
+		resource.handle->set_debug_label(resource.name.data());
+		resource.handle->get_view()->set_debug_label((resource.name + "_view").c_str());
+	}
 }
 
 void nyan::Rendergraph::setup_render_resource_barriers(RenderResource& resource)
@@ -1410,8 +1374,7 @@ void nyan::Rendergraph::setup_render_resource_barriers(RenderResource& resource)
 		set_up_copy(Renderpass::Id{ i }, resource);
 		auto j = i + 1;
 		for (; j < static_cast<Renderpass::Id::Type>(resource.uses.size()); j++) {
-			const auto& dstUse = resource.uses[j];
-			if (!dstUse.none())
+			if (const auto& dstUse = resource.uses[j]; !dstUse.none())
 				break;
 		}
 		if (j < static_cast<Renderpass::Id::Type>(resource.uses.size())) {
@@ -1422,7 +1385,7 @@ void nyan::Rendergraph::setup_render_resource_barriers(RenderResource& resource)
 
 	if (resource.m_id == m_swapchainResource) {
 
-		for (int64_t i = static_cast<int64_t>(resource.uses.size()) - 1; i > 0; i--) {
+		for (int64_t i = static_cast<int64_t>(resource.uses.size()) - 1; i >= 0; i--) {
 			const auto& srcUse = resource.uses[i];
 			if (!srcUse.none()) {
 				swapchain_present_transition(Renderpass::Id{ static_cast<Renderpass::Id::Type>(i) });
@@ -1465,6 +1428,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 			.layerCount = VK_REMAINING_ARRAY_LAYERS,
 		}
 	};
+	
 
 	if (usage.test(RenderResource::ImageUse::Sample)) {
 		assert(!usage.test(RenderResource::ImageUse::Attachment));

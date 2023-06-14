@@ -65,9 +65,9 @@ void nyan::DDGIRenderer::begin_frame()
 		}
 	}
 
-	auto& renderGraph = r_renderManager.get_render_graph();
-	auto width = static_cast<float>(1 << m_renderTargetWidthBits);
-	auto height = std::ceil(static_cast<float>(maxRays) / static_cast<float>(1 << m_renderTargetWidthBits));
+	//auto& renderGraph = r_renderManager.get_render_graph();
+	//auto width = static_cast<float>(1 << m_renderTargetWidthBits);
+	//auto height = std::ceil(static_cast<float>(maxRays) / static_cast<float>(1 << m_renderTargetWidthBits));
 	if (!m_renderBuffer || ((*m_renderBuffer)->get_size() < maxRays * 4 * formatSize)){
 		vulkan::BufferInfo info{
 			.size {maxRays * 4 * formatSize },
@@ -168,7 +168,7 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 			auto& res = r_renderManager.get_render_graph().get_resource(parameters.irradianceResource);
 			auto& res0 = r_renderManager.get_render_graph().get_resource(parameters.data0Resource);
 			auto& res1 = r_renderManager.get_render_graph().get_resource(parameters.data1Resource);
-			auto& res2 = r_renderManager.get_render_graph().get_resource(parameters.data2Resource);
+			//auto& res2 = r_renderManager.get_render_graph().get_resource(parameters.data2Resource);
 			auto& resD = r_renderManager.get_render_graph().get_resource(parameters.depthResource);
 			if (res.handle && res0.handle && res1.handle && resD.handle) {
 				m_clear = false;
@@ -313,23 +313,23 @@ void nyan::DDGIRenderer::render(vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 			std::vector<float> irradianceData(4ull * m_screenShotWidth * m_screenShotHeight * m_screenShotLayers);
 			std::vector<float> depthData(4ull * m_screenShotWidthDepth * m_screenShotHeightDepth * m_screenShotLayersDepth);
 			auto* halfPtr = reinterpret_cast<Math::half*>(data);
-			for (auto i = 0ull; i < irradianceData.size(); ++i) {
-				irradianceData[i] = halfPtr[i];
+			for (auto ir = 0ull; ir < irradianceData.size(); ++ir) {
+				irradianceData[ir] = halfPtr[ir];
 			}
-			for (auto layer = 0; layer < m_screenShotLayers; ++layer) {
-				for (auto height = 0; height < m_screenShotHeight; ++height) {
-					for (auto width = 0; width < m_screenShotWidth; ++width) {
-						for (auto channel = 0; channel < 4; ++channel) {
+			for (auto layer = 0u; layer < m_screenShotLayers; ++layer) {
+				for (auto height = 0u; height < m_screenShotHeight; ++height) {
+					for (auto width = 0u; width < m_screenShotWidth; ++width) {
+						for (auto channel = 0u; channel < 4; ++channel) {
 							irradianceData[(height * (m_screenShotWidth * m_screenShotLayers) + layer * m_screenShotWidth + width) * 4 + channel]
 							= halfPtr[(layer * (m_screenShotWidth * m_screenShotHeight) + height * m_screenShotWidth + width) * 4 + channel];
 						}
 					}
 				}
 			}
-			for (auto layer = 0; layer < m_screenShotLayersDepth; ++layer) {
-				for (auto height = 0; height < m_screenShotHeightDepth; ++height) {
-					for (auto width = 0; width < m_screenShotWidthDepth; ++width) {
-						for (auto channel = 0; channel < 4; ++channel){
+			for (auto layer = 0u; layer < m_screenShotLayersDepth; ++layer) {
+				for (auto height = 0u; height < m_screenShotHeightDepth; ++height) {
+					for (auto width = 0u; width < m_screenShotWidthDepth; ++width) {
+						for (auto channel = 0u; channel < 4u; ++channel){
 							depthData[(height * (m_screenShotWidthDepth * m_screenShotLayersDepth) + layer * m_screenShotWidthDepth + width)* 4 + channel]
 								= reinterpret_cast<const float*>(dataDepth)[(layer * (m_screenShotWidthDepth * m_screenShotHeightDepth) + height * m_screenShotWidthDepth + width) * 4 + channel];
 						}
@@ -996,14 +996,10 @@ void nyan::DDGIReSTIRRenderer::begin_frame()
 		image.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	}
 	auto reservoirSize = sizeof(nyan::shaders::DDGIReSTIRTemporalReservoir) * maxReservoirs;
-	if (!m_temporalReservoirs) {
+	if (!m_temporalReservoirs || (*m_temporalReservoirs)->get_size() != reservoirSize) {
 		m_temporalReservoirs = std::make_unique<vulkan::BufferHandle>(r_device.create_buffer(vulkan::BufferInfo{ .size{reservoirSize},
 			.usage {VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT },.offset{}, .memoryUsage{VMA_MEMORY_USAGE_AUTO} }, {}));
 		m_dirtyReservoirs = true;
-	}
-	else {
-		if (m_dirtyReservoirs = ((*m_temporalReservoirs)->get_size() != reservoirSize); m_dirtyReservoirs)
-			(*m_temporalReservoirs)->resize(reservoirSize);
 	}
 }
 
@@ -1283,7 +1279,7 @@ vulkan::RTPipeline& nyan::DDGIReSTIRRenderer::get_sample_validation_pipeline(con
 	}
 }
 
-vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_generation_config(const RTConfig& config)
+vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_generation_config([[maybe_unused]] const RTConfig& config)
 {
 	return vulkan::RaytracingPipelineConfig{
 		.rgenGroups {
@@ -1317,7 +1313,7 @@ vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_gener
 	};
 }
 
-vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_validation_config(const RTConfig& config)
+vulkan::RaytracingPipelineConfig nyan::DDGIReSTIRRenderer::generate_sample_validation_config([[maybe_unused]] const RTConfig& config)
 {
 	return vulkan::RaytracingPipelineConfig{
 		.rgenGroups {

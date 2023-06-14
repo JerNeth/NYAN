@@ -93,8 +93,8 @@ namespace Utility {
 			return hash;
 		}
 	};
-	template<typename T>
 	struct DataHash {
+		template<typename T>
 		HashValue operator()(const T* t, size_t size) const {
 			const HashValue prime = 0x100000001b3ull;
 			HashValue hash = 0xcbf29ce484222325ull;

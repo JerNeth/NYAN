@@ -15,7 +15,7 @@ file(WRITE "${stb_SOURCE_DIR}/stb.cpp" "#include \"stb_image.h\"" "\n" "#include
 add_library(stb STATIC 
 	"${stb_SOURCE_DIR}/stb.cpp"
 )
-target_include_directories(stb PUBLIC
+target_include_directories(stb SYSTEM PUBLIC
 	"${stb_SOURCE_DIR}"
 )
 target_compile_definitions(stb PRIVATE 

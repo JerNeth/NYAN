@@ -15,7 +15,7 @@ file(WRITE "${vma_SOURCE_DIR}/vk_mem_alloc.cpp" "#include \"vk_mem_alloc.h\"")
 add_library(vma STATIC 
 	"${vma_SOURCE_DIR}/vk_mem_alloc.cpp"
 )
-target_include_directories(vma PUBLIC
+target_include_directories(vma SYSTEM PUBLIC
 	"${vma_SOURCE_DIR}/include"
 )
 target_compile_definitions(vma PUBLIC 

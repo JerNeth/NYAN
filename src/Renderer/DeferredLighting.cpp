@@ -5,6 +5,7 @@
 #include "VulkanWrapper/Sampler.h"
 #include "Utility/Exceptions.h"
 #include "entt/entt.hpp"
+#include <stb_image_write.h>
 #include <ctime>
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,

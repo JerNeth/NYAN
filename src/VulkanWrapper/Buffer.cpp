@@ -11,13 +11,6 @@ vulkan::Buffer::Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation all
 	
 }
 
-
-void vulkan::Buffer::resize(VkDeviceSize newSize, bool copyData) {
-	//if (newSize == get_size())
-	//	return;
-	r_device.resize_buffer(*this, newSize, copyData);
-}
-
 VkBufferUsageFlags vulkan::Buffer::get_usage() const noexcept {
 	return m_info.usage;
 }

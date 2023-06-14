@@ -12,7 +12,8 @@ namespace Utility {
 			: m_msg(std::format("{}: {} [{}]\n: Feature not supported by Device", location.file_name(), location.function_name(), location.line())) 
 		{
 		}
-		const char* what() const override {
+
+		[[nodiscard]] const char* what() const override {
 			return m_msg.c_str();
 			
 		}
@@ -100,6 +101,18 @@ namespace Utility {
 	class DeviceLostException : public std::exception {
 	public:
 		DeviceLostException(const std::string& msg, const std::source_location location = std::source_location::current())
+			: m_msg(std::format("{}({}): {}: Device Lost: {}", location.file_name(), location.line(), location.function_name(), msg))
+		{
+		}
+		const char* what() const override {
+			return m_msg.c_str();
+		}
+	private:
+		std::string m_msg{};
+	};
+	class SurfaceLostException : public std::exception {
+	public:
+		SurfaceLostException(const std::string& msg, const std::source_location location = std::source_location::current())
 			: m_msg(std::format("{}({}): {}: Device Lost: {}", location.file_name(), location.line(), location.function_name(), msg))
 		{
 		}

@@ -211,15 +211,15 @@ static constexpr bool implies(bool a, bool b) noexcept {
 
 void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffer& buffer, const std::span<const VkBufferImageCopy> regions, VkImageLayout srcLayout)
 {
-	assert(regions.size());
+	assert(!regions.empty());
 	assert(regions.data());
 	for (const auto& region : regions) {
-		assert(region.imageOffset.x >= 0 && region.imageOffset.x <= image.get_info().width);
-		assert((region.imageOffset.x + region.imageExtent.width) >= 0 && (region.imageOffset.x + region.imageExtent.width) <= image.get_info().width);
-		assert(region.imageOffset.y >= 0 && region.imageOffset.y <= image.get_info().height);
-		assert((region.imageOffset.y + region.imageExtent.height) >= 0 && (region.imageOffset.y + region.imageExtent.height) <= image.get_info().height);
-		assert(region.imageOffset.z >= 0 && region.imageOffset.z <= image.get_info().depth);
-		assert((region.imageOffset.z + region.imageExtent.depth) >= 0 && (region.imageOffset.z + region.imageExtent.depth) <= image.get_info().depth);
+		assert(region.imageOffset.x >= 0u && region.imageOffset.x <= image.get_info().width);
+		assert((region.imageOffset.x + region.imageExtent.width) >= 0u && (region.imageOffset.x + region.imageExtent.width) <= image.get_info().width);
+		assert(region.imageOffset.y >= 0u && region.imageOffset.y <= image.get_info().height);
+		assert((region.imageOffset.y + region.imageExtent.height) >= 0u && (region.imageOffset.y + region.imageExtent.height) <= image.get_info().height);
+		assert(region.imageOffset.z >= 0u && region.imageOffset.z <= image.get_info().depth);
+		assert((region.imageOffset.z + region.imageExtent.depth) >= 0u && (region.imageOffset.z + region.imageExtent.depth) <= image.get_info().depth);
 		assert(vulkan::ImageInfo::format_to_aspect_mask(image.get_format())& region.imageSubresource.aspectMask);
 		assert(region.imageSubresource.aspectMask);
 		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_METADATA_BIT));
@@ -244,7 +244,7 @@ void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffe
 
 
 
-	vkCmdCopyImageToBuffer(m_handle, image, srcLayout, buffer, regions.size(), regions.data());
+	vkCmdCopyImageToBuffer(m_handle, image, srcLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
 }
 
 
@@ -422,7 +422,7 @@ void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, con
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
 	assert(!(barrierCount != 0) || (globals != nullptr));
 	assert(!(barrierCount != 0) || (globals[0].sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER_2));
-	VkDependencyInfo dependencyInfo{
+	const VkDependencyInfo dependencyInfo{
 		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
 		.pNext {nullptr},
 		.dependencyFlags {dependencyFlags},
@@ -473,7 +473,7 @@ void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, co
 	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
 	//for (auto a = 0; a < barrierCount; ++a)
 	//	assert(!(globals[a].srcStageMask & VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
-	VkDependencyInfo dependencyInfo{
+	const VkDependencyInfo dependencyInfo{
 		.sType {VK_STRUCTURE_TYPE_DEPENDENCY_INFO},
 		.pNext {nullptr},
 		.dependencyFlags {dependencyFlags},

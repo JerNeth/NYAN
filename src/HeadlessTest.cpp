@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <Util>
 #include "Application.h"
 #include <span>
@@ -8,7 +8,6 @@
 #include "Renderer/Light.h"
 
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/DDGIRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/DeferredLighting.h"
 #include "Renderer/Profiler.hpp"
@@ -16,7 +15,21 @@
 
 using namespace nyan;
 
-int main() {
+enum class ExitCode : int {
+	Success = EXIT_SUCCESS,
+	Failure = EXIT_FAILURE
+};
+
+int main(const int argc, char const* const* const argv)
+{
+	[[nodiscard]] ExitCode better_main(std::span<const std::string_view>);
+	std::vector<std::string_view>
+		args(argv, std::next(argv, static_cast<std::ptrdiff_t>(argc)));
+
+	return static_cast<int>(better_main(args));
+}
+
+[[nodiscard]] ExitCode better_main([[maybe_unused]] std::span<const std::string_view> args) {
 	auto name = "Demo";
 	nyan::Application application(name);
 
@@ -30,36 +43,22 @@ int main() {
 	nyan::RenderManager renderManager(device, true, directory);
 	nyan::CameraController cameraController(renderManager, input);
 	auto& registry = renderManager.get_registry();
+
 	std::filesystem::path file;
-	//file = "sponza-gltf-pbr/sponza.glb";
-	//file = "Sponza/glTF/Sponza.gltf";
-	//file = "TestScene.gltf";
-	//file = "SanMiguel.gltf";
-	//file = "SunTemple.glb";
-	//file = "NewSponza_Main_glTF_002.gltf";
-	//file = "glTF-Sample-Models/2.0/NormalTangentMirrorTest/glTF/NormalTangentMirrorTest.gltf";
-	std::filesystem::path dir = "glTF-Sample-Models/2.0";
-	//file = "SanMiguel.gltf";
-	//dir = "SanMiguel2";
-	//dir = "TestScene";
-	//dir = "SanMiguel";
-	//dir = "Main.1_Sponza";
-	//file = dir / "OrientationTest/glTF/OrientationTest.gltf";
-	//file = dir / "BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf";
-	//file = "coord.glb";
-	//file = "sphere.glb";
-	//file = "cornellFixed.gltf";
-
-
+	std::filesystem::path dir;
 	Transform cameraTransform;
-	std::string scene = "Sponza1";
+
+	//Params
+	std::string scene = "Sponza";
+	std::optional<std::filesystem::path> assetPath{ std::nullopt };
+	bool quitAfterRecording = false;
+
+
 	float dirIntensity = 1.45f;
 	float envIntensity = 1.0f;
 	auto dirDir = Math::vec3{ 0.f, -1.f, 0.300f };
 	auto envCol = Math::vec3{ 1.f, 1.f, 1.f };
-	bool antiAliasing = false;
-	float fovX = 68.f;
-	if (scene == "Sponza" || scene == "Sponza1" || scene == "Sponza2") {
+	if (scene == "Sponza") {
 		file = "Sponza/glTF/Sponza.gltf";
 		dir = "glTF-Sample-Models/2.0";
 		file = dir / file;
@@ -68,73 +67,13 @@ int main() {
 					.scale{1.f},
 					.orientation{-13.22f, -295.23f, 0.f},
 		};
-
-		if (scene == "Sponza1") {
-			cameraTransform = Transform{
-						.position{10.f, 5.f, 3.f},
-						.scale{1.f},
-						.orientation{0.f, -270.f, 0.f},
-			};
-			dirIntensity = 1000.f;
-		}
-		if (scene == "Sponza2") {
-			cameraTransform = Transform{
-						.position{9.8f, 1.9f, -3.2f},
-						.scale{1.f},
-						.orientation{0.f, -250.f, 0.f},
-			};
-			dirIntensity = 1000.f;
-		}
-	}
-	else if (scene == "SanMiguel" || scene == "SanMiguel1" || scene == "SanMiguel2") {
-		file = "SanMiguel.gltf";
-		dir = "SanMiguel2";
-		file = dir / file;
-		cameraTransform = Transform{
-				.position{6.527f, 9.183f, 4.929f},
-				.scale{1.f},
-				.orientation{-30.625f, -45.f, 0.f},
-		};
-		if (scene == "SanMiguel2") {
-			cameraTransform = Transform{
-					.position{21.68f, 1.1f, 6.8f},
-					.scale{1.f},
-					.orientation{-3.f, -320.f, 0.f},
-			};
-			dirIntensity = 1000.f;
-			dirDir = Math::vec3{ -1.f, -1.f, 1.f };
-		}
-	}
-	else if (scene == "Cornell") {
-		file = "cornellFixed.gltf";
-		cameraTransform = Transform{
-				.position{0.f, 0.f, 11.f},
-				.scale{1.f},
-				.orientation{0.f, 0.f, 0.f},
-		};
-		dirIntensity = 0.f;
-		envIntensity = 0.f;
-		envCol = Math::vec3{ 0.f, 0.f, 0.f };
-	}
-	else if (scene == "Spheres") {
-		file = "Spheres.gltf";
-		cameraTransform = Transform{
-				.position{0.f, 0.f, 1000.f},
-				.scale{1.f},
-				.orientation{0.f, 0.f, 0.f},
-		};
-		fovX = 179.75f;
-		dirIntensity = 5.f;
-		envIntensity = 1.0f;
-		//dirDir = Math::vec3{ -1.f, -1.f, -1.f };
-		dirDir = Math::vec3{ -1.f, 0.f, -1.f };
-		envCol = Math::vec3{ 1.f, 1.f, 1.f };
-		antiAliasing = true;
 	}
 
+	file = "OrientationTest/glTF/OrientationTest.gltf";
+	dir = "glTF-Sample-Models/2.0";
+	file = dir / file;
 
-	std::filesystem::path path = directory  / file;
-	//path = directory / file;
+	std::filesystem::path path = directory / file;
 	nyan::GLTFReader reader{ renderManager };
 	reader.load_file(path);
 
@@ -150,27 +89,20 @@ int main() {
 			.orientation{0, 0, 0},
 		});
 	auto camera = registry.create();
-	Transform sponzaTransform {
-			.position{7.46, 5.07f, 0.92f},
-			.scale{1.f},
-			.orientation{-13.22f, -295.23f, 0.f},
-	};
-	Transform sanMiguelTransform{
-			.position{6.527f, 9.183f, 4.929f},
-			.scale{1.f},
-			.orientation{-25.f, -45.f, 0.f},
-	};
+
 	registry.emplace<Transform>(camera, cameraTransform);
 	registry.emplace<PerspectiveCamera>(camera,
 		PerspectiveCamera{
 			.nearPlane {.1f},
 			.farPlane {10000.f},
-			.fovX {fovX},
+			.fovX {68.f},
 			.aspect {16.f / 9.f },
 			.forward {0.f, 0.f ,1.f},
 			.up {0.f, 1.f ,0.f},
 			.right {1.f, 0.f ,0.f},
 		});
+
+
 	registry.emplace<Directionallight>(parent, Directionallight
 		{
 			.enabled {true},
@@ -193,25 +125,34 @@ int main() {
 	auto& rendergraph{ renderManager.get_render_graph() };
 	rendergraph.set_profiler(&renderManager.get_profiler());
 
+
+	auto gbuffer = rendergraph.add_gbuffer("gbuffer");
 	auto lighting = rendergraph.add_lighting("lighting");
 
 
-	auto& ptPass = rendergraph.get_pass(rendergraph.add_pass("PathTrace-Pass", nyan::Renderpass::Type::Generic));
+	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
+
+	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
+
+	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
+
 	auto& compositePass = rendergraph.get_pass(rendergraph.add_pass("Composite-Pass", nyan::Renderpass::Type::Generic));
 
 	auto& imguiPass = rendergraph.get_pass(rendergraph.add_pass("Imgui-Pass", nyan::Renderpass::Type::Generic));
 
-	nyan::RTMeshRenderer meshRenderer(device, registry, renderManager, ptPass, lighting);
+	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
+	//nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);
 	nyan::ImguiRenderer imgui(device, registry, renderManager, imguiPass, &window);
 	rendergraph.build();
-
 	application.each_update([&](std::chrono::nanoseconds dt)
 		{
+
+
 			cameraController.update(dt);
-			if (cameraController.changed())
-				meshRenderer.reset();
 			renderManager.update(dt);
 		});
 	application.each_frame_begin([&]()
@@ -235,17 +176,9 @@ int main() {
 				}
 				ImGui::EndCombo();
 			}
-			if (ImGui::Button("Reset Path Tracer"))
-				meshRenderer.reset();
-			ImGui::Checkbox("Antialiasing", &antiAliasing);
-			meshRenderer.set_antialiasing(antiAliasing);
-			static int maxPathLength = 10;
-			ImGui::DragInt("Max Path Length", &maxPathLength, 1.f, 1.f, 64.f);
-			meshRenderer.set_max_path_length(maxPathLength);
 
 			ImGui::End();
 			lightComposite.set_tonemapping(static_cast<nyan::LightComposite::ToneMapping>(current_tonemapping));
-
 			rendergraph.begin_frame();
 
 			//ImGui::Begin("Input");
@@ -266,5 +199,5 @@ int main() {
 		});
 	application.main_loop();
 
-	return 0;
+	return ExitCode::Success;
 }

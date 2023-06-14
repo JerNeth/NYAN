@@ -15,13 +15,12 @@ namespace nyan {
 	};
 	class Application {
 	public:
-		Application(const std::string& name);
+		Application(std::string name);
+		~Application();
 		//Remove these functions and refactor
 		vulkan::LogicalDevice& get_device();
 		glfww::Window& get_window();
 		nyan::Input& get_input();
-		int get_width();
-		int get_height();
 
 		void next_frame();
 		void end_frame();
@@ -48,13 +47,14 @@ namespace nyan {
 		std::unique_ptr<glfww::Window> m_window;
 		std::unique_ptr<nyan::Input> m_input;
 		std::unique_ptr<vulkan::Instance> m_vulkanInstance;
+		std::unique_ptr<vulkan::Surface> m_vulkanSurface;
 		std::unique_ptr<vulkan::LogicalDevice> m_vulkanDevice;
 		std::unique_ptr<vulkan::WindowSystemInterface> m_windowSystemInterface;
 
 		std::vector< std::function<void(std::chrono::nanoseconds)>> m_updateFunctions;
 		std::vector< std::function<void()>> m_beginFrameFunctions;
 		std::vector< std::function<void()>> m_endFrameFunctions;
-		std::chrono::time_point<std::chrono::steady_clock> lastUpdate;
+		std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate;
 		uint64_t m_frameCount {0};
 		uint64_t m_tickCount {0};
 		uint64_t m_maxFrameCount{ 0 };

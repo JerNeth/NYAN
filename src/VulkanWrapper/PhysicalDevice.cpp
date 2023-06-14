@@ -1,5 +1,6 @@
 #include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/LogicalDevice.h"
+#include "Utility/Exceptions.h"
 
 
 vulkan::PhysicalDevice::PhysicalDevice(VkPhysicalDevice device) :
@@ -41,39 +42,78 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 	for (const auto& ext : m_availableExtensions) {
 		if (strcmp(ext.extensionName, extension) == 0) {
 			if (strcmp(ext.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
-				m_accelerationStructureFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_accelerationStructureFeatures;
 				m_extensions.acceleration_structure = m_accelerationStructureFeatures.accelerationStructure;
+				if (m_extensions.acceleration_structure) {
+					m_accelerationStructureFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_accelerationStructureFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
-				m_rayTracingPipelineFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_rayTracingPipelineFeatures;
 				m_extensions.ray_tracing_pipeline = m_rayTracingPipelineFeatures.rayTracingPipeline;
+				if (m_extensions.ray_tracing_pipeline) {
+					m_rayTracingPipelineFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_rayTracingPipelineFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0) {
-				m_rayQueryFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_rayQueryFeatures;
 				m_extensions.ray_query = m_rayQueryFeatures.rayQuery;
+				if (m_extensions.ray_query) {
+					m_rayQueryFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_rayQueryFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
-				m_vertexInputDynamicStateFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_vertexInputDynamicStateFeatures;
 				m_extensions.vertex_input_dynamic_state = m_vertexInputDynamicStateFeatures.vertexInputDynamicState;
+				if (m_extensions.vertex_input_dynamic_state) {
+					m_vertexInputDynamicStateFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_vertexInputDynamicStateFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_NV_MESH_SHADER_EXTENSION_NAME) == 0) {
-				m_meshShaderFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_meshShaderFeatures;
-				m_extensions.mesh_shader = m_meshShaderFeatures.meshShader && m_meshShaderFeatures.taskShader;
+				m_extensions.mesh_shader = m_meshShaderFeatures.meshShader & m_meshShaderFeatures.taskShader;
+				if (m_extensions.mesh_shader) {
+					m_meshShaderFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_meshShaderFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME) == 0) {
-				m_atomicFloatFeatures.pNext = m_features.pNext;
-				m_features.pNext = &m_atomicFloatFeatures;
-				m_extensions.atomic_floats = m_atomicFloatFeatures.shaderBufferFloat32Atomics && m_atomicFloatFeatures.shaderBufferFloat32AtomicAdd;
+				m_extensions.atomic_floats = m_atomicFloatFeatures.shaderBufferFloat32Atomics & m_atomicFloatFeatures.shaderBufferFloat32AtomicAdd;
+				if (m_extensions.atomic_floats) {
+					m_atomicFloatFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_atomicFloatFeatures;
+				}
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0) {
+				bool dependencies = true;
+				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+				if (!dependencies)
+					return false;
+				m_extensions.present_id = m_presentIdFeatures.presentId;
+				if (m_extensions.present_id) {
+					m_presentIdFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_presentIdFeatures;
+				}
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_PRESENT_WAIT_EXTENSION_NAME) == 0) {
+				bool dependencies = true;
+				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+				dependencies &= use_extension(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+				if (!dependencies)
+					return false;
+				m_extensions.present_wait = m_presentWaitFeatures.presentWait;
+				if (m_extensions.present_wait) {
+					m_presentWaitFeatures.pNext = m_features.pNext;
+					m_features.pNext = &m_presentWaitFeatures;
+				}
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
 				m_extensions.swapchain = 1;
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0) {
+				bool dependencies = true;
+				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+				if (!dependencies)
+					return false;
 				m_extensions.fullscreen_exclusive = 1;
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
@@ -100,31 +140,30 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 	return false;
 }
 
-std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_device(const Instance& instance, uint32_t genericQueueCount, uint32_t transferQueueCount, uint32_t computeQueueCount)
+std::unique_ptr<vulkan::LogicalDevice> vulkan::PhysicalDevice::create_logical_device(const Instance& instance, const std::vector<float>& genericQueuePriorities, const std::vector<float>& computeQueuePriorities, const std::vector<float>& transferQueuePriorities)
 {
-	float queuePriority = 1.0f;
 	std::vector< VkDeviceQueueCreateInfo> queueCreateInfos;
 	queueCreateInfos.reserve(3);
 	queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 		.queueFamilyIndex = m_genericQueueFamily,
-		.queueCount = genericQueueCount,
-		.pQueuePriorities = &queuePriority
+		.queueCount = static_cast<uint32_t>(genericQueuePriorities.size()),
+		.pQueuePriorities = genericQueuePriorities.data()
 		});
 	if (m_computeQueueFamily != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = m_computeQueueFamily,
-			.queueCount = transferQueueCount,
-			.pQueuePriorities = &queuePriority
+			.queueCount = static_cast<uint32_t>(computeQueuePriorities.size()),
+			.pQueuePriorities = computeQueuePriorities.data()
 			});
 	}
 	if (m_transferQueueFamily != ~0u) {
 		queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			.queueFamilyIndex = m_transferQueueFamily,
-			.queueCount = computeQueueCount,
-			.pQueuePriorities = &queuePriority
+			.queueCount = static_cast<uint32_t>(transferQueuePriorities.size()),
+			.pQueuePriorities = transferQueuePriorities.data()
 			});
 	}
 	VkDeviceCreateInfo createInfo{
@@ -154,6 +193,125 @@ bool vulkan::PhysicalDevice::supports_ray_pipelines() const noexcept
 {
 	return m_rayTracingPipelineFeatures.rayTracingPipeline;
 }
+
+bool vulkan::PhysicalDevice::supports_surface(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept
+{
+	assert(queueFamilyIndex < m_queueFamilyProperties.size());
+	VkBool32 supported{};
+	if (const auto result = vkGetPhysicalDeviceSurfaceSupportKHR(m_vkHandle, queueFamilyIndex, surface, &supported); result != VK_SUCCESS) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfaceSupportKHR: Could not query surface support");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	return supported;
+}
+
+std::vector<VkPresentModeKHR> vulkan::PhysicalDevice::get_present_modes(VkSurfaceKHR surface) const
+{
+	uint32_t numModes{ 0 };
+	if (auto result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_vkHandle, surface, &numModes, nullptr); result != VK_SUCCESS && result != VK_INCOMPLETE) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfacePresentModesKHR: Could not query surface present modes");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	std::vector<VkPresentModeKHR> presentModes(numModes);
+	if (auto result = vkGetPhysicalDeviceSurfacePresentModesKHR(m_vkHandle, surface, &numModes, presentModes.data()); result != VK_SUCCESS && result != VK_INCOMPLETE) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfacePresentModesKHR: Could not query surface present modes");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	return presentModes;
+}
+
+std::vector<VkSurfaceFormat2KHR> vulkan::PhysicalDevice::get_surface_formats2(VkSurfaceKHR surface) const
+{
+	uint32_t numFormats{ 0 };
+	VkSurfaceFullScreenExclusiveWin32InfoEXT fullscreenExclusiveWin32Info{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT},
+		.pNext {nullptr},
+		.hmonitor {}
+	};
+	VkSurfaceFullScreenExclusiveInfoEXT fullscreenExclusiveInfo{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT},
+		.pNext {nullptr},
+		.fullScreenExclusive {VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT }
+	};
+	VkSurfacePresentModeEXT presentModeInfo{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT},
+		.pNext {nullptr},
+		.presentMode {VK_PRESENT_MODE_IMMEDIATE_KHR}
+	};
+	VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo{
+		.sType {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR},
+		.pNext {nullptr},
+		.surface {surface}
+	};
+	if (auto result = vkGetPhysicalDeviceSurfaceFormats2KHR(m_vkHandle, &surfaceInfo, &numFormats, nullptr); result != VK_SUCCESS && result != VK_INCOMPLETE) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfaceFormats2KHR: Could not query surface formats");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	std::vector<VkSurfaceFormat2KHR> surfaceFormats(numFormats, VkSurfaceFormat2KHR{ .sType {VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR},.pNext {nullptr} });
+	if (auto result = vkGetPhysicalDeviceSurfaceFormats2KHR(m_vkHandle, &surfaceInfo, &numFormats, surfaceFormats.data()); result != VK_SUCCESS && result != VK_INCOMPLETE) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfaceFormats2KHR: Could not query surface formats");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	return surfaceFormats;
+}
+
+VkSurfaceCapabilities2KHR vulkan::PhysicalDevice::get_surface_capabilites2(VkSurfaceKHR surface) const
+{
+	VkSurfaceCapabilities2KHR capabilities{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR},
+		.pNext {nullptr}
+	};
+	VkSurfaceFullScreenExclusiveWin32InfoEXT fullscreenExclusiveWin32Info{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT},
+		.pNext {nullptr},
+		.hmonitor {}
+	};
+	VkSurfaceFullScreenExclusiveInfoEXT fullscreenExclusiveInfo{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT},
+		.pNext {nullptr},
+		.fullScreenExclusive {VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT }
+	};
+	VkSurfacePresentModeEXT presentModeInfo{
+		.sType {VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT},
+		.pNext {nullptr},
+		.presentMode {}
+	};
+	VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo{
+		.sType {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR},
+		.pNext {nullptr},
+		.surface {surface}
+	};
+	if (auto result = vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_vkHandle, &surfaceInfo, &capabilities); result != VK_SUCCESS) {
+		if (result == VK_ERROR_SURFACE_LOST_KHR) {
+			throw Utility::SurfaceLostException("vkGetPhysicalDeviceSurfaceCapabilities2KHR: Could not query surface formats");
+		}
+		else {
+			throw Utility::VulkanException(result);
+		}
+	}
+	return capabilities;
+}
+
 
 uint32_t vulkan::PhysicalDevice::get_generic_queue_family() const noexcept
 {
@@ -344,7 +502,13 @@ void vulkan::PhysicalDevice::init_features() noexcept
 	m_vertexInputDynamicStateFeatures.pNext = &m_meshShaderFeatures;
 
 	m_meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-	m_meshShaderFeatures.pNext = nullptr;
+	m_meshShaderFeatures.pNext = &m_presentIdFeatures;
+
+	m_presentIdFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+	m_presentIdFeatures.pNext = &m_presentWaitFeatures;
+
+	m_presentWaitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+	m_presentWaitFeatures.pNext = nullptr;
 
 
 	vkGetPhysicalDeviceFeatures2(m_vkHandle, &m_features);

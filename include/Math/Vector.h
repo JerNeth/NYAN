@@ -294,7 +294,7 @@ namespace Math {
 		}
 		constexpr inline Vec& operator*=(const Quaternion<Scalar>& rhs) noexcept {
 			//assert(("Only works for three dimensional vectors", Size == 3 || Size == 4));
-			assert(("Only works for three dimensional vectors", Size == 3));
+			assert(Size == 3 && "Only works for three dimensional vectors");
 			if constexpr (Size == 3) {
 				*this = rhs * *this;
 			}
@@ -343,7 +343,7 @@ namespace Math {
 			return result;
 		}
 		constexpr inline Vec cross(const Vec& other) const noexcept {
-			assert(("Cross Product is only defined for three dimensions", Size == 3));
+			assert("Cross Product is only defined for three dimensions" && Size == 3);
 			return Vec( m_data[1] * other.m_data[2] - m_data[2] * other.m_data[1],
 						m_data[2] * other.m_data[0] - m_data[0] * other.m_data[2],
 						m_data[0] * other.m_data[1] - m_data[1] * other.m_data[0] );
@@ -355,75 +355,75 @@ namespace Math {
 		}
 
 		constexpr inline Vec<Scalar, 2> xy() const noexcept {
-			assert(("Vector too small", Size > 1));
+			assert(Size > 1 && "Vector too small");
 			return Vec<Scalar, 2>(m_data[0], m_data[1]);
 		}
 		constexpr inline Vec<Scalar, 3> xyz() const noexcept {
-			assert(("Vector too small", Size > 2));
+			assert(Size > 2 && "Vector too small");
 			return Vec<Scalar, 3>(m_data[0], m_data[1], m_data[2]);
 		}
 		constexpr inline Scalar& x() noexcept {
-			assert(("Vector too small", Size > 0));
+			assert(Size > 0 && "Vector too small");
 			return m_data[0];
 		}
 		constexpr inline Scalar& y() noexcept {
-			assert(("Vector too small", Size > 1));
+			assert(Size > 1 && "Vector too small");
 			return m_data[1];
 		}
 		constexpr inline Scalar& z() noexcept {
-			assert(("Vector too small", Size > 2));
+			assert(Size > 2 && "Vector too small");
 			return m_data[2];
 		}
 		constexpr inline Scalar& w() noexcept {
-			assert(("Vector too small", Size > 3));
+			assert(Size > 3 && "Vector too small");
 			return m_data[3];
 		}
 		constexpr inline Scalar& r() noexcept {
-			assert(("Vector too small", Size > 0));
+			assert(Size > 0 && "Vector too small");
 			return m_data[0];
 		}
 		constexpr inline Scalar& g() noexcept {
-			assert(("Vector too small", Size > 1));
+			assert(Size > 1 && "Vector too small");
 			return m_data[1];
 		}
 		constexpr inline Scalar& b() noexcept {
-			assert(("Vector too small", Size > 2));
+			assert(Size > 2 && "Vector too small");
 			return m_data[2];
 		}
 		constexpr inline Scalar& a() noexcept {
-			assert(("Vector too small", Size > 3));
+			assert(Size > 3 && "Vector too small");
 			return m_data[3];
 		}
 		constexpr inline const Scalar& x() const noexcept  {
-			assert(("Vector too small", Size > 0));
+			assert(Size > 0 && "Vector too small");
 			return m_data[0];
 		}
 		constexpr inline const Scalar& y() const noexcept  {
-			assert(("Vector too small", Size > 1));
+			assert(Size > 1 && "Vector too small");
 			return m_data[1];
 		}
 		constexpr inline const Scalar& z() const noexcept {
-			assert(("Vector too small", Size > 2));
+			assert(Size > 2 && "Vector too small");
 			return m_data[2];
 		}
 		constexpr inline const Scalar& w() const noexcept {
-			assert(("Vector too small", Size > 3));
+			assert(Size > 3 && "Vector too small");
 			return m_data[3];
 		}
 		constexpr inline const Scalar& r() const noexcept {
-			assert(("Vector too small", Size > 0));
+			assert(Size > 0 && "Vector too small");
 			return m_data[0];
 		}
 		constexpr inline const Scalar& g() const noexcept {
-			assert(("Vector too small", Size > 1));
+			assert(Size > 1 && "Vector too small");
 			return m_data[1];
 		}
 		constexpr inline const Scalar& b() const noexcept {
-			assert(("Vector too small", Size > 2));
+			assert(Size > 2 && "Vector too small");
 			return m_data[2];
 		}
 		constexpr inline const Scalar& a() const noexcept {
-			assert(("Vector too small", Size > 3));
+			assert(Size > 3 && "Vector too small");
 			return m_data[3];
 		}
 		//inline Vec& normalize() noexcept {

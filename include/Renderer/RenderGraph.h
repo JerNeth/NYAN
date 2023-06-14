@@ -69,6 +69,7 @@ namespace nyan {
 			CopySource,
 			CopyTarget,
 			Clear,
+			Swapchain,
 			Size
 		};
 		RenderResource() = default;
@@ -119,17 +120,16 @@ namespace nyan {
 			};
 			RenderResource::Id id;
 			Type type;
-			VkImageView view;
 			uint32_t binding{ std::numeric_limits<uint32_t>::max() };
 		};
 		struct Write {
 			enum class Type {
 				Graphics,
-				Compute
+				Compute,
+				Transfer
 			};
 			RenderResource::Id id;
 			Type type;
-			VkImageView view;
 			uint32_t binding{ std::numeric_limits<uint32_t>::max() };
 		};
 		struct Copy {
@@ -207,7 +207,6 @@ namespace nyan {
 		void update_binds();
 		void update_image_barriers();
 		void update_rendering_info();
-		void update_views();
 		bool is_read(RenderResource::Id id) const;
 		bool is_write(RenderResource::Id id) const;
 		bool is_compute_write(RenderResource::Id id) const;

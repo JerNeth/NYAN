@@ -5,172 +5,175 @@
 
 #include <stdexcept>
 
-[[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugReportFlagsEXT flags,
-	[[maybe_unused]] VkDebugReportObjectTypeEXT objectType, [[maybe_unused]] uint64_t object, [[maybe_unused]] size_t location,
-	[[maybe_unused]] int32_t messageCode, [[maybe_unused]] const char* pLayerPrefix, [[maybe_unused]] const char* pMessage,[[maybe_unused]] void* pUserData)
+static constexpr const char* get_object_string(VkObjectType objectType) {
+	switch (objectType) {
+	case VK_OBJECT_TYPE_UNKNOWN:
+		return "Unknown object";
+		break;
+	case VK_OBJECT_TYPE_INSTANCE:
+		return "Instance";
+		break;
+	case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
+		return "Physical device";
+		break;
+	case VK_OBJECT_TYPE_DEVICE:
+		return "Logical device";
+		break;
+	case VK_OBJECT_TYPE_QUEUE:
+		return "Queue";
+		break;
+	case VK_OBJECT_TYPE_SEMAPHORE:
+		return "Semaphore";
+		break;
+	case VK_OBJECT_TYPE_COMMAND_BUFFER:
+		return "Command buffer";
+		break;
+	case VK_OBJECT_TYPE_FENCE:
+		return "Fence";
+		break;
+	case VK_OBJECT_TYPE_DEVICE_MEMORY:
+		return "Device Memory";
+		break;
+	case VK_OBJECT_TYPE_BUFFER:
+		return "Buffer";
+		break;
+	case VK_OBJECT_TYPE_IMAGE:
+		return "Image";
+		break;
+	case VK_OBJECT_TYPE_EVENT:
+		return "Event";
+		break;
+	case VK_OBJECT_TYPE_QUERY_POOL:
+		return "Query pool";
+		break;
+	case VK_OBJECT_TYPE_BUFFER_VIEW:
+		return "Buffer view";
+		break;
+	case VK_OBJECT_TYPE_IMAGE_VIEW:
+		return "Image view";
+		break;
+	case VK_OBJECT_TYPE_SHADER_MODULE:
+		return "Shader module";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE_CACHE:
+		return "Pipeline cache";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
+		return "Pipeline layout";
+		break;
+	case VK_OBJECT_TYPE_RENDER_PASS:
+		return "Render pass";
+		break;
+	case VK_OBJECT_TYPE_PIPELINE:
+		return "Pipeline";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
+		return "Descriptor set layout";
+		break;
+	case VK_OBJECT_TYPE_SAMPLER:
+		return "Sampler";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
+		return "Descriptor pool";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_SET:
+		return "Descriptor set";
+		break;
+	case VK_OBJECT_TYPE_FRAMEBUFFER:
+		return "Framebuffer";
+		break;
+	case VK_OBJECT_TYPE_COMMAND_POOL:
+		return "Command pool";
+		break;
+	case VK_OBJECT_TYPE_SURFACE_KHR:
+		return "Surface KHR";
+		break;
+	case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
+		return "Swapchain KHR";
+		break;
+	case VK_OBJECT_TYPE_DISPLAY_KHR:
+		return "Display KHR";
+		break;
+	case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
+		return "Display mode KHR";
+		break;
+	case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
+		return "Descriptor update template";
+		break;
+	case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
+		return "Acceleration structure KHR";
+		break;
+	}
+	return "Unknown";
+}
+
+[[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes, [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
 	Utility::Logger logger{};
-	if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
-		logger.message("[Information] ");
-	else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
-		logger.message("[Warning] ");
-	else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
-		logger.message("[Performance-Warning] ");
-	else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-		logger = Utility::log_error();
-		logger.message("[Error] ");
-	}
-	else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)
-		logger.message("[Debug] ");
-	logger.message("\n[");
-	switch (objectType) {
-		case VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT:
-			logger.message("Unknown object");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
-			logger.message("Instance");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
-			logger.message("Physical device");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
-			logger.message("Logical device");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
-			logger.message("Queue");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
-			logger.message("Semaphore");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
-			logger.message("Command buffer");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
-			logger.message("Fence");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
-			logger.message("Device Memory");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
-			logger.message("Buffer");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
-			logger.message("Image");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
-			logger.message("Event");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
-			logger.message("Query pool");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
-			logger.message("Buffer view");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
-			logger.message("Image view");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
-			logger.message("Shader module");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
-			logger.message("Pipeline cache");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
-			logger.message("Pipeline layout");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
-			logger.message("Render pass");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
-			logger.message("Pipeline");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
-			logger.message("Descritpor set layout");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
-			logger.message("Sampler");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
-			logger.message("Descriptor pool");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
-			logger.message("Descriptor set");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
-			logger.message("Framebuffer");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
-			logger.message("Command pool");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
-			logger.message("Surface KHR");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
-			logger.message("Swapchain KHR");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT:
-			logger.message("Debug report callback");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT:
-			logger.message("Display KHR");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT:
-			logger.message("Display mode KHR");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT:
-			logger.message("Validation cache EXT");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT:
-			logger.message("Sampler YCBCR conversion");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT:
-			logger.message("Descriptor update template");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_CU_MODULE_NVX_EXT:
-			logger.message("Cu module NVX");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_CU_FUNCTION_NVX_EXT:
-			logger.message("Cu function NVX");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT:
-			logger.message("Acceleration structure KHR");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT:
-			logger.message("Acceleration structure NV");
-			break;
-		case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA_EXT:
-			logger.message("Buffer collection fuchsia");
-			break;
-	}
-	logger.message("]");
-	Utility::log_error().format("({:#x}[{}]):\n{}n", object, vulkan::VulkanObject<VkInstance>::get_debug_label(object), pMessage);
+
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		logger = Utility::log_verbose("[Verbose] ");
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		logger = Utility::log_info("[Info] ");
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		logger = Utility::log_warning("[Warning] ");
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		logger = Utility::log_error("[Error] ");
+
+	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+		logger.message("[General] ");
+	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+		logger.message("[Validation] ");
+	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+		logger.message("[Performance] ");
+	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
+		logger.message("[Device Address Binding] ");
+
+	if (pCallbackData->queueLabelCount)
+		logger.format("\n {}", pCallbackData->pQueueLabels[0].pLabelName);
+	if (pCallbackData->cmdBufLabelCount)
+		logger.format("\n {}", pCallbackData->pCmdBufLabels[0].pLabelName);
+	if (pCallbackData->objectCount)
+		if (pCallbackData->pObjects[0].pObjectName)
+			logger.format("\n\t [{:#x}] [{}] {}", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType), pCallbackData->pObjects[0].pObjectName);
+		else
+			logger.format("\n\t [{:#x}] [{}]", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType));
+
+	logger.format("\n {}", pCallbackData->pMessageIdName);
+	logger.format("\n {}", pCallbackData->pMessage);
+
 	return VK_FALSE;
 }
 
-vulkan::Instance::Instance(const Validation& validation, const char** extensions, uint32_t extensionCount, std::string applicationName, std::string engineName)
+vulkan::Instance::Instance(const Validation& validation, std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, std::string applicationName, std::string engineName)
 	:
 	m_validation(validation),
 	m_applicationName(applicationName),
 	m_engineName(engineName)
 {
 	volkInitialize();
-	create_instance(extensions, extensionCount);
+	init_layers();
+	if (m_validation.enabled)
+		use_layer("VK_LAYER_KHRONOS_validation");
+	init_extensions();
+	create_instance(requiredExtensions, optionalExtensions);
 
 }
 
 vulkan::Instance::~Instance() {
-	if (m_debugReport != VK_NULL_HANDLE)
-		vkDestroyDebugReportCallbackEXT(m_instance, m_debugReport, m_allocator);
+	if (m_debugMessenger != VK_NULL_HANDLE)
+		vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_allocator);
 	vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
 	vkDestroyInstance(m_instance, m_allocator);
 
 }
-std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std::vector<const char*>& requiredExtensions, const std::vector<const char*>& optionalExtensions)
+std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std::span<const char*>& requiredExtensions, const std::span<const char*>& optionalExtensions)
 {
 	uint32_t numDevices;
 	vkEnumeratePhysicalDevices(m_instance, &numDevices, nullptr);
-	assert(numDevices);
 	if (numDevices == 0) {
+		assert(numDevices);
 		throw std::runtime_error("VK: no physical device with Vulkan support available");
 	}
 	
@@ -197,7 +200,18 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std:
 	}
 	m_physicalDevice = m_physicalDevices[bestDeviceIdx].get_handle();
 
-	return m_physicalDevices[bestDeviceIdx].create_logical_device(*this);
+	float queuePriority = 1.0f;
+	auto init_priorities = [](auto n, auto numPriorities)
+	{
+		std::vector<float> priorities(n);
+		for (size_t idx = 0; idx < priorities.size(); ++idx)
+			priorities[idx] = 1.f - (idx / Math::max(numPriorities, 1.f));
+		return priorities;
+	};
+	const auto genericQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
+	const auto computeQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
+	const auto transferQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
+	return m_physicalDevices[bestDeviceIdx].create_logical_device(*this, genericQueuePriorities, computeQueuePriorities, transferQueuePriorities);
 }
 
 #ifdef WIN32
@@ -211,7 +225,7 @@ void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 		throw Utility::VulkanException(result);
 	}
 }
-#else
+#elif X_PROTOCOL
 void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 	VkXlibSurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
@@ -223,31 +237,6 @@ void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
 	}
 }
 #endif
-
-std::vector<VkPresentModeKHR> vulkan::Instance::get_present_modes() const
-{
-	uint32_t numModes;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, nullptr);
-	std::vector<VkPresentModeKHR> presentModes(numModes);
-	vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numModes, presentModes.data());
-	return presentModes;
-}
-
-std::vector<VkSurfaceFormatKHR> vulkan::Instance::get_surface_formats() const
-{
-	uint32_t numFormats;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, nullptr);
-	std::vector<VkSurfaceFormatKHR> surfaceFormats(numFormats);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numFormats, surfaceFormats.data());
-	return surfaceFormats;
-}
-
-VkSurfaceCapabilitiesKHR vulkan::Instance::get_surface_capabilites() const
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &capabilities);
-	return capabilities;
-}
 
 VkSurfaceKHR vulkan::Instance::get_surface() const
 {
@@ -264,62 +253,30 @@ const std::vector<vulkan::PhysicalDevice>& vulkan::Instance::get_physical_device
 	return m_physicalDevices;
 }
 
-void vulkan::Instance::create_instance(const char** requestedExtensions, uint32_t requestedExtensionCount, uint32_t applicationVersion, uint32_t engineVersion)
+void vulkan::Instance::create_instance(std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, uint32_t applicationVersion, uint32_t engineVersion)
 {
+	uint32_t apiVersion{ VK_API_VERSION_1_0 };
+	vkEnumerateInstanceVersion(&apiVersion);
+
+	if(apiVersion < VK_API_VERSION_1_3)
+		throw std::runtime_error("VK: Vulkan 1.3 not supported, update your drivers.");
+
 	VkApplicationInfo applicationInfo{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 				.pApplicationName = m_applicationName.c_str(),
 				.applicationVersion = applicationVersion,
 				.pEngineName = m_engineName.c_str(),
 				.engineVersion = engineVersion,
-				.apiVersion = VK_API_VERSION_1_3
+				.apiVersion = apiVersion
 	};
+	
+	for (auto& ext : requiredExtensions)
+		if(!use_extension(ext))
+			throw std::runtime_error("VK: required instance extension missing");
 
-	if(m_validation.enabled)
-		m_layers.push_back("VK_LAYER_KHRONOS_validation");
+	for (auto& ext : optionalExtensions)
+		use_extension(ext);
 
-	uint32_t layerPropertyCount;
-	vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
-	std::vector<VkLayerProperties> layerProperties(layerPropertyCount);
-	vkEnumerateInstanceLayerProperties(&layerPropertyCount, layerProperties.data());
-
-	for (auto it = m_layers.begin(); it != m_layers.end();) {
-		if (std::find_if(layerProperties.begin(), layerProperties.end(), [&it](auto& val) {return std::strcmp(*it, val.layerName) == 0; }) == layerProperties.end()) {
-			Utility::log().location().format("Requested instance layer not available: {}", *it);
-			it = m_layers.erase(it);
-		}
-		else
-			++it;
-	}
-	std::vector<const char*> extensions;
-	extensions.assign(requestedExtensions, requestedExtensions + requestedExtensionCount);
-	{
-		uint32_t propertyCount;
-		vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
-		std::vector<VkExtensionProperties> properties(propertyCount);
-		vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, properties.data());
-		m_extensions.reserve(propertyCount);
-		for (const auto& ext : extensions)
-			if (std::find_if(properties.cbegin(), properties.cend(), [&ext](const auto& val) {return std::strcmp(ext, val.extensionName) == 0; }) != properties.cend())
-				m_extensions.push_back(ext);	
-	}
-
-	for (auto& layer : m_layers) {
-		uint32_t propertyCount;
-		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, nullptr);
-		std::vector<VkExtensionProperties> properties(propertyCount);
-		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, properties.data());
-
-		m_extensions.reserve(m_extensions.size() + propertyCount);
-		for (const auto& ext : extensions)
-			if (std::find_if(properties.cbegin(), properties.cend(), [&ext](const auto& val) {return std::strcmp(ext, val.extensionName) == 0; }) != properties.cend() &&
-				std::find_if(m_extensions.cbegin(), m_extensions.cend(), [&ext](const auto& val) {return std::strcmp(ext, val) == 0; }) == m_extensions.cend())
-				m_extensions.push_back(ext);
-	}
-
-	for (const auto& ext : m_extensions)
-		if (std::find_if(extensions.cbegin(), extensions.cend(), [&ext](const auto& val) {return std::strcmp(ext, val) == 0; }) == extensions.cend())
-			Utility::log().location().format("Requested instance extension not available: {}", ext);
 	
 	std::array<VkValidationFeatureEnableEXT, 5> validationFeatureEnables{};
 	std::array<VkValidationFeatureDisableEXT, 8> validationFeatureDisables{};
@@ -369,10 +326,10 @@ void vulkan::Instance::create_instance(const char** requestedExtensions, uint32_
 		.pApplicationInfo = &applicationInfo,
 		.enabledLayerCount = static_cast<uint32_t>(m_layers.size()),
 		.ppEnabledLayerNames = m_layers.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(m_extensions.size()),
-		.ppEnabledExtensionNames = m_extensions.data()
+		.enabledExtensionCount = static_cast<uint32_t>(m_usedExtensions.size()),
+		.ppEnabledExtensionNames = m_usedExtensions.data()
 	};
-	if (m_validation.enabled)
+	if (m_extensions.validationFeatures)
 		createInfo.pNext = &validationFeatures;
 	if (auto result = vkCreateInstance(&createInfo, m_allocator, &m_instance)) {
 		throw Utility::VulkanException(result);
@@ -380,38 +337,114 @@ void vulkan::Instance::create_instance(const char** requestedExtensions, uint32_
 	volkLoadInstance(m_instance);
 	if (m_validation.createCallback) {
 		assert(m_validation.enabled);
-		assert(vkCreateDebugReportCallbackEXT);
-		VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{
-			.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
-			.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-			.pfnCallback = debugCallback,
-			.pUserData = nullptr
+		assert(vkCreateDebugUtilsMessengerEXT);
+		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{
+			.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT},
+			.flags {},
+			.messageSeverity{static_cast<VkDebugUtilsMessageSeverityFlagsEXT>((m_validation.callBackVerbose ? VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT  : static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(0))
+							| (m_validation.callBackInfo ? VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT : static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(0))
+							| (m_validation.callBackWarning ? VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT : static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(0))
+							| (m_validation.callBackError ? VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT : static_cast<VkDebugUtilsMessageSeverityFlagBitsEXT>(0)))},
+			.messageType {static_cast<VkDebugUtilsMessageTypeFlagsEXT>((m_validation.callBackGeneral ? VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT : static_cast<VkDebugUtilsMessageTypeFlagBitsEXT>(0))
+							| (m_validation.callBackValidation ? VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT : static_cast<VkDebugUtilsMessageTypeFlagBitsEXT>(0))
+							| (m_validation.callBackPerformance ? VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT : static_cast<VkDebugUtilsMessageTypeFlagBitsEXT>(0))
+							| (m_validation.callBackDeviceAddressBinding ? VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT : static_cast<VkDebugUtilsMessageTypeFlagBitsEXT>(0)))},
+			.pfnUserCallback {debugCallback},
+			.pUserData {nullptr}
 		};
-		if (auto result = vkCreateDebugReportCallbackEXT(m_instance, &debugReportCallbackCreateInfo, m_allocator, &m_debugReport); result != VK_SUCCESS) {
+		if (auto result = vkCreateDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, m_allocator, &m_debugMessenger); result != VK_SUCCESS) {
 			throw Utility::VulkanException(result);
 		}
 	}
 }
 
-bool vulkan::Instance::device_swapchain_suitable(const VkPhysicalDevice& device) const
+bool vulkan::Instance::use_extension(const char* extension)
 {
-	uint32_t numFormats;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &numFormats, nullptr);
-	if (numFormats == 0) {
-		return false;
-	}
-	uint32_t numModes;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &numModes, nullptr);
-	if (numModes == 0) {
-		return false;
-	}
+	for (const auto& ext : m_availableExtensions) {
+		if (strcmp(ext.extensionName, extension) == 0) {
+			if (std::find(std::begin(m_usedExtensions), std::end(m_usedExtensions), extension) == std::end(m_usedExtensions))
+				m_usedExtensions.push_back(extension);
+			else
+				return true;
 
-	//vkGetPhysicalDeviceSurfaceSupportKHR(device, graphicsQueueFamilyIndex, m_surface, &presentSupport);
-	return true;
+			if (strcmp(ext.extensionName, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) == 0) {
+				if (use_extension(VK_KHR_SURFACE_EXTENSION_NAME))
+					m_extensions.surfaceCapabilites2 = true;
+			}
+			else if (strcmp(ext.extensionName, VK_KHR_SURFACE_EXTENSION_NAME) == 0) {
+				m_extensions.surface = true;
+			}
+#ifdef WIN32
+			else if (strcmp(ext.extensionName, VK_KHR_WIN32_SURFACE_EXTENSION_NAME) == 0) {
+				if(use_extension(VK_KHR_SURFACE_EXTENSION_NAME))
+					m_extensions.surfaceWin32 = true;
+			}		
+#elif X_PROTOCOL
+			else if (strcmp(ext.extensionName, VK_KHR_X11_SURFACE_EXTENSION_NAME) == 0) {
+				if (use_extension(VK_KHR_SURFACE_EXTENSION_NAME))
+					m_extensions.surfaceX11 = true;
+			}
+#endif
+			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+				m_extensions.debugUtils = true;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_REPORT_EXTENSION_NAME) == 0) {
+				m_extensions.debugReport = true;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) == 0) {
+				m_extensions.validationFeatures = true;
+			}
+			else if (strcmp(ext.extensionName, VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME) == 0) {
+				if (use_extension(VK_KHR_SURFACE_EXTENSION_NAME))
+					m_extensions.swapchainColorSpace = true;
+			}
+			return true;
+		}
+	}
+	Utility::log().location().format("Requested instance extension not available: {}", extension);
+	return false;
 }
-
-
-bool vulkan::Instance::is_device_suitable(const VkPhysicalDevice& device) const
+bool vulkan::Instance::use_layer(const char* layerName)
 {
-	return device_swapchain_suitable(device);
+	for (const auto& layer : m_availableLayers) {
+		if (strcmp(layer.layerName, layerName) == 0) {
+			if (std::find(std::begin(m_layers), std::end(m_layers), layerName) == std::end(m_layers))
+				m_layers.push_back(layerName);
+			return true;
+		}
+	}
+	Utility::log().location().format("Requested instance layer not available: {}", layerName);
+	return false;
+}
+void vulkan::Instance::init_layers()
+{
+	uint32_t layerPropertyCount;
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
+	m_availableLayers.resize(layerPropertyCount);
+	vkEnumerateInstanceLayerProperties(&layerPropertyCount, m_availableLayers.data());
+}
+//VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME //depends on surface
+//VK_KHR_SURFACE_EXTENSION_NAME
+//VK_KHR_WIN32_SURFACE_EXTENSION_NAME //depends on surface
+//VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+//VK_EXT_DEBUG_REPORT_EXTENSION_NAME //deprecated
+//VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME //depends on surface
+
+void vulkan::Instance::init_extensions()
+{
+	uint32_t propertyCount;
+	vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
+	m_availableExtensions.resize(propertyCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, m_availableExtensions.data());
+
+	for (auto& layer : m_layers) {
+		uint32_t propertyCount;
+		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, nullptr);
+		std::vector<VkExtensionProperties> properties(propertyCount);
+		vkEnumerateInstanceExtensionProperties(layer, &propertyCount, properties.data());
+
+		for (const auto& ext : properties)
+			if (std::find_if(m_availableExtensions.cbegin(), m_availableExtensions.cend(), [&ext](const auto& val) {return std::strcmp(ext.extensionName, val.extensionName) == 0; }) == m_availableExtensions.cend())
+				m_availableExtensions.push_back(ext);
+	}
 }

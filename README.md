@@ -16,21 +16,16 @@ and rendergraph.
 - [ ] Renderer
 	- [x] Rendergraph (partial)
 	- [ ] UI
-	- [ ] Lights
+	- [x] Lights
 	- [ ] Global Illumination
-		- [ ] Diffuse Illumination with Raytraced Irradiance Fields
+		- [x] Diffuse Illumination with Raytraced Irradiance Fields
 		- [ ] Specular Reflections
-	- [ ] Image Based Lighting
-	- [ ] Screen Space Effects
-		- [ ] Ambient Occlusion
-		- [ ] SSR
-		- [ ] SSSSS
 	- [ ] Post Processing
-		- [ ] Tone mapping
-		- [ ] Alpha correction
+		- [x] Tone mapping
+		- [x] Alpha correction
 		- [ ] White balancing
 		- [ ] Bloom
-	- [ ] Deferred renderer
+	- [x] Deferred renderer
 	- [ ] Forward renderer
 	- [ ] Mesh representations
 		- [ ] Skeletal mesh
@@ -53,7 +48,6 @@ and rendergraph.
 The engine depends on the following libraries:
 
 - [Vulkan SDK](https://vulkan.lunarg.com/): must be manually installed (1.3 required)
-- [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-2): must be manually installed (for now, in future optional) (Expects FBXSDK_DIR to be set in UserSettings.txt)
 - [GLFW](https://github.com/glfw/glfw): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
@@ -61,5 +55,4 @@ The engine depends on the following libraries:
 - [volk](https://github.com/zeux/volk): automatically fetched
 - [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): automatically fetched
 - [EnTT](https://github.com/skypjack/entt.git): automatically fetched
-- [Optick](https://github.com/bombomby/optick): included in this repository
 - [tinyGLTF](https://github.com/syoyo/tinygltf): included in this repository

@@ -1,13 +1,22 @@
 #include "Application.h"
+#include "VulkanWrapper/Surface.hpp"
 #include "Utility/Exceptions.h"
 #include <chrono>
-nyan::Application::Application(const std::string& name): m_name(name) , m_settings("general.ini") 
+nyan::Application::Application(std::string name): m_name(std::move(name)) , m_settings("general.ini") 
 {
 	vulkan::Instance::Validation validation{
-		.enabled {debug},
-		.createCallback {debug},
-		//.enabled {false},
-		//.createCallback {false},
+		.enabled {false},
+		.createCallback {false},
+		//.enabled {debug},
+		//.createCallback {debug},
+		.callBackVerbose { true },
+		.callBackInfo { true },
+		.callBackWarning { true },
+		.callBackError { true },
+		.callBackGeneral { true },
+		.callBackValidation { true },
+		.callBackPerformance { true },
+		.callBackDeviceAddressBinding { true },
 		.gpuAssisted { false },
 		.gpuAssistedReserveBindingSlot { false },
 		.bestPractices { false },
@@ -22,7 +31,6 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 		.disableUniqueHandles { false },
 		.disableShaderValidationCache { false },
 	};
-	//OPTICK_THREAD("Main Thread");
 	if (!setup_glfw())
 		throw InitializationError("Could not initialize GLFW");
 	if (!setup_vulkan_instance(validation))//OpenGL fallback maybe?
@@ -35,6 +43,10 @@ nyan::Application::Application(const std::string& name): m_name(name) , m_settin
 		throw InitializationError("Could not create Vulkan Surface");
 	if (!setup_vulkan_device())//OpenGL fallback maybe?
 		throw InitializationError("Could not create Vulkan Device, maybe update driver?");
+}
+
+Application::~Application()
+{
 }
 
 vulkan::LogicalDevice& nyan::Application::get_device()
@@ -55,19 +67,8 @@ nyan::Input& nyan::Application::get_input()
 	return *m_input;
 }
 
-int nyan::Application::get_width()
-{
-	return m_vulkanDevice->get_swapchain_width();
-}
-
-int nyan::Application::get_height()
-{
-	return m_vulkanDevice->get_swapchain_height();
-}
-
 void nyan::Application::next_frame()
 {
-	//OPTICK_GPU_FLIP(nullptr);
 	m_windowSystemInterface->begin_frame();
 	for (const auto& beginFrameFunction : m_beginFrameFunctions) {
 		beginFrameFunction();
@@ -85,17 +86,17 @@ void nyan::Application::end_frame()
 
 void nyan::Application::main_loop()
 {
-	lastUpdate = std::chrono::steady_clock::now();
+	m_lastUpdate = std::chrono::steady_clock::now();
 	while (!m_window->should_close() && (!m_maxFrameCount || (m_frameCount < m_maxFrameCount)))
 	{
 		update();
-		//if (!m_window->is_iconified()) {
+		if (!m_window->is_iconified()) {
 
 			next_frame();
 
 
 			end_frame();
-		//}
+		}
 	}
 }
 
@@ -117,9 +118,8 @@ void nyan::Application::each_update(std::function<void(std::chrono::nanoseconds)
 void nyan::Application::update()
 {
 	auto now = std::chrono::steady_clock::now();
-	auto delta = now - lastUpdate;
-	lastUpdate = now;
-	//OPTICK_FRAME("MainThread");
+	auto delta = now - m_lastUpdate;
+	m_lastUpdate = now;
 	glfwPollEvents();
 	m_input->update();
 	
@@ -158,8 +158,9 @@ bool nyan::Application::setup_glfw_window()
 		}
 		auto width = m_settings.get_or_default(Settings::Setting::Width, 1920);
 		auto height = m_settings.get_or_default(Settings::Setting::Height, 1080);
-		glfww::WindowMode windowMode = m_settings.get_or_default(Settings::Setting::WindowMode,glfww::WindowMode::Windowed);
+		glfww::WindowMode windowMode = m_settings.get_or_default(Settings::Setting::WindowMode, glfww::WindowMode::Windowed);
 		m_monitor = std::make_unique<glfww::Monitor>();
+
 		m_window = std::make_unique<glfww::Window>(width, height, *m_monitor, windowMode, m_name);
 	}
 	catch (const std::runtime_error& error) {
@@ -183,18 +184,23 @@ bool nyan::Application::setup_glfw_input()
 bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation& validation)
 {
 	try {
-		auto instanceExtensions = m_glfwLibrary->get_required_extensions();
 
+		auto requiredExtensions = m_glfwLibrary->get_required_extensions();
+
+		std::vector optionalExtensions{
+			//VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME, //Don't actually want that, it's vor HMDs, exculsive display access
+			//VK_KHR_DISPLAY_EXTENSION_NAME, //Poor support on windows
+			//VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME, //Depends on KHR_DISPLAY
+			VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+			//VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, //Not available yet
+			//VK_KHR_get_physical_device_properties2, //1.1 core
+			VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME
+		};
 		if (validation.enabled) {
-			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-			instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			optionalExtensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+			optionalExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
-		//instanceExtensions.push_back(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME);
-		//instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
-		instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
-
-		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, instanceExtensions.data(), static_cast<uint32_t>(instanceExtensions.size()), m_name, m_engineName);
+		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, requiredExtensions, optionalExtensions, m_name, m_engineName);
 	}
 	catch (const Utility::VulkanException& error) {
 		Utility::log_error(error.what());
@@ -209,19 +215,24 @@ bool nyan::Application::setup_vulkan_device()
 		std::vector requiredExtensions {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		};
-		std::vector optionalExtensions {
+		std::vector optionalExtensions{
 			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 			VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
 			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
-			VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
-			VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+			//VK_EXT_DEBUG_MARKER_EXTENSION_NAME, //Deprecated by debug utils
 			VK_KHR_RAY_QUERY_EXTENSION_NAME,
 			VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
 			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-			VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+			//VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, //Crashes nsight captures for some reason
 			//VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, 1.2 Core
 			//VK_KHR_MAINTENANCE_4_EXTENSION_NAME, 1.3 Core
-			VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME,
+			//VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME, Not widely supported idk
+			VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
+			//VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME, //barely supported on desktop, only some linux configs
+			//VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME, //TODO
+			//VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, //Not really supported on windows, with nvidia hardware
+			VK_KHR_PRESENT_ID_EXTENSION_NAME,
+			//VK_KHR_PRESENT_WAIT_EXTENSION_NAME, //Device creation stalling with this extension for some reason.
 		};
 		m_vulkanDevice = m_vulkanInstance->setup_device(requiredExtensions, optionalExtensions);
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);

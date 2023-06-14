@@ -10,9 +10,13 @@ namespace vulkan {
 		const VkPhysicalDevice& get_handle() const noexcept;
 
 		bool use_extension(const char* extension) noexcept;
-		std::unique_ptr<LogicalDevice> create_logical_device(const Instance& instance, uint32_t genericQueueCount = 1, uint32_t transferQueueCount = 1, uint32_t computeQueueCount = 1);
+		std::unique_ptr<LogicalDevice> create_logical_device(const Instance& instance, const std::vector<float>& genericQueuePriorities, const std::vector<float>& computeQueuePriorities, const std::vector<float>& transferQueuePriorities);
 
-		bool supports_ray_pipelines() const noexcept;
+		[[nodiscard]] bool supports_ray_pipelines() const noexcept;
+		[[nodiscard]] bool supports_surface(VkSurfaceKHR surface, uint32_t queueFamilyIndex) const noexcept;
+		std::vector<VkPresentModeKHR> get_present_modes(VkSurfaceKHR surface) const;
+		std::vector<VkSurfaceFormat2KHR> get_surface_formats2(VkSurfaceKHR surface) const;
+		VkSurfaceCapabilities2KHR get_surface_capabilites2(VkSurfaceKHR surface) const;
 
 		uint32_t get_generic_queue_family() const noexcept;
 		uint32_t get_transfer_queue_family() const noexcept;
@@ -67,6 +71,8 @@ namespace vulkan {
 		VkPhysicalDeviceRayQueryFeaturesKHR m_rayQueryFeatures{};
 		VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT m_vertexInputDynamicStateFeatures{};
 		VkPhysicalDeviceMeshShaderFeaturesNV m_meshShaderFeatures{};
+		VkPhysicalDevicePresentIdFeaturesKHR  m_presentIdFeatures{};
+		VkPhysicalDevicePresentWaitFeaturesKHR   m_presentWaitFeatures{};
 
 		VkPhysicalDeviceProperties2 m_properties{};
 		VkPhysicalDeviceSubgroupProperties m_subgroupProperties{};

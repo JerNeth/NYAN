@@ -62,18 +62,9 @@ namespace vulkan {
 		//uint32_t rowLength = 0;
 		//uint32_t height = 0;
 	};
+
 	class LogicalDevice {
 	private:
-
-		struct WSIState {
-			//VkSemaphore aquire = VK_NULL_HANDLE;
-			//VkSemaphore present = VK_NULL_HANDLE;
-			std::vector<VkSemaphore> aquireSemaphores;
-			std::vector<VkSemaphore> presentSemaphores;
-			std::vector<ImageHandle> swapchainImages;
-			bool swapchain_touched = false;
-			uint32_t index = 0;
-		};
 		struct Queue {
 			Queue() = default;
 			Queue(uint32_t family) : familyIndex(family) {}
@@ -86,6 +77,15 @@ namespace vulkan {
 
 			const uint32_t familyIndex = 0;
 			VkQueue queue = VK_NULL_HANDLE;
+		};
+		struct WSIState {
+			//VkSemaphore aquire = VK_NULL_HANDLE;
+			//VkSemaphore present = VK_NULL_HANDLE;
+			std::vector<VkSemaphore> aquireSemaphores;
+			std::vector<VkSemaphore> presentSemaphores;
+			std::vector<ImageHandle> swapchainImages;
+			bool swapchain_touched = false;
+			uint32_t index = 0;
 		};
 		struct ImageBuffer {
 			BufferHandle buffer;
@@ -175,53 +175,52 @@ namespace vulkan {
 		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, bool flush = true);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
 		ImageHandle create_image(const ImageInfo& info, InitialImageData* initialData = nullptr, vulkan::FenceHandle* fence = nullptr);
-		ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr, vulkan::FenceHandle* fence = nullptr);
-		void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
-		bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
+		[[deprecated]] ImageHandle create_sparse_image(const ImageInfo& info, InitialImageData* initialData = nullptr, vulkan::FenceHandle* fence = nullptr);
+		[[deprecated]] void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
+		[[deprecated]] bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
 		FenceHandle request_empty_fence();
 		void destroy_semaphore(VkSemaphore semaphore);
 		VkSemaphore request_semaphore();
 		CommandBufferHandle request_command_buffer(CommandBufferType type);
 		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT, uint32_t arrayLayers = 1);
-		void resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData = false);
 
-		VkSemaphore get_present_semaphore();
-		bool swapchain_touched() const noexcept;
-		VkQueue get_graphics_queue()  const noexcept;
-		void aquired_image(uint32_t index, VkSemaphore semaphore) noexcept;
+		[[deprecated]] VkSemaphore get_present_semaphore();
+		[[deprecated]] bool swapchain_touched() const noexcept;
+		[[deprecated]] VkQueue get_graphics_queue()  const noexcept;
+		[[deprecated]] void aquired_image(uint32_t index, VkSemaphore semaphore) noexcept;
 
-		void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage);
-		const ImageView* get_swapchain_image_view() const noexcept;
-		ImageView* get_swapchain_image_view() noexcept;
-		ImageView* get_swapchain_image_view(size_t idx) noexcept;
-		const Image* get_swapchain_image() const noexcept;
-		Image* get_swapchain_image() noexcept;
-		Image* get_swapchain_image(size_t idx) noexcept;
+		[[deprecated]] void init_swapchain(const std::vector<VkImage>& swapchainImages, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage);
+		[[deprecated]] const ImageView* get_swapchain_image_view() const noexcept;
+		[[deprecated]] ImageView* get_swapchain_image_view() noexcept;
+		[[deprecated]] ImageView* get_swapchain_image_view(size_t idx) noexcept;
+		[[deprecated]] const Image* get_swapchain_image() const noexcept;
+		[[deprecated]] Image* get_swapchain_image() noexcept;
+		[[deprecated]] Image* get_swapchain_image(size_t idx) noexcept;
 
-		void next_frame();
-		void end_frame();
-		void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr);
-		void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
-		void queue_image_deletion(VkImage image) noexcept;
-		void queue_image_view_deletion(VkImageView imageView) noexcept;
-		void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
-		void queue_image_sampler_deletion(VkSampler sampler) noexcept;
-		void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
-		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
-		void queue_buffer_deletion(VkBuffer buffer) noexcept;
-		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
+		[[deprecated]] void next_frame();
+		[[deprecated]] void end_frame();
+		[[deprecated]] void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr);
+		[[deprecated]] void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
+		[[deprecated]] void queue_image_deletion(VkImage image) noexcept;
+		[[deprecated]] void queue_image_view_deletion(VkImageView imageView) noexcept;
+		[[deprecated]] void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
+		[[deprecated]] void queue_image_sampler_deletion(VkSampler sampler) noexcept;
+		[[deprecated]] void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
+		[[deprecated]] void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
+		[[deprecated]] void queue_buffer_deletion(VkBuffer buffer) noexcept;
+		[[deprecated]] void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		//void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
 		//void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
-		void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0, bool flush = false);
-		void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
-		void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore, uint64_t* semaphoreValues = nullptr);
-		void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
-		void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
-		void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
-		void wait_no_lock() noexcept;
-		void clear_semaphores() noexcept;
-		void add_fence_callback(VkFence fence, std::function<void(void)> callback);
+		[[deprecated]] void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0, bool flush = false);
+		[[deprecated]] void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
+		[[deprecated]] void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore, uint64_t* semaphoreValues = nullptr);
+		[[deprecated]] void submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush);
+		[[deprecated]] void submit(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
+		[[deprecated]] void submit_flush(CommandBufferHandle cmd, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, vulkan::FenceHandle* fence = nullptr, uint64_t* semaphoreValues = nullptr);
+		[[deprecated]] void wait_no_lock() noexcept;
+		[[deprecated]] void clear_semaphores() noexcept;
+		[[deprecated]] void add_fence_callback(VkFence fence, std::function<void(void)> callback);
 
 		void create_pipeline_cache(const std::string& path);
 		ShaderStorage& get_shader_storage();
@@ -230,28 +229,28 @@ namespace vulkan {
 		FrameResource& frame();
 		FrameResource& previous_frame();
 
-		const Extensions& get_supported_extensions() const noexcept;
-		uint32_t get_thread_index() const noexcept;
-		uint32_t get_thread_count() const noexcept;
-		const PhysicalDevice& get_physical_device() const noexcept;
-		VkDevice get_device() const noexcept;
-		operator VkDevice() const noexcept;
-		VkAllocationCallbacks* get_allocator() const noexcept;
-		Allocator* get_vma_allocator() const noexcept;
-		const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
+		[[nodiscard]] const Extensions& get_supported_extensions() const noexcept;
+		[[deprecated]] uint32_t get_thread_index() const noexcept;
+		[[deprecated]] uint32_t get_thread_count() const noexcept;
+		[[nodiscard]] const PhysicalDevice& get_physical_device() const noexcept;
+		[[nodiscard]] VkDevice get_device() const noexcept;
+		[[nodiscard]] operator VkDevice() const noexcept;
+		[[nodiscard]] VkAllocationCallbacks* get_allocator() const noexcept;
+		[[nodiscard]] Allocator* get_vma_allocator() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
 
-		DescriptorSet& get_bindless_set() noexcept;
-		DescriptorPool& get_bindless_pool() noexcept;
-		PipelineLayout2& get_bindless_pipeline_layout() noexcept;
+		[[deprecated]] DescriptorSet& get_bindless_set() noexcept;
+		[[deprecated]] DescriptorPool& get_bindless_pool() noexcept;
+		[[deprecated]] PipelineLayout2& get_bindless_pipeline_layout() noexcept;
 
 
-		Viewport get_swapchain_viewport_and_scissor() const noexcept;
-		uint32_t get_swapchain_image_index() const noexcept;
-		uint32_t get_swapchain_image_count() const noexcept;
-		uint32_t get_swapchain_width() const noexcept;
-		uint32_t get_swapchain_height() const noexcept;
-		VkBool32 supports_sparse_textures() const noexcept;
-		VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect);
+		[[deprecated]] Viewport get_swapchain_viewport_and_scissor() const noexcept;
+		[[deprecated]] uint32_t get_swapchain_image_index() const noexcept;
+		[[deprecated]] uint32_t get_swapchain_image_count() const noexcept;
+		[[deprecated]] uint32_t get_swapchain_width() const noexcept;
+		[[deprecated]] uint32_t get_swapchain_height() const noexcept;
+		[[deprecated]] VkBool32 supports_sparse_textures() const noexcept;
+		[[deprecated]] VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect);
 		uint32_t get_compute_family() const noexcept;
 		uint32_t get_graphics_family() const noexcept;
 		VkPipelineCache get_pipeline_cache() const noexcept;
@@ -259,7 +258,6 @@ namespace vulkan {
 
 		void wait_on_idle_queue(CommandBufferType type);
 
-	private:
 		Queue& get_queue(CommandBufferType type) noexcept {
 			switch (type) {
 			case CommandBufferType::Generic:
@@ -273,6 +271,8 @@ namespace vulkan {
 				return m_graphics;
 			}
 		}
+
+	private:
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
 		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
 		ImageHandle create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage);

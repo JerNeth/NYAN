@@ -32,9 +32,9 @@ vulkan::PipelineLayout2::~PipelineLayout2()
 		vkDestroyPipelineLayout(r_device.get_device(), m_handle, r_device.get_allocator());
 }
 
-vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& path) :
+vulkan::PipelineCache::PipelineCache(LogicalDevice& device, std::filesystem::path path) :
 	VulkanObject(device),
-	m_path(path)
+	m_path(std::move(path))
 {
 	size_t size = 0;
 	std::vector<std::byte> data;
@@ -54,16 +54,38 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, const std::string& p
 			size = 0;
 		}
 	}
+
 	VkPipelineCacheCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.initialDataSize = size,
-		.pInitialData = data.data(),
+		.initialDataSize = 0,
+		.pInitialData = nullptr,
 	};
+	if (data.size() > sizeof(PipelineCachePrefixHeader)) {
+		PipelineCachePrefixHeader header = *reinterpret_cast<PipelineCachePrefixHeader*>(data.data());
+		PipelineCachePrefixHeader currentHeader{
+			.magicNumber { PipelineCachePrefixHeader::magicNumberValue},
+			.dataSize {header.dataSize},
+			.dataHash {Utility::DataHash{}(data.data() + offsetof(PipelineCachePrefixHeader, vendorID), data.size() - offsetof(PipelineCachePrefixHeader, vendorID))},
+			.vendorID {r_device.get_physical_device_properties().vendorID},
+			.deviceID {r_device.get_physical_device_properties().deviceID},
+			.driverVersion {r_device.get_physical_device_properties().driverVersion},
+			.driverABI {sizeof(void*)},
+			.uuid{std::to_array(r_device.get_physical_device_properties().pipelineCacheUUID)}
+		};
+		if (currentHeader == header && header.dataSize > 0) {
+			createInfo.initialDataSize = header.dataSize;
+			createInfo.pInitialData = data.data() + sizeof(PipelineCachePrefixHeader);
+		}
+		else {
+			Utility::log_warning().format("Pipelinecache invalid");
+		}
+	}
 	if (auto result = vkCreatePipelineCache(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
+
 }
 
 vulkan::PipelineCache::~PipelineCache() noexcept
@@ -73,8 +95,8 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 	std::vector<std::byte> data;
 	do {
 		vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, nullptr);
-		data.resize(dataSize);
-		result = vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, data.data());
+		data.resize(dataSize + sizeof(PipelineCachePrefixHeader));
+		result = vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, data.data() + sizeof(PipelineCachePrefixHeader));
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
 			vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
 			return;
@@ -84,11 +106,27 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 			return;
 		}
 	} while (result != VK_SUCCESS);
-	std::ofstream out(m_path, std::ios::binary);
+
+	PipelineCachePrefixHeader* currentHeader = reinterpret_cast<PipelineCachePrefixHeader*>(data.data());
+	assert(dataSize <= std::numeric_limits<uint32_t>::max());
+	*currentHeader = PipelineCachePrefixHeader {
+		.magicNumber { PipelineCachePrefixHeader::magicNumberValue},
+		.dataSize {static_cast<uint32_t>(dataSize)},
+		.dataHash {},
+		.vendorID {r_device.get_physical_device_properties().vendorID},
+		.deviceID {r_device.get_physical_device_properties().deviceID},
+		.driverVersion {r_device.get_physical_device_properties().driverVersion},
+		.driverABI {sizeof(void*)},
+		.uuid{std::to_array(r_device.get_physical_device_properties().pipelineCacheUUID)}
+	};
+	currentHeader->dataHash = Utility::DataHash{}(data.data() + offsetof(PipelineCachePrefixHeader, vendorID), data.size() - offsetof(PipelineCachePrefixHeader, vendorID));
+	std::filesystem::path tmpPath = m_path.stem().string() + ".tmp";
+	std::ofstream out(tmpPath, std::ios::binary);
 	if (out.is_open()) {
-		out.write(reinterpret_cast<char*>(data.data()), dataSize);
+		out.write(reinterpret_cast<char*>(data.data()), data.size());
 		out.close();
 	}
+	std::filesystem::rename(tmpPath, m_path);
 	vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
 }
 

@@ -14,15 +14,15 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 	m_textureManager(r_device, false, directory),
 	m_materialManager(r_device, m_textureManager),
 	m_meshManager(r_device, m_materialManager,
-		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure? useRaytracing : false),
+		r_device.get_physical_device().get_extensions().acceleration_structure ? useRaytracing : false),
 	m_instanceManager(r_device,
-		r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure ? useRaytracing : false),
+		r_device.get_physical_device().get_extensions().acceleration_structure ? useRaytracing : false),
 	m_sceneManager(r_device),
 	m_ddgiManager(r_device, m_rendergraph, m_registry),
 	m_ddgiReSTIRManager(r_device, m_rendergraph, m_registry),
 	m_profiler(r_device),
-	m_useRayTracing(r_device.get_physical_device().get_acceleration_structure_features().accelerationStructure &&
-		r_device.get_physical_device().get_ray_tracing_pipeline_features().rayTracingPipeline),
+	m_useRayTracing(r_device.get_physical_device().get_extensions().acceleration_structure&&
+		r_device.get_physical_device().get_extensions().ray_tracing_pipeline),
 	m_primaryCamera(entt::null)
 {
 }
@@ -287,13 +287,17 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 
 void nyan::RenderManager::begin_frame()
 {
+	m_profiler.begin_frame();
+	//Resources are valid after this point, views created and bound
+	m_rendergraph.begin_frame();
 	//Skeletal animations have to be before the mesh manager build
 	//Has to be before instance manager build and instance manager update
 	m_ddgiManager.begin_frame();
 	m_ddgiReSTIRManager.begin_frame();
 
 	m_meshManager.build();
-
+	//auto uploadPass = m_rendergraph.add_pass("Upload Pass", Renderpass::Type::Transfer);
+	//m_rendergraph.get_pass(uploadPass).add_write(0, Renderpass::Write::Type::Graphics);
 	bool needsSemaphore = false;
 	auto transferCmdHandle = r_device.request_command_buffer(vulkan::CommandBufferType::Transfer);
 	vulkan::CommandBuffer& transferCmd = transferCmdHandle;

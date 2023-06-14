@@ -43,6 +43,9 @@ void vulkan::Allocator::invalidate(VmaAllocation allocation, uint32_t offset, ui
 {
 	vmaInvalidateAllocation(m_VmaHandle, allocation, offset, size);
 }
+void vulkan::Allocator::free_allocation(VmaAllocation allocation) const noexcept {
+	vmaFreeMemory(m_VmaHandle, allocation);
+}
 vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent),
 	m_attachmentIds(new std::unordered_map<Utility::HashValue, ImageHandle>{})

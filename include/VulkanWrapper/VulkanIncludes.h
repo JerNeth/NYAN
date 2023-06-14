@@ -38,20 +38,20 @@ constexpr bool debugMarkers = true;
 #pragma warning(push, 0)
 #pragma warning( disable : 26812 )
 #endif
+#ifdef __clang__
+#pragma clang diagnostic push
+#endif
 #include "vk_mem_alloc.h"
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 #ifdef __clang__
-#pragma clang diagnostic pop
+	#pragma clang diagnostic pop
 #endif
 
 
 #undef VMA_RECORDING_ENABLED
 
-#ifdef __clang__
-	#pragma clang diagnostic pop
-#endif
 #include "glfwIncludes.h"
 
 #include "VulkanObject.h"

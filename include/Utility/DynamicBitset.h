@@ -141,6 +141,8 @@ namespace Utility {
 		constexpr bitset(const bitType& t) {
 			m_data[0] = t;
 		}
+		template<class Head, class... Tail>
+		using are_same = std::conjunction<std::is_same<Head, Tail>...>;
 		template<typename... Tail, class = std::enable_if_t<are_same<T, Tail...>::value, void>>
 		constexpr bitset(Tail... args) noexcept {
 			*this = (*this | ... | args);

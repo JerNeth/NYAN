@@ -11,6 +11,7 @@ namespace Utility {
 	class Logger {
 	public:
 		enum class Type {
+			Verbose,
 			Info,
 			Warn,
 			Error
@@ -46,7 +47,7 @@ namespace Utility {
 			stream() << message;
 			return *this;
 		}
-		const Logger&& message(const std::string_view message) const && {
+		Logger&& message(const std::string_view message) && {
 			stream() << message;
 			return std::move(*this);
 		}
@@ -59,7 +60,7 @@ namespace Utility {
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
 		}
-		const Logger& location(const std::source_location location = std::source_location::current()) const && {
+		Logger&& location(const std::source_location location = std::source_location::current()) && {
 			stream() << "file: "
 				<< location.file_name() << "("
 				<< location.line() << ":"
@@ -75,7 +76,7 @@ namespace Utility {
 			return *this;
 		}
 		template<typename ...Args>
-		const Logger&& format(std::string_view view, Args&&... args) const && {
+		Logger&& format(std::string_view view, Args&&... args) && {
 			stream() << std::vformat(view, std::make_format_args(args...));
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return std::move(*this);
@@ -92,14 +93,23 @@ namespace Utility {
 		}
 		Type m_type {Type::Info};
 		bool m_newLine = true;
+		
 	};
 	inline Logger log()
 	{
 		return Logger{};
 	}
+	inline Logger log_verbose()
+	{
+		return Logger{ Logger::Type::Verbose };
+	}
 	inline Logger log_warning()
 	{
 		return Logger{ Logger::Type::Warn };
+	}
+	inline Logger log_info()
+	{
+		return Logger{ Logger::Type::Info };
 	}
 	inline Logger log_error()
 	{
@@ -107,15 +117,23 @@ namespace Utility {
 	}
 	inline Logger log(const std::string_view message)
 	{
-		return Logger().message(message);
+		return log().message(message);
+	}
+	inline Logger log_verbose(const std::string_view message)
+	{
+		return log_verbose().message(message);
 	}
 	inline Logger log_warning(const std::string_view message)
 	{
-		return Logger{ Logger::Type::Warn }.message(message);
+		return log_warning().message(message);
+	}
+	inline Logger log_info(const std::string_view message)
+	{
+		return log_info().message(message);
 	}
 	inline Logger log_error(const std::string_view message)
 	{
-		return Logger{ Logger::Type::Error }.message(message);
+		return log_error().message(message);
 	}
 }
-#endif !UTILITYLOG_H
+#endif //!UTILITYLOG_H

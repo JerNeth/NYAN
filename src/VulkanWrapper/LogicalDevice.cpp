@@ -20,6 +20,7 @@
 #include "QueryPool.hpp"
 #include "VulkanWrapper/PhysicalDevice.hpp"
 
+
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	const vulkan::PhysicalDevice& physicalDevice,
 	VkDevice device, uint32_t graphicsFamilyQueueIndex,
@@ -44,60 +45,13 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
 {
 	volkLoadDevice(device);
-	//Not really widely supported
-	//if (r_physicalDevice.get_extensions().performance_query) {
-	//	uint32_t counterCount{ 0 };
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_graphics.familyIndex, &counterCount, nullptr, nullptr);
-	//	std::vector< VkPerformanceCounterKHR> counters(counterCount);
-	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions(counterCount);
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_graphics.familyIndex, &counterCount, counters.data(), counterDecriptions.data());
-
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_compute.familyIndex, &counterCount, nullptr, nullptr);
-	//	std::vector< VkPerformanceCounterKHR> counters2(counterCount);
-	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions2(counterCount);
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_compute.familyIndex, &counterCount, counters2.data(), counterDecriptions2.data());
-
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_transfer.familyIndex, &counterCount, nullptr, nullptr);
-	//	std::vector< VkPerformanceCounterKHR> counters3(counterCount);
-	//	std::vector< VkPerformanceCounterDescriptionKHR> counterDecriptions3(counterCount);
-	//	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
-	//		r_physicalDevice, m_transfer.familyIndex, &counterCount, counters3.data(), counterDecriptions3.data());
-	//}
 
 	vkGetDeviceQueue(m_device, m_graphics.familyIndex, 0, &m_graphics.queue);
 	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
 	vkGetDeviceQueue(m_device, m_transfer.familyIndex, 0, &m_transfer.queue);
-#if USE_OPTICK
-	Optick::VulkanFunctions functions{
-		.vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties_>(::vkGetPhysicalDeviceProperties),
-		.vkCreateQueryPool = reinterpret_cast<PFN_vkCreateQueryPool_>(::vkCreateQueryPool),
-		.vkCreateCommandPool = reinterpret_cast<PFN_vkCreateCommandPool_>(::vkCreateCommandPool),
-		.vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers_>(::vkAllocateCommandBuffers),
-		.vkCreateFence = reinterpret_cast<PFN_vkCreateFence_>(::vkCreateFence),
-		.vkCmdResetQueryPool = reinterpret_cast<PFN_vkCmdResetQueryPool_>(::vkCmdResetQueryPool),
-		.vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit_>(::vkQueueSubmit),
-		.vkWaitForFences = reinterpret_cast<PFN_vkWaitForFences_>(::vkWaitForFences),
-		.vkResetCommandBuffer = reinterpret_cast<PFN_vkResetCommandBuffer_>(::vkResetCommandBuffer),
-		.vkCmdWriteTimestamp = reinterpret_cast<PFN_vkCmdWriteTimestamp_>(::vkCmdWriteTimestamp),
-		.vkGetQueryPoolResults = reinterpret_cast<PFN_vkGetQueryPoolResults_>(::vkGetQueryPoolResults),
-		.vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer_>(::vkBeginCommandBuffer),
-		.vkEndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer_>(::vkEndCommandBuffer),
-		.vkResetFences = reinterpret_cast<PFN_vkResetFences_>(::vkResetFences),
-		.vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool_>(::vkDestroyCommandPool),
-		.vkDestroyQueryPool = reinterpret_cast<PFN_vkDestroyQueryPool_>(::vkDestroyQueryPool),
-		.vkDestroyFence = reinterpret_cast<PFN_vkDestroyFence_>(::vkDestroyFence),
-		.vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers_>(::vkFreeCommandBuffers),
-	};
-	OPTICK_GPU_INIT_VULKAN(&(m_device.get_handle()), const_cast<VkPhysicalDevice*>(& r_physicalDevice.get_handle()), &m_graphics.queue, const_cast<uint32_t*>(&m_graphics.familyIndex), 1, &functions);
-#endif // USE_OPTICK	
+
 	create_vma_allocator();
 	create_default_sampler();
-	assert(r_physicalDevice.get_extensions().swapchain);
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_frameResources.emplace_back(new FrameResource{*this});
@@ -107,7 +61,6 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 vulkan::LogicalDevice::~LogicalDevice()
 {
 	wait_no_lock();
-	//OPTICK_SHUTDOWN();
 
 	for (auto& aquire : m_wsiState.aquireSemaphores) {
 		if (aquire != VK_NULL_HANDLE)
@@ -220,7 +173,6 @@ void vulkan::LogicalDevice::next_frame()
 
 void vulkan::LogicalDevice::end_frame()
 {
-	//OPTICK_GPU_FLIP(nullptr);
 	frame().delete_signal_semaphores();
 	if (m_transfer.needsFence|| frame().has_transfer_cmd()) {
 		FenceHandle fence(m_fenceManager);
@@ -1711,9 +1663,6 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
 	};
-	//OPTICK_GPU_CONTEXT(cmd,
-	//	type == CommandBufferType::Generic ? Optick::GPUQueueType::GPU_QUEUE_GRAPHICS :
-	//	(type == CommandBufferType::Compute ? Optick::GPU_QUEUE_COMPUTE : Optick::GPU_QUEUE_TRANSFER));
 	vkBeginCommandBuffer(cmd, &beginInfo);
 	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
 }
@@ -1723,21 +1672,6 @@ vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint
 	assert(m_attachmentAllocator);
 	return m_attachmentAllocator->request_attachment(width, height, format, index, sampleCount, usage, initialLayout, arrayLayers);
 }
-
-void vulkan::LogicalDevice::resize_buffer(Buffer& buffer, VkDeviceSize newSize, bool copyData)
-{
-	auto info = buffer.get_info();
-	info.size = newSize;
-	auto stagingBuffer = create_buffer(info, {});
-	if (copyData) {
-		auto cmd = request_command_buffer(CommandBufferType::Transfer);
-		cmd->copy_buffer(*stagingBuffer , buffer);
-		submit_staging(cmd, info.usage, true);
-	}
-	buffer.swap_contents(*stagingBuffer);
-}
-
-
 
 
 VkSemaphore vulkan::LogicalDevice::get_present_semaphore()
@@ -1853,7 +1787,6 @@ void vulkan::LogicalDevice::wait_idle()
 {
 	wait_no_lock();
 }
-
 
 vulkan::LogicalDevice::FrameResource::FrameResource(LogicalDevice& device) : r_device(device) 
 {

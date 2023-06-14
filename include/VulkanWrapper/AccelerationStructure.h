@@ -13,9 +13,9 @@ namespace vulkan {
 	public:
 		AccelerationStructure(LogicalDevice& device, VkAccelerationStructureKHR handle, BufferHandle buffer, VkAccelerationStructureCreateInfoKHR info);
 		AccelerationStructure(AccelerationStructure&) = delete;
-		AccelerationStructure(AccelerationStructure&& other);
+		AccelerationStructure(AccelerationStructure&& other) noexcept;
 		AccelerationStructure& operator=(AccelerationStructure&) = delete;
-		AccelerationStructure& operator=(AccelerationStructure&& other);
+		AccelerationStructure& operator=(AccelerationStructure&& other) noexcept;
 		~AccelerationStructure();
 		bool is_compactable() const noexcept;
 		VkAccelerationStructureInstanceKHR create_instance(uint32_t sbtOffset = 0) const noexcept;
@@ -68,4 +68,4 @@ namespace vulkan {
 
 }
 
-#endif !VKACCELERATIONSTRUCTURE_H
+#endif //!VKACCELERATIONSTRUCTURE_H

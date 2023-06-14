@@ -280,7 +280,7 @@ HandleClass vulkan::VulkanObject<HandleClass>::get_handle() const noexcept {
     return m_handle;
 }
 
-static std::unordered_map<uint64_t, std::string> s_labels;
+//static std::unordered_map<uint64_t, std::string> s_labels;
 
 template<typename HandleClass>
 void vulkan::VulkanObject<HandleClass>::set_debug_label(const char* name) const noexcept {
@@ -295,23 +295,23 @@ void vulkan::VulkanObject<HandleClass>::set_debug_label(const char* name) const 
             };
             vkSetDebugUtilsObjectNameEXT(r_device, &label);
         }
-        else if (r_device.get_supported_extensions().debug_marker) {
-            VkDebugMarkerObjectNameInfoEXT label{
-                .sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
-                .pNext {nullptr},
-                .objectType {get_debug_report_object_type<HandleClass>()},
-                .object {reinterpret_cast<uint64_t>(m_handle)},
-                .pObjectName {name},
-            };
-            vkDebugMarkerSetObjectNameEXT(r_device, &label);
-        }
-        s_labels[reinterpret_cast<uint64_t>(m_handle)] = name;
+        //else if (r_device.get_supported_extensions().debug_marker) {
+        //    VkDebugMarkerObjectNameInfoEXT label{
+        //        .sType {VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT},
+        //        .pNext {nullptr},
+        //        .objectType {get_debug_report_object_type<HandleClass>()},
+        //        .object {reinterpret_cast<uint64_t>(m_handle)},
+        //        .pObjectName {name},
+        //    };
+        //    vkDebugMarkerSetObjectNameEXT(r_device, &label);
+        //}
+        //s_labels[reinterpret_cast<uint64_t>(m_handle)] = name;
     }
 }
-template<typename HandleClass>
-const std::string& vulkan::VulkanObject<HandleClass>::get_debug_label(uint64_t id) {
-    return s_labels[id];
-}
+//template<typename HandleClass>
+//const std::string& vulkan::VulkanObject<HandleClass>::get_debug_label(uint64_t id) {
+//    return s_labels[id];
+//}
 
 template<typename HandleClass>
 constexpr vulkan::VulkanObject<HandleClass>::VulkanObject(LogicalDevice& device) noexcept 

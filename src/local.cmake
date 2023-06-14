@@ -37,15 +37,7 @@ file(GLOB GLTFREADER_SRC CONFIGURE_DEPENDS
 
 set(DEMO_SRC "${PROJECT_SOURCE_DIR}/src/Demo.cpp"
 )
-set(DEMO2_SRC "${PROJECT_SOURCE_DIR}/src/Demo_two.cpp"
+set(SWAPTCHAIN_TEST_SRC "${PROJECT_SOURCE_DIR}/src/SwapchainTest.cpp"
 )
-set(FBXTest_SRC "${PROJECT_SOURCE_DIR}/src/FBXTest.cpp"
-)
-set(RTTest_SRC "${PROJECT_SOURCE_DIR}/src/RTTest.cpp"
-)
-set(GLTFTest_SRC "${PROJECT_SOURCE_DIR}/src/GLTFTest.cpp"
-)
-set(HybridTest_SRC "${PROJECT_SOURCE_DIR}/src/HybridTest.cpp"
-)
-set(DDGITest_SRC "${PROJECT_SOURCE_DIR}/src/DDGITest.cpp"
+set(HEADLESS_TEST_SRC "${PROJECT_SOURCE_DIR}/src/HeadlessTest.cpp"
 )

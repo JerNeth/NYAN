@@ -1,4 +1,4 @@
-﻿cmake_minimum_required (VERSION 3.24)
+﻿cmake_minimum_required (VERSION 3.26)
 #set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -7,7 +7,6 @@
 cmake_policy(SET CMP0091 NEW)
 project(NYAN)
 #include("UserSettings.txt")
-
 #Project Wide Settings
 #All Options which change the ABI come here
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -51,15 +50,8 @@ include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
 # VMA
 include("${CMAKE_SOURCE_DIR}/vendor/VMA.cmake")
 
-# SDL2
-#include("${CMAKE_SOURCE_DIR}/vendor/SDL2.cmake")
-# Would work, but why use it instead of GLFW
-
 # Volk
 include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
-
-# FBX SDK
-include("${CMAKE_SOURCE_DIR}/vendor/FBXSDK.cmake")
 
 # STB
 include("${CMAKE_SOURCE_DIR}/vendor/STB.cmake")
@@ -69,9 +61,6 @@ include("${CMAKE_SOURCE_DIR}/vendor/EnTT.cmake")
 
 # ENTT Editor
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor")
-
-# Optick
-add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/optick")
 
 # TinyGLTF
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyGLTF")
@@ -114,45 +103,29 @@ target_sources(Engine
     PUBLIC ${INCLUDE_DIR}
     )
 
-#add_library(FBXReader STATIC ${FBXREADER_SRC})
-#target_include_directories(FBXReader PUBLIC ${FBXREADER_H})
-#target_link_libraries(FBXReader fbx z xml2)
 
-
-
-
-#add_executable(Demo ${DEMO_SRC})
-#add_executable(Demo2 ${DEMO2_SRC})
-#add_executable(FBXTest ${FBXTest_SRC})
-add_executable(RTTest ${RTTest_SRC})
-add_executable(GLTFTest ${GLTFTest_SRC})
-add_executable(HybridTest ${HybridTest_SRC})
-add_executable(DDGITest ${DDGITest_SRC})
 
 #set_target_properties(DDGITest PROPERTIES 
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
 target_link_libraries(vma PUBLIC volk::volk)
-#target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui OptickCore stb EnTT imgui_entt_entity_editor )
+#target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui stb EnTT imgui_entt_entity_editor )
 target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
-target_link_libraries(Engine PRIVATE OptickCore stb tinygltf )
 target_link_libraries(tinygltf PUBLIC stb)
+target_link_libraries(Engine PRIVATE stb tinygltf )
 target_link_libraries(Engine PUBLIC shaders)
-#target_link_libraries(Demo Engine)
-#target_link_libraries(Demo2 Engine)
-#target_link_libraries(FBXTest Engine FBXReader)
-target_link_libraries(GLTFTest Engine)
-target_link_libraries(RTTest Engine)
-target_link_libraries(HybridTest Engine FBXReader)
-target_link_libraries(DDGITest Engine FBXReader)
 
-#target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
 
 target_compile_options(Engine PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<CXX_COMPILER_ID:GNU>:-Wall>
-    $<$<CXX_COMPILER_ID:Clang>:-Wall>)
+    $<$<CXX_COMPILER_ID:Clang>:-W4>)
+    
+target_compile_definitions(Engine PUBLIC 
+    $<$<CXX_COMPILER_ID:MSVC>:>
+    $<$<CXX_COMPILER_ID:Clang>:__clang__>)
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #target_compile_options(Main PUBLIC /WX /std:c++latest)
     #target_compile_options(Demo PRIVATE /WX)
@@ -169,7 +142,7 @@ endif()
 target_compile_features(Engine PUBLIC 
     cxx_std_20
 )
-set_target_properties(Engine GLTFTest PROPERTIES 
+set_target_properties(Engine PROPERTIES 
     UNITY_BUILD on
 )
 if(WIN32)
@@ -179,6 +152,18 @@ elseif(APPLE)
 elseif(UNIX)
     target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_XLIB_KHR)
 endif()
+
+#target_precompile_headers(Engine PRIVATE include/VulkanWrapper/VulkanIncludes.h )
+
+
+add_executable(Demo ${DEMO_SRC})
+add_executable(SwapchainTest ${SWAPTCHAIN_TEST_SRC})
+add_executable(HeadlessTest ${HEADLESS_TEST_SRC})
+
+target_link_libraries(Demo Engine)
+target_link_libraries(SwapchainTest Engine)
+target_link_libraries(HeadlessTest Engine)
+
 
 # ---------------------------------------------------------------------------
 # Testing

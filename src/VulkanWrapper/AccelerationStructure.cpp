@@ -20,7 +20,7 @@ vulkan::AccelerationStructure::AccelerationStructure(LogicalDevice& device, VkAc
 	m_reference = vkGetAccelerationStructureDeviceAddressKHR(r_device, &addressInfo);
 }
 
-vulkan::AccelerationStructure::AccelerationStructure(AccelerationStructure&& other) :
+vulkan::AccelerationStructure::AccelerationStructure(AccelerationStructure&& other) noexcept :
 	VulkanObject(other.r_device, other.m_handle),
 	m_buffer(std::move(other.m_buffer)),
 	m_info(std::move(other.m_info)),
@@ -31,7 +31,7 @@ vulkan::AccelerationStructure::AccelerationStructure(AccelerationStructure&& oth
 	}
 }
 
-vulkan::AccelerationStructure& vulkan::AccelerationStructure::operator=(AccelerationStructure&& other)
+vulkan::AccelerationStructure& vulkan::AccelerationStructure::operator=(AccelerationStructure&& other) noexcept
 {
 	if (this != &other && &r_device == &other.r_device) {
 		std::swap(m_handle, other.m_handle);
@@ -61,9 +61,9 @@ VkAccelerationStructureInstanceKHR vulkan::AccelerationStructure::create_instanc
 	VkAccelerationStructureInstanceKHR instance {
 		.transform {
 			.matrix{
-			1,0,0,0,
-			0,1,0,0,
-			0,0,1,0
+			{1,0,0,0},
+			{0,1,0,0},
+			{0,0,1,0}
 			}
 		},
 		.instanceCustomIndex = 0, //gl_InstanceCustomIndex != gl_InstanceID (latter = idx into built tlas)
@@ -131,36 +131,38 @@ std::optional<size_t> vulkan::AccelerationStructureBuilder::queue_item(const BLA
 	}
 	auto idx = m_pendingBuilds.size();
 	m_pendingBuilds.push_back(BLASBuildEntry{
-		VkAccelerationStructureGeometryKHR{
-			.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
-			.pNext = nullptr,
-			.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+		.geometry { 
+			.sType { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR },
+			.pNext { nullptr },
+			.geometryType { VK_GEOMETRY_TYPE_TRIANGLES_KHR },
 			.geometry {
 				.triangles{
-					.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
-					.pNext = nullptr,
-					.vertexFormat = info.vertexFormat,
+					.sType { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR },
+					.pNext { nullptr },
+					.vertexFormat {info.vertexFormat},
 					.vertexData {
-						.deviceAddress = vertexAddress
+						.deviceAddress { vertexAddress }
 					},
-					.vertexStride = info.vertexStride,
-					.maxVertex = info.vertexCount,
-					.indexType = info.indexType,
+					.vertexStride { info.vertexStride },
+					.maxVertex { info.vertexCount },
+					.indexType  { info.indexType },
 					.indexData {
-						.deviceAddress = indexAddress
+						.deviceAddress { indexAddress }
 					},
-					.transformData = transformAddress,
+					.transformData {
+						.deviceAddress { transformAddress }
+					},
 				}
 			},
 			.flags = info.geometryFlags,
 		},
-		VkAccelerationStructureBuildRangeInfoKHR{
+		.buildRange {
 			.primitiveCount = info.indexCount / 3,
 			.primitiveOffset = 0,
 			.firstVertex = 0,
 			.transformOffset = info.transformOffset,
 		},
-		info.flags
+		.flags {info.flags}
 		});
 	return idx;
 }
@@ -187,7 +189,8 @@ std::vector<vulkan::AccelerationStructureHandle> vulkan::AccelerationStructureBu
 			&build.buildInfo, &build.buildRange.primitiveCount, &build.sizeInfo);
 		totalSize += build.sizeInfo.accelerationStructureSize;
 		maxScratchSize = Math::max(maxScratchSize, build.sizeInfo.buildScratchSize + scratchAlignment);
-		compactionCount += (build.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR) == VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+		if(build.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)
+			compactionCount++;
 	}
 	if (!m_scratch || (*m_scratch)->get_size() < maxScratchSize)
 		m_scratch = r_device.create_buffer(BufferInfo{
@@ -416,7 +419,7 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_tlas(uint32_t size, VkDeviceAddress address, VkBuildAccelerationStructureFlagsKHR flags)
 {
 	auto cmd = r_device.request_command_buffer(CommandBufferType::Compute);
-
+	
 
 	VkAccelerationStructureGeometryKHR geometry{
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
@@ -445,8 +448,10 @@ vulkan::AccelerationStructureHandle vulkan::AccelerationStructureBuilder::build_
 		.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
 		.pNext = nullptr,
 	};
+
 	vkGetAccelerationStructureBuildSizesKHR(r_device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo,
 		&size, &sizeInfo);
+	
 
 	auto accelBuffer = r_device.create_buffer(BufferInfo{
 			.size = sizeInfo.accelerationStructureSize,

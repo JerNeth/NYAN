@@ -134,27 +134,27 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	//bool usesBinding = false;
 	Compiler comp(shaderCode); 
 	m_stage = convert_spriv_execution_model(comp.get_execution_model());
+	assert(m_stage != vulkan::ShaderStage::Size);
 	if (m_stage == vulkan::ShaderStage::Size)
 		throw std::runtime_error("Unsupported Shadertype");
 	ShaderResources resources = comp.get_shader_resources();
-	
 	if (m_stage == vulkan::ShaderStage::Compute) {
 		spirv_cross::SpecializationConstant x, y, z;
 		comp.get_work_group_size_specialization_constants(x, y, z);
 		if (x.constant_id != 0 && x.id != 0) {
 			const auto& constant = comp.get_constant(x.id);
 			const auto& type = comp.get_type(constant.constant_type);
-			m_specilizationConstants.emplace("local_size_x", SpecializationConstantId{ convertType(type.basetype), x.constant_id });
+			m_specializationConstants.emplace("local_size_x", SpecializationConstantId{ convertType(type.basetype), x.constant_id });
 		}
 		if (y.constant_id != 0 && y.id != 0) {
 			const auto& constant = comp.get_constant(y.id);
 			const auto& type = comp.get_type(constant.constant_type);
-			m_specilizationConstants.emplace("local_size_y", SpecializationConstantId{ convertType(type.basetype), y.constant_id });
+			m_specializationConstants.emplace("local_size_y", SpecializationConstantId{ convertType(type.basetype), y.constant_id });
 		}
 		if (z.constant_id != 0 && z.id != 0) {
 			const auto& constant = comp.get_constant(z.id);
 			const auto& type = comp.get_type(constant.constant_type);
-			m_specilizationConstants.emplace("local_size_z", SpecializationConstantId{ convertType(type.basetype), z.constant_id });
+			m_specializationConstants.emplace("local_size_z", SpecializationConstantId{ convertType(type.basetype), z.constant_id });
 		}
 	}
 	auto specs = comp.get_specialization_constants();
@@ -163,7 +163,7 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 		if (!name.empty()) {
 			const auto& constant = comp.get_constant(spec.id);
 			const auto& type = comp.get_type(constant.constant_type);
-			m_specilizationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
+			m_specializationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
 		}
 	}
 	//auto specs = comp.get_specialization_constants();
@@ -267,8 +267,8 @@ Utility::HashValue vulkan::Shader::get_hash()
 
 vulkan::Shader::SpecializationConstantId vulkan::Shader::get_specialization_constant_id(const std::string& name) const
 {
-	auto it = m_specilizationConstants.find(name);
-	assert(it != m_specilizationConstants.end());
+	auto it = m_specializationConstants.find(name);
+	assert(it != m_specializationConstants.end());
 	return it->second;
 }
 
@@ -291,13 +291,14 @@ vulkan::ShaderInstance::ShaderInstance(VkShaderModule module, VkShaderStageFlagB
 	m_specialization(),
 	m_dataStorage(),
 	m_entryPoint("main"),
-	m_stage(stage),
+	m_offset(0),
 	m_specializationInfo(VkSpecializationInfo{
 		.mapEntryCount = static_cast<uint32_t>(m_specialization.size()),
 		.pMapEntries = m_specialization.data(),
 		.dataSize = m_dataStorage.size(),
 		.pData = m_dataStorage.data()
-	})
+	}),
+	m_stage(stage)
 {
 	
 }

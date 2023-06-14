@@ -176,7 +176,7 @@ namespace vulkan {
 		ShaderStage m_stage;
 		//ShaderLayout m_layout;
 		Utility::HashValue m_hashValue;
-		std::unordered_map<std::string, SpecializationConstantId> m_specilizationConstants;
+		std::unordered_map<std::string, SpecializationConstantId> m_specializationConstants;
 	}; 
 
 
@@ -187,8 +187,8 @@ namespace vulkan {
 		ShaderInstance(VkShaderModule module, VkShaderStageFlagBits stage, Args... args) :
 			m_module(module),
 			m_entryPoint("main"),
-			m_stage(stage),
-			m_offset(0)
+			m_offset(0),
+			m_stage(stage)
 		{
 			handle_constants(std::forward<Args>(args)...);
 			m_specializationInfo = VkSpecializationInfo{

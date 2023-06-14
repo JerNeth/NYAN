@@ -438,7 +438,7 @@ namespace vulkan {
 				assert(width >= 1);
 				assert(height == 1);
 				assert(depth == 1);
-				assert(samples == VK_SAMPLE_COUNT_1_BIT);
+				assert(samples & VK_SAMPLE_COUNT_1_BIT);
 				if (arrayLayers > 1)
 					return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
 				else

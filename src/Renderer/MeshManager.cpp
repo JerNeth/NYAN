@@ -103,7 +103,7 @@ nyan::MeshID nyan::MeshManager::add_mesh(const nyan::Mesh& data)
 			.transformBuffer { VK_NULL_HANDLE },
 			.transformOffset { 0 },
 			.indexType { mesh.mesh.indexType },
-			.geometryFlags {(data.type == nyan::Mesh::RenderType::Opaque) ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_NV }},
+			.geometryFlags {(data.type == nyan::Mesh::RenderType::Opaque) ? VK_GEOMETRY_OPAQUE_BIT_KHR : VkGeometryFlagsKHR{ VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR }},
 		};
 		auto ret = m_builder->queue_item(blasInfo);
 		if(ret)
@@ -223,7 +223,8 @@ void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
 		assert(m_builder);
-		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->deviceBuffer->get_address());
+		//m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->deviceBuffer->get_address());
+		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), reinterpret_cast<VkDeviceAddress>(m_slot->data.data()));
 		r_device.get_bindless_set().set_acceleration_structure(m_tlasBind, *(*m_tlas));
 	}
 }

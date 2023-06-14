@@ -53,7 +53,6 @@ namespace vulkan {
 	class Buffer : public Utility::UIDC, public VulkanObject<VkBuffer>  {
 	public:
 		Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation allocation, const BufferInfo& info);
-		void resize(VkDeviceSize newSize, bool copyData = false);
 		VkBufferUsageFlags get_usage()  const noexcept;
 		VmaMemoryUsage get_memory_usage()  const noexcept;
 		VkDeviceSize get_size() const noexcept;
