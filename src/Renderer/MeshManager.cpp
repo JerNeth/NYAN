@@ -223,8 +223,7 @@ void nyan::InstanceManager::build()
 {
 	if (m_buildAccs) {
 		assert(m_builder);
-		//m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->deviceBuffer->get_address());
-		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), reinterpret_cast<VkDeviceAddress>(m_slot->data.data()));
+		m_tlas = m_builder->build_tlas(static_cast<uint32_t>(m_slot->data.size()), m_slot->deviceBuffer->get_address());
 		r_device.get_bindless_set().set_acceleration_structure(m_tlasBind, *(*m_tlas));
 	}
 }
