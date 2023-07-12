@@ -31,4 +31,4 @@ namespace nyan {
 	};
 }
 
-#endif !RDMATERIAL_H
+#endif //!RDMATERIAL_H

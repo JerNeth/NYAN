@@ -18,8 +18,6 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 	m_instanceManager(r_device,
 		r_device.get_physical_device().get_extensions().acceleration_structure ? useRaytracing : false),
 	m_sceneManager(r_device),
-	m_ddgiManager(r_device, m_rendergraph, m_registry),
-	m_ddgiReSTIRManager(r_device, m_rendergraph, m_registry),
 	m_profiler(r_device),
 	m_useRayTracing(r_device.get_physical_device().get_extensions().acceleration_structure&&
 		r_device.get_physical_device().get_extensions().ray_tracing_pipeline),
@@ -81,26 +79,6 @@ nyan::SceneManager& nyan::RenderManager::get_scene_manager()
 const nyan::SceneManager& nyan::RenderManager::get_scene_manager() const
 {
 	return m_sceneManager;
-}
-
-nyan::DDGIManager& nyan::RenderManager::get_ddgi_manager()
-{
-	return m_ddgiManager;
-}
-
-const nyan::DDGIManager& nyan::RenderManager::get_ddgi_manager() const
-{
-	return m_ddgiManager;
-}
-
-nyan::DDGIReSTIRManager& nyan::RenderManager::get_ddgi_restir_manager()
-{
-	return m_ddgiReSTIRManager;
-}
-
-const nyan::DDGIReSTIRManager& nyan::RenderManager::get_ddgi_restir_manager() const
-{
-	return m_ddgiReSTIRManager;
 }
 
 entt::registry& nyan::RenderManager::get_registry()
@@ -280,9 +258,6 @@ void nyan::RenderManager::update([[maybe_unused]]std::chrono::nanoseconds dt)
 			}
 		}
 	}
-	//Order doesn't matter
-	m_ddgiManager.update();
-	m_ddgiReSTIRManager.update();
 }
 
 void nyan::RenderManager::begin_frame()
@@ -292,8 +267,6 @@ void nyan::RenderManager::begin_frame()
 	m_rendergraph.begin_frame();
 	//Skeletal animations have to be before the mesh manager build
 	//Has to be before instance manager build and instance manager update
-	m_ddgiManager.begin_frame();
-	m_ddgiReSTIRManager.begin_frame();
 
 	m_meshManager.build();
 	//auto uploadPass = m_rendergraph.add_pass("Upload Pass", Renderpass::Type::Transfer);
@@ -301,9 +274,7 @@ void nyan::RenderManager::begin_frame()
 	bool needsSemaphore = false;
 	auto transferCmdHandle = r_device.request_command_buffer(vulkan::CommandBufferType::Transfer);
 	vulkan::CommandBuffer& transferCmd = transferCmdHandle;
-
-	needsSemaphore |= m_ddgiManager.upload(transferCmd);
-	needsSemaphore |= m_ddgiReSTIRManager.upload(transferCmd);
+	
 	needsSemaphore |= m_meshManager.upload(transferCmd);
 	needsSemaphore |= m_materialManager.upload(transferCmd);
 	needsSemaphore |= m_sceneManager.upload(transferCmd);
@@ -320,6 +291,5 @@ void nyan::RenderManager::begin_frame()
 
 void nyan::RenderManager::end_frame()
 {
-	m_ddgiManager.end_frame();
-	m_ddgiReSTIRManager.end_frame();
+
 }

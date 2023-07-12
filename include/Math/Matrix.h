@@ -190,7 +190,7 @@ namespace Math {
 		constexpr static Mat eye(const Scalar& val) 
 		{
 			Mat ret {0};
-			for (int i = 0; i < min(Size_x, Size_y); i++)
+			for (size_t i = 0; i < min(Size_x, Size_y); i++)
 				ret.at(i, i) = val;
 			return ret;
 		}
@@ -251,7 +251,8 @@ namespace Math {
 				return m_data[row * Size_x + col];
 			}
 		}
-		constexpr inline const Scalar& at(size_t col, size_t row) const {
+
+		[[nodiscard]] constexpr inline const Scalar& at(size_t col, size_t row) const {
 			if constexpr (column_major) {
 				return m_data[col * Size_y + row];
 			}
@@ -264,7 +265,8 @@ namespace Math {
 	private:
 		union {
 			std::array<Scalar, Size_x* Size_y> m_data;
-			std::array<Vec<Scalar, column_major ?Size_y : Size_x>, column_major ? Size_x : Size_y> m_vectors;//Columns if columnmajor, rows otherwise
+			std::array<Vec<Scalar, column_major ?Size_y : Size_x>, column_major ? Size_x : Size_y> m_vectors;
+			//Columns if columnmajor, rows otherwise
 		};
 	};
 

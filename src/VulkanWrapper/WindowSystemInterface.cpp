@@ -17,7 +17,7 @@ vulkan::WindowSystemInterface::WindowSystemInterface(LogicalDevice& device, Inst
 vulkan::WindowSystemInterface::~WindowSystemInterface()
 {
 	if(m_vkHandle)
-		vkDestroySwapchainKHR(r_device.get_device(), m_vkHandle, r_device.get_allocator());
+		r_device.get_device().vkDestroySwapchainKHR( m_vkHandle, r_device.get_allocator());
 }
 
 void vulkan::WindowSystemInterface::drain_swapchain()
@@ -30,7 +30,7 @@ void vulkan::WindowSystemInterface::destroy_swapchain()
 {
 	drain_swapchain();
 	if (m_vkHandle != VK_NULL_HANDLE)
-		vkDestroySwapchainKHR(r_device.get_device(), m_vkHandle, r_device.get_allocator());
+		r_device.get_device().vkDestroySwapchainKHR( m_vkHandle, r_device.get_allocator());
 	m_vkHandle = VK_NULL_HANDLE;
 	m_swapchainImageAcquired = false;
 }
@@ -54,7 +54,7 @@ void vulkan::WindowSystemInterface::begin_frame()
 	VkResult result{};
 	do {
 		auto semaphore = r_device.request_semaphore();
-		if (result = vkAcquireNextImageKHR(r_device.get_device(), m_vkHandle, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_swapchainImageIndex); result != VK_SUCCESS) {
+		if (result = r_device.get_device().vkAcquireNextImageKHR( m_vkHandle, UINT64_MAX, semaphore, VK_NULL_HANDLE, &m_swapchainImageIndex); result != VK_SUCCESS) {
 			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 				update_swapchain();
 			}
@@ -88,7 +88,7 @@ void vulkan::WindowSystemInterface::end_frame()
 		.pResults = NULL
 	};
 
-	if (auto result = vkQueuePresentKHR(r_device.get_graphics_queue(), &presentInfo); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkQueuePresentKHR(r_device.get_graphics_queue(), &presentInfo); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			destroy_swapchain();
 		}
@@ -236,19 +236,19 @@ bool vulkan::WindowSystemInterface::init_swapchain()
 		.clipped = VK_TRUE,
 		.oldSwapchain = old,
 	};
-	if (auto result = vkCreateSwapchainKHR(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateSwapchainKHR( &createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
 	if (old != VK_NULL_HANDLE) {
-		vkDestroySwapchainKHR(r_device.get_device(), old, r_device.get_allocator());
+		r_device.get_device().vkDestroySwapchainKHR( old, r_device.get_allocator());
 	}
 	uint32_t imageCount {0};
-	if (auto result = vkGetSwapchainImagesKHR(r_device.get_device(), m_vkHandle, &imageCount, nullptr); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkGetSwapchainImagesKHR( m_vkHandle, &imageCount, nullptr); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	m_swapchainImages.resize(imageCount);
-	if (auto result = vkGetSwapchainImagesKHR(r_device.get_device(), m_vkHandle, &imageCount, m_swapchainImages.data()); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkGetSwapchainImagesKHR( m_vkHandle, &imageCount, m_swapchainImages.data()); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	return true;

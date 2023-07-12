@@ -3,19 +3,21 @@
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(CheckIPOSupported)
 
 cmake_policy(SET CMP0091 NEW)
-project(NYAN)
+project(NYAN
+        VERSION 0.0.1
+        LANGUAGES C CXX)
 #include("UserSettings.txt")
 #Project Wide Settings
 #All Options which change the ABI come here
+message("Detected ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-    message("Detected MSVC")
     string(REGEX REPLACE "/W[3|4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     add_compile_options(/wd26812)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    message("Detected Clang")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -28,7 +30,8 @@ find_package(Threads REQUIRED)
 find_package(Vulkan REQUIRED COMPONENTS glslc)
 
 # SPIRV-Cross
-if(NOT Vulkan_SPIRV-Tools_FOUND OR TRUE)
+#if(NOT Vulkan_SPIRV-Tools_FOUND OR TRUE)
+if(TRUE)
     message("spriv-cross-core not found fetching from repo")
     include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
     set(SPIRV_LIB spirv-cross-core)
@@ -109,18 +112,28 @@ target_sources(Engine
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
-target_link_libraries(vma PUBLIC volk::volk)
+target_link_libraries(vma_implementation PUBLIC volk::volk)
 #target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui stb EnTT imgui_entt_entity_editor )
-target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
+#target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
+
+target_link_libraries(Engine PUBLIC glfw volk::volk vma_implementation ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
 target_link_libraries(tinygltf PUBLIC stb)
 target_link_libraries(Engine PRIVATE stb tinygltf )
 target_link_libraries(Engine PUBLIC shaders)
 
 
-target_compile_options(Engine PRIVATE
+check_ipo_supported(RESULT ipo_result OUTPUT output
+                    LANGUAGES C CXX)
+if(ipo_result)
+  set_property(TARGET Engine PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+  message(WARNING "IPO is not supported: ${output}")
+endif()
+
+target_compile_options(Engine PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<CXX_COMPILER_ID:GNU>:-Wall>
-    $<$<CXX_COMPILER_ID:Clang>:-W4>)
+    $<$<CXX_COMPILER_ID:Clang>:-W4 -Wno-braced-scalar-init>)
     
 target_compile_definitions(Engine PUBLIC 
     $<$<CXX_COMPILER_ID:MSVC>:>
@@ -140,11 +153,21 @@ endif()
 #    cxx_std_20
 #)
 target_compile_features(Engine PUBLIC 
-    cxx_std_20
+    cxx_std_23
 )
 set_target_properties(Engine PROPERTIES 
     UNITY_BUILD on
 )
+
+target_link_options(Engine PUBLIC
+    $<$<NOT:$<CONFIG:DEBUG>>:/INCREMENTAL:NO> # Disable incremental linking.
+    $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF> # Remove unreferenced functions and data.
+    $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF> # Identical COMDAT folding.
+    $<$<CONFIG:DEBUG>:/INCREMENTAL> # Do incremental linking
+    $<$<CONFIG:DEBUG>:/OPT:NOREF> # No unreferenced data elimination.
+    $<$<CONFIG:DEBUG>:/OPT:NOICF> # No Identical COMDAT folding.
+)
+
 if(WIN32)
     target_compile_definitions(Engine PUBLIC VK_USE_PLATFORM_WIN32_KHR)
 elseif(APPLE)

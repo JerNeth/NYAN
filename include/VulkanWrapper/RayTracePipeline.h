@@ -32,4 +32,4 @@ namespace vulkan {
 }
 
 
-#endif !VKRAYTRACEPIPELINE_H
+#endif //!VKRAYTRACEPIPELINE_H

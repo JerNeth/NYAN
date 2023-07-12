@@ -9,43 +9,11 @@
 #include "Util"
 #include "Manager.h"
 #include "DescriptorSet.h"
+#include "Queue.hpp"
+#include "DeviceWrapper.hpp"
+
 namespace vulkan {
 	//Important to delete the device after everything else
-
-	class DeviceWrapper {
-	public:
-		DeviceWrapper(VkDevice device, const VkAllocationCallbacks* allocator) :
-			m_vkHandle(device), 
-			m_allocator(allocator)
-		{
-		}
-		~DeviceWrapper() {
-			if (m_vkHandle != VK_NULL_HANDLE) {
-				vkDestroyDevice(m_vkHandle, m_allocator);
-				m_vkHandle = VK_NULL_HANDLE;
-			}
-		}
-		DeviceWrapper(DeviceWrapper&) = delete;
-		DeviceWrapper(DeviceWrapper&& other) noexcept:
-			m_vkHandle(other.m_vkHandle),
-			m_allocator(other.m_allocator)
-		{
-			other.m_vkHandle = VK_NULL_HANDLE;
-		};
-		DeviceWrapper& operator=(DeviceWrapper&) = delete;
-		DeviceWrapper& operator=(DeviceWrapper&& other) noexcept {
-			m_vkHandle = other.m_vkHandle;
-			m_allocator= other.m_allocator;
-			other.m_vkHandle = VK_NULL_HANDLE;
-			return *this;
-		};
-		operator VkDevice() const noexcept { return m_vkHandle; }
-		const VkDevice& get_handle() const noexcept { return m_vkHandle; };
-		VkDevice& get_handle() noexcept { return m_vkHandle; };
-	private:
-		VkDevice m_vkHandle = VK_NULL_HANDLE;
-		const VkAllocationCallbacks* m_allocator;
-	};
 
 	struct InputData {
 		const void* ptr;
@@ -158,12 +126,24 @@ namespace vulkan {
 			VkViewport viewport;
 			VkRect2D scissor;
 		};
+		struct QueueInfos
+		{
+			uint32_t graphicsFamilyQueueIndex;
+			uint32_t computeFamilyQueueIndex;
+			uint32_t transferFamilyQueueIndex;
+			std::vector<float> graphicsQueuePriorities;
+			std::vector<float> computeQueuePriorities;
+			std::vector<float> transferQueuePriorities;
+		};
 	public:
 
 		LogicalDevice(const vulkan::Instance& parentInstance,
 			const vulkan::PhysicalDevice& physicalDevice,
 			VkDevice device, uint32_t graphicsFamilyQueueIndex,
 			uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex);
+		LogicalDevice(const vulkan::Instance& parentInstance, 
+			const vulkan::PhysicalDevice& physicalDevice,
+			VkDevice device, const QueueInfos& queueInfos);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
@@ -179,11 +159,11 @@ namespace vulkan {
 		[[deprecated]] void downsize_sparse_image(Image& handle, uint32_t targetMipLevel);
 		[[deprecated]] bool upsize_sparse_image(Image& handle, InitialImageData* initialData, uint32_t targetMipLevel);
 
-		FenceHandle request_empty_fence();
-		void destroy_semaphore(VkSemaphore semaphore);
-		VkSemaphore request_semaphore();
-		CommandBufferHandle request_command_buffer(CommandBufferType type);
-		Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT, uint32_t arrayLayers = 1);
+		[[deprecated]] FenceHandle request_empty_fence();
+		[[deprecated]] void destroy_semaphore(VkSemaphore semaphore);
+		[[deprecated]] VkSemaphore request_semaphore();
+		[[deprecated]] CommandBufferHandle request_command_buffer(CommandBufferType type);
+		[[deprecated]] Image* request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index = 0, VkImageUsageFlags usage = 0, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_GENERAL, VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT, uint32_t arrayLayers = 1);
 
 		[[deprecated]] VkSemaphore get_present_semaphore();
 		[[deprecated]] bool swapchain_touched() const noexcept;
@@ -229,12 +209,11 @@ namespace vulkan {
 		FrameResource& frame();
 		FrameResource& previous_frame();
 
-		[[nodiscard]] const Extensions& get_supported_extensions() const noexcept;
 		[[deprecated]] uint32_t get_thread_index() const noexcept;
 		[[deprecated]] uint32_t get_thread_count() const noexcept;
 		[[nodiscard]] const PhysicalDevice& get_physical_device() const noexcept;
-		[[nodiscard]] VkDevice get_device() const noexcept;
-		[[nodiscard]] operator VkDevice() const noexcept;
+		[[nodiscard]] const LogicalDeviceWrapper& get_device() const noexcept;
+		[[nodiscard]] VkDevice get_device_handle() const noexcept;
 		[[nodiscard]] VkAllocationCallbacks* get_allocator() const noexcept;
 		[[nodiscard]] Allocator* get_vma_allocator() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
@@ -258,7 +237,7 @@ namespace vulkan {
 
 		void wait_on_idle_queue(CommandBufferType type);
 
-		Queue& get_queue(CommandBufferType type) noexcept {
+		[[deprecated]] Queue& get_queue(CommandBufferType type) noexcept {
 			switch (type) {
 			case CommandBufferType::Generic:
 				return m_graphics;
@@ -271,8 +250,11 @@ namespace vulkan {
 				return m_graphics;
 			}
 		}
+		std::span<vulkan::Queue const> get_queues(vulkan::Queue::Type) const noexcept;
+		std::span<vulkan::Queue> get_queues(vulkan::Queue::Type) noexcept;
 
 	private:
+		void create_queues(const QueueInfos& queueInfos) noexcept;
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
 		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
 		ImageHandle create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage);
@@ -293,7 +275,7 @@ namespace vulkan {
 		//Last to destroy
 		const Instance& r_instance;
 		const PhysicalDevice& r_physicalDevice;
-		DeviceWrapper m_device;
+		LogicalDeviceWrapper m_device;
 
 		VkAllocationCallbacks* m_allocator = NULL;
 		std::unique_ptr<Allocator> m_vmaAllocator;
@@ -312,9 +294,11 @@ namespace vulkan {
 		WSIState m_wsiState;
 
 		std::unique_ptr<AttachmentAllocator> m_attachmentAllocator;
-		Queue m_graphics;
-		Queue m_compute;
-		Queue m_transfer;
+		LogicalDevice::Queue m_graphics;
+		LogicalDevice::Queue m_compute;
+		LogicalDevice::Queue m_transfer;
+
+		std::array<std::vector<vulkan::Queue>, static_cast<size_t>(vulkan::Queue::Type::Size)> m_queues;
 
 		size_t m_currentFrame = 0;
 		

@@ -45,6 +45,7 @@ namespace vulkan {
 			uint32_t swapchainColorSpace : 1;
 		};
 
+	public:
 		Instance(const Validation& validation, std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, std::string applicationName = "", std::string engineName = "");
 		~Instance() noexcept;
 		Instance(Instance&) = delete;
@@ -58,22 +59,24 @@ namespace vulkan {
 #endif
 		VkSurfaceKHR get_surface() const;
 		operator VkInstance() const noexcept;
-		const std::vector<PhysicalDevice>& get_physical_devices() const noexcept;
+		std::span<const PhysicalDevice> get_physical_devices() const noexcept;
+		std::span<PhysicalDevice> get_physical_devices() noexcept;
 	private:
 		void create_instance( std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, uint32_t applicationVersion = 0, uint32_t engineVersion = 0);
 
-		bool use_extension(const char* extension);
-		bool use_layer(const char* layer);
-		void init_layers();
-		void init_extensions();
+		bool use_extension(const char* extension) noexcept;
+		bool use_layer(const char* layer) noexcept;
+		void init_layers() noexcept;
+		void init_extensions() noexcept;
+		void init_physical_devices() noexcept;
+	private:
 
 		/// *******************************************************************
 		/// Member variables
 		/// *******************************************************************
 
-		VkInstance m_instance;
-		VkSurfaceKHR m_surface;
-		VkPhysicalDevice m_physicalDevice;
+		VkInstance m_instance { VK_NULL_HANDLE };
+		VkSurfaceKHR m_surface { VK_NULL_HANDLE };
 		size_t m_bestDeviceIdx = 0;
 		std::vector<PhysicalDevice> m_physicalDevices;
 		VkAllocationCallbacks* m_allocator = NULL;
@@ -89,24 +92,6 @@ namespace vulkan {
 		std::string m_applicationName;
 		std::string m_engineName;
 		friend class LogicalDevice;
-	};
-	struct Extensions {
-		uint32_t swapchain : 1;
-		uint32_t fullscreen_exclusive : 1;
-		uint32_t debug_utils : 1;
-		uint32_t debug_marker : 1;
-		uint32_t acceleration_structure : 1;
-		uint32_t ray_tracing_pipeline : 1;
-		uint32_t ray_query : 1;
-		uint32_t pipeline_library : 1;
-		uint32_t deferred_host_operations : 1;
-		uint32_t performance_query : 1;
-		uint32_t vertex_input_dynamic_state : 1;
-		uint32_t mesh_shader : 1;
-		uint32_t atomic_floats : 1;
-		uint32_t buffer_device_address : 1;
-		uint32_t present_id : 1;
-		uint32_t present_wait : 1;
 	};
 }
 #endif

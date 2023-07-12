@@ -1,11 +1,13 @@
 ﻿#pragma once
 #ifndef HASHMAP_H
 #define HASHMAP_H
-#include <optional>
-#include <new>
 #include "Hash.h"
 #include "Pool.h"
+
+#include <optional>
+#include <new>
 #include <unordered_map>
+#include <algorithm>
 
 // https://en.cppreference.com/w/cpp/thread/hardware_destructive_interference_size
 // Since Clang and GCC (<12) do not support it

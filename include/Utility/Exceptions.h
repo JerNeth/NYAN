@@ -1,6 +1,10 @@
 #ifndef UTEXCEPTIONS_H
 #define UTEXCEPTIONS_H
 #pragma once
+#include <cassert>
+#ifndef __cpp_consteval
+#define __cpp_consteval 201811L
+#endif
 #include <source_location>
 #include <filesystem>
 #include <format>
@@ -136,7 +140,7 @@ namespace Utility {
 	};
 	class FileNotFoundException : public std::exception {
 	public:
-		FileNotFoundException(const std::filesystem::path& file, const std::source_location location = std::source_location::current()) 
+		FileNotFoundException(const std::filesystem::path& file, const std::source_location location = std::source_location::current())
 			: m_msg(std::format("{}({}): {}: File does not exist: \"{}\"", location.file_name(), location.line(), location.function_name(), file.string()))
 		{
 		}
@@ -161,4 +165,4 @@ namespace Utility {
 	};
 }
 
-#endif !UTEXCEPTIONS_H
+#endif //!UTEXCEPTIONS_H

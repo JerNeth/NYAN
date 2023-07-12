@@ -1,13 +1,15 @@
 #include "VulkanWrapper/Swapchain.hpp"
 #include "VulkanWrapper/LogicalDevice.h"
 
-vulkan::Swapchain::Swapchain(vulkan::LogicalDevice& device) :
-	VulkanObject(device)
+vulkan::Swapchain::Swapchain(vulkan::LogicalDevice& device, VkSurfaceKHR surface) :
+	VulkanObject(device),
+	m_surface(surface)
 {
 }
 
 vulkan::Swapchain::Swapchain(Swapchain&& other) noexcept :
-	VulkanObject(other.r_device, m_handle)
+	VulkanObject(other.r_device, other.m_handle),
+	m_surface(other.m_surface)
 {
 	other.m_handle = VK_NULL_HANDLE;
 }
@@ -15,7 +17,7 @@ vulkan::Swapchain::Swapchain(Swapchain&& other) noexcept :
 vulkan::Swapchain::~Swapchain()
 {
 	if (m_handle)
-		vkDestroySwapchainKHR(r_device, m_handle, r_device.get_allocator());
+		r_device.get_device().vkDestroySwapchainKHR( m_handle, r_device.get_allocator());
 }
 
 void vulkan::Swapchain::acquire_image()
@@ -25,7 +27,7 @@ void vulkan::Swapchain::acquire_image()
 	assert(m_acquiredImages.size() < m_swapchainImages.size());
 	assert(m_acquiredImages.size() <= m_swapchainImages.size() - m_surfaceCapabilites.minImageCount);
 	uint32_t index{ 0 };
-	if(const auto result = vkAcquireNextImageKHR(r_device, m_handle, 0, VK_NULL_HANDLE, VK_NULL_HANDLE, &index); result != VK_SUCCESS)
+	if(const auto result = r_device.get_device().vkAcquireNextImageKHR( m_handle, 0, VK_NULL_HANDLE, VK_NULL_HANDLE, &index); result != VK_SUCCESS)
 	{
 		if(result == VK_TIMEOUT)
 		{
@@ -46,7 +48,7 @@ void vulkan::Swapchain::acquire_image()
 		}
 		else if (result == VK_ERROR_SURFACE_LOST_KHR)
 		{
-			throw Utility::SurfaceLostException("vkAcquireNextImageKHR: lost device");
+			throw Utility::SurfaceLostException("vkAcquireNextImageKHR: lost surface");
 		}
 		else if (result == VK_ERROR_DEVICE_LOST)
 		{
@@ -61,6 +63,10 @@ void vulkan::Swapchain::acquire_image()
 			throw Utility::VulkanException(result);
 		}
 	}
+}
+
+void vulkan::Swapchain::acquire_image_async()
+{
 }
 
 void vulkan::Swapchain::create_swapchain()

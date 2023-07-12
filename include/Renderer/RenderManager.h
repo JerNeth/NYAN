@@ -7,7 +7,6 @@
 #include "MeshManager.h"
 #include "RenderGraph.h"
 #include "MaterialManager.h"
-#include "DDGIManager.h"
 #include "TextureManager.h"
 #include "Camera.h"
 #include "Profiler.hpp"
@@ -35,10 +34,6 @@ namespace nyan {
 		const nyan::InstanceManager& get_instance_manager() const;
 		nyan::SceneManager& get_scene_manager();
 		const nyan::SceneManager& get_scene_manager() const;
-		nyan::DDGIManager& get_ddgi_manager();
-		const nyan::DDGIManager& get_ddgi_manager() const;
-		nyan::DDGIReSTIRManager& get_ddgi_restir_manager();
-		const nyan::DDGIReSTIRManager& get_ddgi_restir_manager() const;
 		entt::registry& get_registry();
 		const entt::registry& get_registry() const;
 		nyan::Profiler& get_profiler();
@@ -60,12 +55,10 @@ namespace nyan {
 		nyan::MeshManager m_meshManager;
 		nyan::InstanceManager m_instanceManager;
 		nyan::SceneManager m_sceneManager;
-		nyan::DDGIManager m_ddgiManager;
-		nyan::DDGIReSTIRManager m_ddgiReSTIRManager;
 		nyan::Profiler m_profiler;
 
 		bool m_useRayTracing;
 		entt::entity m_primaryCamera;
 	};
 }
-#endif !RDRENDERMANAGER_H
+#endif //!RDRENDERMANAGER_H

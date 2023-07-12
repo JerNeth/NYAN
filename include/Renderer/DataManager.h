@@ -75,4 +75,4 @@ namespace nyan {
 		bool m_ssbo;
 	};
 }
-#endif !RDDATAMANAGER_H
+#endif //!RDDATAMANAGER_H

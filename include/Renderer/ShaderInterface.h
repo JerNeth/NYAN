@@ -78,4 +78,4 @@ namespace nyan {
 #undef dmat4x3
 #undef dmat3x4
 
-#endif !RDSHADERINTERFACE_H
+#endif //!RDSHADERINTERFACE_H

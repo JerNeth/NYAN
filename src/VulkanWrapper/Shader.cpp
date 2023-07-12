@@ -29,7 +29,7 @@ vulkan::Shader::Shader(LogicalDevice& parent, const std::vector<uint32_t>& shade
 vulkan::Shader::~Shader()
 {
 	if(m_handle != VK_NULL_HANDLE)
-		vkDestroyShaderModule(r_device.get_device(), m_handle, r_device.get_allocator());
+		r_device.get_device().vkDestroyShaderModule( m_handle, r_device.get_allocator());
 }
 
 vulkan::ShaderStage vulkan::Shader::get_stage()
@@ -135,7 +135,7 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 	Compiler comp(shaderCode); 
 	m_stage = convert_spriv_execution_model(comp.get_execution_model());
 	assert(m_stage != vulkan::ShaderStage::Size);
-	if (m_stage == vulkan::ShaderStage::Size)
+	if (m_stage >= vulkan::ShaderStage::Size)
 		throw std::runtime_error("Unsupported Shadertype");
 	ShaderResources resources = comp.get_shader_resources();
 	if (m_stage == vulkan::ShaderStage::Compute) {
@@ -157,10 +157,8 @@ void vulkan::Shader::parse_shader(const std::vector<uint32_t>& shaderCode)
 			m_specializationConstants.emplace("local_size_z", SpecializationConstantId{ convertType(type.basetype), z.constant_id });
 		}
 	}
-	auto specs = comp.get_specialization_constants();
-	for (auto& spec : specs) {
-		const auto& name = comp.get_name(spec.id);
-		if (!name.empty()) {
+	for (auto specs = comp.get_specialization_constants(); auto& spec : specs) {
+		if (const auto& name = comp.get_name(spec.id); !name.empty()) {
 			const auto& constant = comp.get_constant(spec.id);
 			const auto& type = comp.get_type(constant.constant_type);
 			m_specializationConstants.emplace(name, SpecializationConstantId{ convertType(type.basetype), spec.constant_id });
@@ -272,7 +270,7 @@ vulkan::Shader::SpecializationConstantId vulkan::Shader::get_specialization_cons
 	return it->second;
 }
 
-VkShaderModule vulkan::Shader::create_module(LogicalDevice& device, const std::vector<uint32_t>& shaderCode)
+VkShaderModule vulkan::Shader::create_module(const LogicalDevice& device, const std::vector<uint32_t>& shaderCode)
 {
 	VkShaderModule module{VK_NULL_HANDLE};
 	VkShaderModuleCreateInfo createInfo{
@@ -280,7 +278,7 @@ VkShaderModule vulkan::Shader::create_module(LogicalDevice& device, const std::v
 		.codeSize = shaderCode.size() * sizeof(uint32_t),
 		.pCode = shaderCode.data(),
 	};
-	if (auto result = vkCreateShaderModule(device.get_device(), &createInfo, device.get_allocator(), &module); result != VK_SUCCESS) {
+	if (auto result = device.get_device().vkCreateShaderModule(&createInfo, device.get_allocator(), &module); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	return module;

@@ -37,6 +37,7 @@ namespace vulkan {
 	struct MipInfo;
 	class Instance;
 	class PhysicalDevice;
+	class LogicalDeviceWrapper;
 	class LogicalDevice;
 	class Surface;
 	struct Extensions;
@@ -72,12 +73,13 @@ namespace vulkan {
 
 	class QueryPool;
 	class TimestampQueryPool;
-	
+
 	class Shader;
 	class ShaderInstance;
 	class ShaderStorage;
 	class Sampler;
 	class Swapchain;
+	class Queue;
 
 	using ShaderId = uint32_t;
 	constexpr ShaderId invalidShaderId = ~ShaderId{ 0 };
@@ -89,9 +91,17 @@ namespace vulkan {
 		NearestClamp,
 		LinearClamp,
 		TrilinearClamp,
+		Anisotropic2Clamp,
+		Anisotropic4Clamp,
+		Anisotropic8Clamp,
+		Anisotropic16Clamp,
 		NearestWrap,
 		LinearWrap,
 		TrilinearWrap,
+		Anisotropic2Wrap,
+		Anisotropic4Wrap,
+		Anisotropic8Wrap,
+		Anisotropic16Wrap,
 		NearestShadow,
 		LinearShadow,
 		Size

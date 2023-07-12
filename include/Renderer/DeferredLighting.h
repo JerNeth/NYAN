@@ -28,7 +28,7 @@ namespace nyan {
 	public:
 		DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
 			nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
-			nyan::RenderResource::Id stencilRead);
+			nyan::RenderResource::Id stencilRead, nyan::RenderResource::Id attachment);
 		void render(vulkan::GraphicsPipelineBind& bind);
 	private:
 		void create_pipeline();
@@ -40,6 +40,8 @@ namespace nyan {
 		nyan::RenderResource::Id m_pbrRead;
 		nyan::RenderResource::Id m_depthRead;
 		nyan::RenderResource::Id m_stencilRead;
+
+		nyan::RenderResource::Id m_writeAttachment;
 	};
 
 	class DeferredRayShadowsLighting : Renderer {
@@ -47,13 +49,6 @@ namespace nyan {
 			uint32_t accBinding;
 			uint32_t sceneBinding;
 			uint32_t meshBinding;
-			uint32_t ddgiBinding;
-			uint32_t ddgiCount;
-			uint32_t ddgiIndex;
-			uint32_t ddgiReSTIRBinding;
-			uint32_t ddgiReSTIRCount;
-			uint32_t ddgiReSTIRIndex;
-			uint32_t useDDGIReSTIR;
 			uint32_t albedoBinding;
 			uint32_t albedoSampler;
 			uint32_t normalBinding;
@@ -124,4 +119,4 @@ namespace nyan {
 		ToneMapping m_tonemappingType;
 	};
 }
-#endif !RDDEFERREDLIGHTING_H
+#endif //!RDDEFERREDLIGHTING_H

@@ -10,31 +10,34 @@
 
 nyan::DeferredLighting::DeferredLighting(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass,
 	nyan::RenderResource::Id albedoRead, nyan::RenderResource::Id normalRead, nyan::RenderResource::Id pbrRead, nyan::RenderResource::Id depthRead,
-	nyan::RenderResource::Id stencilRead) :
+	nyan::RenderResource::Id stencilRead, nyan::RenderResource::Id attachment) :
 	Renderer(device, registry, renderManager, pass),
 	m_albedoRead (albedoRead),
 	m_normalRead (normalRead),
 	m_pbrRead (pbrRead),
 	m_depthRead	(depthRead),
-	m_stencilRead (stencilRead)
+	m_stencilRead (stencilRead),
+	m_writeAttachment(attachment)
 {
 	create_pipeline();
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
-			auto pipelineBind = cmd.bind_graphics_pipeline(m_deferredPipeline);
+			r_pass.get_graph().get_resource(m_writeAttachment);
+			if (m_deferredPipeline) {
+				auto pipelineBind = cmd.bind_graphics_pipeline(m_deferredPipeline);
 
-			auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
-			pipelineBind.set_scissor_with_count(1, &scissor);
-			pipelineBind.set_viewport_with_count(1, &viewport);
+				auto [viewport, scissor] = r_device.get_swapchain_viewport_and_scissor();
+				pipelineBind.set_scissor_with_count(1, &scissor);
+				pipelineBind.set_viewport_with_count(1, &viewport);
 
-			
-			render(pipelineBind);
+
+				render(pipelineBind);
+			}
 		}, true);
 }
 
 void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 {
-	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
 	PushConstants constants{
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()},
 		.albedoBinding {r_pass.get_read_bind(m_albedoRead)},
@@ -47,9 +50,6 @@ void nyan::DeferredLighting::render(vulkan::GraphicsPipelineBind& bind)
 		.depthSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.stencilBinding {r_pass.get_read_bind(m_stencilRead, nyan::Renderpass::Read::Type::ImageStencil)},
 		.stencilSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
-		.ddgiBinding{ ddgiManager.get_binding() },
-		.ddgiCount{ static_cast<uint32_t>(ddgiManager.slot_count()) },
-		.ddgiIndex{ 0 },
 	};
 	bind.push_constants(constants);
 	bind.draw(3, 1);
@@ -119,8 +119,6 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 	r_pass.add_read(m_gbuffer.stencil, nyan::Renderpass::Read::Type::ImageStencil);
 	r_pass.add_write(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	r_pass.add_write(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
-	renderManager.get_ddgi_manager().add_read(pass.get_id());
-	renderManager.get_ddgi_restir_manager().add_read(pass.get_id());
 	pass.add_renderfunction([this](vulkan::CommandBuffer& cmd, nyan::Renderpass&)
 		{
 			auto pipelineBind = cmd.bind_raytracing_pipeline(m_pipeline);
@@ -132,8 +130,6 @@ nyan::DeferredRayShadowsLighting::DeferredRayShadowsLighting(vulkan::LogicalDevi
 
 void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bind)
 {
-	const auto& ddgiManager = r_renderManager.get_ddgi_manager();
-	const auto& ddgiReSTIRManager = r_renderManager.get_ddgi_restir_manager();
 	auto writeBindDiffuse = r_pass.get_write_bind(m_lighting.diffuse, nyan::Renderpass::Write::Type::Compute);
 	auto writeBindSpecular = r_pass.get_write_bind(m_lighting.specular, nyan::Renderpass::Write::Type::Compute);
 	assert(writeBindDiffuse != InvalidBinding);
@@ -146,13 +142,6 @@ void nyan::DeferredRayShadowsLighting::render(vulkan::RaytracingPipelineBind& bi
 		.accBinding {*tlas}, //0
 		.sceneBinding {r_renderManager.get_scene_manager().get_binding()}, //3
 		.meshBinding {r_renderManager.get_mesh_manager().get_binding()},
-		.ddgiBinding {ddgiManager.get_binding()},
-		.ddgiCount {static_cast<uint32_t>(ddgiManager.slot_count())},
-		.ddgiIndex {0},
-		.ddgiReSTIRBinding {ddgiReSTIRManager.get_binding()},
-		.ddgiReSTIRCount {static_cast<uint32_t>(ddgiReSTIRManager.slot_count())},
-		.ddgiReSTIRIndex {0},
-		.useDDGIReSTIR {m_useDDGIReSTIR},
 		.albedoBinding {r_pass.get_read_bind(m_gbuffer.albedo)},
 		.albedoSampler {static_cast<uint32_t>(vulkan::DefaultSampler::NearestClamp)},
 		.normalBinding {r_pass.get_read_bind(m_gbuffer.normal)},

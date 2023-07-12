@@ -30,4 +30,5 @@ endif()
 target_compile_features(tester PUBLIC 
     cxx_std_20
 )
-add_test(runUnitTests tester)
+add_test(NAME Utility.UnitTests 
+        COMMAND tester)

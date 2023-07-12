@@ -19,6 +19,7 @@
 #include "AccelerationStructure.h"
 #include "QueryPool.hpp"
 #include "VulkanWrapper/PhysicalDevice.hpp"
+#include "VulkanWrapper/Queue.hpp"
 
 
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
@@ -28,16 +29,16 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
+	m_fenceManager(*this),
+	m_semaphoreManager(*this),
 	m_allocationPool(new Utility::Pool<Allocation>()),
 	m_bufferPool(new Utility::LinkedBucketList<Buffer>()),
 	m_imageViewPool(new Utility::LinkedBucketList<ImageView>()),
 	m_imagePool(new Utility::LinkedBucketList<Image>()),
 	m_attachmentAllocator(new AttachmentAllocator(*this)),
 	m_graphics(graphicsFamilyQueueIndex),
-	m_compute(computeFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
-	m_transfer(transferFamilyQueueIndex == ~0 ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
-	m_fenceManager(*this),
-	m_semaphoreManager(*this),
+	m_compute(computeFamilyQueueIndex == ~0u ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
+	m_transfer(transferFamilyQueueIndex == ~0u ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
 	m_shaderStorage(new ShaderStorage(*this)),
 	m_pipelineStorage2(new PipelineStorage2(* this)),
 	m_bindlessPool(*this),
@@ -46,9 +47,9 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 {
 	volkLoadDevice(device);
 
-	vkGetDeviceQueue(m_device, m_graphics.familyIndex, 0, &m_graphics.queue);
-	vkGetDeviceQueue(m_device, m_compute.familyIndex, 0, &m_compute.queue);
-	vkGetDeviceQueue(m_device, m_transfer.familyIndex, 0, &m_transfer.queue);
+	m_device.vkGetDeviceQueue(m_graphics.familyIndex, 0, &m_graphics.queue);
+	m_device.vkGetDeviceQueue(m_compute.familyIndex, 0, &m_compute.queue);
+	m_device.vkGetDeviceQueue(m_transfer.familyIndex, 0, &m_transfer.queue);
 
 	create_vma_allocator();
 	create_default_sampler();
@@ -56,6 +57,28 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_frameResources.emplace_back(new FrameResource{*this});
 	}
+}
+
+vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, const vulkan::PhysicalDevice& physicalDevice, VkDevice device, const QueueInfos& queueInfos) :
+	r_instance(parentInstance),
+	r_physicalDevice(physicalDevice),
+	m_device(device, nullptr),
+	m_fenceManager(*this),
+	m_semaphoreManager(*this),
+	m_allocationPool(new Utility::Pool<Allocation>()),
+	m_bufferPool(new Utility::LinkedBucketList<Buffer>()),
+	m_imageViewPool(new Utility::LinkedBucketList<ImageView>()),
+	m_imagePool(new Utility::LinkedBucketList<Image>()),
+	m_attachmentAllocator(new AttachmentAllocator(*this)),
+	m_shaderStorage(new ShaderStorage(*this)),
+	m_pipelineStorage2(new PipelineStorage2(*this)),
+	m_bindlessPool(*this),
+	m_bindlessSet(m_bindlessPool.allocate_set()),
+	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
+{
+	assert(queueInfos.graphicsFamilyQueueIndex != ~0u);
+	create_queues(queueInfos);
+	create_default_sampler();
 }
 
 vulkan::LogicalDevice::~LogicalDevice()
@@ -108,7 +131,7 @@ void vulkan::LogicalDevice::init_swapchain(const std::vector<VkImage>& swapchain
 
 	for (const auto image : swapchainImages) {
 		std::vector<AllocationHandle> allocs;
-		auto& handle = m_wsiState.swapchainImages.emplace_back(std::move(m_imagePool->emplace(*this, image, info, allocs)));
+		auto& handle = m_wsiState.swapchainImages.emplace_back(m_imagePool->emplace(*this, image, info, allocs));
 		handle->disown();
 		handle->set_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
@@ -149,7 +172,7 @@ void vulkan::LogicalDevice::next_frame()
 	if (!m_fenceCallbacks.empty()) {
 		std::unordered_set<VkFence> clear;
 		for (auto it = m_fenceCallbacks.begin(); it != m_fenceCallbacks.end();) {
-			if (vkGetFenceStatus(m_device, it->first) == VK_SUCCESS) {
+			if (m_device.vkGetFenceStatus(it->first) == VK_SUCCESS) {
 				it->second();
 				clear.insert(it->first);
 				it = m_fenceCallbacks.erase(it);
@@ -327,7 +350,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 	}
 #endif //  0
 	VkFence localFence = ((fence != nullptr) ? fence->get_handle() : VK_NULL_HANDLE);
-	if (auto result = vkQueueSubmit2(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
+	if (auto result = m_device.vkQueueSubmit2(queue.queue, submitCounts, submitInfos.data(), localFence); result != VK_SUCCESS) {
 		if (result == VK_ERROR_DEVICE_LOST) {
 			throw Utility::DeviceLostException("Could not submit to Queue");
 		}
@@ -452,7 +475,7 @@ void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fe
 		.signalSemaphoreInfoCount = static_cast<uint32_t>(signalInfos.size()),
 		.pSignalSemaphoreInfos = signalInfos.data()
 	};
-	vkQueueSubmit2(queue.queue, 1, &submitInfo, localFence);
+	m_device.vkQueueSubmit2(queue.queue, 1, &submitInfo, localFence);
 }
 
 void vulkan::LogicalDevice::submit_staging(CommandBufferHandle cmd, VkBufferUsageFlags usage, bool flush)
@@ -536,7 +559,10 @@ void vulkan::LogicalDevice::wait_no_lock() noexcept
 	if (!m_frameResources.empty())
 		end_frame();
 
-	vkDeviceWaitIdle(m_device);
+	if(const auto result = m_device.vkDeviceWaitIdle(); result != VK_SUCCESS)
+	{
+		
+	}
 
 	clear_semaphores();
 
@@ -598,9 +624,6 @@ vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::previous_frame()
 	return *m_frameResources[(m_currentFrame + m_frameResources.size() - 1)% m_frameResources.size()];
 }
 
-const vulkan::Extensions& vulkan::LogicalDevice::get_supported_extensions() const noexcept {
-	return r_physicalDevice.get_extensions();
-}
 uint32_t vulkan::LogicalDevice::get_thread_index() const noexcept {
 	return 0;
 }
@@ -611,13 +634,17 @@ const vulkan::PhysicalDevice& vulkan::LogicalDevice::get_physical_device() const
 {
 	return r_physicalDevice;
 }
-VkDevice vulkan::LogicalDevice::get_device() const noexcept {
-	return m_device;
-}
-vulkan::LogicalDevice::operator VkDevice() const noexcept
+
+const vulkan::LogicalDeviceWrapper& vulkan::LogicalDevice::get_device() const noexcept
 {
 	return m_device;
 }
+
+VkDevice vulkan::LogicalDevice::get_device_handle() const noexcept
+{
+	return m_device.get_handle();
+}
+
 VkAllocationCallbacks* vulkan::LogicalDevice::get_allocator() const noexcept {
 	return m_allocator;
 }
@@ -686,9 +713,9 @@ VkBool32 vulkan::LogicalDevice::supports_sparse_textures() const noexcept {
 }
 VkSparseImageMemoryRequirements vulkan::LogicalDevice::get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect) {
 	uint32_t sparseMemoryRequirementsCount;
-	vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, NULL);
+	m_device.vkGetImageSparseMemoryRequirements( image, &sparseMemoryRequirementsCount, NULL);
 	std::vector<VkSparseImageMemoryRequirements> sparseMemoryRequirements(sparseMemoryRequirementsCount);
-	vkGetImageSparseMemoryRequirements(m_device, image, &sparseMemoryRequirementsCount, sparseMemoryRequirements.data());
+	m_device.vkGetImageSparseMemoryRequirements( image, &sparseMemoryRequirementsCount, sparseMemoryRequirements.data());
 	VkSparseImageMemoryRequirements sparseMemoryRequirement = sparseMemoryRequirements[0];
 	assert(sparseMemoryRequirementsCount);
 	for (uint32_t i = 0; i < sparseMemoryRequirementsCount; i++) {
@@ -707,9 +734,47 @@ uint32_t vulkan::LogicalDevice::get_graphics_family() const noexcept {
 
 VkPipelineCache vulkan::LogicalDevice::get_pipeline_cache() const noexcept {
 	if (m_pipelineCache)
-		return m_pipelineCache->get_handle();
+		return *m_pipelineCache;
 	else
 		return VK_NULL_HANDLE;
+}
+
+std::span<vulkan::Queue const> vulkan::LogicalDevice::get_queues(const vulkan::Queue::Type type) const noexcept
+{
+	return m_queues[static_cast<size_t>(type)];
+}
+
+std::span<vulkan::Queue> vulkan::LogicalDevice::get_queues(const vulkan::Queue::Type type) noexcept
+{
+	return m_queues[static_cast<size_t>(type)];
+}
+
+void vulkan::LogicalDevice::create_queues(const QueueInfos& queueInfos) noexcept
+{
+	for (uint32_t i = 0; i < queueInfos.graphicsQueuePriorities.size(); ++i)
+	{
+		VkQueue queueHandle;
+		m_device.vkGetDeviceQueue( queueInfos.graphicsFamilyQueueIndex, i, &queueHandle);
+		m_queues[static_cast<uint32_t>(vulkan::Queue::Type::Graphics)].emplace_back(*this, vulkan::Queue::Type::Graphics, queueHandle, queueInfos.graphicsFamilyQueueIndex, queueInfos.graphicsQueuePriorities[i]);
+	}
+	if (queueInfos.computeFamilyQueueIndex != ~0u)
+	{
+		for (uint32_t i = 0; i < queueInfos.computeQueuePriorities.size(); ++i)
+		{
+			VkQueue queueHandle;
+			m_device.vkGetDeviceQueue( queueInfos.computeFamilyQueueIndex, i, &queueHandle);
+			m_queues[static_cast<uint32_t>(vulkan::Queue::Type::Compute)].emplace_back(*this, vulkan::Queue::Type::Compute, queueHandle, queueInfos.computeFamilyQueueIndex, queueInfos.computeQueuePriorities[i]);
+		}
+	}
+	if (queueInfos.transferFamilyQueueIndex != ~0u)
+	{
+		for (uint32_t i = 0; i < queueInfos.transferQueuePriorities.size(); ++i)
+		{
+			VkQueue queueHandle;
+			m_device.vkGetDeviceQueue( queueInfos.transferFamilyQueueIndex, i, &queueHandle);
+			m_queues[static_cast<uint32_t>(vulkan::Queue::Type::Transfer)].emplace_back(*this, vulkan::Queue::Type::Transfer, queueHandle, queueInfos.transferFamilyQueueIndex, queueInfos.transferQueuePriorities[i]);
+		}
+	}
 }
 
 vulkan::LogicalDevice::ImageBuffer vulkan::LogicalDevice::create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel)
@@ -932,7 +997,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 			createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 	VkImage image = VK_NULL_HANDLE;
-	if (auto result = vkCreateImage(m_device, &createInfo, m_allocator, &image); result != VK_SUCCESS) {
+	if (auto result = m_device.vkCreateImage( &createInfo, m_allocator, &image); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -945,7 +1010,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
 	
 	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(m_device, image, &memoryRequirements);
+	m_device.vkGetImageMemoryRequirements( image, &memoryRequirements);
 	assert(memoryRequirements.size <= r_physicalDevice.get_properties().limits.sparseAddressSpaceSize);
 	assert((memoryRequirements.size % memoryRequirements.alignment) == 0);
 
@@ -1203,16 +1268,16 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	VkSparseImageMemoryRequirements sparseMemoryRequirement = get_sparse_memory_requirements(imageHandle, ImageInfo::format_to_aspect_mask(image.get_format()));
 
 	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(m_device, imageHandle, &memoryRequirements);
+	m_device.vkGetImageMemoryRequirements( imageHandle, &memoryRequirements);
 	assert(memoryRequirements.size <= r_physicalDevice.get_properties().limits.sparseAddressSpaceSize);
 	assert((memoryRequirements.size % memoryRequirements.alignment) == 0);
 	assert((sparseMemoryRequirement.imageMipTailSize % memoryRequirements.alignment) == 0);
 
 	bool singleMipTail = (sparseMemoryRequirement.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT);
 	VkDeviceSize allocationSize = memoryRequirements.alignment;
-	VkDeviceSize mipTailSize = sparseMemoryRequirement.imageMipTailSize;
-	if (!singleMipTail)
-		mipTailSize *= image.get_info().arrayLayers;
+	//VkDeviceSize mipTailSize = sparseMemoryRequirement.imageMipTailSize;
+	//if (!singleMipTail)
+	//	mipTailSize *= image.get_info().arrayLayers;
 
 	VmaAllocationCreateInfo allocCreateInfo{
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
@@ -1436,9 +1501,9 @@ void vulkan::LogicalDevice::resize_sparse_image_down(Image& image, uint32_t base
 
 #endif //  0
 	if (m_transfer.supportsSparse)
-		vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, fence);
+		m_device.vkQueueBindSparse(m_transfer.queue, 1, &bindInfo, fence);
 	else
-		vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, fence);
+		m_device.vkQueueBindSparse(m_graphics.queue, 1, &bindInfo, fence);
 	add_fence_callback(fence, [&image, allocCount]() {
 		image.drop_allocations(allocCount);
 		image.set_being_resized(false);
@@ -1459,53 +1524,8 @@ vulkan::CommandPool& vulkan::LogicalDevice::get_pool(CommandBufferType type)
 void vulkan::LogicalDevice::create_vma_allocator()
 {
 
-	VmaVulkanFunctions vulkanFunctions{
-		.vkGetInstanceProcAddr = vkGetInstanceProcAddr,
-		.vkGetDeviceProcAddr = vkGetDeviceProcAddr,
-		.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties,
-		.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties,
-		.vkAllocateMemory = vkAllocateMemory,
-		.vkFreeMemory = vkFreeMemory,
-		.vkMapMemory = vkMapMemory,
-		.vkUnmapMemory = vkUnmapMemory,
-		.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges,
-		.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges,
-		.vkBindBufferMemory = vkBindBufferMemory,
-		.vkBindImageMemory = vkBindImageMemory,
-		.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements,
-		.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements,
-		.vkCreateBuffer = vkCreateBuffer,
-		.vkDestroyBuffer = vkDestroyBuffer,
-		.vkCreateImage = vkCreateImage,
-		.vkDestroyImage = vkDestroyImage,
-		.vkCmdCopyBuffer = vkCmdCopyBuffer,
-		.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2,
-		.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2,
-		.vkBindBufferMemory2KHR = vkBindBufferMemory2,
-		.vkBindImageMemory2KHR = vkBindImageMemory2,
-		.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2,
-		.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
-		.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements,
-	};
-	VmaAllocatorCreateInfo allocatorInfo{
-		.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-		.physicalDevice = r_physicalDevice,
-		.device = m_device,
-		.pAllocationCallbacks = m_allocator,
-		.pVulkanFunctions = &vulkanFunctions,
-		.instance = r_instance,
-		.vulkanApiVersion = VK_API_VERSION_1_3,
-	};
-#ifdef VMA_RECORDING_ENABLED
-	VmaRecordSettings vmaRecordSettings{
-		.flags = VMA_RECORD_FLUSH_AFTER_CALL_BIT,
-		.pFilePath = "vma_replay.csv",
-	};
-	allocatorInfo.pRecordSettings = &vmaRecordSettings;
-#endif
-
 	VmaAllocator allocator;
-	if (auto result = vmaCreateAllocator(&allocatorInfo, &allocator); result != VK_SUCCESS) {
+	if (auto result = m_device.vmaCreateAllocator(VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT, r_physicalDevice, m_allocator, r_instance, r_physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	m_vmaAllocator = std::make_unique<Allocator>(allocator);
@@ -1647,7 +1667,7 @@ vulkan::FenceHandle vulkan::LogicalDevice::request_empty_fence()
 
 void vulkan::LogicalDevice::destroy_semaphore(VkSemaphore semaphore)
 {
-	vkDestroySemaphore(m_device, semaphore, m_allocator);
+	m_device.vkDestroySemaphore(semaphore, m_allocator);
 }
 
 VkSemaphore vulkan::LogicalDevice::request_semaphore()
@@ -1664,7 +1684,7 @@ vulkan::CommandBufferHandle vulkan::LogicalDevice::request_command_buffer(Comman
 		.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
 	};
 	vkBeginCommandBuffer(cmd, &beginInfo);
-	return m_commandBufferPool.emplace(*this, cmd, type, get_thread_index());
+	return m_commandBufferPool.emplace(*this, cmd, type);
 }
 
 vulkan::Image* vulkan::LogicalDevice::request_render_target(uint32_t width, uint32_t height, VkFormat format, uint32_t index, VkImageUsageFlags usage, VkImageLayout initialLayout, VkSampleCountFlagBits sampleCount, uint32_t arrayLayers)
@@ -1697,8 +1717,6 @@ void vulkan::LogicalDevice::create_default_sampler()
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
 	};
 	createInfo.maxLod = VK_LOD_CLAMP_NONE;
-	//createInfo.anisotropyEnable = VK_TRUE;
-	createInfo.maxAnisotropy = 1.0f;
 	for (int i = 0; i < static_cast<int>(DefaultSampler::Size); i++) {
 		auto type = static_cast<DefaultSampler>(i);
 		switch (type) {
@@ -1713,6 +1731,14 @@ void vulkan::LogicalDevice::create_default_sampler()
 		}
 
 		switch (type) {
+		case DefaultSampler::Anisotropic2Wrap:
+		case DefaultSampler::Anisotropic2Clamp:
+		case DefaultSampler::Anisotropic4Wrap:
+		case DefaultSampler::Anisotropic4Clamp:
+		case DefaultSampler::Anisotropic8Wrap:
+		case DefaultSampler::Anisotropic8Clamp:
+		case DefaultSampler::Anisotropic16Wrap:
+		case DefaultSampler::Anisotropic16Clamp:
 		case DefaultSampler::TrilinearClamp:
 		case DefaultSampler::TrilinearWrap:
 			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -1721,8 +1747,31 @@ void vulkan::LogicalDevice::create_default_sampler()
 			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 			break;
 		}
+		switch (type) {
+		case DefaultSampler::Anisotropic2Wrap:
+		case DefaultSampler::Anisotropic2Clamp:
+		case DefaultSampler::Anisotropic4Wrap:
+		case DefaultSampler::Anisotropic4Clamp:
+		case DefaultSampler::Anisotropic8Wrap:
+		case DefaultSampler::Anisotropic8Clamp:
+		case DefaultSampler::Anisotropic16Wrap:
+		case DefaultSampler::Anisotropic16Clamp:
+			createInfo.anisotropyEnable = VK_TRUE;
+			break;
+		default:
+			createInfo.anisotropyEnable = VK_FALSE;
+			break;
+		}
 
 		switch (type) {
+		case DefaultSampler::Anisotropic2Wrap:
+		case DefaultSampler::Anisotropic2Clamp:
+		case DefaultSampler::Anisotropic4Wrap:
+		case DefaultSampler::Anisotropic4Clamp:
+		case DefaultSampler::Anisotropic8Wrap:
+		case DefaultSampler::Anisotropic8Clamp:
+		case DefaultSampler::Anisotropic16Wrap:
+		case DefaultSampler::Anisotropic16Clamp:
 		case DefaultSampler::LinearClamp:
 		case DefaultSampler::LinearWrap:
 		case DefaultSampler::TrilinearClamp:
@@ -1738,6 +1787,32 @@ void vulkan::LogicalDevice::create_default_sampler()
 		}
 
 		switch (type) {
+		case DefaultSampler::Anisotropic2Wrap:
+		case DefaultSampler::Anisotropic2Clamp:
+			createInfo.maxAnisotropy = 2.0f;
+			break;
+		case DefaultSampler::Anisotropic4Wrap:
+		case DefaultSampler::Anisotropic4Clamp:
+			createInfo.maxAnisotropy = 4.0f;
+			break;
+		case DefaultSampler::Anisotropic8Wrap:
+		case DefaultSampler::Anisotropic8Clamp:
+			createInfo.maxAnisotropy = 8.0f;
+			break;
+		case DefaultSampler::Anisotropic16Wrap:
+		case DefaultSampler::Anisotropic16Clamp:
+			createInfo.maxAnisotropy = 16.0f;
+			break;
+		default:
+			createInfo.maxAnisotropy = 1.0f;
+			break;
+		}
+
+		switch (type) {
+		case DefaultSampler::Anisotropic2Clamp:
+		case DefaultSampler::Anisotropic4Clamp:
+		case DefaultSampler::Anisotropic8Clamp:
+		case DefaultSampler::Anisotropic16Clamp:
 		case DefaultSampler::LinearShadow:
 		case DefaultSampler::NearestShadow:
 		case DefaultSampler::TrilinearClamp:
@@ -1747,6 +1822,10 @@ void vulkan::LogicalDevice::create_default_sampler()
 			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			break;
+		case DefaultSampler::Anisotropic2Wrap:
+		case DefaultSampler::Anisotropic4Wrap:
+		case DefaultSampler::Anisotropic8Wrap:
+		case DefaultSampler::Anisotropic16Wrap:
 		case DefaultSampler::LinearWrap:
 		case DefaultSampler::TrilinearWrap:
 		case DefaultSampler::NearestWrap:
@@ -1771,13 +1850,13 @@ void vulkan::LogicalDevice::wait_on_idle_queue(CommandBufferType type)
 {
 	switch (type) {
 	case CommandBufferType::Generic:
-		vkQueueWaitIdle(m_graphics);
+		m_device.vkQueueWaitIdle(m_graphics);
 		break;
 	case CommandBufferType::Compute:
-		vkQueueWaitIdle(m_compute);
+		m_device.vkQueueWaitIdle(m_compute);
 		break;
 	case CommandBufferType::Transfer:
-		vkQueueWaitIdle(m_transfer);
+		m_device.vkQueueWaitIdle(m_transfer);
 		break;
 	default:
 		break;
@@ -1888,7 +1967,7 @@ void vulkan::LogicalDevice::FrameResource::begin()
 		for (auto &fence : waitForFences)
 			fences.push_back(fence);
 		
-		if (auto result = vkWaitForFences(r_device.get_device(), static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX); result != VK_SUCCESS && result != VK_TIMEOUT) {
+		if (auto result = r_device.get_device().vkWaitForFences(static_cast<uint32_t>(fences.size()), fences.data(), VK_TRUE, UINT64_MAX); result != VK_SUCCESS && result != VK_TIMEOUT) {
 			assert(false);
 			throw Utility::VulkanException(result);
 		}
@@ -1993,7 +2072,7 @@ void vulkan::LogicalDevice::FrameResource::reset_command_pools()
 void vulkan::LogicalDevice::FrameResource::delete_resources()
 {
 	for (auto fb : deletedFramebuffer)
-		vkDestroyFramebuffer(r_device.get_device(), fb, r_device.get_allocator());
+		r_device.get_device().vkDestroyFramebuffer(fb, r_device.get_allocator());
 
 	deletedFramebuffer.clear();
 
@@ -2008,28 +2087,28 @@ void vulkan::LogicalDevice::FrameResource::delete_resources()
 	recycledSemaphores.clear();
 
 	for (auto buffer : deletedBuffer) {
-		vkDestroyBuffer(r_device.get_device(), buffer, r_device.get_allocator());
+		r_device.get_device().vkDestroyBuffer(buffer, r_device.get_allocator());
 	}
 	deletedBuffer.clear();
 	for (auto accelerationStructure : deletedAccelerationStructures) {
-		vkDestroyAccelerationStructureKHR(r_device.get_device(), accelerationStructure, r_device.get_allocator());
+		r_device.get_device().vkDestroyAccelerationStructureKHR(accelerationStructure, r_device.get_allocator());
 	}
 	deletedAccelerationStructures.clear();
 	for (auto image : deletedImages) {
-		vkDestroyImage(r_device.get_device(), image, r_device.get_allocator());
+		r_device.get_device().vkDestroyImage( image, r_device.get_allocator());
 	}
 	deletedImages.clear();
 	for (auto sampler : deletedSampler) {
-		vkDestroySampler(r_device.get_device(), sampler, r_device.get_allocator());
+		r_device.get_device().vkDestroySampler( sampler, r_device.get_allocator());
 	}
 	deletedSampler.clear();
 	for (auto imageView : deletedImageViews) {
-		vkDestroyImageView(r_device.get_device(), imageView, r_device.get_allocator());
+		r_device.get_device().vkDestroyImageView( imageView, r_device.get_allocator());
 	}
 	deletedImageViews.clear();
 
 	for (auto bufferView : deletedBufferViews) {
-		vkDestroyBufferView(r_device.get_device(), bufferView, r_device.get_allocator());
+		r_device.get_device().vkDestroyBufferView( bufferView, r_device.get_allocator());
 	}
 	deletedBufferViews.clear();
 	for (auto allocation : deletedAllocations) {

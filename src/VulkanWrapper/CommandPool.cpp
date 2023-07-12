@@ -10,7 +10,7 @@ vulkan::CommandPool::CommandPool(LogicalDevice& parent, uint32_t queueFamilyInde
 			.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
 			.queueFamilyIndex = queueFamilyIndex,
 	};
-	if (auto result = vkCreateCommandPool(r_device.get_device(), &commandPoolCreateInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateCommandPool( &commandPoolCreateInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
@@ -29,7 +29,7 @@ vulkan::CommandPool::CommandPool(CommandPool&& other) noexcept :
 vulkan::CommandPool::~CommandPool() noexcept
 {
 	if (m_vkHandle != VK_NULL_HANDLE) {
-		vkDestroyCommandPool(r_device.get_device(), m_vkHandle, r_device.get_allocator());
+		r_device.get_device().vkDestroyCommandPool(m_vkHandle, r_device.get_allocator());
 	}
 }
 
@@ -47,7 +47,7 @@ VkCommandBuffer vulkan::CommandPool::request_command_buffer()
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount = 1,
 		}; 
-		if (auto result = vkAllocateCommandBuffers(r_device.get_device(), &commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
+		if (auto result = r_device.get_device().vkAllocateCommandBuffers(&commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
 			throw Utility::VulkanException(result);
 		}
 		m_primaryBuffers.push_back(buffer);
@@ -70,7 +70,7 @@ VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 			.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
 			.commandBufferCount = 1,
 		};
-		if (auto result = vkAllocateCommandBuffers(r_device.get_device(), &commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
+		if (auto result = r_device.get_device().vkAllocateCommandBuffers( &commandBufferAllocateInfo, &buffer); result != VK_SUCCESS) {
 			throw Utility::VulkanException(result);
 		}
 		m_secondaryBuffers.push_back(buffer);
@@ -83,7 +83,7 @@ VkCommandBuffer vulkan::CommandPool::request_secondary_command_buffer()
 void vulkan::CommandPool::reset()
 {
 	if (m_primaryBufferIdx > 0 || m_secondaryBufferIdx > 0)
-		vkResetCommandPool(r_device.get_device(), m_vkHandle, 0);
+		r_device.get_device().vkResetCommandPool( m_vkHandle, 0);
 	m_primaryBufferIdx = 0;
 	m_secondaryBufferIdx = 0;
 }

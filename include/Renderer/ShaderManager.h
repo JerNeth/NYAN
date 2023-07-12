@@ -35,7 +35,7 @@ namespace vulkan {
 		//}
 		ShaderId get_shader_id(const std::string& name) const noexcept;
 		template<typename... Args>
-		ShaderId get_shader_instance_id_workgroup_size(const std::string& name, uint32_t x, uint32_t y, uint32_t z, Args... args) noexcept(false)
+		ShaderId get_shader_instance_id_workgroup_size(const std::string& name, const uint32_t x, const uint32_t y, const uint32_t z, Args... args) noexcept(false)
 		{
 			const auto& maxSize = r_device.get_physical_device_properties().limits.maxComputeWorkGroupSize;
 			const auto& maxInvocations = r_device.get_physical_device_properties().limits.maxComputeWorkGroupInvocations;
@@ -48,7 +48,6 @@ namespace vulkan {
 				z > maxSize[2] ||
 				x * y * z > maxInvocations)
 				throw_size_error(x, y, z, maxSize[0], maxSize[1], maxSize[2], maxInvocations);
-
 
 			return get_shader_instance_id(name, 
 				ShaderStorage::SpecializationConstant{ "local_size_x", x },
@@ -94,4 +93,4 @@ namespace vulkan {
 	};
 }
 
-#endif !RDSHADERMANAGER_H
+#endif //!RDSHADERMANAGER_H

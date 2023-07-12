@@ -18,7 +18,7 @@ void vulkan::QueryPool::reset(uint32_t firstQuery, uint32_t queryCount)
 {
 	assert(m_handle);
 	assert(r_device.get_physical_device().get_vulkan12_features().hostQueryReset);
-	vkResetQueryPool(r_device, m_handle, firstQuery, queryCount);
+	r_device.get_device().vkResetQueryPool( m_handle, firstQuery, queryCount);
 	m_usedQueryCount = 0;
 }
 
@@ -35,7 +35,7 @@ uint32_t vulkan::QueryPool::operator++(int)
 void vulkan::QueryPool::destroy()
 {
 	if (m_handle)
-		vkDestroyQueryPool(r_device, m_handle, r_device.get_allocator());
+		r_device.get_device().vkDestroyQueryPool(m_handle, r_device.get_allocator());
 }
 
 vulkan::TimestampQueryPool::TimestampQueryPool(LogicalDevice& device, uint32_t maxQueryCount)
@@ -48,7 +48,7 @@ void vulkan::TimestampQueryPool::read_queries()
 {
 	if (!m_usedQueryCount)
 		return;
-	auto result = vkGetQueryPoolResults(r_device, m_handle, 0, std::min(m_usedQueryCount, m_maxQueryCount),
+	auto result = r_device.get_device().vkGetQueryPoolResults( m_handle, 0, std::min(m_usedQueryCount, m_maxQueryCount),
 		m_results.size() * sizeof(decltype(m_results)::value_type), m_results.data(),
 		sizeof(decltype(m_results)::value_type), VK_QUERY_RESULT_64_BIT);
 	assert(result == VK_SUCCESS);
@@ -83,7 +83,7 @@ void vulkan::TimestampQueryPool::create()
 		.queryCount {m_maxQueryCount},
 		.pipelineStatistics {}
 	};
-	vkCreateQueryPool(r_device, &createInfo, r_device.get_allocator(), &m_handle);
+	r_device.get_device().vkCreateQueryPool( &createInfo, r_device.get_allocator(), &m_handle);
 	m_results.resize(m_maxQueryCount);
 	m_usedQueryCount = 0;
 	QueryPool::reset(0, m_maxQueryCount);

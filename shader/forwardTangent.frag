@@ -8,7 +8,6 @@
 #include "common.glsl"
 #include "extracts.glsl"
 #include "lighting.glsl"
-#include "DDGI/ddgi_sampling.glsl"
 #include "gbuffer.glsl"
 
 layout(std430, push_constant) uniform PushConstants
@@ -136,19 +135,8 @@ void main() {
     shadingData.metalness = materialData.metalness;
     shadingData.shadingNormal = materialData.shadingNormal;
     direct_lighting(scene, shadingData, diffuseAccum.xyz, specularAccum.xyz);
-        
-    float volumeWeight = get_volume_weight(shadingData.worldPos.xyz, volume);
-    if(shadingData.metalness < 1.f && volumeWeight > 0.f) {
-           
-        vec3 bias = get_volume_surface_bias( shadingData.shadingNormal, shadingData.outLightDir, volume);
-        vec3 irradiance = sample_ddgi(shadingData.worldPos.xyz,bias, shadingData.shadingNormal, volume
-        		#ifdef RAYTRACE_DDGI_VOLUMES
-                , accelerationStructures[constants.accBinding]
-				#endif
-        );
-        vec3 radiance = shadingData.albedo.xyz * irradiance *brdf_lambert() * volumeWeight; //Use Lambert, might be interesting to investigate other BRDFs with split sum, but probably not worth it
-        diffuseAccum.xyz += radiance;
-    }
+       
+
     specularAccum.xyz += materialData.emissive.xyz;
 
     outDiffuse = vec4(diffuseAccum.xyz, materialData.opacity);

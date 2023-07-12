@@ -7,7 +7,7 @@ namespace vulkan
 	class Swapchain : VulkanObject<VkSwapchainKHR>
 	{
 	public:
-		explicit Swapchain(vulkan::LogicalDevice& device);
+		Swapchain(vulkan::LogicalDevice& device, VkSurfaceKHR surface);
 		Swapchain(const Swapchain& other) = delete;
 		Swapchain(Swapchain&& other) noexcept;
 		~Swapchain();
@@ -15,6 +15,7 @@ namespace vulkan
 		const Swapchain& operator=(Swapchain&&) = delete;
 
 		void acquire_image();
+		void acquire_image_async();
 		
 
 	private:
@@ -22,6 +23,6 @@ namespace vulkan
 		std::vector<uint32_t> m_acquiredImages{};
 		std::vector<VkImage> m_swapchainImages{};
 		VkSurfaceCapabilitiesKHR m_surfaceCapabilites{};
-
+		VkSurfaceKHR m_surface{VK_NULL_HANDLE};
 	};
 }

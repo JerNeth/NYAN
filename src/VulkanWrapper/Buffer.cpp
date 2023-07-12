@@ -72,7 +72,7 @@ VkDeviceAddress vulkan::Buffer::get_address() const
 		.pNext { nullptr },
 		.buffer { m_handle },
 	};
-	return vkGetBufferDeviceAddress(r_device, &info);
+	return r_device.get_device().vkGetBufferDeviceAddress( &info);
 }
 
 vulkan::Buffer::~Buffer()

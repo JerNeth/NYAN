@@ -108,4 +108,4 @@ namespace nyan {
 	//};
 }
 
-#endif !RDRENDERER_H
+#endif //!RDRENDERER_H

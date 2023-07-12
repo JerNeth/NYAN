@@ -53,4 +53,4 @@ namespace nyan {
 		std::unordered_map<std::string, MaterialId> m_materialIndex;
 	};
 }
-#endif !RDMATERIALMANAGER_H
+#endif //!RDMATERIALMANAGER_H

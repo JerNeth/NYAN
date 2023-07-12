@@ -450,7 +450,7 @@ namespace Math {
 		inline Vec normalized() const noexcept  {
 			Vec ret {};
 			Scalar inverseNorm = static_cast<Scalar>(1.0) / L2_norm();
-			for (int i = 0; i < m_data.size(); i++) {
+			for (size_t i = 0; i < m_data.size(); i++) {
 				ret.m_data[i] = m_data[i]*inverseNorm;
 			}
 			return ret;

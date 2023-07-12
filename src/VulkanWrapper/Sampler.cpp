@@ -7,7 +7,7 @@ vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSamplerCreateInf
 	m_createInfo(createInfo)
 {
 
-	if (auto result = vkCreateSampler(r_device.get_device(), &m_createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateSampler( &m_createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }

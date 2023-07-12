@@ -6,6 +6,8 @@
 #include "RayTracePipeline.h"
 #include "Utility/Exceptions.h"
 
+#include <fstream>
+
 vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets) :
 	VulkanObject(device)
 {
@@ -22,21 +24,20 @@ vulkan::PipelineLayout2::PipelineLayout2(LogicalDevice& device, const std::vecto
 		.pPushConstantRanges = &range
 	};
 
-	if (auto result = vkCreatePipelineLayout(r_device.get_device(), &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreatePipelineLayout( &pipelineLayoutCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
 vulkan::PipelineLayout2::~PipelineLayout2()
 {
 	if (m_handle != VK_NULL_HANDLE)
-		vkDestroyPipelineLayout(r_device.get_device(), m_handle, r_device.get_allocator());
+		r_device.get_device().vkDestroyPipelineLayout( m_handle, r_device.get_allocator());
 }
 
 vulkan::PipelineCache::PipelineCache(LogicalDevice& device, std::filesystem::path path) :
 	VulkanObject(device),
 	m_path(std::move(path))
 {
-	size_t size = 0;
 	std::vector<std::byte> data;
 	std::ifstream in(m_path, std::ios::binary);
 	if (in.is_open()) {
@@ -48,10 +49,6 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, std::filesystem::pat
 			data.resize(length);
 			in.read(reinterpret_cast<char*>(data.data()), length);
 			in.close();
-			size = length;
-		}
-		else {
-			size = 0;
 		}
 	}
 
@@ -82,7 +79,7 @@ vulkan::PipelineCache::PipelineCache(LogicalDevice& device, std::filesystem::pat
 			Utility::log_warning().format("Pipelinecache invalid");
 		}
 	}
-	if (auto result = vkCreatePipelineCache(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreatePipelineCache( &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -94,15 +91,15 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 	VkResult result;
 	std::vector<std::byte> data;
 	do {
-		vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, nullptr);
+		r_device.get_device().vkGetPipelineCacheData( m_handle, &dataSize, nullptr);
 		data.resize(dataSize + sizeof(PipelineCachePrefixHeader));
-		result = vkGetPipelineCacheData(r_device.get_device(), m_handle, &dataSize, data.data() + sizeof(PipelineCachePrefixHeader));
+		result = r_device.get_device().vkGetPipelineCacheData( m_handle, &dataSize, data.data() + sizeof(PipelineCachePrefixHeader));
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-			vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
+			r_device.get_device().vkDestroyPipelineCache( m_handle, r_device.get_allocator());
 			return;
 		}
 		else if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-			vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
+			r_device.get_device().vkDestroyPipelineCache( m_handle, r_device.get_allocator());
 			return;
 		}
 	} while (result != VK_SUCCESS);
@@ -127,7 +124,7 @@ vulkan::PipelineCache::~PipelineCache() noexcept
 		out.close();
 	}
 	std::filesystem::rename(tmpPath, m_path);
-	vkDestroyPipelineCache(r_device.get_device(), m_handle, r_device.get_allocator());
+	r_device.get_device().vkDestroyPipelineCache(m_handle, r_device.get_allocator());
 }
 
 vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config) :
@@ -351,7 +348,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 		.basePipelineIndex = -1
 	};
 
-	if (auto result = vkCreateGraphicsPipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_handle);
+	if (auto result = r_device.get_device().vkCreateGraphicsPipelines( parent.get_pipeline_cache(), 1, &graphicsPipelineCreateInfo, parent.get_allocator(), &m_handle);
 		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
 		throw Utility::VulkanException(result);
 	}
@@ -388,7 +385,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const ComputePipelineConfig&
 		VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV)));
 	assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 	
-	if (auto result = vkCreateComputePipelines(parent.get_device(), parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
+	if (auto result = r_device.get_device().vkCreateComputePipelines( parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
 		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
 		throw Utility::VulkanException(result);
 	}
@@ -580,7 +577,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const RaytracingPipelineConf
 		createInfo.maxPipelineRayRecursionDepth = rtProperties.maxRayRecursionDepth;
 	}
 	
-	if (auto result = vkCreateRayTracingPipelinesKHR(parent.get_device(), VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
+	if (auto result = r_device.get_device().vkCreateRayTracingPipelinesKHR(VK_NULL_HANDLE, parent.get_pipeline_cache(), 1, &createInfo, parent.get_allocator(), &m_handle);
 		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT && result != VK_OPERATION_DEFERRED_KHR && result != VK_OPERATION_NOT_DEFERRED_KHR) {
 		throw Utility::VulkanException(result);
 	}
@@ -605,7 +602,7 @@ vulkan::PipelineStorage2::~PipelineStorage2()
 {
 	m_pipelines.for_each([this](Pipeline2& pipeline)
 	{
-		vkDestroyPipeline(r_device.get_device(), pipeline, r_device.get_allocator());
+			r_device.get_device().vkDestroyPipeline( pipeline, r_device.get_allocator());
 	});
 }
 

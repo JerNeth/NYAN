@@ -8,9 +8,9 @@ using namespace nyan;
 
 nyan::Renderpass::Renderpass(nyan::Rendergraph& graph, nyan::Renderpass::Type type, Id id, const std::string& name) :
 	r_graph(graph),
+	m_name(name),
 	m_type(type),
-	m_id(id),
-	m_name(name)
+	m_id(id)
 {
 }
 
@@ -330,7 +330,7 @@ void nyan::Renderpass::add_post_barrier(const VkMemoryBarrier2& barrier)
 
 void nyan::Renderpass::add_pipeline(vulkan::GraphicsPipelineConfig config, vulkan::PipelineId* id)
 {
-	m_queuedPipelineBuilds.emplace_back(config, id);
+	m_queuedPipelineBuilds.emplace_back(PipelineBuild{ config, id });
 }
 
 void nyan::Renderpass::begin_rendering(vulkan::CommandBuffer& cmd)
@@ -452,7 +452,9 @@ void nyan::Renderpass::build_rendering_info()
 {
 	if (m_type == Renderpass::Type::Generic) {
 		m_renderingCreateInfo = {};
-		m_renderInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+		m_renderInfo = { };
+		m_renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		m_renderInfo.pNext = nullptr;
 		m_renderingCreateInfo.colorAttachmentCount = 0;
 		m_renderInfo.colorAttachmentCount = 0;
 		for (auto attachmentId : m_attachments) {
@@ -764,7 +766,7 @@ void nyan::Rendergraph::begin_frame()
 	m_renderresources.for_each([&](RenderResource& resource) {
 		update_render_resource(resource);
 		});
-	m_renderpasses.for_each([this](Renderpass& pass) {
+	m_renderpasses.for_each([](Renderpass& pass) {
 		pass.update();
 		});
 }
@@ -783,6 +785,9 @@ void nyan::Rendergraph::end_frame()
 			break;
 		case Renderpass::Type::Generic:
 			commandBufferType = vulkan::CommandBufferType::Generic;
+			break;
+		case Renderpass::Type::Transfer:
+			assert(false);
 			break;
 		}
 		//std::cout << "Execute pass: "<< pass.get_id() << "\n";
@@ -1623,7 +1628,7 @@ void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResour
 
 void nyan::Rendergraph::clear_dependencies()
 {
-	m_renderpasses.for_each([this](Renderpass& pass) {
+	m_renderpasses.for_each([](Renderpass& pass) {
 		pass.clear_dependencies();
 		});
 }

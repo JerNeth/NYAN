@@ -2,6 +2,11 @@
 #define GLFWINCLUDES_H
 #pragma once
 
+#ifndef NOMINMAX
+# define INTERNAL_NOMINMAX
+# define NOMINMAX
+#endif
+
 #ifdef __clang__
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdocumentation"
@@ -26,4 +31,8 @@
 #ifdef __clang__
 	#pragma clang diagnostic pop
 #endif
+#endif
+
+#ifndef INTERNAL_NOMINMAX
+# undef NOMINMAX
 #endif

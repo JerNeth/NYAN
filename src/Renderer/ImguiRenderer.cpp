@@ -12,8 +12,6 @@
 using namespace vulkan;
 
 static nyan::MaterialManager* manager;
-static nyan::DDGIManager* ddgiManager;
-static nyan::DDGIReSTIRManager* ddgiReSTIRManager;
 
 
 
@@ -119,199 +117,6 @@ namespace MM {
 	//{
 	//}
 	template <>
-	void ComponentEditorWidget<nyan::DDGIManager::DDGIVolumeParameters>(entt::registry& reg, entt::registry::entity_type e)
-	{
-		auto& volume = reg.get<nyan::DDGIManager::DDGIVolumeParameters>(e);
-		//auto& mat = manager->get_material(t);
-		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
-		ImGui::DragFloat3("Spacing", &volume.spacing.x());
-		ImGui::DragFloat3("Origin", &volume.origin.x());
-		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Rays per Probe", reinterpret_cast<int*>(&volume.raysPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Depth Probe Size", reinterpret_cast<int*>(&volume.depthProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Fixed Ray Count", reinterpret_cast<int*>(&volume.fixedRayCount), 1, 0, volume.raysPerProbe, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Backface Threshold", &volume.relocationBackfaceThreshold, 0.001f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Min Front Face Distance", &volume.minFrontFaceDistance, 0.1f, 0.f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Depth Bias", &volume.depthBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("View Bias", &volume.depthViewBias, 0.01f, 0.f, 10000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Max Ray Distance", &volume.maxRayDistance, 1.f, 0.00001f, 100000.0f);
-		ImGui::DragFloat("Hysteresis", &volume.hysteresis, 0.01f, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Irradiance Threshold", &volume.irradianceThreshold, 0.01f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Light To Dark Threshold", &volume.lightToDarkThreshold, 0.01f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Depth Cosine Power", &volume.depthExponent, 1.f, 0.01f, 1000.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("Visualizer Radius", &volume.visualizerRadius, 0.1f, 0.01f, 100.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragFloat("6 Moment Overestimation", &volume.momentOverestimation, 0.1f, 0.0f, 1.f, "%.3f", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::Checkbox("Use Moments", &volume.useMoments);
-		ImGui::Checkbox("Use 6 Moments", &volume.use6Moments);
-		ImGui::Checkbox("Enabled", &volume.enabled);
-
-		{
-			static constexpr const char* renderTargetFormats[] = { "R16G16B16A16F", "R32G32B32A32F" };
-			static const char* currentRenderTargetFormat = renderTargetFormats[0];
-			if (ImGui::BeginCombo("##Render Target Format", currentRenderTargetFormat))
-			{
-				for (const auto& format : renderTargetFormats) {
-					bool selected = (format == currentRenderTargetFormat);
-					if (ImGui::Selectable(format, selected))
-						currentRenderTargetFormat = format;
-					if (selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-			if (currentRenderTargetFormat == renderTargetFormats[0]) {
-				volume.renderTargetImageFormat = nyan::shaders::R16G16B16A16F;
-			}
-			else if (currentRenderTargetFormat == renderTargetFormats[1]) {
-				volume.renderTargetImageFormat = nyan::shaders::R32G32B32A32F;
-			}
-			ImGui::SameLine();
-			ImGui::Text("Render Target Format");
-		}
-
-		{
-			static constexpr const char* irradianceFormats[] = { "R16G16B16A16F", "R10G10B10A2F", "R11G11B10F", "R9G9B9E5F" };
-			static const char* currentIrradianceFormat = irradianceFormats[0];
-			if (ImGui::BeginCombo("##Irradiance Format", currentIrradianceFormat))
-			{
-				for (const auto& format : irradianceFormats) {
-					bool selected = (format == currentIrradianceFormat);
-					if (ImGui::Selectable(format, selected))
-						currentIrradianceFormat = format;
-					if (selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-			if (currentIrradianceFormat == irradianceFormats[0]) {
-				volume.irradianceImageFormat = nyan::shaders::R16G16B16A16F;
-			}
-			else if (currentIrradianceFormat == irradianceFormats[1]) {
-				volume.irradianceImageFormat = nyan::shaders::R10G10B10A2F;
-			}
-			else if (currentIrradianceFormat == irradianceFormats[2]) {
-				volume.irradianceImageFormat = nyan::shaders::R11G11B10F;
-			}
-			else if (currentIrradianceFormat == irradianceFormats[3]) {
-				volume.irradianceImageFormat = nyan::shaders::E5B9G9R9F;
-			}
-			ImGui::SameLine();
-			ImGui::Text("Irradiance Format");
-		}
-		{
-			static constexpr const char* depthFormats[] = { "R16G16F", "R16G16B16A16F", "R32G32B32A32F" };
-			static const char* currentDepthFormat = depthFormats[2];
-			if (ImGui::BeginCombo("##Depth Format", currentDepthFormat))
-			{
-				for (const auto& format : depthFormats) {
-					bool selected = (format == currentDepthFormat);
-					if (ImGui::Selectable(format, selected))
-						currentDepthFormat = format;
-					if (selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-			if (currentDepthFormat == depthFormats[0]) {
-				volume.depthImageFormat = nyan::shaders::R16G16F;
-			}
-			else if (currentDepthFormat == depthFormats[1]) {
-				volume.depthImageFormat = nyan::shaders::R32G32B32A32F;
-			}
-			else if (currentDepthFormat == depthFormats[1]) {
-				volume.depthImageFormat = nyan::shaders::R32G32B32A32F;
-			}
-			ImGui::SameLine();
-			ImGui::Text("Depth Format");
-		}
-		ImGui::Checkbox("Visualization Enabled", &volume.visualization);
-		ImGui::Checkbox("Visualizate Depth", &volume.visualizeDepth);
-		ImGui::Checkbox("Visualizate Directions", &volume.visualizeDirections);
-		ImGui::Checkbox("Relocation Enabled", &volume.relocationEnabled);
-		ImGui::Checkbox("Classification Enabled", &volume.classificationEnabled);
-		ImGui::Checkbox("Dynamic Ray Allocation Enabled", &volume.dynamicRayAllocation);
-		ImGui::Checkbox("Biased Estimator Enabled", &volume.biasedEstimator);
-		ImGui::InputInt("Raygen Num Rows", reinterpret_cast<int*>(&volume.numRowsRaygen));
-		while (2048 % volume.numRowsRaygen)
-			volume.numRowsRaygen--;
-		if (volume.ddgiVolume != ~0) {
-			auto& devvolume = ddgiManager->get(volume.ddgiVolume);
-			auto ratio = static_cast<float>(volume.probeCount.y()) / static_cast<float>(volume.probeCount.x());
-			ImGui::Text("Irradiance Texture");
-			ImGui::SameLine(0, 25);
-			ImGui::Text("Depth Texture");
-			static int layer = 0;
-
-			ImGui::InputInt("Layer", &layer, 1);
-			layer = std::max(layer, 0);
-			layer = std::min(static_cast<uint32_t>(layer), volume.probeCount.z());
-			if (devvolume.irradianceTextureBinding != ~0) {
-				uint64_t image = (devvolume.irradianceTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
-				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
-				if (ImGui::IsItemHovered()) {
-					ImGui::BeginTooltip();
-					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
-					ImGui::EndTooltip();
-				}
-			}
-			if (devvolume.depthTextureBinding != ~0) {
-				ImGui::SameLine();
-				uint64_t image = (devvolume.depthTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
-				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
-
-				if (ImGui::IsItemHovered()) {
-					ImGui::BeginTooltip();
-					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
-					ImGui::EndTooltip();
-				}
-			}
-		}
-		//ImGui::ColorEdit3("F0", &mat.F0_R);
-	}
-	template <>
-	void ComponentEditorWidget<nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters>(entt::registry& reg, entt::registry::entity_type e)
-	{
-		auto& volume = reg.get<nyan::DDGIReSTIRManager::DDGIReSTIRVolumeParameters>(e);
-		//auto& mat = manager->get_material(t);
-		//ImGui::Image(static_cast<ImTextureID>(mat.albedoTexId + 1), ImVec2(64, 64));
-		ImGui::DragFloat3("Spacing", &volume.spacing.x());
-		ImGui::DragFloat3("Origin", &volume.origin.x());
-		ImGui::DragInt3("Probe Count", reinterpret_cast<int*>(&volume.probeCount.x()), 1, 1, 256, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Samples per Probe", reinterpret_cast<int*>(&volume.samplesPerProbe), 1, 1, 1024, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Irradiance Probe Size", reinterpret_cast<int*>(&volume.irradianceProbeSize), 1, 1, 32, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Maximum Reservoir Age", reinterpret_cast<int*>(&volume.maximumReservoirAge), 1, 1, 16384, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::DragInt("Maximum Path Length", reinterpret_cast<int*>(&volume.maxPathLength), 1, 1, 64, "%d", ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp);
-		ImGui::Checkbox("Sample Validation Enabled", &volume.validationEnabled);
-		//if (ImGui::Checkbox("Spatial Resample", &volume.spatialReuse))
-		ImGui::Checkbox("Spatial Resample", &volume.spatialReuse);
-		ImGui::Checkbox("Spatial Resample Validation", &volume.spatialReuseValidation);
-		ImGui::Checkbox("Recurse", &volume.recurse);
-		ImGui::Checkbox("Enabled", &volume.enabled);
-
-
-		if (volume.gpuVolume != ~0) {
-			auto& devvolume = ddgiReSTIRManager->get(volume.gpuVolume);
-			auto ratio = static_cast<float>(volume.probeCount.y()) / static_cast<float>(volume.probeCount.x());
-			ImGui::Text("Irradiance Texture");
-			static int layer = 0;
-
-			ImGui::InputInt("Layer", &layer, 1);
-			layer = std::max(layer, 0);
-			layer = std::min(static_cast<uint32_t>(layer), volume.probeCount.z());
-			if (devvolume.irradianceTextureBinding != ~0) {
-				uint64_t image = (devvolume.irradianceTextureBinding + 1ull) + ((layer + 1ull) << 32ull);
-				ImGui::Image(static_cast<ImTextureID>(image), ImVec2(128, 128 * ratio));
-				if (ImGui::IsItemHovered()) {
-					ImGui::BeginTooltip();
-					ImGui::Image(static_cast<ImTextureID>(image), ImVec2(512, 512 * ratio));
-					ImGui::EndTooltip();
-				}
-			}
-		}
-		//ImGui::ColorEdit3("F0", &mat.F0_R);
-	}
-	template <>
 	void ComponentEditorWidget<nyan::CameraMovement>(entt::registry& reg, entt::registry::entity_type e)
 	{
 		auto& movement = reg.get<nyan::CameraMovement>(e);
@@ -353,8 +158,6 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 {
 	pass.add_swapchain_attachment();
 	manager = &renderManager.get_material_manager();
-	ddgiManager = &renderManager.get_ddgi_manager();
-	ddgiReSTIRManager =&renderManager.get_ddgi_restir_manager();
 
 	start = std::chrono::high_resolution_clock::now();
 	ImGui::CreateContext();
@@ -384,8 +187,6 @@ nyan::ImguiRenderer::ImguiRenderer(LogicalDevice& device, entt::registry& regist
 	m_editor.registerComponent<DeferredAlphaTest>("Alpha Test");
 	m_editor.registerComponent<Forward>("Forward");
 	m_editor.registerComponent<ForwardTransparent>("Forward Alpha Blended");
-	m_editor.registerComponent<DDGIManager::DDGIVolumeParameters>("DDGI Volume");
-	m_editor.registerComponent<DDGIReSTIRManager::DDGIReSTIRVolumeParameters>("DDGI ReSTIR Volume");
 	m_editor.registerComponent<CameraMovement>("Camera Controller");
 	m_editor.registerComponent<Directionallight>("Directional Light");
 	m_editor.registerComponent<Pointlight>("Point Light");
@@ -424,14 +225,14 @@ void nyan::ImguiRenderer::begin_frame()
 	// Plots can display overlay texts
 	// (in this example, we will display an average value)
 	{
-		float average = 0.0f;
+		//float average = 0.0f;
 		float max = 0;
 		for (int n = 0; n < IM_ARRAYSIZE(values); n++) {
-			average += values[n];
+			//average += values[n];
 			if (values[n] > max)
 				max = values[n];
 		}
-		average /= (float)IM_ARRAYSIZE(values);
+		//average /= (float)IM_ARRAYSIZE(values);
 		char overlay[] = "fps";
 		//sprintf_s(overlay, "avg %f", average);
 		ImGui::PlotLines("Frame Times", values, IM_ARRAYSIZE(values), values_offset, overlay, 0.0f, max * 1.2f, ImVec2(0, 80.0f));

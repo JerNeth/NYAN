@@ -22,4 +22,4 @@ namespace Utility {
 	private:
 	};
 }
-#endif !IMAGEREADER_H
+#endif //!IMAGEREADER_H

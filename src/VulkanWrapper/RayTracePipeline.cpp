@@ -1,6 +1,8 @@
-#include "RayTracePipeline.h"
-#include "Buffer.h"
-#include "Pipeline.h"
+#include "VulkanWrapper/RayTracePipeline.h"
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/Pipeline.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
+
 #include "Utility/Exceptions.h"
 
 vulkan::RTPipeline::RTPipeline(vulkan::LogicalDevice& device, const vulkan::RaytracingPipelineConfig& config) :
@@ -46,7 +48,7 @@ vulkan::BufferHandle vulkan::RTPipeline::create_sbt(const vulkan::RaytracingPipe
 	auto handleSize{ rtProperties.shaderGroupHandleSize };
 	auto groupCount{ rayConfig.rgenGroups.size() + rayConfig.hitGroups.size() + rayConfig.missGroups.size() + rayConfig.callableGroups.size() };
 	std::vector<std::byte> handleData(handleSize * groupCount);
-	if (auto result = vkGetRayTracingShaderGroupHandlesKHR(r_device, *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data()); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkGetRayTracingShaderGroupHandlesKHR( *pipeline, 0, static_cast<uint32_t>(groupCount), handleData.size(), handleData.data()); result != VK_SUCCESS) {
 		assert(false);
 		throw Utility::VulkanException(result);
 	}

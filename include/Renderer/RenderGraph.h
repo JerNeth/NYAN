@@ -146,7 +146,7 @@ namespace nyan {
 		Renderpass(const Renderpass&) = delete;
 		Renderpass(Renderpass&&) = default;
 		Renderpass& operator=(const Renderpass&) = delete;
-		Renderpass& operator=(Renderpass&&) = default;
+		Renderpass& operator=(Renderpass&&) = delete;
 		~Renderpass();
 		Rendergraph& get_graph() noexcept;
 		const Rendergraph& get_graph() const noexcept;
@@ -234,7 +234,7 @@ namespace nyan {
 		struct PipelineBuild 
 		{
 			vulkan::GraphicsPipelineConfig config;
-			vulkan::PipelineId* id;
+			vulkan::PipelineId* id{};
 		};
 
 		std::vector< PipelineBuild> m_queuedPipelineBuilds;
@@ -407,4 +407,4 @@ namespace nyan {
 		//RenderpassId m_lastPass { invalidRenderpassId };
 	};
 }
-#endif !RDRENDERGRAPH_H
+#endif //!RDRENDERGRAPH_H

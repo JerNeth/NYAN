@@ -1,5 +1,5 @@
 #include "Image.h"
-#include "Instance.h"
+#include "PhysicalDevice.hpp"
 #include "LogicalDevice.h"
 #include "Allocator.h"
 #include "Utility/Exceptions.h"
@@ -22,7 +22,7 @@ vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& i
 				.layerCount = m_info.layerCount
 			}
 	};
-	if (auto result = vkCreateImageView(r_device.get_device(), &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateImageView( &createInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
@@ -42,7 +42,7 @@ vulkan::ImageView::~ImageView() noexcept {
 void vulkan::ImageView::set_debug_label(const char* name) noexcept
 {
 	if constexpr (debugMarkers) {
-		if (r_device.get_supported_extensions().debug_utils) {
+		if (r_device.get_physical_device().get_extensions().debug_utils) {
 			VkDebugUtilsObjectNameInfoEXT label{
 				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
@@ -50,9 +50,9 @@ void vulkan::ImageView::set_debug_label(const char* name) noexcept
 				.objectHandle {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
-			vkSetDebugUtilsObjectNameEXT(r_device, &label);
+			::vkSetDebugUtilsObjectNameEXT(r_device.get_device_handle(), &label);
 		}
-		else if (r_device.get_supported_extensions().debug_marker) {
+		else if (r_device.get_physical_device().get_extensions().debug_marker) {
 			//VkDebugMarkerObjectTagInfoEXT label {
 			//	.sType {},
 			//	.pNext {},
@@ -69,7 +69,7 @@ void vulkan::ImageView::set_debug_label(const char* name) noexcept
 				.object {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
-			vkDebugMarkerSetObjectNameEXT(r_device, &label);
+			vkDebugMarkerSetObjectNameEXT(r_device.get_device_handle(), &label);
 		}
 	}
 }
@@ -231,7 +231,7 @@ vulkan::ImageView* vulkan::Image::change_view_mip_level(uint32_t mip) {
 void vulkan::Image::set_debug_label(const char* name) noexcept
 {
 	if constexpr (debugMarkers) {
-		if (r_device.get_supported_extensions().debug_utils) {
+		if (r_device.get_physical_device().get_extensions().debug_utils) {
 			VkDebugUtilsObjectNameInfoEXT label{
 				.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
 				.pNext {nullptr},
@@ -239,9 +239,9 @@ void vulkan::Image::set_debug_label(const char* name) noexcept
 				.objectHandle {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
-			vkSetDebugUtilsObjectNameEXT(r_device, &label);
+			vkSetDebugUtilsObjectNameEXT(r_device.get_device_handle(), &label);
 		}
-		else if (r_device.get_supported_extensions().debug_marker) {
+		else if (r_device.get_physical_device().get_extensions().debug_marker) {
 			//VkDebugMarkerObjectTagInfoEXT label {
 			//	.sType {},
 			//	.pNext {},
@@ -258,7 +258,7 @@ void vulkan::Image::set_debug_label(const char* name) noexcept
 				.object {reinterpret_cast<uint64_t>(m_handle)},
 				.pObjectName {name},
 			};
-			vkDebugMarkerSetObjectNameEXT(r_device, &label);
+			vkDebugMarkerSetObjectNameEXT(r_device.get_device_handle(), &label);
 		}
 	}
 }

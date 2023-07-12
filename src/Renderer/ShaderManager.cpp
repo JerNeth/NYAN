@@ -2,6 +2,8 @@
 #include "VulkanWrapper/Shader.h"
 #include "Utility/Exceptions.h"
 
+#include <fstream>
+
 static std::vector<uint32_t> read_binary_file(const std::filesystem::path& path)
 {
 

@@ -1,4 +1,6 @@
 #include "VulkanWrapper/VulkanObject.h"
+
+#include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/Instance.h"
 
@@ -285,7 +287,7 @@ HandleClass vulkan::VulkanObject<HandleClass>::get_handle() const noexcept {
 template<typename HandleClass>
 void vulkan::VulkanObject<HandleClass>::set_debug_label(const char* name) const noexcept {
     if constexpr (debugMarkers) {
-        if (r_device.get_supported_extensions().debug_utils) {
+        if (r_device.get_physical_device().get_extensions().debug_utils) {
             VkDebugUtilsObjectNameInfoEXT label{
                 .sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
                 .pNext {nullptr},
@@ -293,7 +295,7 @@ void vulkan::VulkanObject<HandleClass>::set_debug_label(const char* name) const 
                 .objectHandle {reinterpret_cast<uint64_t>(m_handle)},
                 .pObjectName {name},
             };
-            vkSetDebugUtilsObjectNameEXT(r_device, &label);
+            vkSetDebugUtilsObjectNameEXT(r_device.get_device_handle(), &label);
         }
         //else if (r_device.get_supported_extensions().debug_marker) {
         //    VkDebugMarkerObjectNameInfoEXT label{
@@ -313,18 +315,6 @@ void vulkan::VulkanObject<HandleClass>::set_debug_label(const char* name) const 
 //    return s_labels[id];
 //}
 
-template<typename HandleClass>
-constexpr vulkan::VulkanObject<HandleClass>::VulkanObject(LogicalDevice& device) noexcept 
-    : r_device(device),
-    m_handle(VK_NULL_HANDLE) 
-{
-};
-template<typename HandleClass>
-constexpr vulkan::VulkanObject<HandleClass>::VulkanObject(LogicalDevice& device, const HandleClass& handle) noexcept 
-    : r_device(device),
-    m_handle(handle) 
-{
-};
 
 template class vulkan::VulkanObject<VkInstance>;
 template class vulkan::VulkanObject<VkPhysicalDevice>;

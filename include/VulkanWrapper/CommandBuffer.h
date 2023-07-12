@@ -9,7 +9,7 @@
 namespace vulkan {
 	class CommandBuffer : public VulkanObject<VkCommandBuffer> {
 	public:
-		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type = CommandBufferType::Generic, uint32_t threadIdx = 0);
+		CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type = CommandBufferType::Generic);
 
 
 		//void begin_rendering()
@@ -82,7 +82,6 @@ namespace vulkan {
 		/// Member variables
 		/// *******************************************************************
 		CommandBufferType m_type;
-		uint32_t m_threadIdx = 0;
 		bool m_swapchainTouched = false;
 		bool m_isSecondary = false;
 	};

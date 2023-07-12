@@ -1,7 +1,7 @@
-#include "Utility/Exceptions.h"
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/Instance.h"
+#include "Utility/Exceptions.h"
 
 #include <stdexcept>
 
@@ -103,8 +103,9 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 	case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
 		return "Acceleration structure KHR";
 		break;
+	default:
+		return "Unknown";
 	}
-	return "Unknown";
 }
 
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -134,11 +135,14 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 		logger.format("\n {}", pCallbackData->pQueueLabels[0].pLabelName);
 	if (pCallbackData->cmdBufLabelCount)
 		logger.format("\n {}", pCallbackData->pCmdBufLabels[0].pLabelName);
-	if (pCallbackData->objectCount)
-		if (pCallbackData->pObjects[0].pObjectName)
+	if (pCallbackData->objectCount) {
+		if (pCallbackData->pObjects[0].pObjectName) {
 			logger.format("\n\t [{:#x}] [{}] {}", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType), pCallbackData->pObjects[0].pObjectName);
-		else
+		}
+		else {
 			logger.format("\n\t [{:#x}] [{}]", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType));
+		}
+	}
 
 	logger.format("\n {}", pCallbackData->pMessageIdName);
 	logger.format("\n {}", pCallbackData->pMessage);
@@ -152,40 +156,32 @@ vulkan::Instance::Instance(const Validation& validation, std::span<const char*> 
 	m_applicationName(applicationName),
 	m_engineName(engineName)
 {
-	volkInitialize();
+	if (const auto result = volkInitialize(); result != VK_SUCCESS)
+		throw Utility::VulkanException(result);
 	init_layers();
 	if (m_validation.enabled)
 		use_layer("VK_LAYER_KHRONOS_validation");
 	init_extensions();
 	create_instance(requiredExtensions, optionalExtensions);
-
+	init_physical_devices();
 }
 
-vulkan::Instance::~Instance() {
+vulkan::Instance::~Instance() noexcept {
 	if (m_debugMessenger != VK_NULL_HANDLE)
 		vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_allocator);
-	vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
+	if(m_surface != VK_NULL_HANDLE)
+		vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
 	vkDestroyInstance(m_instance, m_allocator);
 
 }
 std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std::span<const char*>& requiredExtensions, const std::span<const char*>& optionalExtensions)
 {
-	uint32_t numDevices;
-	vkEnumeratePhysicalDevices(m_instance, &numDevices, nullptr);
-	if (numDevices == 0) {
-		assert(numDevices);
-		throw std::runtime_error("VK: no physical device with Vulkan support available");
-	}
-	
-	std::vector<VkPhysicalDevice> physicalDeviceHandles(numDevices);
-	vkEnumeratePhysicalDevices(m_instance, &numDevices, physicalDeviceHandles.data());
 	size_t bestDeviceIdx = 0;
 	int bestDeviceOptCount = 0;
-	for (size_t i = 0; i < numDevices; i++) {
-		m_physicalDevices.emplace_back(physicalDeviceHandles[i]);
+	for (size_t i = 0; i < m_physicalDevices.size(); i++) {
 		bool required = true;
 		int optional = 0;
-		auto& dev = m_physicalDevices.back();
+		auto& dev = m_physicalDevices[i];
 		for (const auto& extension : requiredExtensions)
 			required &= dev.use_extension(extension);
 		if (!required)
@@ -198,7 +194,6 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std:
 		}
 
 	}
-	m_physicalDevice = m_physicalDevices[bestDeviceIdx].get_handle();
 
 	float queuePriority = 1.0f;
 	auto init_priorities = [](auto n, auto numPriorities)
@@ -211,11 +206,13 @@ std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std:
 	const auto genericQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
 	const auto computeQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
 	const auto transferQueuePriorities = init_priorities(1, m_physicalDevices[bestDeviceIdx].get_properties().limits.discreteQueuePriorities);
-	return m_physicalDevices[bestDeviceIdx].create_logical_device(*this, genericQueuePriorities, computeQueuePriorities, transferQueuePriorities);
+	return m_physicalDevices[bestDeviceIdx].create_logical_device(*this);
 }
 
 #ifdef WIN32
 void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
+	assert(m_extensions.surface);
+	assert(m_extensions.surfaceWin32);
 	VkWin32SurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 		.hinstance = hinstance,
@@ -227,6 +224,8 @@ void vulkan::Instance::setup_win32_surface(HWND hwnd, HINSTANCE hinstance) {
 }
 #elif X_PROTOCOL
 void vulkan::Instance::setup_x11_surface(Window window, Display* dpy) {
+	assert(m_extensions.surface);
+	assert(m_extensions.surfaceX11);
 	VkXlibSurfaceCreateInfoKHR createInfo{
 		.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
 		.dpy = dpy,
@@ -248,18 +247,26 @@ vulkan::Instance::operator VkInstance() const noexcept
 	return m_instance;
 }
 
-const std::vector<vulkan::PhysicalDevice>& vulkan::Instance::get_physical_devices() const noexcept
+std::span<const vulkan::PhysicalDevice> vulkan::Instance::get_physical_devices() const noexcept
 {
 	return m_physicalDevices;
 }
 
-void vulkan::Instance::create_instance(std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, uint32_t applicationVersion, uint32_t engineVersion)
+std::span<vulkan::PhysicalDevice> vulkan::Instance::get_physical_devices() noexcept
 {
+	return m_physicalDevices;
+}
+
+void vulkan::Instance::create_instance(const std::span<const char*> requiredExtensions, const  std::span<const char*> optionalExtensions, const  uint32_t applicationVersion, const  uint32_t engineVersion)
+{
+	if(vkEnumerateInstanceVersion == nullptr)
+		throw std::runtime_error("VK: Vulkan 1.0 not supported, update your drivers.");
+
 	uint32_t apiVersion{ VK_API_VERSION_1_0 };
 	vkEnumerateInstanceVersion(&apiVersion);
 
 	if(apiVersion < VK_API_VERSION_1_3)
-		throw std::runtime_error("VK: Vulkan 1.3 not supported, update your drivers.");
+		throw std::runtime_error("VK: Available Vulkan version (<1.3) not supported, update your drivers.");
 
 	VkApplicationInfo applicationInfo{
 				.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -270,11 +277,11 @@ void vulkan::Instance::create_instance(std::span<const char*> requiredExtensions
 				.apiVersion = apiVersion
 	};
 	
-	for (auto& ext : requiredExtensions)
+	for (const auto& ext : requiredExtensions)
 		if(!use_extension(ext))
 			throw std::runtime_error("VK: required instance extension missing");
 
-	for (auto& ext : optionalExtensions)
+	for (const auto& ext : optionalExtensions)
 		use_extension(ext);
 
 	
@@ -334,7 +341,8 @@ void vulkan::Instance::create_instance(std::span<const char*> requiredExtensions
 	if (auto result = vkCreateInstance(&createInfo, m_allocator, &m_instance)) {
 		throw Utility::VulkanException(result);
 	}
-	volkLoadInstance(m_instance);
+	//volkLoadInstance(m_instance);
+	volkLoadInstanceOnly(m_instance);
 	if (m_validation.createCallback) {
 		assert(m_validation.enabled);
 		assert(vkCreateDebugUtilsMessengerEXT);
@@ -358,7 +366,7 @@ void vulkan::Instance::create_instance(std::span<const char*> requiredExtensions
 	}
 }
 
-bool vulkan::Instance::use_extension(const char* extension)
+bool vulkan::Instance::use_extension(const char* extension) noexcept
 {
 	for (const auto& ext : m_availableExtensions) {
 		if (strcmp(ext.extensionName, extension) == 0) {
@@ -404,7 +412,7 @@ bool vulkan::Instance::use_extension(const char* extension)
 	Utility::log().location().format("Requested instance extension not available: {}", extension);
 	return false;
 }
-bool vulkan::Instance::use_layer(const char* layerName)
+bool vulkan::Instance::use_layer(const char* layerName) noexcept
 {
 	for (const auto& layer : m_availableLayers) {
 		if (strcmp(layer.layerName, layerName) == 0) {
@@ -416,7 +424,7 @@ bool vulkan::Instance::use_layer(const char* layerName)
 	Utility::log().location().format("Requested instance layer not available: {}", layerName);
 	return false;
 }
-void vulkan::Instance::init_layers()
+void vulkan::Instance::init_layers() noexcept
 {
 	uint32_t layerPropertyCount;
 	vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
@@ -430,7 +438,7 @@ void vulkan::Instance::init_layers()
 //VK_EXT_DEBUG_REPORT_EXTENSION_NAME //deprecated
 //VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME //depends on surface
 
-void vulkan::Instance::init_extensions()
+void vulkan::Instance::init_extensions() noexcept
 {
 	uint32_t propertyCount;
 	vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
@@ -446,5 +454,33 @@ void vulkan::Instance::init_extensions()
 		for (const auto& ext : properties)
 			if (std::find_if(m_availableExtensions.cbegin(), m_availableExtensions.cend(), [&ext](const auto& val) {return std::strcmp(ext.extensionName, val.extensionName) == 0; }) == m_availableExtensions.cend())
 				m_availableExtensions.push_back(ext);
+	}
+}
+
+void vulkan::Instance::init_physical_devices() noexcept
+{
+	uint32_t numDevices;
+	vkEnumeratePhysicalDevices(m_instance, &numDevices, nullptr);
+	if (numDevices == 0) {
+		assert(numDevices);
+	}
+
+	std::vector<VkPhysicalDevice> physicalDeviceHandles(numDevices);
+	vkEnumeratePhysicalDevices(m_instance, &numDevices, physicalDeviceHandles.data());
+	for (auto handle : physicalDeviceHandles) {
+		auto& dev = m_physicalDevices.emplace_back(handle);
+		auto& properties = dev.get_properties(); //VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+		std::string deviceType {};
+		if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_OTHER)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_OTHER";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
+		Utility::log_info().message("Vulkan capable device: ").message(properties.deviceName).message("\n").message(deviceType);
 	}
 }

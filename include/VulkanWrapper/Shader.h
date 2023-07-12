@@ -171,7 +171,7 @@ namespace vulkan {
 		Utility::HashValue get_hash();
 		SpecializationConstantId get_specialization_constant_id(const std::string& name) const;
 	private:
-		VkShaderModule create_module(LogicalDevice& device, const std::vector<uint32_t>& shaderCode);
+		static VkShaderModule create_module(const LogicalDevice& device, const std::vector<uint32_t>& shaderCode);
 
 		ShaderStage m_stage;
 		//ShaderLayout m_layout;
@@ -214,11 +214,10 @@ namespace vulkan {
 		template<typename T>
 		uint32_t create_constant(uint32_t constantId, T value, uint32_t offset) {
 			if (constantId != invalidSpecializationConstant) {
-				auto size = static_cast<uint32_t>(sizeof(T));
+				auto size = sizeof(T);
 				m_specialization.push_back(VkSpecializationMapEntry{ .constantID {constantId},.offset{offset},.size {size} });
-				offset += size;
-				m_dataStorage.resize(offset);
-				T* data = reinterpret_cast<T*>(&m_dataStorage[offset - size]);
+				m_dataStorage.resize(offset + size);
+				T* data = reinterpret_cast<T*>(&m_dataStorage[offset]);
 				*data = value;
 			}
 			else {
@@ -251,10 +250,9 @@ namespace vulkan {
 		ShaderId add_instance_with_constants(ShaderId shaderId, Args... args) noexcept
 		{
 			m_currentShader = get_shader(shaderId);
-			auto instance = ShaderInstance{ m_currentShader->get_handle()
+			return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(ShaderInstance{ m_currentShader->get_handle()
 				, static_cast<VkShaderStageFlagBits>(1ull << static_cast<uint32_t>(m_currentShader->get_stage()))
-				, handle_constant(args)... };
-			return static_cast<ShaderId>(m_instanceStorage.emplace_intrusive(std::move(instance)) );
+				, handle_constant(args)... }) );
 		}
 		ShaderId add_shader(const std::vector<uint32_t>& shaderCode);
 		Shader* get_shader(ShaderId shaderId);

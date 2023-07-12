@@ -4,6 +4,8 @@
 #include "VkWrapper.h"
 #include "Image.h"
 
+#include <fstream>
+
 static VkFormat convertToVk(Utility::DXGI_FORMAT format) {
 	switch (format) {
 	case Utility::DXGI_FORMAT::DXGI_FORMAT_UNKNOWN:
@@ -257,7 +259,7 @@ std::vector<std::byte> Utility::DDSReader::readDDSFileInMemory(const std::filesy
 	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10) && (fileSize <= 148))
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small for DX10)");
 	DDSHeaderDXT10 extHeader;
-	if ((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10))
+	if (header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10)
 		file.read(reinterpret_cast<char*>(&extHeader), sizeof(Utility::DDSHeaderDXT10));
 	fileSize -= file.tellg();
 	std::vector<std::byte> buffer(fileSize / sizeof(uint8_t));
@@ -292,7 +294,7 @@ Utility::TextureInfo Utility::DDSReader::readDDSFileHeader(const std::filesystem
 		throw std::runtime_error("File is not a valid .dds file. Reason (file too small for DX10)");
 
 	DDSHeaderDXT10 extHeader{};
-	if((header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10))
+	if(header.pixelFormat.fourCC == DDSPixelFormat::FourCC::DX10)
 		file.read(reinterpret_cast<char*>(&extHeader), sizeof(Utility::DDSHeaderDXT10));
 	file.close();
 	ret.width = header.width;

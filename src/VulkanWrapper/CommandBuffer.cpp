@@ -1,8 +1,6 @@
 #include "CommandBuffer.h"
 
-#include <stdexcept>
-
-#include "Instance.h"
+#include "PhysicalDevice.hpp"
 #include "LogicalDevice.h"
 #include "Image.h"
 #include "Buffer.h"
@@ -10,9 +8,8 @@
 #include "Utility/Exceptions.h"
 #include "QueryPool.hpp"
 
-vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type, uint32_t threadIdx) :
+vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type) :
 	VulkanObject(parent, handle),
-	m_threadIdx(threadIdx),
 	m_type(type)
 {
 	assert(m_handle);
@@ -25,18 +22,18 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 
 void vulkan::CommandBuffer::begin_rendering(const VkRenderingInfo& info)
 {
-	vkCmdBeginRendering(m_handle, &info);
+	r_device.get_device().vkCmdBeginRendering(m_handle, &info);
 }
 
 void vulkan::CommandBuffer::end_rendering()
 {
-	vkCmdEndRendering(m_handle);
+	r_device.get_device().vkCmdEndRendering(m_handle);
 }
 
 vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(PipelineId pipelineIdentifier)
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
-	vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
+	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
 
 	const auto& dynamicState = pipeline->get_dynamic_state();
 	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ViewportWithCount))
@@ -48,46 +45,46 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBias))
 	//	dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilCompareMask)) {
-		vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
-		vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
+		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
+		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilReference)) {
-		vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
-		vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
+		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
+		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilWriteMask)) {
-		vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
-		vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
+		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
+		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::CullMode))
-		vkCmdSetCullMode(m_handle, dynamicState.cull_mode);
+		r_device.get_device().vkCmdSetCullMode(m_handle, dynamicState.cull_mode);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::FrontFace))
-		vkCmdSetFrontFace(m_handle, dynamicState.front_face);
+		r_device.get_device().vkCmdSetFrontFace(m_handle, dynamicState.front_face);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveTopology))
-		vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitive_topology);
+		r_device.get_device().vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitive_topology);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthTestEnabled))
-		vkCmdSetDepthTestEnable(m_handle, dynamicState.depth_test_enable);
+		r_device.get_device().vkCmdSetDepthTestEnable(m_handle, dynamicState.depth_test_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthWriteEnabled))
-		vkCmdSetDepthWriteEnable(m_handle, dynamicState.depth_write_enable);
+		r_device.get_device().vkCmdSetDepthWriteEnable(m_handle, dynamicState.depth_write_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthCompareOp))
-		vkCmdSetDepthCompareOp(m_handle, dynamicState.depth_compare_op);
+		r_device.get_device().vkCmdSetDepthCompareOp(m_handle, dynamicState.depth_compare_op);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBoundsTestEnabled))
-		vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depth_bounds_test_enable);
+		r_device.get_device().vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depth_bounds_test_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilTestEnabled))
-		vkCmdSetStencilTestEnable(m_handle, dynamicState.stencil_test_enable);
+		r_device.get_device().vkCmdSetStencilTestEnable(m_handle, dynamicState.stencil_test_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilOp)) {
-		vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
-		vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
+		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
+		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBiasEnabled))
-		vkCmdSetDepthBiasEnable(m_handle, dynamicState.depth_bias_enable);
+		r_device.get_device().vkCmdSetDepthBiasEnable(m_handle, dynamicState.depth_bias_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled))
-		vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitive_restart_enable);
+		r_device.get_device().vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitive_restart_enable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled))
-		vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizer_discard_enable);
+		r_device.get_device().vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizer_discard_enable);
 
 	auto set = r_device.get_bindless_set().get_set();
-	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
 	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_GRAPHICS };
 }
@@ -95,10 +92,10 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(PipelineId pipelineIdentifier)
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
-	vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
+	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
 
 	auto set = r_device.get_bindless_set().get_set();
-	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
 	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_COMPUTE };
 }
@@ -106,15 +103,15 @@ vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(Pipelin
 vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(PipelineId pipelineIdentifier)
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
-	vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, *pipeline);
+	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, *pipeline);
 	auto set = r_device.get_bindless_set().get_set();
-	vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
+	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR };
 }
 
 void vulkan::CommandBuffer::write_timestamp(VkPipelineStageFlags2 stage, TimestampQueryPool& queryPool, uint32_t query)
 {
-	vkCmdWriteTimestamp2(m_handle, stage, queryPool, query);
+	r_device.get_device().vkCmdWriteTimestamp2(m_handle, stage, queryPool, query);
 }
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size)
@@ -129,7 +126,7 @@ void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, Vk
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount)
 {
-	vkCmdCopyBuffer(m_handle, src.get_handle(), dst.get_handle(), copyCount, copies);
+	r_device.get_device().vkCmdCopyBuffer(m_handle, src.get_handle(), dst.get_handle(), copyCount, copies);
 }
 
 void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src)
@@ -139,7 +136,7 @@ void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src)
 
 void vulkan::CommandBuffer::fill_buffer(const Buffer& dst, uint32_t data)
 {
-	vkCmdFillBuffer(m_handle, dst, 0, dst.get_size(), data);
+	r_device.get_device().vkCmdFillBuffer(m_handle, dst, 0, dst.get_size(), data);
 }
 
 void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const VkOffset3D& dstOffset, const VkOffset3D& dstExtent,
@@ -170,7 +167,7 @@ void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const
 				addOffset(dstOffset, dstExtent)
 			},
 		};
-		vkCmdBlitImage(m_handle, src.get_handle(), src.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL, 
+		r_device.get_device().vkCmdBlitImage(m_handle, src.get_handle(), src.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
 			dst.get_handle(), dst.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL,
 			1, &blit, filter);
 	}
@@ -202,7 +199,7 @@ void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkIma
 			.depth {src.get_depth(mipLevel)},
 		},
 	};
-	vkCmdCopyImage(m_handle, src.get_handle(), srcLayout, dst.get_handle(), dstLayout, 1, &region);
+	r_device.get_device().vkCmdCopyImage(m_handle, src.get_handle(), srcLayout, dst.get_handle(), dstLayout, 1, &region);
 }
 
 static constexpr bool implies(bool a, bool b) noexcept {
@@ -214,12 +211,15 @@ void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffe
 	assert(!regions.empty());
 	assert(regions.data());
 	for (const auto& region : regions) {
-		assert(region.imageOffset.x >= 0u && region.imageOffset.x <= image.get_info().width);
-		assert((region.imageOffset.x + region.imageExtent.width) >= 0u && (region.imageOffset.x + region.imageExtent.width) <= image.get_info().width);
-		assert(region.imageOffset.y >= 0u && region.imageOffset.y <= image.get_info().height);
-		assert((region.imageOffset.y + region.imageExtent.height) >= 0u && (region.imageOffset.y + region.imageExtent.height) <= image.get_info().height);
-		assert(region.imageOffset.z >= 0u && region.imageOffset.z <= image.get_info().depth);
-		assert((region.imageOffset.z + region.imageExtent.depth) >= 0u && (region.imageOffset.z + region.imageExtent.depth) <= image.get_info().depth);
+		assert(region.imageOffset.x >= 0 && region.imageOffset.x <= static_cast<int32_t>(image.get_info().width));
+		assert(((region.imageOffset.x + region.imageExtent.width) >= 0) && 
+			((region.imageOffset.x + region.imageExtent.width) <= image.get_info().width));
+		assert(region.imageOffset.y >= 0 && region.imageOffset.y <= static_cast<int32_t>(image.get_info().height));
+		assert(((region.imageOffset.y + region.imageExtent.height) >= 0) && 
+			((region.imageOffset.y + region.imageExtent.height) <= image.get_info().height));
+		assert(region.imageOffset.z >= 0 && region.imageOffset.z <= static_cast<int32_t>(image.get_info().depth));
+		assert(((region.imageOffset.z + region.imageExtent.depth) >= 0 ) && 
+			((region.imageOffset.z + region.imageExtent.depth) <= image.get_info().depth));
 		assert(vulkan::ImageInfo::format_to_aspect_mask(image.get_format())& region.imageSubresource.aspectMask);
 		assert(region.imageSubresource.aspectMask);
 		assert(!(region.imageSubresource.aspectMask & VK_IMAGE_ASPECT_METADATA_BIT));
@@ -244,7 +244,7 @@ void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffe
 
 
 
-	vkCmdCopyImageToBuffer(m_handle, image, srcLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
+	r_device.get_device().vkCmdCopyImageToBuffer(m_handle, image, srcLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
 }
 
 
@@ -282,7 +282,7 @@ void vulkan::CommandBuffer::generate_mips(const Image& image)
 
 void vulkan::CommandBuffer::copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits)
 {
-	vkCmdCopyBufferToImage(m_handle, buffer.get_handle(), image.get_handle(),
+	r_device.get_device().vkCmdCopyBufferToImage(m_handle, buffer.get_handle(), image.get_handle(),
 		image.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL , blitCounts, blits);
 }
 
@@ -296,7 +296,7 @@ void vulkan::CommandBuffer::copy_acceleration_structure(const AccelerationStruct
 		.dst = dst.get_handle(),
 		.mode = src.is_compactable() == compact ? VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR : VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR,
 	};
-	vkCmdCopyAccelerationStructureKHR(m_handle, &info);
+	r_device.get_device().vkCmdCopyAccelerationStructureKHR(m_handle, &info);
 }
 
 void vulkan::CommandBuffer::mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier)
@@ -340,7 +340,7 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineSt
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers != nullptr));
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].sType == VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER));
 	assert(!(bufferBarrierCounts != 0) || (bufferBarriers[0].buffer != VK_NULL_HANDLE));
-	vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, barrierCount,
+	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, barrierCount,
 		globals, bufferBarrierCounts, bufferBarriers, imageBarrierCounts, imageBarriers);
 }
 
@@ -394,7 +394,7 @@ void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrie
 		.imageMemoryBarrierCount {imageBarrierCounts},
 		.pImageMemoryBarriers {imageBarriers}
 	};
-	vkCmdPipelineBarrier2(m_handle, &dependencyInfo);
+	r_device.get_device().vkCmdPipelineBarrier2(m_handle, &dependencyInfo);
 }
 void vulkan::CommandBuffer::barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
 {
@@ -408,7 +408,7 @@ void vulkan::CommandBuffer::barrier2(uint32_t imageBarrierCounts, const VkImageM
 
 void vulkan::CommandBuffer::reset_event2(VkEvent event, VkPipelineStageFlags2 stages)
 {
-	vkCmdResetEvent2(m_handle, event, stages);
+	r_device.get_device().vkCmdResetEvent2(m_handle, event, stages);
 }
 
 void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
@@ -433,7 +433,7 @@ void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, con
 		.imageMemoryBarrierCount {imageBarrierCounts},
 		.pImageMemoryBarriers {imageBarriers}
 	};
-	vkCmdSetEvent2(m_handle, event, &dependencyInfo);
+	r_device.get_device().vkCmdSetEvent2(m_handle, event, &dependencyInfo);
 }
 
 void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
@@ -507,7 +507,7 @@ void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* eve
 	assert(eventCount);
 	assert(event);
 	assert(dependencyInfo);
-	vkCmdWaitEvents2(m_handle, eventCount, event, dependencyInfo);
+	r_device.get_device().vkCmdWaitEvents2(m_handle, eventCount, event, dependencyInfo);
 }
 
 void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess)
@@ -517,7 +517,7 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkAccessFlag
 		.srcAccessMask = srcAccess,
 		.dstAccessMask = dstAccess
 	};
-	vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 1, &barrier, 0, nullptr, 0, nullptr);
 }
 
 void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags, VkPipelineStageFlags dstStages, VkAccessFlags dstAccessFlags)
@@ -540,7 +540,7 @@ void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldL
 		}
 	};
 	assert(barrier.image != VK_NULL_HANDLE);
-	vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout layout, const VkClearColorValue* clearColor)
@@ -552,7 +552,7 @@ void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout 
 		.baseArrayLayer {0},
 		.layerCount {VK_REMAINING_ARRAY_LAYERS},
 	};
-	vkCmdClearColorImage(m_handle, image.get_handle(), layout, clearColor, 1, &range);
+	r_device.get_device().vkCmdClearColorImage(m_handle, image.get_handle(), layout, clearColor, 1, &range);
 }
 
 void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor)
@@ -565,7 +565,7 @@ void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout 
 		.baseArrayLayer {0},
 		.layerCount {VK_REMAINING_ARRAY_LAYERS},
 	};
-	vkCmdClearDepthStencilImage(m_handle, image.get_handle(), layout, clearColor, 1, &range);
+	r_device.get_device().vkCmdClearDepthStencilImage(m_handle, image.get_handle(), layout, clearColor, 1, &range);
 }
 
 bool vulkan::CommandBuffer::swapchain_touched() const noexcept
@@ -580,7 +580,7 @@ void vulkan::CommandBuffer::touch_swapchain() noexcept
 
 void vulkan::CommandBuffer::end()
 {
-	if (auto result = vkEndCommandBuffer(m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkEndCommandBuffer(m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 }
@@ -588,7 +588,7 @@ void vulkan::CommandBuffer::end()
 void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 {
 	if constexpr (debugMarkers) {
-		if (r_device.get_supported_extensions().debug_utils) {
+		if (r_device.get_physical_device().get_extensions().debug_utils) {
 			VkDebugUtilsLabelEXT label{
 				.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
 				.pLabelName = name
@@ -603,7 +603,7 @@ void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 			}
 			vkCmdBeginDebugUtilsLabelEXT(m_handle, &label);
 		}
-		else if (r_device.get_supported_extensions().debug_marker) {
+		else if (r_device.get_physical_device().get_extensions().debug_marker) {
 			VkDebugMarkerMarkerInfoEXT marker{
 				.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT,
 				.pMarkerName = name
@@ -624,10 +624,10 @@ void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 void vulkan::CommandBuffer::end_region()
 {
 	if constexpr (debugMarkers) {
-		if (r_device.get_supported_extensions().debug_utils) {
+		if (r_device.get_physical_device().get_extensions().debug_utils) {
 			vkCmdEndDebugUtilsLabelEXT(m_handle);
 		}
-		else if (r_device.get_supported_extensions().debug_marker) {
+		else if (r_device.get_physical_device().get_extensions().debug_marker) {
 			vkCmdDebugMarkerEndEXT(m_handle);
 		}
 	}

@@ -301,4 +301,4 @@ namespace Utility {
 	};
 }
 
-#endif !DDSREADER_H
+#endif //!DDSREADER_H

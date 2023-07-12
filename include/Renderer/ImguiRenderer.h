@@ -44,4 +44,4 @@ namespace nyan {
 	};
 }
 
-#endif !RDIMGUI_H
+#endif //!RDIMGUI_H

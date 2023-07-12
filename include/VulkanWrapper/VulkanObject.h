@@ -15,10 +15,19 @@ namespace vulkan {
         void set_debug_label(const char* name) const noexcept;
         //static const std::string& get_debug_label(uint64_t id);
     protected:
-        constexpr VulkanObject(LogicalDevice& device) noexcept;
-        constexpr VulkanObject(LogicalDevice& device, const HandleClass& handle) noexcept;
-        HandleClass m_handle;
+        explicit constexpr VulkanObject(LogicalDevice& device) noexcept
+            : r_device(device),
+            m_handle(VK_NULL_HANDLE)
+        {
+	        
+        }
+        constexpr VulkanObject(LogicalDevice& device, const HandleClass& handle) noexcept : r_device(device),
+            m_handle(handle)  
+        {
+	        
+        }
         LogicalDevice& r_device;
+        HandleClass m_handle;
     private:
     };
 }

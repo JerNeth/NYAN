@@ -49,4 +49,4 @@ namespace nyan {
 		//std::vector<vulkan::ImageHandle> m_usedTextures;
 	};
 }
-#endif !RDTEXTUREMANAGER_H-
+#endif //!RDTEXTUREMANAGER_H

@@ -13,10 +13,10 @@ namespace nyan {
 
 	template<typename T>
 	constexpr std::array<uint8_t, vulkan::MAX_VERTEX_INPUTS> get_formats() {
-		return { static_cast<uint8_t>(vulkan::get_format<decltype(T::positions)::value_type>()),
-		static_cast<uint8_t>(vulkan::get_format<decltype(T::uvs0)::value_type>()),
-		static_cast<uint8_t>(vulkan::get_format<decltype(T::normals)::value_type>()),
-		static_cast<uint8_t>(vulkan::get_format<decltype(T::tangents)::value_type>()) };
+		return { static_cast<uint8_t>(vulkan::get_format<typename decltype(T::positions)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<typename decltype(T::uvs0)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<typename decltype(T::normals)::value_type>()),
+		static_cast<uint8_t>(vulkan::get_format<typename decltype(T::tangents)::value_type>()) };
 	}
 
 	template<typename T>
@@ -154,4 +154,4 @@ namespace nyan {
 	};
 }
 
-#endif !RDMESHMANAGER_H
+#endif //!RDMESHMANAGER_H

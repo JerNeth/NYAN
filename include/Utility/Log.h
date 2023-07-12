@@ -3,6 +3,9 @@
 #pragma once
 
 #include <string_view>
+#ifndef __cpp_consteval
+#define __cpp_consteval 201811L
+#endif
 #include <source_location>
 #include <format>
 #include <iostream>

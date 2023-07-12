@@ -4,11 +4,10 @@
 
 #include "imgui.h"
 #include "glfwIncludes.h"
-#include "GLFW/glfw3native.h"
-#include "Utility/Log.h"
 #include <vector>
 #include <string>
-#include <stdexcept>
+
+#include "Utility/Log.h"
 
 namespace glfww {
 	class Library {
@@ -23,11 +22,10 @@ namespace glfww {
 				const char* error_msg;
 				int error = glfwGetError(&error_msg);
 				if (error) {
-					if (error == GLFW_INVALID_ENUM)
-						Utility::log_error("Invalid Enum: ");
-						std::cerr << "Invalid Enum: " << error_msg;
-					if (error == GLFW_INVALID_VALUE)
-						std::cerr << "Invalid Value: " << error_msg;
+					if (error == GLFW_INVALID_ENUM) 
+						Utility::log_warning().format("GLFW: Invalid Enum: {}", error_msg);
+					else if (error == GLFW_INVALID_VALUE)
+						Utility::log_warning().format("GLFW: Invalid Value: {}", error_msg);
 				}
 			}
 			if (glfwInit() == GLFW_FALSE)
@@ -138,12 +136,6 @@ namespace glfww {
 			ptr_monitor = &monitor;
 			m_mode = mode;
 			switch (mode) {
-			case WindowMode::Windowed: {
-				m_width = width;
-				m_height = height;
-				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), nullptr, nullptr);
-				break;
-			}
 			case WindowMode::WindowedBorderless: {
 				auto mode_ = monitor.get_default_mode();
 				m_width = mode_->width;
@@ -174,6 +166,15 @@ namespace glfww {
 				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), monitor, nullptr);
 				break;
 			}
+			case WindowMode::Size: 
+				m_mode = WindowMode::Windowed;
+				assert(false);
+			case WindowMode::Windowed: {
+				m_width = width;
+				m_height = height;
+				m_window = glfwCreateWindow(m_width, m_height, windowTitle.c_str(), nullptr, nullptr);
+				break;
+			}
 			}
 			if (!glfwVulkanSupported())
 			{
@@ -192,14 +193,6 @@ namespace glfww {
 				return;
 			m_mode = mode;
 			switch (mode) {
-			case WindowMode::Windowed: {
-				glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
-				auto [width, height] = ptr_monitor->get_default_extent();
-				auto x = (width - m_width) / 2;
-				auto y = (height - m_height) / 2;
-				glfwSetWindowMonitor(m_window, nullptr, x, y, m_width, m_height, GLFW_DONT_CARE);
-				break;
-			}
 			case WindowMode::WindowedBorderless: {
 				glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
 				auto mode_ = ptr_monitor->get_default_mode();
@@ -224,6 +217,17 @@ namespace glfww {
 				glfwSetWindowMonitor(m_window, *ptr_monitor, 0, 0, m_width, m_height, GLFW_DONT_CARE);
 				break;
 				}
+			case WindowMode::Size:
+				assert(false);
+				m_mode = WindowMode::Windowed;
+			case WindowMode::Windowed: {
+				glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+				auto [width, height] = ptr_monitor->get_default_extent();
+				auto x = (width - m_width) / 2;
+				auto y = (height - m_height) / 2;
+				glfwSetWindowMonitor(m_window, nullptr, x, y, m_width, m_height, GLFW_DONT_CARE);
+				break;
+			}
 			}
 		}
 		void resize(int width, int height) {
@@ -247,13 +251,17 @@ namespace glfww {
 				m_height = height;
 				glfwSetWindowSize(m_window, m_width, m_height);
 				break;
+			case WindowMode::Size: {
+				assert(false);
+				break;
+			}
 			}
 		}
 		bool is_iconified() {
 			int iconified = glfwGetWindowAttrib(m_window, GLFW_ICONIFIED);
 			return iconified != 0;
 		}
-#if defined(_WIN32)
+#if defined(WIN32)
 		inline HWND get_win32_window() {
 			return glfwGetWin32Window(m_window);
 		}

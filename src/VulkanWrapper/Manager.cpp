@@ -6,7 +6,7 @@
 
 vulkan::FenceManager::~FenceManager() noexcept {
 	for (auto fence : m_fences) {
-		vkDestroyFence(r_device.get_device(), fence, r_device.get_allocator());
+		r_device.get_device().vkDestroyFence(fence, r_device.get_allocator());
 	}
 }
 
@@ -17,7 +17,7 @@ vulkan::FenceHandle vulkan::FenceManager::request_fence()
 		VkFenceCreateInfo fenceCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
 		};
-		vkCreateFence(r_device.get_device(), &fenceCreateInfo, r_device.get_allocator(), &fence);
+		r_device.get_device().vkCreateFence(&fenceCreateInfo, r_device.get_allocator(), &fence);
 		return FenceHandle(*this, fence);
 	}
 	else {
@@ -35,7 +35,7 @@ VkFence vulkan::FenceManager::request_raw_fence()
 		VkFenceCreateInfo fenceCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
 		};
-		vkCreateFence(r_device.get_device(), &fenceCreateInfo, r_device.get_allocator(), &fence);
+		r_device.get_device().vkCreateFence( &fenceCreateInfo, r_device.get_allocator(), &fence);
 		return  fence;
 	}
 	else {
@@ -49,11 +49,11 @@ void vulkan::FenceManager::reset_fence(VkFence fence) {
 	if (fence == VK_NULL_HANDLE)
 		return;
 	auto fence_ = fence;
-	auto status = vkGetFenceStatus(r_device.get_device(), fence);
+	auto status = r_device.get_device().vkGetFenceStatus( fence);
 	assert(status == VK_SUCCESS);
 	m_fences.push_back(fence_);
 	if (status == VK_SUCCESS) {
-		vkResetFences(r_device.get_device(), 1, &fence_);
+		r_device.get_device().vkResetFences( 1, &fence_);
 	}
 	else {
 		throw Utility::VulkanException(status);
@@ -72,7 +72,7 @@ VkSemaphore vulkan::SemaphoreManager::request_semaphore()
 			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 			.flags = 0
 		};
-		if (auto result = vkCreateSemaphore(r_device.get_device(), &semaphoreCreateInfo, r_device.get_allocator(), &semaphore); result != VK_SUCCESS) {
+		if (auto result = r_device.get_device().vkCreateSemaphore( &semaphoreCreateInfo, r_device.get_allocator(), &semaphore); result != VK_SUCCESS) {
 			throw Utility::VulkanException(result);
 		}
 		return semaphore;

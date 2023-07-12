@@ -22,7 +22,7 @@ template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 constexpr Math::Mat<Scalar, Size_y, Size_x, column_major>::Mat(const Quaternion<Scalar>& quaternion) :
 	m_data() 
 {
-	assert(("Rotation matrices from Quaternions are inherently 3D or 3D homogeneous", (Size_x == 3 || Size_x == 4) && (Size_y == 3 || Size_y == 4)));
+	assert( (Size_x == 3 || Size_x == 4) && (Size_y == 3 || Size_y == 4) && "Rotation matrices from Quaternions are inherently 3D or 3D homogeneous");
 	Scalar s2 = Scalar(2) / quaternion.squared_norm();
 	//auto normQuat = quaternion.normalize();
 	
@@ -406,9 +406,9 @@ inline constexpr Vec<Scalar, 3> Math::Mat<Scalar, Size_y, Size_x, column_major>:
 template<ScalarT Scalar, size_t Size_y, size_t Size_x, bool column_major>
 inline constexpr void Math::Mat<Scalar, Size_y, Size_x, column_major>::set_to_identity()
 {
-	for (int i = 0; i < Size_y * Size_x; i++)
+	for (size_t i = 0; i < Size_y * Size_x; i++)
 		m_data[i] = 0;
-	for (int i = 0; i < min(Size_x, Size_y); i++)
+	for (size_t i = 0; i < min(Size_x, Size_y); i++)
 		at(i, i) = 1;
 }
 
@@ -671,42 +671,42 @@ Mat<Scalar, 4, 4, column_major> Math::Mat<Scalar, Size_y, Size_x, column_major>:
 }
 
 
-template class Mat<float, 2, 2>;
-template class Mat<float, 2, 3>;
-template class Mat<float, 3, 3>;
-template class Mat<float, 4, 4>;
-template class Mat<float, 3, 2>;
-template class Mat<float, 4, 3>;
-template class Mat<float, 3, 4>;
-template class Mat<double, 2, 2>;
-template class Mat<double, 3, 3>;
-template class Mat<double, 4, 4>;
-template class Mat<int32_t, 2, 2>;
-template class Mat<int32_t, 3, 3>;
-template class Mat<int32_t, 4, 4>;
-template class Mat<int64_t, 2, 2>;
-template class Mat<int64_t, 3, 3>;
-template class Mat<int64_t, 4, 4>;
-template class Mat<int8_t, 2, 2>;
-template class Mat<int8_t, 3, 3>;
-template class Mat<int8_t, 4, 4>;
+template class Math::Mat<float, 2, 2>;
+template class Math::Mat<float, 2, 3>;
+template class Math::Mat<float, 3, 3>;
+template class Math::Mat<float, 4, 4>;
+template class Math::Mat<float, 3, 2>;
+template class Math::Mat<float, 4, 3>;
+template class Math::Mat<float, 3, 4>;
+template class Math::Mat<double, 2, 2>;
+template class Math::Mat<double, 3, 3>;
+template class Math::Mat<double, 4, 4>;
+template class Math::Mat<int32_t, 2, 2>;
+template class Math::Mat<int32_t, 3, 3>;
+template class Math::Mat<int32_t, 4, 4>;
+template class Math::Mat<int64_t, 2, 2>;
+template class Math::Mat<int64_t, 3, 3>;
+template class Math::Mat<int64_t, 4, 4>;
+template class Math::Mat<int8_t, 2, 2>;
+template class Math::Mat<int8_t, 3, 3>;
+template class Math::Mat<int8_t, 4, 4>;
 
-template class Mat<float, 2, 2, false>;
-template class Mat<float, 2, 3, false>;
-template class Mat<float, 3, 3, false>;
-template class Mat<float, 4, 4, false>;
-template class Mat<float, 3, 2, false>;
-template class Mat<float, 4, 3, false>;
-template class Mat<float, 3, 4, false>;
-template class Mat<double, 2, 2, false>;
-template class Mat<double, 3, 3, false>;
-template class Mat<double, 4, 4, false>;
-template class Mat<int32_t, 2, 2, false>;
-template class Mat<int32_t, 3, 3, false>;
-template class Mat<int32_t, 4, 4, false>;
-template class Mat<int64_t, 2, 2, false>;
-template class Mat<int64_t, 3, 3, false>;
-template class Mat<int64_t, 4, 4, false>;
-template class Mat<int8_t, 2, 2, false>;
-template class Mat<int8_t, 3, 3, false>;
-template class Mat<int8_t, 4, 4, false>;
+template class Math::Mat<float, 2, 2, false>;
+template class Math::Mat<float, 2, 3, false>;
+template class Math::Mat<float, 3, 3, false>;
+template class Math::Mat<float, 4, 4, false>;
+template class Math::Mat<float, 3, 2, false>;
+template class Math::Mat<float, 4, 3, false>;
+template class Math::Mat<float, 3, 4, false>;
+template class Math::Mat<double, 2, 2, false>;
+template class Math::Mat<double, 3, 3, false>;
+template class Math::Mat<double, 4, 4, false>;
+template class Math::Mat<int32_t, 2, 2, false>;
+template class Math::Mat<int32_t, 3, 3, false>;
+template class Math::Mat<int32_t, 4, 4, false>;
+template class Math::Mat<int64_t, 2, 2, false>;
+template class Math::Mat<int64_t, 3, 3, false>;
+template class Math::Mat<int64_t, 4, 4, false>;
+template class Math::Mat<int8_t, 2, 2, false>;
+template class Math::Mat<int8_t, 3, 3, false>;
+template class Math::Mat<int8_t, 4, 4, false>;

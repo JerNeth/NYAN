@@ -2,7 +2,10 @@
 #ifndef VKVULKANINCLUDES_H
 #define VKVULKANINCLUDES_H
 
-#define NOMINMAX
+#ifndef NOMINMAX
+# define INTERNAL_NOMINMAX
+# define NOMINMAX
+#endif
 #ifdef __clang__
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wnullability-completeness"
@@ -50,6 +53,11 @@ constexpr bool debugMarkers = true;
 #endif
 
 
+#ifndef INTERNAL_NOMINMAX
+# undef NOMINMAX
+#endif
+
+
 #undef VMA_RECORDING_ENABLED
 
 #include "glfwIncludes.h"
@@ -57,16 +65,4 @@ constexpr bool debugMarkers = true;
 #include "VulkanObject.h"
 
 #include "MaxVals.h"
-#include <array>
-#include <bitset>
-#include <vector>
-#include <fstream>
-#include <unordered_map>
-#include <shared_mutex>
-#include <stdexcept>
-#include <string>
-#include <iostream>
-#include <new>
-#include <cstddef>
-#include <thread>
 #endif   //!VKVULKANINCLUDES_H

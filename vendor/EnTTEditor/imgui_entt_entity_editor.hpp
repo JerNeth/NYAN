@@ -27,8 +27,8 @@ namespace MM {
 		ImGui::PushID(static_cast<int>(entt::to_integral(e)));
 
 		if (reg.valid(e)) {
-			if(reg.all_of<std::string>(e))
-				ImGui::Text("%d:\"%s\"", entt::to_integral(e), reg.get<std::string>(e).c_str());
+			if(reg.template all_of<std::string>(e))
+				ImGui::Text("%d:\"%s\"", entt::to_integral(e), reg.template get<std::string>(e).c_str());
 			else
 				ImGui::Text("ID: %d", entt::to_integral(e));
 		}
@@ -39,8 +39,8 @@ namespace MM {
 		if (reg.valid(e)) {
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
 				ImGui::SetDragDropPayload(MM_IEEE_IMGUI_PAYLOAD_TYPE_ENTITY, &e, sizeof(e));
-				if (reg.all_of<std::string>(e))
-					ImGui::Text("%d:\"%s\"", entt::to_integral(e), reg.get<std::string>(e).c_str());
+				if (reg.template all_of<std::string>(e))
+					ImGui::Text("%d:\"%s\"", entt::to_integral(e), reg.template get<std::string>(e).c_str());
 				else
 					ImGui::Text("ID: %d", entt::to_integral(e));
 				ImGui::EndDragDropSource();
@@ -264,7 +264,7 @@ namespace MM {
 
 				// TODO: add support for exclude
 
-				ImGui::Text("%lu Entities Matching:", view.size_hint());
+				ImGui::Text("%llu Entities Matching:", view.size_hint());
 
 				if (ImGui::BeginChild("entity list")) {
 					for (auto e : view) {

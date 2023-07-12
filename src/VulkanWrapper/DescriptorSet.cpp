@@ -32,7 +32,7 @@ uint32_t vulkan::DescriptorSet::set_storage_buffer(const VkDescriptorBufferInfo&
 		.descriptorType = bindless_binding_to_type(storageBufferBinding),
 		.pBufferInfo = &bufferInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 
@@ -48,7 +48,7 @@ uint32_t vulkan::DescriptorSet::set_uniform_buffer(const VkDescriptorBufferInfo&
 		.descriptorType = bindless_binding_to_type(uniformBufferBinding),
 		.pBufferInfo = &bufferInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 
@@ -64,7 +64,7 @@ uint32_t vulkan::DescriptorSet::set_sampler(const VkDescriptorImageInfo& imageIn
 		.descriptorType = bindless_binding_to_type(samplerBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 
@@ -80,7 +80,7 @@ uint32_t vulkan::DescriptorSet::set_sampled_image(const VkDescriptorImageInfo& i
 		.descriptorType = bindless_binding_to_type(sampledImageBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 
@@ -96,7 +96,7 @@ uint32_t vulkan::DescriptorSet::set_storage_image(const VkDescriptorImageInfo& i
 		.descriptorType = bindless_binding_to_type(storageImageBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 
@@ -117,7 +117,7 @@ uint32_t vulkan::DescriptorSet::set_acceleration_structure(const VkAccelerationS
 		.descriptorCount = 1,
 		.descriptorType = bindless_binding_to_type(accelerationStructureBinding)
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 	return arrayElement;
 }
 uint32_t vulkan::DescriptorSet::reserve_storage_buffer()
@@ -203,7 +203,7 @@ void vulkan::DescriptorSet::set_storage_buffer(uint32_t idx, const VkDescriptorB
 		.descriptorType = bindless_binding_to_type(storageBufferBinding),
 		.pBufferInfo = &bufferInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 void vulkan::DescriptorSet::set_uniform_buffer(uint32_t idx, const VkDescriptorBufferInfo& bufferInfo)
 {
@@ -216,7 +216,7 @@ void vulkan::DescriptorSet::set_uniform_buffer(uint32_t idx, const VkDescriptorB
 		.descriptorType = bindless_binding_to_type(uniformBufferBinding),
 		.pBufferInfo = &bufferInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 void vulkan::DescriptorSet::set_sampler(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
 {
@@ -229,7 +229,7 @@ void vulkan::DescriptorSet::set_sampler(uint32_t idx, const VkDescriptorImageInf
 		.descriptorType = bindless_binding_to_type(samplerBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 void vulkan::DescriptorSet::set_sampled_image(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
 {
@@ -242,7 +242,7 @@ void vulkan::DescriptorSet::set_sampled_image(uint32_t idx, const VkDescriptorIm
 		.descriptorType = bindless_binding_to_type(sampledImageBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 void vulkan::DescriptorSet::set_storage_image(uint32_t idx, const VkDescriptorImageInfo& imageInfo)
 {
@@ -255,7 +255,7 @@ void vulkan::DescriptorSet::set_storage_image(uint32_t idx, const VkDescriptorIm
 		.descriptorType = bindless_binding_to_type(storageImageBinding),
 		.pImageInfo = &imageInfo,
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 void vulkan::DescriptorSet::set_acceleration_structure(uint32_t idx, const VkAccelerationStructureKHR& accelerationStructure)
 {
@@ -273,7 +273,7 @@ void vulkan::DescriptorSet::set_acceleration_structure(uint32_t idx, const VkAcc
 		.descriptorCount = 1,
 		.descriptorType = bindless_binding_to_type(accelerationStructureBinding)
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 }
 std::vector<uint32_t> vulkan::DescriptorSet::set_storage_buffer(const std::vector<VkDescriptorBufferInfo>& bufferInfos)
 {
@@ -291,7 +291,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_storage_buffer(const std::vecto
 		.descriptorType = bindless_binding_to_type(storageBufferBinding),
 		.pBufferInfo = bufferInfos.data()
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -311,7 +311,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_uniform_buffer(const std::vecto
 		.descriptorType = bindless_binding_to_type(uniformBufferBinding),
 		.pBufferInfo = bufferInfos.data()
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -331,7 +331,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_sampler(const std::vector<VkDes
 		.descriptorType = bindless_binding_to_type(samplerBinding),
 		.pImageInfo = imageInfos.data()
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets(1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -351,7 +351,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_sampled_image(const std::vector
 		.descriptorType = bindless_binding_to_type(sampledImageBinding),
 		.pImageInfo = imageInfos.data()
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -371,7 +371,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_storage_image(const std::vector
 		.descriptorType = bindless_binding_to_type(storageImageBinding),
 		.pImageInfo = imageInfos.data()
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets(1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -400,7 +400,7 @@ std::vector<uint32_t> vulkan::DescriptorSet::set_acceleration_structure(const st
 		.descriptorCount = static_cast<uint32_t>(accelerationStructures.size()),
 		.descriptorType = bindless_binding_to_type(accelerationStructureBinding)
 	};
-	vkUpdateDescriptorSets(r_pool.r_device.get_device(), 1, &write, 0, nullptr);
+	r_pool.r_device.get_device().vkUpdateDescriptorSets( 1, &write, 0, nullptr);
 
 	return arrayElements;
 }
@@ -600,7 +600,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device) :
 		.pBindings = bindings.data()
 	};
 
-	if (auto result = vkCreateDescriptorSetLayout(r_device.get_device(), &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateDescriptorSetLayout( &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -612,7 +612,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device) :
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data(),
 	};
-	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateDescriptorPool( &poolCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -776,7 +776,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		.pBindings = bindings.data()
 	};
 
-	if (auto result = vkCreateDescriptorSetLayout(r_device.get_device(), &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateDescriptorSetLayout( &setLayoutCreateInfo, r_device.get_allocator(), &m_layout); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -788,7 +788,7 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data(),
 	};
-	if (auto result = vkCreateDescriptorPool(r_device.get_device(), &poolCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkCreateDescriptorPool(&poolCreateInfo, r_device.get_allocator(), &m_handle); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 
@@ -797,9 +797,9 @@ vulkan::DescriptorPool::DescriptorPool(LogicalDevice& device, const DescriptorCr
 vulkan::DescriptorPool::~DescriptorPool() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		vkDestroyDescriptorPool(r_device.get_device(), m_handle, r_device.get_allocator());
+		r_device.get_device().vkDestroyDescriptorPool(m_handle, r_device.get_allocator());
 	if (m_layout != VK_NULL_HANDLE)
-		vkDestroyDescriptorSetLayout(r_device.get_device(), m_layout, r_device.get_allocator());
+		r_device.get_device().vkDestroyDescriptorSetLayout(m_layout, r_device.get_allocator());
 }
 
 vulkan::DescriptorSet vulkan::DescriptorPool::allocate_set()
@@ -819,7 +819,7 @@ vulkan::DescriptorSet vulkan::DescriptorPool::allocate_set()
 		.descriptorSetCount = 1,
 		.pSetLayouts = &m_layout
 	};
-	if (auto result = vkAllocateDescriptorSets(r_device.get_device(), &allocateInfo, &set); result != VK_SUCCESS) {
+	if (auto result = r_device.get_device().vkAllocateDescriptorSets( &allocateInfo, &set); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	return { *this, set };

@@ -23,4 +23,4 @@ namespace nyan {
 	};
 }
 
-#endif !RDCAMERCONTROLLER_H
+#endif //!RDCAMERCONTROLLER_H

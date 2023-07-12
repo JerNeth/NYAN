@@ -179,7 +179,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 				assert(bufferView.byteLength);
 				std::byte* data = reinterpret_cast<std::byte*>(buffer.data.data() + bufferView.byteOffset + accessor.byteOffset);
 				auto stride = bufferView.byteStride;
-				auto numComponents = tinygltf::GetNumComponentsInType(accessor.type);
+				uint32_t numComponents = tinygltf::GetNumComponentsInType(accessor.type) >= 0 ? tinygltf::GetNumComponentsInType(accessor.type) : 0;
 				auto componentByteSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
 				if (!stride)
 					stride = numComponents * componentByteSize;
@@ -337,8 +337,8 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 			auto& material = materialManager.get_material(materialMap[primitive.material]);
 			if (nMesh.tangents.empty()) {
 				Utility::log_warning().format("{}: has no tangents, skipping mesh", nMesh.name);
-				for (auto i = 0; i < nMesh.normals.size(); ++i)
-					nMesh.tangents.push_back(decltype(nMesh.tangents)::value_type{ -1, 0,0, 1 });
+				nMesh.tangents.clear();
+				nMesh.tangents.resize(nMesh.normals.size(), decltype(nMesh.tangents)::value_type{ -1, 0, 0, 1 });
 				//continue;
 			}
 			if (nMesh.uvs0.empty()) {
