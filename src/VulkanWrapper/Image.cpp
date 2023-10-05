@@ -1,8 +1,9 @@
-#include "Image.h"
-#include "PhysicalDevice.hpp"
-#include "LogicalDevice.h"
-#include "Allocator.h"
+#include "VulkanWrapper/Image.h"
+
 #include "Utility/Exceptions.h"
+
+#include "VulkanWrapper/PhysicalDevice.hpp"
+#include "VulkanWrapper/LogicalDevice.h"
 
 vulkan::ImageView::ImageView(LogicalDevice& parent, const ImageViewCreateInfo& info) :
 	VulkanObject(parent),
@@ -35,7 +36,7 @@ vulkan::ImageView::ImageView(ImageView&& other) noexcept:
 }
 vulkan::ImageView::~ImageView() noexcept {
     if(m_handle != VK_NULL_HANDLE) {
-        r_device.queue_image_view_deletion(m_handle);
+		r_device.get_deletion_queue().queue_image_view_deletion(m_handle);
     }
 }
 
@@ -139,7 +140,7 @@ vulkan::Image& vulkan::Image::operator=(Image&& other) noexcept
 	if (this != &other) {
 		if (m_ownsImage)
 			if (m_handle != VK_NULL_HANDLE)
-				r_device.queue_image_deletion(m_handle);
+				r_device.get_deletion_queue().queue_image_deletion(m_handle);
 		m_allocations.clear();
 		m_optimal = other.m_optimal;
 		m_ownsImage = other.m_ownsImage;
@@ -162,7 +163,7 @@ vulkan::Image::~Image() noexcept
 {		
 	if (m_ownsImage)
 		if (m_handle != VK_NULL_HANDLE)
-			r_device.queue_image_deletion(m_handle);
+			r_device.get_deletion_queue().queue_image_deletion(m_handle);
 	
 }
 

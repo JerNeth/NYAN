@@ -10,6 +10,7 @@
 #include <format>
 #include <iostream>
 
+
 namespace Utility {
 	class Logger {
 	public:
@@ -42,20 +43,23 @@ namespace Utility {
 			return *this;
 		}
 		~Logger() {
-			if (!m_newLine)
+			if (!m_newLine || !loggingEnabled)
 				return;
 			stream() << '\n';
 		}
 		const Logger& message(const std::string_view message) const& {
-			stream() << message;
+			if constexpr (loggingEnabled)
+				stream() << message;
 			return *this;
 		}
 		Logger&& message(const std::string_view message) && {
-			stream() << message;
+			if constexpr (loggingEnabled)
+				stream() << message;
 			return std::move(*this);
 		}
 		const Logger& location(const std::source_location location = std::source_location::current()) const & {
-			stream() << "file: "
+			if constexpr (loggingEnabled)
+				stream() << "file: "
 				<< location.file_name() << "("
 				<< location.line() << ":"
 				<< location.column() << ") `"
@@ -64,7 +68,8 @@ namespace Utility {
 			return *this;
 		}
 		Logger&& location(const std::source_location location = std::source_location::current()) && {
-			stream() << "file: "
+			if constexpr (loggingEnabled)
+				stream() << "file: "
 				<< location.file_name() << "("
 				<< location.line() << ":"
 				<< location.column() << ") `"
@@ -74,13 +79,15 @@ namespace Utility {
 		}
 		template<typename ...Args>
 		const Logger& format(std::string_view view, Args&&... args) const & {
-			stream() << std::vformat(view, std::make_format_args(args...));
+			if constexpr (loggingEnabled)
+				stream() << std::vformat(view, std::make_format_args(args...));
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return *this;
 		}
 		template<typename ...Args>
 		Logger&& format(std::string_view view, Args&&... args) && {
-			stream() << std::vformat(view, std::make_format_args(args...));
+			if constexpr (loggingEnabled)
+				stream() << std::vformat(view, std::make_format_args(args...));
 			//OutputDebugString(std::vformat(view, std::make_format_args(args...)));
 			return std::move(*this);
 		}
@@ -96,6 +103,7 @@ namespace Utility {
 		}
 		Type m_type {Type::Info};
 		bool m_newLine = true;
+		static constexpr bool loggingEnabled = true;
 		
 	};
 	inline Logger log()

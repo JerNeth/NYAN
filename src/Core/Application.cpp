@@ -87,6 +87,7 @@ void nyan::Application::end_frame()
 	}
 	m_windowSystemInterface->end_frame();
 	m_frameCount++;
+	m_vulkanDevice->get_deletion_queue().advance_epoch();
 }
 
 void nyan::Application::main_loop()
@@ -141,13 +142,12 @@ void nyan::Application::quit_after(uint64_t numFrames)
 
 bool nyan::Application::setup_glfw()
 {
-	try {
-		m_glfwLibrary = std::make_unique<glfww::Library>();
-	}
-	catch (const std::runtime_error& error) {
-		std::cerr << error.what() << std::endl;
+	auto result = glfw::Library::create();
+	if (!result) {
+		Utility::log_error(result.error().what());
 		return false;
 	}
+	m_glfwLibrary = std::make_unique<glfw::Library>(std::move(*result));
 	return true;
 }
 
@@ -197,7 +197,37 @@ bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation
 {
 	try {
 
-		auto requiredExtensions = m_glfwLibrary->get_required_extensions();
+		auto platform = m_glfwLibrary->get_platform();
+		std::vector<const char*> requiredExtensions;
+
+		switch(platform) {
+			case glfw::Library::Platform::Win32:
+				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+				requiredExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#endif
+				break;
+			case glfw::Library::Platform::Cocoa: 
+				assert(false);
+				return false;
+				break;
+			case glfw::Library::Platform::X11: 
+				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+				requiredExtensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+#endif
+				break;
+			case glfw::Library::Platform::Wayland: 
+				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+				requiredExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#endif
+				break;
+			case glfw::Library::Platform::Null: 
+				break;
+			case glfw::Library::Platform::AnyPlatform: assert(false);
+			default: ;
+		}
 		//VK_KHR_SURFACE_EXTENSION_NAME;
 
 		//VK_KHR_WIN32_SURFACE_EXTENSION_NAME;  //VK_USE_PLATFORM_WIN32_KHR
@@ -248,8 +278,6 @@ bool nyan::Application::setup_vulkan_device()
 			VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
 			VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 			//VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, //Crashes nsight captures for some reason
-			//VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, 1.2 Core
-			//VK_KHR_MAINTENANCE_4_EXTENSION_NAME, 1.3 Core
 			//VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME, Not widely supported idk
 			VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
 			//VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME, //barely supported on desktop, only some linux configs
@@ -257,6 +285,55 @@ bool nyan::Application::setup_vulkan_device()
 			//VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, //Not really supported on windows, with nvidia hardware
 			VK_KHR_PRESENT_ID_EXTENSION_NAME,
 			//VK_KHR_PRESENT_WAIT_EXTENSION_NAME, //Device creation stalling with this extension for some reason.
+		};
+		std::vector vulkan12Extensions {
+			VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
+			VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+			VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+			VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+			VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
+			VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,
+			VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
+			VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,
+			VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,
+			VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME,
+			VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME,
+			VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+			VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME,
+			VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME,
+			VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+			VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+			VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME,
+			VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME,
+			VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+			VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,
+			VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+			VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
+			VK_EXT_SEPARATE_STENCIL_USAGE_EXTENSION_NAME,
+			VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME
+		};
+		std::vector vulkan13Extensions {
+			VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME,
+			VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME,
+			VK_EXT_PRIVATE_DATA_EXTENSION_NAME,
+			VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME,
+			VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME,
+			VK_EXT_TEXEL_BUFFER_ALIGNMENT_EXTENSION_NAME,
+			VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME,
+			VK_EXT_YCBCR_2PLANE_444_FORMATS_EXTENSION_NAME,
+			VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME,
+			VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME,
+			VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME,
+			VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+			VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+			VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME,
+			VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
+			VK_KHR_SHADER_TERMINATE_INVOCATION_EXTENSION_NAME,
+			VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+			VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME,
+			VK_EXT_4444_FORMATS_EXTENSION_NAME,
+			VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+			VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME
 		};
 		const auto deviceId = m_settings.get_value<size_t>(Settings::Setting::DeviceIdx);
 		size_t deviceIdx = 0;
@@ -272,7 +349,17 @@ bool nyan::Application::setup_vulkan_device()
 			if (!required)
 				continue;
 			//uint32_t optional = 0;
-			for (const auto& extension : optionalExtensions)
+			auto extensions = optionalExtensions;
+			if(dev.get_properties().apiVersion < VK_API_VERSION_1_2)
+			{
+				extensions.insert(extensions.end(), vulkan12Extensions.begin(), vulkan12Extensions.end());
+			}
+
+			if (dev.get_properties().apiVersion < VK_API_VERSION_1_3)
+			{
+				extensions.insert(extensions.end(), vulkan13Extensions.begin(), vulkan13Extensions.end());
+			}
+			for (const auto& extension : extensions)
 				dev.use_extension(extension);
 				//optional += dev.use_extension(extension);
 			validDevices.push_back(idx);
@@ -299,10 +386,6 @@ bool nyan::Application::setup_vulkan_device()
 		const auto computeQueuePriorities = init_priorities(1, discreteQueuePriorities);
 		const auto transferQueuePriorities = init_priorities(1, discreteQueuePriorities);
 		//m_vulkanDevice = physicalDevice.create_logical_device(*m_vulkanInstance, genericQueuePriorities, computeQueuePriorities, transferQueuePriorities);
-		constexpr uint32_t a = VK_API_VERSION_1_3; 
-		constexpr uint32_t b = VK_VERSION_MAJOR(4206828);
-		constexpr uint32_t c = VK_VERSION_MINOR(4206828);
-		constexpr uint32_t d = VK_VERSION_PATCH(4206828);
 		m_vulkanDevice = physicalDevice.create_logical_device(*m_vulkanInstance);
 		m_windowSystemInterface = std::make_unique<vulkan::WindowSystemInterface>(*m_vulkanDevice, *m_vulkanInstance);
 		m_vulkanDevice->create_pipeline_cache("pipeline.cache");

@@ -1,11 +1,12 @@
-#include "Queue.hpp"
 #include "VulkanWrapper/Queue.hpp"
-#include "VulkanWrapper/LogicalDevice.h"
-#include "VulkanWrapper/PhysicalDevice.hpp"
+
 #include "Utility/Exceptions.h"
 
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 
-vulkan::Queue::Queue(LogicalDevice& device, const Type type, const VkQueue queueHandle, const uint32_t queueFamilyIndex, const float priority) :
+
+vulkan::Queue::Queue(LogicalDevice& device, const Type type, const VkQueue queueHandle, const uint32_t queueFamilyIndex, const float priority) noexcept :
 	VulkanObject(device, queueHandle),
 	m_type(type),
 	m_queueFamilyIndex(queueFamilyIndex),
@@ -15,16 +16,18 @@ vulkan::Queue::Queue(LogicalDevice& device, const Type type, const VkQueue queue
 	assert(r_device.get_physical_device().get_vulkan13_features().synchronization2);
 }
 
-void vulkan::Queue::wait_idle() const
+std::expected<void, vulkan::Error> vulkan::Queue::wait_idle() const noexcept
 {
 	assert(m_handle);
 	if (const auto result = vkQueueWaitIdle(m_handle); result != VK_SUCCESS)
 	{
-		throw Utility::VulkanException(result);
+		return std::unexpected{vulkan::Error{ result }};
 	}
+
+	return {};
 }
 
-void vulkan::Queue::submit2(const std::span<VkSubmitInfo2> submits, const VkFence fence) const
+std::expected<void, vulkan::Error> vulkan::Queue::submit2(const std::span<VkSubmitInfo2> submits, const VkFence fence) const noexcept
 {
 	assert(m_handle);
 	assert(submits.size() <= std::numeric_limits<uint32_t>::max());
@@ -55,8 +58,8 @@ void vulkan::Queue::submit2(const std::span<VkSubmitInfo2> submits, const VkFenc
 			assert(!(wait.stageMask & VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR) || r_device.get_physical_device().get_extensions().ray_tracing_pipeline);
 			assert(!(wait.stageMask & VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT) || r_device.get_physical_device().get_extensions().mesh_shader);
 			assert(!(wait.stageMask & VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT) || r_device.get_physical_device().get_extensions().mesh_shader);//Strictly not spec, but mesh_shader covers both
-			for (uint32_t i = 0; i < submit.signalSemaphoreInfoCount; ++i) {
-				const auto& signal = submit.pSignalSemaphoreInfos[i];
+			for (uint32_t j = 0; j < submit.signalSemaphoreInfoCount; ++j) {
+				const auto& signal = submit.pSignalSemaphoreInfos[j];
 				if (signal.semaphore == wait.semaphore)
 					assert((signal.value > wait.value) || (signal.value == 0 && wait.value == 0));
 			}
@@ -64,11 +67,12 @@ void vulkan::Queue::submit2(const std::span<VkSubmitInfo2> submits, const VkFenc
 	}
 	if (const auto result = vkQueueSubmit2(m_handle, static_cast<uint32_t>(submits.size()), submits.data(), fence); result != VK_SUCCESS)
 	{
-		throw Utility::VulkanException(result);
+		return std::unexpected{vulkan::Error{ result }};
 	}
+	return {};
 }
 
-void vulkan::Queue::present(Swapchain& swapchain, std::span<VkSemaphore> waitSemaphores) const
+std::expected<void, vulkan::Error> vulkan::Queue::present(Swapchain& swapchain, std::span<VkSemaphore> waitSemaphores) const noexcept
 {
 	assert(m_presentCapable);
 	VkPresentInfoKHR presentInfo{
@@ -83,47 +87,33 @@ void vulkan::Queue::present(Swapchain& swapchain, std::span<VkSemaphore> waitSem
 	if (auto result = vkQueuePresentKHR(m_handle, &presentInfo); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			//destroy swapchain
+			return std::unexpected{vulkan::Error{ result }};
 		}
 		else if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
 		{
+			return std::unexpected{vulkan::Error{ result }};
 			//TODO handle this case if fullscreen support required.
-			throw Utility::VulkanException(result);
+			//throw Utility::VulkanException(result);
 		}
 		else if (result == VK_ERROR_DEVICE_LOST)
 		{
-			throw Utility::DeviceLostException(std::format("vkQueuePresentKHR: {:#x}", reinterpret_cast<uint64_t>(m_handle)));
+			return std::unexpected{vulkan::Error{ result }};
+			//throw Utility::DeviceLostException(std::format("vkQueuePresentKHR: {:#x}", reinterpret_cast<uint64_t>(m_handle)));
 		}
 		else if (result == VK_ERROR_SURFACE_LOST_KHR)
 		{
-			throw Utility::SurfaceLostException(std::format("vkQueuePresentKHR: {:#x}", reinterpret_cast<uint64_t>(m_handle)));
+			return std::unexpected{vulkan::Error{ result }};
+			//throw Utility::SurfaceLostException(std::format("vkQueuePresentKHR: {:#x}", reinterpret_cast<uint64_t>(m_handle)));
 		}
 		else {
-			throw Utility::VulkanException(result);
+			return std::unexpected{vulkan::Error{ result }};
+			//throw Utility::VulkanException(result);
 		}
 	}
+	return {};
 }
 
 void vulkan::Queue::set_present_capable(const bool capable) noexcept
 {
 	m_presentCapable = capable;
-}
-
-float vulkan::Queue::get_priority() const noexcept
-{
-	return m_priority;
-}
-
-uint32_t vulkan::Queue::get_family_index() const noexcept
-{
-	return m_queueFamilyIndex;
-}
-
-bool vulkan::Queue::get_present_capable() const noexcept
-{
-	return m_presentCapable;
-}
-
-vulkan::Queue::Type vulkan::Queue::get_type() const noexcept
-{
-	return m_type;
 }

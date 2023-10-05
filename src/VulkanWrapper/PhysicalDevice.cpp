@@ -42,6 +42,22 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 	for (const auto& ext : m_availableExtensions) {
 		if (strcmp(ext.extensionName, extension) == 0) {
 			if (strcmp(ext.extensionName, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0) {
+
+				if (m_properties.properties.apiVersion < VK_API_VERSION_1_1)
+					break;
+
+				bool dependencies = true;
+				if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+					dependencies &= use_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+				dependencies &= m_extensions.bufferDeviceAddress;
+
+				if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+					dependencies &= use_extension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+				dependencies &= m_extensions.descriptorIndexing;
+
+				dependencies &= use_extension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+				if (!dependencies)
+					break;
 				m_extensions.acceleration_structure = m_accelerationStructureFeatures.accelerationStructure;
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0) {
@@ -63,7 +79,7 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 				bool dependencies = true;
 				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 				if (!dependencies)
-					return false;
+					break;
 				m_extensions.present_id = m_presentIdFeatures.presentId;
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_PRESENT_WAIT_EXTENSION_NAME) == 0) {
@@ -71,7 +87,7 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 				dependencies &= use_extension(VK_KHR_PRESENT_ID_EXTENSION_NAME);
 				if (!dependencies)
-					return false;
+					break;
 				m_extensions.present_wait = m_presentWaitFeatures.presentWait;
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
@@ -81,7 +97,7 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 				bool dependencies = true;
 				dependencies &= use_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 				if (!dependencies)
-					return false;
+					break;
 				m_extensions.fullscreen_exclusive = 1;
 			}
 			else if (strcmp(ext.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0) {
@@ -98,6 +114,186 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 			}
 			else if (strcmp(ext.extensionName, VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME) == 0) {
 				m_extensions.performance_query = 1;
+			}
+			if (m_properties.properties.apiVersion < VK_API_VERSION_1_3) {
+				if (strcmp(ext.extensionName, VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME) == 0) {
+					m_extensions.pipelineCreationCacheControl = m_pipelineCreationCacheControlFeatures.pipelineCreationCacheControl;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME) == 0) {
+					m_extensions.pipelineCreationFeedback = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_PRIVATE_DATA_EXTENSION_NAME) == 0) {
+					m_extensions.privateData = m_privateDataFeatures.privateData;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME) == 0) {
+					m_extensions.shaderDemoteToHelperInvocation = m_shaderDemoteToHelperInvocationFeatures.shaderDemoteToHelperInvocation;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME) == 0) {
+					m_extensions.subgroupSizeControl = m_subgroupSizeControlFeatures.subgroupSizeControl;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_TEXEL_BUFFER_ALIGNMENT_EXTENSION_NAME) == 0) {
+					m_extensions.texelBufferAlignment = m_texelBufferAlignmentFeatures.texelBufferAlignment;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME) == 0) {
+					m_extensions.textureCompressionAstcHdr = m_textureCompressionAstchdrFeatures.textureCompressionASTC_HDR;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_YCBCR_2PLANE_444_FORMATS_EXTENSION_NAME) == 0) {
+					m_extensions.ycbcr2plane444Formats = m_ycbcr2Plane444FormatsFeatures.ycbcr2plane444Formats;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME) == 0) {
+					m_extensions.imageRobustness = m_imageRobustnessFeatures.robustImageAccess;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME) == 0) {
+					m_extensions.inlineUniformBlock = m_inlineUniformBlockFeatures.inlineUniformBlock;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME) == 0) {
+					m_extensions.copyCommands = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0) {
+					bool dependencies = true;
+					if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+						dependencies &= use_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
+					dependencies &= m_extensions.depthStencilResolve;
+					if (!dependencies)
+						break;
+					m_extensions.dynamicRendering = m_dynamicRenderingFeatures.dynamicRendering;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_MAINTENANCE_4_EXTENSION_NAME) == 0) {
+					m_extensions.dynamicRendering = m_maintenance4Features.maintenance4;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME) == 0) {
+					m_extensions.dynamicRendering = m_shaderIntegerDotProductFeatures.shaderIntegerDotProduct;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME) == 0) {
+					m_extensions.shaderNonSemanticInfo = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_TERMINATE_INVOCATION_EXTENSION_NAME) == 0) {
+					m_extensions.shaderTerminateInvocation = m_shaderTerminateInvocationFeatures.shaderTerminateInvocation;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) == 0) {
+					m_extensions.synchronization2 = m_synchronization2Features.synchronization2;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_ZERO_INITIALIZE_WORKGROUP_MEMORY_EXTENSION_NAME) == 0) {
+					m_extensions.zeroInitializeWorkgroupMemory = m_zeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_4444_FORMATS_EXTENSION_NAME) == 0) {
+					m_extensions.formats4444 = m_4444FormatsFeatures.formatA4B4G4R4 && m_4444FormatsFeatures.formatA4R4G4B4;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) {
+					m_extensions.extendedDynamicState = m_extendedDynamicStateFeatures.extendedDynamicState;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME) == 0) {
+					m_extensions.extendedDynamicState2 = m_extendedDynamicState2Features.extendedDynamicState2;
+				}
+			}
+			if (m_properties.properties.apiVersion < VK_API_VERSION_1_2) {
+				if (strcmp(ext.extensionName, VK_KHR_8BIT_STORAGE_EXTENSION_NAME) == 0) {
+					m_extensions.bit8Storage = m_8bitStorageFeatures.storageBuffer8BitAccess;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0) {
+					m_extensions.bufferDeviceAddress = m_bufferDeviceAddressFeatures.bufferDeviceAddress;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME) == 0) {
+					m_extensions.createRenderpass2 = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME) == 0) {
+					bool dependencies = true;
+					dependencies &= use_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+					dependencies &= m_extensions.createRenderpass2;
+					if (!dependencies)
+						break;
+					m_extensions.depthStencilResolve = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME) == 0) {
+					m_extensions.drawIndirectCount = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME) == 0) {
+					m_extensions.driverProperties = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME) == 0) {
+					m_extensions.imageFormatList = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME) == 0) {
+					bool dependencies = true;
+					dependencies &= use_extension(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
+					dependencies &= m_extensions.imagelessFramebuffer;
+					if (!dependencies)
+						break;
+					m_extensions.imagelessFramebuffer = m_imagelessFramebufferFeatures.imagelessFramebuffer;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME) == 0) {
+					m_extensions.samplerMirrorClampToEdge = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME) == 0) {
+					bool dependencies = true;
+					dependencies &= use_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+					dependencies &= m_extensions.createRenderpass2;
+					if (!dependencies)
+						break;
+					m_extensions.separateDepthStencilLayouts = m_separateDepthStencilLayoutsFeatures.separateDepthStencilLayouts;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME) == 0) {
+					m_extensions.shaderAtomicInt64 = m_shaderAtomicInt64Features.shaderSharedInt64Atomics && m_shaderAtomicInt64Features.shaderBufferInt64Atomics;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME) == 0) {
+					m_extensions.shaderFloat16Int8 = m_shaderFloat16Int8Features.shaderFloat16 && m_shaderFloat16Int8Features.shaderInt8;
+					m_extensions.float16Int8 = m_float16Int8Features.shaderFloat16 && m_float16Int8Features.shaderInt8;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME) == 0) {
+					m_extensions.shaderFloatControls = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SHADER_SUBGROUP_EXTENDED_TYPES_EXTENSION_NAME) == 0) {
+					m_extensions.shaderSubgroupExtendedTypes = m_shaderSubgroupExtendedTypesFeatures.shaderSubgroupExtendedTypes;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_SPIRV_1_4_EXTENSION_NAME) == 0) {
+					bool dependencies = true;
+					dependencies &= use_extension(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+					dependencies &= m_extensions.shaderFloatControls;
+					if (!dependencies)
+						break;
+					m_extensions.spirv14 = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME) == 0) {
+					m_extensions.timelineSemaphore = m_timelineSemaphoreFeatures.timelineSemaphore;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME) == 0) {
+					m_extensions.uniformBufferStandardLayout = m_uniformBufferStandardLayoutFeatures.uniformBufferStandardLayout;
+				}
+				else if (strcmp(ext.extensionName, VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME) == 0) {
+					m_extensions.vulkanMemoryModel = m_vulkanMemoryModelFeatures.vulkanMemoryModel;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0) {
+					m_extensions.descriptorIndexing = m_descriptorIndexingFeatures.shaderUniformTexelBufferArrayDynamicIndexing
+						&& m_descriptorIndexingFeatures.shaderStorageTexelBufferArrayDynamicIndexing
+						&& m_descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing
+						&& m_descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing
+						&& m_descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing
+						&& m_descriptorIndexingFeatures.shaderStorageImageArrayNonUniformIndexing
+						&& m_descriptorIndexingFeatures.shaderStorageTexelBufferArrayNonUniformIndexing
+						&& m_descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind
+						&& m_descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind
+						&& m_descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind
+						&& m_descriptorIndexingFeatures.descriptorBindingUniformTexelBufferUpdateAfterBind
+						&& m_descriptorIndexingFeatures.descriptorBindingStorageTexelBufferUpdateAfterBind
+						&& m_descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending
+						&& m_descriptorIndexingFeatures.descriptorBindingPartiallyBound
+						&& m_descriptorIndexingFeatures.runtimeDescriptorArray;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME) == 0) {
+					m_extensions.hostQueryReset = m_hostQueryResetFeatures.hostQueryReset;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME) == 0) {
+					m_extensions.samplerFilterMinmax = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME) == 0) {
+					m_extensions.scalarBlockLayout = m_scalarBlockLayoutFeatures.scalarBlockLayout;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SEPARATE_STENCIL_USAGE_EXTENSION_NAME) == 0) {
+					m_extensions.separateStencilUsage = 1;
+				}
+				else if (strcmp(ext.extensionName, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME) == 0) {
+					m_extensions.shaderViewportIndexLayer = 1;
+				}
 			}
 			if (std::find(std::begin(m_usedExtensions), std::end(m_usedExtensions), extension) == std::end(m_usedExtensions))
 				m_usedExtensions.push_back(extension);
@@ -509,47 +705,132 @@ void vulkan::PhysicalDevice::init_features() noexcept
 		vkGetPhysicalDeviceFeatures(m_vkHandle, &m_features.features);
 		return;
 	}
-	m_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	m_features.pNext = &m_11Features;
 
-	m_11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 	m_11Features.pNext = &m_12Features;
-
-	m_12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+	
 	m_12Features.pNext = &m_13Features;
 
-
-	m_13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	m_13Features.pNext = &m_atomicFloatFeatures;
-
-	m_atomicFloatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+	
 	m_atomicFloatFeatures.pNext = &m_accelerationStructureFeatures;
-
-	m_accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+	
 	m_accelerationStructureFeatures.pNext = &m_rayTracingPipelineFeatures;
-
-	m_rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+	
 	m_rayTracingPipelineFeatures.pNext = &m_rayQueryFeatures;
 
-	m_rayQueryFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
 	m_rayQueryFeatures.pNext = &m_vertexInputDynamicStateFeatures;
-
-	m_vertexInputDynamicStateFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT;
+	
 	m_vertexInputDynamicStateFeatures.pNext = &m_meshShaderFeatures;
-
-	m_meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+	
 	m_meshShaderFeatures.pNext = &m_presentIdFeatures;
 
-	m_presentIdFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
 	m_presentIdFeatures.pNext = &m_presentWaitFeatures;
-
-	m_presentWaitFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+	
 	m_presentWaitFeatures.pNext = nullptr;
 
+
+	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
+	{
+		m_presentWaitFeatures.pNext = &m_pipelineCreationCacheControlFeatures;
+		m_pipelineCreationCacheControlFeatures.pNext = &m_privateDataFeatures;
+		m_privateDataFeatures.pNext = &m_shaderDemoteToHelperInvocationFeatures;
+		m_shaderDemoteToHelperInvocationFeatures.pNext = &m_subgroupSizeControlFeatures;
+		m_subgroupSizeControlFeatures.pNext = &m_texelBufferAlignmentFeatures;
+		m_textureCompressionAstchdrFeatures.pNext = &m_imageRobustnessFeatures;
+		m_imageRobustnessFeatures.pNext = &m_inlineUniformBlockFeatures;
+		m_inlineUniformBlockFeatures.pNext = &m_dynamicRenderingFeatures;
+		m_dynamicRenderingFeatures.pNext = &m_maintenance4Features;
+		m_maintenance4Features.pNext = &m_shaderIntegerDotProductFeatures;
+		m_shaderIntegerDotProductFeatures.pNext = &m_shaderTerminateInvocationFeatures;
+		m_shaderTerminateInvocationFeatures.pNext = &m_synchronization2Features;
+		m_synchronization2Features.pNext = &m_zeroInitializeWorkgroupMemoryFeatures;
+		m_zeroInitializeWorkgroupMemoryFeatures.pNext = &m_4444FormatsFeatures;
+		m_4444FormatsFeatures.pNext = &m_extendedDynamicStateFeatures;
+		m_extendedDynamicStateFeatures.pNext = &m_extendedDynamicState2Features;
+		m_extendedDynamicState2Features.pNext = &m_ycbcr2Plane444FormatsFeatures;
+		m_ycbcr2Plane444FormatsFeatures.pNext = nullptr;
+	}
+
+
+	if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+	{
+		m_extendedDynamicState2Features.pNext = &m_8bitStorageFeatures;
+		m_8bitStorageFeatures.pNext = &m_bufferDeviceAddressFeatures;
+		m_bufferDeviceAddressFeatures.pNext = &m_separateDepthStencilLayoutsFeatures;
+		m_separateDepthStencilLayoutsFeatures.pNext = &m_shaderAtomicInt64Features;
+		m_shaderAtomicInt64Features.pNext = &m_float16Int8Features;
+		m_float16Int8Features.pNext = &m_shaderFloat16Int8Features;
+		m_shaderFloat16Int8Features.pNext = &m_shaderSubgroupExtendedTypesFeatures;
+		m_shaderSubgroupExtendedTypesFeatures.pNext = &m_timelineSemaphoreFeatures;
+		m_timelineSemaphoreFeatures.pNext = &m_uniformBufferStandardLayoutFeatures;
+		m_uniformBufferStandardLayoutFeatures.pNext = &m_vulkanMemoryModelFeatures;
+		m_vulkanMemoryModelFeatures.pNext = &m_descriptorIndexingFeatures;
+		m_descriptorIndexingFeatures.pNext = &m_hostQueryResetFeatures;
+		m_hostQueryResetFeatures.pNext = &m_scalarBlockLayoutFeatures;
+		m_scalarBlockLayoutFeatures.pNext = &m_imagelessFramebufferFeatures;
+		m_imagelessFramebufferFeatures.pNext = nullptr;
+	}
 
 	vkGetPhysicalDeviceFeatures2(m_vkHandle, &m_features);
 
 	m_features.pNext = nullptr;
+
+
+	if (m_properties.properties.apiVersion >= VK_API_VERSION_1_3)
+	{
+		m_extensions.copyCommands = 1;
+		m_extensions.dynamicRendering = m_13Features.dynamicRendering;
+		m_extensions.formatFeatureFlags2 = 1;
+		m_extensions.maintenance4 = m_13Features.maintenance4;
+		m_extensions.shaderIntegerDotProduct = m_13Features.shaderIntegerDotProduct;
+		m_extensions.shaderNonSemanticInfo = 1;
+		m_extensions.shaderTerminateInvocation = m_13Features.shaderTerminateInvocation;
+		m_extensions.synchronization2 = m_13Features.synchronization2;
+		m_extensions.zeroInitializeWorkgroupMemory = m_13Features.shaderZeroInitializeWorkgroupMemory;
+		m_extensions.formats4444 = 1;
+		m_extensions.extendedDynamicState = 1;
+		m_extensions.extendedDynamicState2 = 1;
+		m_extensions.imageRobustness = m_13Features.robustImageAccess;
+		m_extensions.inlineUniformBlock = m_13Features.inlineUniformBlock;
+		m_extensions.pipelineCreationCacheControl = m_13Features.pipelineCreationCacheControl;
+		m_extensions.pipelineCreationFeedback = 1;
+		m_extensions.privateData = m_13Features.privateData;
+		m_extensions.shaderDemoteToHelperInvocation = m_13Features.shaderDemoteToHelperInvocation;
+		m_extensions.subgroupSizeControl = m_13Features.subgroupSizeControl;
+		m_extensions.texelBufferAlignment = 1;
+		m_extensions.textureCompressionAstcHdr = m_13Features.textureCompressionASTC_HDR;
+		m_extensions.toolingInfo = 1;
+		m_extensions.ycbcr2plane444Formats = 1;
+	}
+	if (m_properties.properties.apiVersion >= VK_API_VERSION_1_2)
+	{
+		m_extensions.bit8Storage = m_12Features.storageBuffer8BitAccess && m_12Features.uniformAndStorageBuffer8BitAccess && m_12Features.storagePushConstant8;
+		m_extensions.bufferDeviceAddress = m_12Features.bufferDeviceAddress;
+		m_extensions.createRenderpass2 = 1;
+		m_extensions.depthStencilResolve = 1;
+		m_extensions.drawIndirectCount = m_12Features.drawIndirectCount;
+		m_extensions.driverProperties = 1;
+		m_extensions.imageFormatList = 1;
+		m_extensions.imagelessFramebuffer = m_12Features.imagelessFramebuffer;
+		m_extensions.samplerMirrorClampToEdge = m_12Features.samplerMirrorClampToEdge;
+		m_extensions.separateDepthStencilLayouts = m_12Features.separateDepthStencilLayouts;
+		m_extensions.shaderAtomicInt64 = m_12Features.shaderBufferInt64Atomics && m_12Features.shaderSharedInt64Atomics;
+		m_extensions.shaderFloat16Int8 = m_12Features.shaderFloat16 && m_12Features.shaderInt8;
+		m_extensions.float16Int8 = m_12Features.shaderFloat16 && m_12Features.shaderInt8;
+		m_extensions.shaderFloatControls = 1;
+		m_extensions.shaderSubgroupExtendedTypes = m_12Features.shaderSubgroupExtendedTypes;
+		m_extensions.spirv14 = 1;
+		m_extensions.timelineSemaphore = m_12Features.timelineSemaphore;
+		m_extensions.uniformBufferStandardLayout = m_12Features.uniformBufferStandardLayout;
+		m_extensions.vulkanMemoryModel = m_12Features.vulkanMemoryModel;
+		m_extensions.descriptorIndexing = m_12Features.descriptorIndexing;
+		m_extensions.hostQueryReset = m_12Features.hostQueryReset;
+		m_extensions.samplerFilterMinmax = m_12Features.samplerFilterMinmax;
+		m_extensions.scalarBlockLayout = m_12Features.scalarBlockLayout;
+		m_extensions.separateStencilUsage = 1;
+		m_extensions.shaderViewportIndexLayer = m_12Features.shaderOutputViewportIndex;
+	}
 }
 
 void vulkan::PhysicalDevice::init_properties() noexcept
@@ -559,33 +840,45 @@ void vulkan::PhysicalDevice::init_properties() noexcept
 	{
 		return;
 	}
-	m_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 	m_properties.pNext = &m_subgroupProperties;
-
-	m_subgroupProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+	
 	m_subgroupProperties.pNext = &m_11Properties;
-
-	m_11Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+	
 	m_11Properties.pNext = &m_12Properties;
 	if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
 		m_11Properties.pNext = &m_accelerationStructureProperties;
-
-	m_12Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+	
 	m_12Properties.pNext = &m_13Properties;
 	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
 		m_12Properties.pNext = &m_accelerationStructureProperties;
-
-	m_13Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+	
 	m_13Properties.pNext = &m_accelerationStructureProperties;
-
-	m_accelerationStructureProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+	
 	m_accelerationStructureProperties.pNext = &m_rayTracingPipelineProperties;
-
-	m_rayTracingPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+	
 	m_rayTracingPipelineProperties.pNext = &m_meshShaderProperties;
-
-	m_meshShaderProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+	
 	m_meshShaderProperties.pNext = nullptr;
+
+	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
+	{
+		m_meshShaderProperties.pNext = &m_subgroupSizeControlProperties;
+		m_subgroupSizeControlProperties.pNext = &m_texelBufferAlignmentProperties;
+		m_texelBufferAlignmentProperties.pNext = &m_inlineUniformBlockProperties;
+		m_inlineUniformBlockProperties.pNext = &m_maintenance4Properties;
+		m_maintenance4Properties.pNext = &m_shaderIntegerDotProductProperties;
+		m_shaderIntegerDotProductProperties.pNext = nullptr;
+	}
+
+	if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+	{
+		m_shaderIntegerDotProductProperties.pNext = &m_driverProperties;
+		m_driverProperties.pNext = &m_floatControlsProperties;
+		m_floatControlsProperties.pNext = &m_timelineSemaphoreProperties;
+		m_timelineSemaphoreProperties.pNext = &m_descriptorIndexingProperties;
+		m_descriptorIndexingProperties.pNext = &m_samplerFilterMinmaxProperties;
+		m_samplerFilterMinmaxProperties.pNext = nullptr;
+	}
 
 	vkGetPhysicalDeviceProperties2(m_vkHandle, &m_properties);
 }
@@ -596,16 +889,151 @@ void vulkan::PhysicalDevice::update_feature_chain() noexcept
 	{
 		m_11Features.pNext = m_features.pNext;
 		m_features.pNext = &m_11Features;
+	} else
+	{
+		assert(false);
 	}
 	if (m_properties.properties.apiVersion >= VK_API_VERSION_1_2) 
 	{
 		m_12Features.pNext = m_features.pNext;
 		m_features.pNext = &m_12Features;
+	} else
+	{
+		if(m_extensions.bit8Storage) {
+			m_8bitStorageFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_8bitStorageFeatures;
+		}
+		if(m_extensions.bufferDeviceAddress) {
+			m_bufferDeviceAddressFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_bufferDeviceAddressFeatures;
+		}
+		if(m_extensions.separateDepthStencilLayouts) {
+			m_separateDepthStencilLayoutsFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_separateDepthStencilLayoutsFeatures;
+		}
+		if(m_extensions.shaderAtomicInt64) {
+			m_shaderAtomicInt64Features.pNext =m_features.pNext;
+			m_features.pNext = &m_shaderAtomicInt64Features;
+		}
+		if(m_extensions.float16Int8) {
+			m_float16Int8Features.pNext =m_features.pNext;
+			m_features.pNext = &m_float16Int8Features;
+		}
+		if(m_extensions.shaderFloat16Int8) {
+			m_shaderFloat16Int8Features.pNext =m_features.pNext;
+			m_features.pNext = &m_shaderFloat16Int8Features;
+		}
+		if(m_extensions.shaderSubgroupExtendedTypes) {
+			m_shaderSubgroupExtendedTypesFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_shaderSubgroupExtendedTypesFeatures;
+		}
+		if(m_extensions.timelineSemaphore) {
+			m_timelineSemaphoreFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_timelineSemaphoreFeatures;
+		}
+		if(m_extensions.uniformBufferStandardLayout) {
+			m_uniformBufferStandardLayoutFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_uniformBufferStandardLayoutFeatures;
+		}
+		if(m_extensions.vulkanMemoryModel) {
+			m_vulkanMemoryModelFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_vulkanMemoryModelFeatures;
+		}
+		if(m_extensions.descriptorIndexing) {
+			m_descriptorIndexingFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_descriptorIndexingFeatures;
+		}
+		if(m_extensions.hostQueryReset) {
+			m_hostQueryResetFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_hostQueryResetFeatures;
+		}
+		if(m_extensions.scalarBlockLayout) {
+			m_scalarBlockLayoutFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_scalarBlockLayoutFeatures;
+		}
+		if(m_extensions.imagelessFramebuffer) {
+			m_imagelessFramebufferFeatures.pNext =m_features.pNext;
+			m_features.pNext = &m_imagelessFramebufferFeatures;
+		}
 	}
 	if (m_properties.properties.apiVersion >= VK_API_VERSION_1_3) 
 	{
 		m_13Features.pNext = m_features.pNext;
 		m_features.pNext = &m_13Features;
+	} else
+	{
+		if (m_extensions.pipelineCreationCacheControl) {
+			m_pipelineCreationCacheControlFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_pipelineCreationCacheControlFeatures;
+		}
+		if(m_extensions.privateData) {
+			m_privateDataFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_privateDataFeatures;
+		}
+		if(m_extensions.shaderDemoteToHelperInvocation) {
+			m_shaderDemoteToHelperInvocationFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_shaderDemoteToHelperInvocationFeatures;
+		}
+		if(m_extensions.subgroupSizeControl) {
+			m_subgroupSizeControlFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_subgroupSizeControlFeatures;
+		}
+		if(m_extensions.texelBufferAlignment) {
+			m_texelBufferAlignmentFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_texelBufferAlignmentFeatures;
+		}
+		if(m_extensions.textureCompressionAstcHdr) {
+			m_textureCompressionAstchdrFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_textureCompressionAstchdrFeatures;
+		}
+		if(m_extensions.imageRobustness) {
+			m_imageRobustnessFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_imageRobustnessFeatures;
+		}
+		if(m_extensions.inlineUniformBlock) {
+			m_inlineUniformBlockFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_inlineUniformBlockFeatures;
+		}
+		if(m_extensions.dynamicRendering) {
+			m_dynamicRenderingFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_dynamicRenderingFeatures;
+		}
+		if(m_extensions.maintenance4) {
+			m_maintenance4Features.pNext = m_features.pNext;
+			m_features.pNext = &m_maintenance4Features;
+		}
+		if(m_extensions.shaderIntegerDotProduct) {
+			m_shaderIntegerDotProductFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_shaderIntegerDotProductFeatures;
+		}
+		if(m_extensions.shaderTerminateInvocation) {
+			m_shaderTerminateInvocationFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_shaderTerminateInvocationFeatures;
+		}
+		if(m_extensions.synchronization2) {
+			m_synchronization2Features.pNext = m_features.pNext;
+			m_features.pNext = &m_synchronization2Features;
+		}
+		if(m_extensions.zeroInitializeWorkgroupMemory) {
+			m_zeroInitializeWorkgroupMemoryFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_zeroInitializeWorkgroupMemoryFeatures;
+		}
+		if(m_extensions.formats4444) {
+			m_4444FormatsFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_4444FormatsFeatures;
+		}
+		if(m_extensions.extendedDynamicState) {
+			m_extendedDynamicStateFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_extendedDynamicStateFeatures;
+		}
+		if(m_extensions.extendedDynamicState2) {
+			m_extendedDynamicState2Features.pNext = m_features.pNext;
+			m_features.pNext = &m_extendedDynamicState2Features;
+		}
+		if(m_extensions.ycbcr2plane444Formats) {
+			m_ycbcr2Plane444FormatsFeatures.pNext = m_features.pNext;
+			m_features.pNext = &m_ycbcr2Plane444FormatsFeatures;
+		}
 	}
 
 	if (m_extensions.acceleration_structure) 

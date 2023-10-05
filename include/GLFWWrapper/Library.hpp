@@ -39,7 +39,7 @@ namespace glfw
 			bool X11XCBVulkanSurface{ true };
 
 		};
-		static std::expected<Library, Error> create_library(const CreateInfo& createInfo = CreateInfo{ Platform::AnyPlatform, true,  AnglePlatformType::None, true, true, true}) noexcept;
+		static std::expected<Library, Error> create(const CreateInfo& createInfo = CreateInfo{ Platform::AnyPlatform, true,  AnglePlatformType::None, true, true, true}) noexcept;
 		~Library();
 		Library(Library&) = delete;
 		Library(Library&& other) noexcept;

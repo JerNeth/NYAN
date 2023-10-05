@@ -1,11 +1,14 @@
 #ifndef VKCOMMANDBUFFER_H
 #define VKCOMMANDBUFFER_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "Pipeline.h"
 #include <span>
+
 #include <Util>
-#include "VulkanForwards.h"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
 namespace vulkan {
 	class CommandBuffer : public VulkanObject<VkCommandBuffer> {
 	public:

@@ -438,9 +438,9 @@ void nyan::ImguiRenderer::set_up_pipeline(vulkan::ShaderManager& shaderManager, 
 		},
 		.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	config.dynamicState.depth_write_enable = VK_FALSE;
-	config.dynamicState.depth_test_enable = VK_FALSE;
-	config.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	config.dynamicState.depthWriteEnable = VK_FALSE;
+	config.dynamicState.depthTestEnable = VK_FALSE;
+	config.dynamicState.cullMode = VK_CULL_MODE_NONE;
 	pass.add_pipeline(config, &m_pipeline);
 }
 

@@ -1,6 +1,7 @@
 #include "GLFWWrapper/Error.hpp"
 
 #include <format>
+#include <cassert>
 
 #include "glfwIncludes.h"
 

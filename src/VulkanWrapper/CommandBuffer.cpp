@@ -1,12 +1,16 @@
 #include "CommandBuffer.h"
 
-#include "PhysicalDevice.hpp"
-#include "LogicalDevice.h"
-#include "Image.h"
-#include "Buffer.h"
-#include "AccelerationStructure.h"
+#include <cassert>
+
 #include "Utility/Exceptions.h"
-#include "QueryPool.hpp"
+
+#include "Vulkanwrapper/PhysicalDevice.hpp"
+#include "Vulkanwrapper/LogicalDevice.h"
+#include "Vulkanwrapper/Image.h"
+#include "Vulkanwrapper/Buffer.h"
+#include "Vulkanwrapper/Pipeline.h"
+#include "Vulkanwrapper/AccelerationStructure.h"
+#include "Vulkanwrapper/QueryPool.hpp"
 
 vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type) :
 	VulkanObject(parent, handle),
@@ -45,43 +49,43 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 	//if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBias))
 	//	dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilCompareMask)) {
-		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_compare_mask);
-		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_compare_mask);
+		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencilFrontCompareMask);
+		r_device.get_device().vkCmdSetStencilCompareMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencilBackCompareMask);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilReference)) {
-		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_reference);
-		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_reference);
+		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencilFrontReference);
+		r_device.get_device().vkCmdSetStencilReference(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencilBackReference);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilWriteMask)) {
-		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_write_mask);
-		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_write_mask);
+		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencilFrontWriteMask);
+		r_device.get_device().vkCmdSetStencilWriteMask(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencilBackWriteMask);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::CullMode))
-		r_device.get_device().vkCmdSetCullMode(m_handle, dynamicState.cull_mode);
+		r_device.get_device().vkCmdSetCullMode(m_handle, dynamicState.cullMode);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::FrontFace))
-		r_device.get_device().vkCmdSetFrontFace(m_handle, dynamicState.front_face);
+		r_device.get_device().vkCmdSetFrontFace(m_handle, dynamicState.frontFace);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveTopology))
-		r_device.get_device().vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitive_topology);
+		r_device.get_device().vkCmdSetPrimitiveTopology(m_handle, dynamicState.primitiveTopology);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthTestEnabled))
-		r_device.get_device().vkCmdSetDepthTestEnable(m_handle, dynamicState.depth_test_enable);
+		r_device.get_device().vkCmdSetDepthTestEnable(m_handle, dynamicState.depthTestEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthWriteEnabled))
-		r_device.get_device().vkCmdSetDepthWriteEnable(m_handle, dynamicState.depth_write_enable);
+		r_device.get_device().vkCmdSetDepthWriteEnable(m_handle, dynamicState.depthWriteEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthCompareOp))
-		r_device.get_device().vkCmdSetDepthCompareOp(m_handle, dynamicState.depth_compare_op);
+		r_device.get_device().vkCmdSetDepthCompareOp(m_handle, dynamicState.depthCompareOp);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBoundsTestEnabled))
-		r_device.get_device().vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depth_bounds_test_enable);
+		r_device.get_device().vkCmdSetDepthBoundsTestEnable(m_handle, dynamicState.depthBoundsTestEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilTestEnabled))
-		r_device.get_device().vkCmdSetStencilTestEnable(m_handle, dynamicState.stencil_test_enable);
+		r_device.get_device().vkCmdSetStencilTestEnable(m_handle, dynamicState.stencilTestEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::StencilOp)) {
-		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencil_front_fail, dynamicState.stencil_front_pass, dynamicState.stencil_front_depth_fail, dynamicState.stencil_front_compare_op);
-		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencil_back_fail, dynamicState.stencil_back_pass, dynamicState.stencil_back_depth_fail, dynamicState.stencil_back_compare_op);
+		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_FRONT_BIT, dynamicState.stencilFrontFail, dynamicState.stencilFrontPass, dynamicState.stencilFrontDepthFail, dynamicState.stencilFrontCompareOp);
+		r_device.get_device().vkCmdSetStencilOp(m_handle, VK_STENCIL_FACE_BACK_BIT, dynamicState.stencilBackFail, dynamicState.stencilBackPass, dynamicState.stencilBackDepthFail, dynamicState.stencilBackCompareOp);
 	}
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::DepthBiasEnabled))
-		r_device.get_device().vkCmdSetDepthBiasEnable(m_handle, dynamicState.depth_bias_enable);
+		r_device.get_device().vkCmdSetDepthBiasEnable(m_handle, dynamicState.depthBiasEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled))
-		r_device.get_device().vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitive_restart_enable);
+		r_device.get_device().vkCmdSetPrimitiveRestartEnable(m_handle, dynamicState.primitiveRestartEnable);
 	if (dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled))
-		r_device.get_device().vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizer_discard_enable);
+		r_device.get_device().vkCmdSetRasterizerDiscardEnable(m_handle, dynamicState.rasterizerDiscardEnable);
 
 	auto set = r_device.get_bindless_set().get_set();
 	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);

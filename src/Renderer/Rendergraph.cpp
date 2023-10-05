@@ -1,6 +1,10 @@
 #include "Renderer/RenderGraph.h"
+
+
 #include "VulkanWrapper/Image.h"
-#include "CommandBuffer.h"
+#include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/Pipeline.h"
+
 #include "Renderer/Profiler.hpp"
 
 using namespace nyan;
@@ -17,7 +21,7 @@ nyan::Renderpass::Renderpass(nyan::Rendergraph& graph, nyan::Renderpass::Type ty
 nyan::Renderpass::~Renderpass()
 {
 	for (const auto& waitInfo : m_waitInfos)
-		r_graph.r_device.frame().recycle_semaphore(waitInfo.semaphore);
+		r_graph.r_device.get_deletion_queue().queue_semaphore_deletion(waitInfo.semaphore); //Can be recycled
 }
 
 Rendergraph& nyan::Renderpass::get_graph() noexcept

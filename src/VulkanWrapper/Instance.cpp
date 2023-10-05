@@ -1,3 +1,5 @@
+#include "Instance.h"
+#include "Instance.h"
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/Instance.h"
@@ -171,8 +173,52 @@ vulkan::Instance::~Instance() noexcept {
 		vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, m_allocator);
 	if(m_surface != VK_NULL_HANDLE)
 		vkDestroySurfaceKHR(m_instance, m_surface, m_allocator);
-	vkDestroyInstance(m_instance, m_allocator);
+	if(m_instance != VK_NULL_HANDLE)
+		vkDestroyInstance(m_instance, m_allocator);
+}
+vulkan::Instance::Instance(Instance&& other) noexcept :
+	m_instance (std::move(other.m_instance)),
+	m_surface(std::move(other.m_surface)),
+	m_bestDeviceIdx(std::move(other.m_bestDeviceIdx)),
+	m_physicalDevices(std::move(other.m_physicalDevices)),
+	m_allocator(std::move(other.m_allocator)),
+	m_debugMessenger(std::move(other.m_debugMessenger)),
 
+	m_validation(std::move(other.m_validation)),
+	m_usedExtensions(std::move(other.m_usedExtensions)),
+	m_layers(std::move(other.m_layers)),
+	m_availableLayers(std::move(other.m_availableLayers)),
+	m_availableExtensions(std::move(other.m_availableExtensions)),
+	m_extensions(std::move(other.m_extensions)),
+
+	m_applicationName(std::move(other.m_applicationName)),
+	m_engineName(std::move(other.m_engineName))
+{
+	other.m_instance = VK_NULL_HANDLE;
+	other.m_surface = VK_NULL_HANDLE;
+	other.m_debugMessenger = VK_NULL_HANDLE;
+}
+vulkan::Instance& vulkan::Instance::operator=(Instance&& other) noexcept
+{
+	if(this != &other)
+	{
+		std::swap(m_instance, other.m_instance);
+		std::swap(m_surface, other.m_surface);
+		m_bestDeviceIdx = other.m_bestDeviceIdx;
+		std::swap(m_allocator, other.m_allocator);
+		std::swap(m_debugMessenger, other.m_debugMessenger);
+		m_physicalDevices = std::move(other.m_physicalDevices);
+
+		m_validation = std::move(other.m_validation);
+		m_usedExtensions = std::move(other.m_usedExtensions);
+		m_layers = std::move(other.m_layers);
+		m_availableLayers = std::move(other.m_availableLayers);
+		m_availableExtensions = std::move(other.m_availableExtensions);
+		m_extensions = std::move(other.m_extensions);
+		m_applicationName = std::move(other.m_applicationName);
+		m_engineName = std::move(other.m_engineName);
+	}
+	return *this;
 }
 std::unique_ptr<vulkan::LogicalDevice> vulkan::Instance::setup_device(const std::span<const char*>& requiredExtensions, const std::span<const char*>& optionalExtensions)
 {
@@ -440,10 +486,12 @@ void vulkan::Instance::init_layers() noexcept
 
 void vulkan::Instance::init_extensions() noexcept
 {
-	uint32_t propertyCount;
-	vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
-	m_availableExtensions.resize(propertyCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, m_availableExtensions.data());
+	{
+		uint32_t propertyCount;
+		vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
+		m_availableExtensions.resize(propertyCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, m_availableExtensions.data());
+	}
 
 	for (auto& layer : m_layers) {
 		uint32_t propertyCount;
@@ -481,6 +529,8 @@ void vulkan::Instance::init_physical_devices() noexcept
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
 		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
-		Utility::log_info().message("Vulkan capable device: ").message(properties.deviceName).message("\n").message(deviceType);
+		Utility::log_info().format("Vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType, 
+			VK_API_VERSION_VARIANT(properties.apiVersion), VK_API_VERSION_MAJOR(properties.apiVersion),
+			VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
 	}
 }

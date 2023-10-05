@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace Utility {
 	template<typename T, typename Container>
 	class ObjectHandle;

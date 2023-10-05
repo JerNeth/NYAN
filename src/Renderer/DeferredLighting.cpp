@@ -2,7 +2,7 @@
 #include "Renderer/RenderGraph.h"
 #include "Renderer/RenderManager.h"
 #include "VulkanWrapper/CommandBuffer.h"
-#include "VulkanWrapper/Sampler.h"
+#include "VulkanWrapper/Sampler.hpp"
 #include "Utility/Exceptions.h"
 #include "entt/entt.hpp"
 #include <stb_image_write.h>
@@ -60,18 +60,18 @@ void nyan::DeferredLighting::create_pipeline()
 	vulkan::GraphicsPipelineConfig pipelineConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::GraphicsPipelineState{
-		.polygon_mode {VK_POLYGON_MODE_FILL},
-		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
-		.logic_op_enable {VK_FALSE},
-		.patch_control_points {0},
+		.polygonMode {VK_POLYGON_MODE_FILL},
+		.rasterizationSamples {VK_SAMPLE_COUNT_1_BIT},
+		.logicOpEnable {VK_FALSE},
+		.patchControlPoints {0},
 		.blendAttachments {
 			vulkan::BlendAttachment {
-				.blend_enable {VK_FALSE},
-				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+				.blendEnable {VK_FALSE},
+				.colorWriteMask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 			},
 			vulkan::BlendAttachment {
-				.blend_enable {VK_FALSE},
-				.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+				.blendEnable {VK_FALSE},
+				.colorWriteMask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 			},
 		},
 	},
@@ -84,9 +84,9 @@ void nyan::DeferredLighting::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	pipelineConfig.dynamicState.depth_write_enable = VK_FALSE;
-	pipelineConfig.dynamicState.depth_test_enable = VK_FALSE;
-	pipelineConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	pipelineConfig.dynamicState.depthWriteEnable = VK_FALSE;
+	pipelineConfig.dynamicState.depthTestEnable = VK_FALSE;
+	pipelineConfig.dynamicState.cullMode = VK_CULL_MODE_NONE;
 	//pipelineConfig.dynamicState.stencil_test_enable = VK_TRUE;
 	//pipelineConfig.dynamicState.stencil_front_reference = 0;
 	//pipelineConfig.dynamicState.stencil_front_write_mask = 0xFF;
@@ -401,8 +401,8 @@ void nyan::LightComposite::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	pipelineConfig.dynamicState.depth_write_enable = VK_FALSE;
-	pipelineConfig.dynamicState.depth_test_enable = VK_FALSE;
-	pipelineConfig.dynamicState.cull_mode = VK_CULL_MODE_NONE;
+	pipelineConfig.dynamicState.depthWriteEnable = VK_FALSE;
+	pipelineConfig.dynamicState.depthTestEnable = VK_FALSE;
+	pipelineConfig.dynamicState.cullMode = VK_CULL_MODE_NONE;
 	r_pass.add_pipeline(pipelineConfig, &m_compositePipeline);
 }

@@ -98,10 +98,10 @@ void nyan::MeshRenderer::create_pipeline()
 	vulkan::GraphicsPipelineConfig staticTangentConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::GraphicsPipelineState{
-		.polygon_mode {VK_POLYGON_MODE_FILL},
-		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
-		.logic_op_enable {VK_FALSE},
-		.patch_control_points {0},
+		.polygonMode {VK_POLYGON_MODE_FILL},
+		.rasterizationSamples {VK_SAMPLE_COUNT_1_BIT},
+		.logicOpEnable {VK_FALSE},
+		.patchControlPoints {0},
 		.blendAttachments {
 			vulkan::defaultBlendAttachment,
 			vulkan::defaultBlendAttachment,
@@ -119,21 +119,21 @@ void nyan::MeshRenderer::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	staticTangentConfig.dynamicState.stencil_test_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.stencil_front_reference = 0;
-	staticTangentConfig.dynamicState.stencil_front_write_mask = 0xFF;
-	staticTangentConfig.dynamicState.stencil_front_compare_mask = 0xFF;
-	staticTangentConfig.dynamicState.stencil_front_compare_op = VK_COMPARE_OP_ALWAYS;
-	staticTangentConfig.dynamicState.stencil_front_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	staticTangentConfig.dynamicState.stencil_front_pass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	staticTangentConfig.dynamicState.stencil_front_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	staticTangentConfig.dynamicState.stencil_back_reference = 0;
-	staticTangentConfig.dynamicState.stencil_back_write_mask = 0xFF;
-	staticTangentConfig.dynamicState.stencil_back_compare_mask = 0xFF;
-	staticTangentConfig.dynamicState.stencil_back_compare_op = VK_COMPARE_OP_ALWAYS;
-	staticTangentConfig.dynamicState.stencil_back_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	staticTangentConfig.dynamicState.stencil_back_pass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	staticTangentConfig.dynamicState.stencil_back_depth_fail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilTestEnable = VK_TRUE;
+	staticTangentConfig.dynamicState.stencilFrontReference = 0;
+	staticTangentConfig.dynamicState.stencilFrontWriteMask = 0xFF;
+	staticTangentConfig.dynamicState.stencilFrontCompareMask = 0xFF;
+	staticTangentConfig.dynamicState.stencilFrontCompareOp = VK_COMPARE_OP_ALWAYS;
+	staticTangentConfig.dynamicState.stencilFrontFail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilFrontPass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilFrontDepthFail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilBackReference = 0;
+	staticTangentConfig.dynamicState.stencilBackWriteMask = 0xFF;
+	staticTangentConfig.dynamicState.stencilBackCompareMask = 0xFF;
+	staticTangentConfig.dynamicState.stencilBackCompareOp = VK_COMPARE_OP_ALWAYS;
+	staticTangentConfig.dynamicState.stencilBackFail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilBackPass = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	staticTangentConfig.dynamicState.stencilBackDepthFail = VK_STENCIL_OP_INCREMENT_AND_CLAMP;
 
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
 
@@ -206,10 +206,10 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 	vulkan::GraphicsPipelineConfig staticTangentConfig{
 	.dynamicState = vulkan::defaultDynamicGraphicsPipelineState,
 	.state = vulkan::GraphicsPipelineState{
-		.polygon_mode {VK_POLYGON_MODE_FILL},
-		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
-		.logic_op_enable {VK_FALSE},
-		.patch_control_points {0},
+		.polygonMode {VK_POLYGON_MODE_FILL},
+		.rasterizationSamples {VK_SAMPLE_COUNT_1_BIT},
+		.logicOpEnable {VK_FALSE},
+		.patchControlPoints {0},
 		.blendAttachments {
 			vulkan::alphaBlendAttachment,
 			vulkan::alphaBlendAttachment,
@@ -226,9 +226,9 @@ void nyan::ForwardMeshRenderer::create_pipeline()
 	},
 	.pipelineLayout = r_device.get_bindless_pipeline_layout(),
 	};
-	staticTangentConfig.dynamicState.depth_write_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.depth_test_enable = VK_TRUE;
-	staticTangentConfig.dynamicState.stencil_test_enable = VK_FALSE;
+	staticTangentConfig.dynamicState.depthWriteEnable = VK_TRUE;
+	staticTangentConfig.dynamicState.depthTestEnable = VK_TRUE;
+	staticTangentConfig.dynamicState.stencilTestEnable = VK_FALSE;
 
 	r_pass.add_pipeline(staticTangentConfig, &m_staticTangentPipeline);
 }

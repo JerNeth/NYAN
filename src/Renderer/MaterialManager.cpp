@@ -1,6 +1,6 @@
 #include "Renderer/MaterialManager.h"
 #include "Renderer/TextureManager.h"
-#include "VulkanWrapper/Sampler.h"
+#include "VulkanWrapper/Sampler.hpp"
 #include "Buffer.h"
 
 nyan::MaterialManager::MaterialManager(vulkan::LogicalDevice& device, nyan::TextureManager& textureManager) :

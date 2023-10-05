@@ -1,51 +1,51 @@
 #include "Allocator.h"
 #include "LogicalDevice.h"
 #include "Image.h"
-
-vulkan::Allocator::Allocator(VmaAllocator handle) :
-	m_VmaHandle(handle)
-{
-}
-
-vulkan::Allocator::Allocator(Allocator&& other) noexcept :
-	m_VmaHandle(other.m_VmaHandle)
-{
-	other.m_VmaHandle = VK_NULL_HANDLE;
-}
-
-vulkan::Allocator::~Allocator() noexcept
-{
-	if(m_VmaHandle != VK_NULL_HANDLE)
-		vmaDestroyAllocator(m_VmaHandle);
-}
-
-void vulkan::Allocator::map_memory(VmaAllocation allocation, void** data)
-{
-	vmaMapMemory(m_VmaHandle, allocation, data);
-}
-
-void vulkan::Allocator::unmap_memory(VmaAllocation allocation)
-{
-	vmaUnmapMemory(m_VmaHandle, allocation);
-}
-
-void vulkan::Allocator::destroy_buffer(VkBuffer buffer, VmaAllocation allocation)
-{
-	vmaDestroyBuffer(m_VmaHandle, buffer, allocation);
-}
-
-void vulkan::Allocator::flush(VmaAllocation allocation, uint32_t offset, uint32_t size)
-{
-
-	vmaFlushAllocation(m_VmaHandle, allocation, offset, size);
-}
-void vulkan::Allocator::invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size)
-{
-	vmaInvalidateAllocation(m_VmaHandle, allocation, offset, size);
-}
-void vulkan::Allocator::free_allocation(VmaAllocation allocation) const noexcept {
-	vmaFreeMemory(m_VmaHandle, allocation);
-}
+//
+//vulkan::Allocator::Allocator(::VmaAllocator handle) :
+//	m_VmaHandle(handle)
+//{
+//}
+//
+//vulkan::Allocator::Allocator(Allocator&& other) noexcept :
+//	m_VmaHandle(other.m_VmaHandle)
+//{
+//	other.m_VmaHandle = VK_NULL_HANDLE;
+//}
+//
+//vulkan::Allocator::~Allocator() noexcept
+//{
+//	if(m_VmaHandle != VK_NULL_HANDLE)
+//		vmaDestroyAllocator(m_VmaHandle);
+//}
+//
+//void vulkan::Allocator::map_memory(VmaAllocation allocation, void** data)
+//{
+//	vmaMapMemory(m_VmaHandle, allocation, data);
+//}
+//
+//void vulkan::Allocator::unmap_memory(VmaAllocation allocation)
+//{
+//	vmaUnmapMemory(m_VmaHandle, allocation);
+//}
+//
+//void vulkan::Allocator::destroy_buffer(VkBuffer buffer, VmaAllocation allocation)
+//{
+//	vmaDestroyBuffer(m_VmaHandle, buffer, allocation);
+//}
+//
+//void vulkan::Allocator::flush(VmaAllocation allocation, uint32_t offset, uint32_t size)
+//{
+//
+//	vmaFlushAllocation(m_VmaHandle, allocation, offset, size);
+//}
+//void vulkan::Allocator::invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size)
+//{
+//	vmaInvalidateAllocation(m_VmaHandle, allocation, offset, size);
+//}
+//void vulkan::Allocator::free_allocation(VmaAllocation allocation) const noexcept {
+//	vmaFreeMemory(m_VmaHandle, allocation);
+//}
 vulkan::AttachmentAllocator::AttachmentAllocator(LogicalDevice& parent) :
 	r_device(parent),
 	m_attachmentIds(new std::unordered_map<Utility::HashValue, ImageHandle>{})
@@ -97,21 +97,21 @@ vulkan::Allocation& vulkan::Allocation::operator=(Allocation&& other)
 
 VkDeviceSize vulkan::Allocation::get_size() const noexcept {
 	VmaAllocationInfo info;
-	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	vmaGetAllocationInfo(r_device.get_vma_allocator(), m_VmaHandle, &info);
 	return info.size;
 }
 VkDeviceSize vulkan::Allocation::get_offset() const noexcept {
 	VmaAllocationInfo info;
-	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	vmaGetAllocationInfo(r_device.get_vma_allocator(), m_VmaHandle, &info);
 	return info.offset;
 }
 VkDeviceMemory vulkan::Allocation::get_memory() const noexcept {
 	VmaAllocationInfo info;
-	vmaGetAllocationInfo(r_device.get_vma_allocator()->get_handle(), m_VmaHandle, &info);
+	vmaGetAllocationInfo(r_device.get_vma_allocator(), m_VmaHandle, &info);
 	return info.deviceMemory;
 }
 vulkan::Allocation::~Allocation()
 {
 	if (m_VmaHandle != VK_NULL_HANDLE)
-		r_device.queue_allocation_deletion(m_VmaHandle);
+		r_device.get_deletion_queue().queue_allocation_deletion(m_VmaHandle);
 }

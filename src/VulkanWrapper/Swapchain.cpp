@@ -1,4 +1,7 @@
 #include "VulkanWrapper/Swapchain.hpp"
+
+#include "Utility/Exceptions.h"
+
 #include "VulkanWrapper/LogicalDevice.h"
 
 vulkan::Swapchain::Swapchain(vulkan::LogicalDevice& device, VkSurfaceKHR surface) :

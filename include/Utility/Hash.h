@@ -13,7 +13,7 @@ namespace Utility {
 		}
 		template<typename T>
 		constexpr HashValue operator()(const T& t) {
-			constexpr HashValue prime = 0x100000001b3ull;
+			static constexpr HashValue prime = 0x100000001b3ull;
 			const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&t);
 			for (size_t i = 0; i < sizeof(T); i++) {
 				hash ^= static_cast<HashValue>(bytes[i]);

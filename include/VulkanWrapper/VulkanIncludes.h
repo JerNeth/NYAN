@@ -34,6 +34,7 @@ constexpr bool debug = false;
 constexpr bool debugMarkers = false;
 #else
 #define VMA_RECORDING_ENABLED 1
+#define INTERNAL_VMA_RECORDING_ENABLED
 constexpr bool debug = true;
 constexpr bool debugMarkers = true;
 #endif
@@ -57,12 +58,9 @@ constexpr bool debugMarkers = true;
 # undef NOMINMAX
 #endif
 
-
+#ifdef INTERNAL_VMA_RECORDING_ENABLED
 #undef VMA_RECORDING_ENABLED
+#endif
 
-#include "glfwIncludes.h"
-
-#include "VulkanObject.h"
-
-#include "MaxVals.h"
+//#include "glfwIncludes.h"
 #endif   //!VKVULKANINCLUDES_H

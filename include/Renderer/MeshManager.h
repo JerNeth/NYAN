@@ -1,14 +1,16 @@
 #pragma once
 #ifndef RDMESHMANAGER_H
 #define RDMESHMANAGER_H
-#include "VkWrapper.h"
-#include "VulkanForwards.h"
 #include "DataManager.h"
 #include "MaterialManager.h"
 #include "Mesh.h"
 #include "ShaderInterface.h"
 #include "Transform.h"
-#include "AccelerationStructure.h"
+
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/AccelerationStructure.h"
+#include "VulkanWrapper/Utility.h"
+
 namespace nyan {
 
 	template<typename T>

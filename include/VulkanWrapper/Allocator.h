@@ -7,26 +7,26 @@
 #include <unordered_map>
 
 namespace vulkan {
-	class Allocator {
-	public:
-		Allocator(VmaAllocator handle);
-		Allocator(Allocator&) = delete;
-		Allocator(Allocator&&) noexcept;
-		Allocator& operator=(Allocator&) = delete;
-		Allocator& operator=(Allocator&&) = delete;
-		~Allocator() noexcept;
-		VmaAllocator get_handle() const noexcept {
-			return m_VmaHandle;
-		}
-		void map_memory(VmaAllocation allocation, void** data);
-		void unmap_memory(VmaAllocation allocation);
-		void destroy_buffer(VkBuffer buffer, VmaAllocation allocation);
-		void flush(VmaAllocation allocation, uint32_t offset, uint32_t size);
-		void invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size);
-		void free_allocation(VmaAllocation allocation) const noexcept;
-	private:
-		VmaAllocator m_VmaHandle = VK_NULL_HANDLE;
-	};
+	//class Allocator {
+	//public:
+	//	Allocator(::VmaAllocator handle);
+	//	Allocator(Allocator&) = delete;
+	//	Allocator(Allocator&&) noexcept;
+	//	Allocator& operator=(Allocator&) = delete;
+	//	Allocator& operator=(Allocator&&) = delete;
+	//	~Allocator() noexcept;
+	//	::VmaAllocator get_handle() const noexcept {
+	//		return m_VmaHandle;
+	//	}
+	//	void map_memory(VmaAllocation allocation, void** data);
+	//	void unmap_memory(VmaAllocation allocation);
+	//	void destroy_buffer(VkBuffer buffer, VmaAllocation allocation);
+	//	void flush(VmaAllocation allocation, uint32_t offset, uint32_t size);
+	//	void invalidate(VmaAllocation allocation, uint32_t offset, uint32_t size);
+	//	void free_allocation(VmaAllocation allocation) const noexcept;
+	//private:
+	//	::VmaAllocator m_VmaHandle = VK_NULL_HANDLE;
+	//};
 	class Allocation {
 	public:
 		Allocation(LogicalDevice& device, VmaAllocation handle);

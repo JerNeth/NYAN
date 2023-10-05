@@ -1,12 +1,16 @@
 #ifndef VKSHADER_H
 #define VKSHADER_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
-#include <Util>
-#include "LinAlg.h"
-#include "MaxVals.h"
 #include <typeinfo>
+
+#include <Util>
+
+#include "LinAlg.h"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
 
 namespace vulkan {
 	struct ResourceBinding {

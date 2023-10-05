@@ -124,12 +124,22 @@ target_link_libraries(Engine PUBLIC shaders)
 
 check_ipo_supported(RESULT ipo_result OUTPUT output
                     LANGUAGES C CXX)
-if(ipo_result)
-  set_property(TARGET Engine PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+if(ipo_result AND NOT CONFIG:DEBUG)
+  #set_property(TARGET Engine PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  set_property(TARGET Engine PROPERTY
+    INTERPROCEDURAL_OPTIMIZATION
+      $<$<NOT:$<CONFIG:DEBUG>>:TRUE> 
+      $<$<CONFIG:DEBUG>:FALSE>
+  )
 else()
   message(WARNING "IPO is not supported: ${output}")
 endif()
 
+set_property(TARGET Engine PROPERTY
+    UNITY_BUILD
+      $<$<NOT:$<CONFIG:DEBUG>>:ON> 
+      $<$<CONFIG:DEBUG>:OFF>
+)
 target_compile_options(Engine PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
     $<$<CXX_COMPILER_ID:GNU>:-Wall>
@@ -139,25 +149,15 @@ target_compile_definitions(Engine PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>:>
     $<$<CXX_COMPILER_ID:Clang>:__clang__>)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-    #target_compile_options(Main PUBLIC /WX /std:c++latest)
-    #target_compile_options(Demo PRIVATE /WX)
-    #target_compile_options(Third-Party-Dependencies PRIVATE /w)
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    #target_compile_options(Demo PRIVATE -W4)
-    #target_compile_options(Third-Party-Dependencies PRIVATE -Wno-everything)
-    #target_compile_options(Main PUBLIC -std=c++20 -Wall -Wextra)
-endif()
-
 #target_compile_features(FBXReader PUBLIC 
 #    cxx_std_20
 #)
 target_compile_features(Engine PUBLIC 
     cxx_std_23
 )
-set_target_properties(Engine PROPERTIES 
-    UNITY_BUILD on
-)
+#set_target_properties(Engine PROPERTIES 
+#    UNITY_BUILD on
+#)
 
 target_link_options(Engine PUBLIC
     $<$<NOT:$<CONFIG:DEBUG>>:/INCREMENTAL:NO> # Disable incremental linking.

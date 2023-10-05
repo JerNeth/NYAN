@@ -1,5 +1,6 @@
 #include "Pipeline.h"
 #include "LogicalDevice.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 #include "Instance.h"
 #include "Shader.h"
 #include "DescriptorSet.h"
@@ -174,32 +175,48 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-		.topology = config.dynamicState.primitive_topology,
-		.primitiveRestartEnable = config.dynamicState.primitive_restart_enable
+		.topology = config.dynamicState.primitiveTopology,
+		.primitiveRestartEnable = config.dynamicState.primitiveRestartEnable
 	};
 
 	VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
 		.pNext = nullptr,
-		.patchControlPoints = config.state.patch_control_points
+		.patchControlPoints = config.state.patchControlPoints
 	};
 
 	VkPipelineViewportStateCreateInfo viewportStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-		.viewportCount = 0,
+		.pNext {nullptr},
+		.flags {0},
+		.viewportCount {0},
 		.pViewports {nullptr},
-		.scissorCount = 0,
+		.scissorCount {0},
 		.pScissors {nullptr} 
 	};
+
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ViewportWithCount))
+		assert(viewportStateCreateInfo.viewportCount == 0);
+	else
+		assert(viewportStateCreateInfo.viewportCount > 0);
+
+	if (config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ScissorWithCount))
+		assert(viewportStateCreateInfo.scissorCount == 0);
+	else
+		assert(viewportStateCreateInfo.scissorCount > 0);
+
+	if (!(config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ScissorWithCount) &&
+		config.dynamicState.flags.test(DynamicGraphicsPipelineState::DynamicState::ViewportWithCount)))
+		assert(viewportStateCreateInfo.viewportCount == viewportStateCreateInfo.scissorCount);
 
 	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 		.depthClampEnable = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
-		.polygonMode = config.state.polygon_mode,
-		.cullMode = config.dynamicState.cull_mode, //ignored since dynamic
-		.frontFace = config.dynamicState.front_face, //ignored since dynamic
-		.depthBiasEnable = config.dynamicState.depth_bias_enable, //ignored since dynamic
+		.polygonMode = config.state.polygonMode,
+		.cullMode = config.dynamicState.cullMode, //ignored since dynamic
+		.frontFace = config.dynamicState.frontFace, //ignored since dynamic
+		.depthBiasEnable = config.dynamicState.depthBiasEnable, //ignored since dynamic
 		.depthBiasConstantFactor = 0.f,
 		.depthBiasClamp = 0.f,
 		.depthBiasSlopeFactor = 0.f,
@@ -208,40 +225,40 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 
 	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-		.rasterizationSamples = config.state.rasterization_samples,
-		.sampleShadingEnable = config.state.sample_shading,
+		.rasterizationSamples = config.state.rasterizationSamples,
+		.sampleShadingEnable = config.state.sampleShading,
 		.minSampleShading = 0.0f, // Optional
 		.pSampleMask = nullptr, // Optional
-		.alphaToCoverageEnable = config.state.alpha_to_coverage, // Optional
-		.alphaToOneEnable = config.state.alpha_to_one, // Optional
+		.alphaToCoverageEnable = config.state.alphaToCoverage, // Optional
+		.alphaToOneEnable = config.state.alphaToOne, // Optional
 	};
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = config.dynamicState.depth_test_enable, //ignored since dynamic
-		.depthWriteEnable = config.dynamicState.depth_write_enable, //ignored since dynamic
-		.depthCompareOp = config.dynamicState.depth_compare_op, //ignored since dynamic
-		.depthBoundsTestEnable = config.dynamicState.depth_bounds_test_enable, //ignored since dynamic
-		.stencilTestEnable = config.dynamicState.stencil_test_enable, //ignored since dynamic
+		.depthTestEnable = config.dynamicState.depthTestEnable, //ignored since dynamic
+		.depthWriteEnable = config.dynamicState.depthWriteEnable, //ignored since dynamic
+		.depthCompareOp = config.dynamicState.depthCompareOp, //ignored since dynamic
+		.depthBoundsTestEnable = config.dynamicState.depthBoundsTestEnable, //ignored since dynamic
+		.stencilTestEnable = config.dynamicState.stencilTestEnable, //ignored since dynamic
 		.front
 		{ //ignored since dynamic
-			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_pass),
-			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_fail),
-			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_front_depth_fail),
-			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_front_compare_op),
-			.compareMask = config.dynamicState.stencil_front_compare_mask,
-			.writeMask = config.dynamicState.stencil_front_write_mask,
-			.reference = config.dynamicState.stencil_front_reference,
+			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencilFrontFail),
+			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencilFrontPass),
+			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencilFrontDepthFail),
+			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencilFrontCompareOp),
+			.compareMask = config.dynamicState.stencilFrontCompareMask,
+			.writeMask = config.dynamicState.stencilFrontWriteMask,
+			.reference = config.dynamicState.stencilFrontReference,
 		},
 		.back
 		{ //ignored since dynamic
-			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_pass),
-			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_fail),
-			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencil_back_depth_fail),
-			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencil_back_compare_op),
-			.compareMask = config.dynamicState.stencil_back_compare_mask,
-			.writeMask = config.dynamicState.stencil_back_write_mask,
-			.reference = config.dynamicState.stencil_back_reference,
+			.failOp = static_cast<VkStencilOp>(config.dynamicState.stencilBackFail),
+			.passOp = static_cast<VkStencilOp>(config.dynamicState.stencilBackPass),
+			.depthFailOp = static_cast<VkStencilOp>(config.dynamicState.stencilBackDepthFail),
+			.compareOp = static_cast<VkCompareOp>(config.dynamicState.stencilBackCompareOp),
+			.compareMask = config.dynamicState.stencilBackCompareMask,
+			.writeMask = config.dynamicState.stencilBackWriteMask,
+			.reference = config.dynamicState.stencilBackReference,
 		},
 		.minDepthBounds = 0.0f,
 		.maxDepthBounds = 1.0f,
@@ -252,20 +269,20 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 	for (uint32_t i = 0; i < config.renderingCreateInfo.colorAttachmentCount; i++) {
 		colorBlendAttachments.push_back(VkPipelineColorBlendAttachmentState
 			{
-				.blendEnable = config.state.blendAttachments[i].blend_enable,
-				.srcColorBlendFactor = config.state.blendAttachments[i].src_color_blend,
-				.dstColorBlendFactor = config.state.blendAttachments[i].dst_color_blend,
-				.colorBlendOp = config.state.blendAttachments[i].color_blend_op,
-				.srcAlphaBlendFactor = config.state.blendAttachments[i].src_alpha_blend,
-				.dstAlphaBlendFactor = config.state.blendAttachments[i].dst_alpha_blend,
-				.alphaBlendOp = config.state.blendAttachments[i].alpha_blend_op,
-				.colorWriteMask = config.state.blendAttachments[i].color_write_mask,
+				.blendEnable = config.state.blendAttachments[i].blendEnable,
+				.srcColorBlendFactor = config.state.blendAttachments[i].srcColorBlend,
+				.dstColorBlendFactor = config.state.blendAttachments[i].dstColorBlend,
+				.colorBlendOp = config.state.blendAttachments[i].colorBlendOp,
+				.srcAlphaBlendFactor = config.state.blendAttachments[i].srcAlphaBlend,
+				.dstAlphaBlendFactor = config.state.blendAttachments[i].dstAlphaBlend,
+				.alphaBlendOp = config.state.blendAttachments[i].alphaBlendOp,
+				.colorWriteMask = config.state.blendAttachments[i].colorWriteMask,
 			});
 	}
 	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-		.logicOpEnable = config.state.logic_op_enable,
-		.logicOp = config.state.logic_op,
+		.logicOpEnable = config.state.logicOpEnable,
+		.logicOp = config.state.logicOp,
 		.attachmentCount = config.renderingCreateInfo.colorAttachmentCount,
 		.pAttachments = colorBlendAttachments.data(),
 		.blendConstants{0.0f, 0.0f, 0.0f, 0.0f}
@@ -334,7 +351,7 @@ vulkan::Pipeline2::Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig
 		.pStages = shaders.data(),
 		.pVertexInputState = &vertexInputStateCreateInfo,
 		.pInputAssemblyState = &inputAssemblyStateCreateInfo,
-		.pTessellationState = config.state.patch_control_points == 0 ? nullptr : &tessellationStateCreateInfo,
+		.pTessellationState = config.state.patchControlPoints == 0 ? nullptr : &tessellationStateCreateInfo,
 		.pViewportState = &viewportStateCreateInfo,
 		.pRasterizationState = &rasterizationStateCreateInfo,
 		.pMultisampleState = &multisampleStateCreateInfo,

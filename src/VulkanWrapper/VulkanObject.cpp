@@ -273,15 +273,6 @@ VkDebugReportObjectTypeEXT get_debug_report_object_type<VkAccelerationStructureK
     return VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT;
 }
 
-template<typename HandleClass>
-vulkan::VulkanObject<HandleClass>::operator HandleClass() const noexcept {
-    return m_handle;
-}
-template<typename HandleClass>
-HandleClass vulkan::VulkanObject<HandleClass>::get_handle() const noexcept {
-    return m_handle;
-}
-
 //static std::unordered_map<uint64_t, std::string> s_labels;
 
 template<typename HandleClass>
@@ -345,3 +336,4 @@ template class vulkan::VulkanObject<VkSurfaceKHR>;
 template class vulkan::VulkanObject<VkDisplayKHR>;
 template class vulkan::VulkanObject<VkDisplayModeKHR>;
 template class vulkan::VulkanObject<VkAccelerationStructureKHR>;
+template class vulkan::VulkanObject<::VmaAllocator>;

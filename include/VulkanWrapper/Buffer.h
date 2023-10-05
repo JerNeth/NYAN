@@ -1,10 +1,12 @@
 #ifndef VKBUFFER_H
 #define VKBUFFER_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
-#include <Util>
-#include "Allocator.h"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
+#include "VulkanWrapper/Allocator.h"
 namespace vulkan {
 	struct BufferInfo {
 		VkDeviceSize size = 0;
@@ -50,7 +52,7 @@ namespace vulkan {
 			return flags;
 		}
 	};
-	class Buffer : public Utility::UIDC, public VulkanObject<VkBuffer>  {
+	class Buffer : public VulkanObject<VkBuffer>  {
 	public:
 		Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation allocation, const BufferInfo& info);
 		VkBufferUsageFlags get_usage()  const noexcept;

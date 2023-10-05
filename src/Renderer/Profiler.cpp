@@ -15,7 +15,7 @@ nyan::Profiler::Profiler(vulkan::LogicalDevice& device) :
 
 void nyan::Profiler::begin_frame()
 {
-	size_t index{ 0 };
+	//size_t index{ 0 };
 	ImGui::Begin("Profiler");
 	if(ImGui::CollapsingHeader("GPU"))
 	{

@@ -10,7 +10,6 @@
 #include "Shader.h"
 #include "Instance.h"
 #include "Image.h"
-#include "Sampler.h"
 #include "Allocator.h"
 #include "CommandPool.h"
 #include "CommandBuffer.h"
@@ -29,6 +28,8 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
+	m_deletionQueue(*this),
+	m_vmaAllocator(*vulkan::Allocator::create(r_instance,*this)),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
 	m_allocationPool(new Utility::Pool<Allocation>()),
@@ -51,7 +52,7 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_device.vkGetDeviceQueue(m_compute.familyIndex, 0, &m_compute.queue);
 	m_device.vkGetDeviceQueue(m_transfer.familyIndex, 0, &m_transfer.queue);
 
-	create_vma_allocator();
+	//create_vma_allocator();
 	create_default_sampler();
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -63,6 +64,8 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, con
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
+	m_deletionQueue(*this),
+	m_vmaAllocator(*vulkan::Allocator::create(r_instance, *this)),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
 	m_allocationPool(new Utility::Pool<Allocation>()),
@@ -83,22 +86,50 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, con
 
 vulkan::LogicalDevice::~LogicalDevice()
 {
-	wait_no_lock();
+	if (m_device) {
+		wait_no_lock();
 
-	for (auto& aquire : m_wsiState.aquireSemaphores) {
-		if (aquire != VK_NULL_HANDLE)
-			destroy_semaphore(aquire);
-	}
-	for (auto& present : m_wsiState.presentSemaphores) {
-		if (present != VK_NULL_HANDLE) 
-			destroy_semaphore(present);
+		for (auto& aquire : m_wsiState.aquireSemaphores) {
+			if (aquire != VK_NULL_HANDLE)
+				destroy_semaphore(aquire);
+		}
+		for (auto& present : m_wsiState.presentSemaphores) {
+			if (present != VK_NULL_HANDLE)
+				destroy_semaphore(present);
+		}
 	}
 }
+
+//vulkan::LogicalDevice::LogicalDevice(LogicalDevice&& other) noexcept :
+//	r_instance(other.r_instance),
+//	r_physicalDevice(other.r_physicalDevice),
+//	m_device(std::move(other.m_device)),
+//	m_allocationPool(std::move(other.m_allocationPool)),
+//	m_bufferPool(std::move(other.m_bufferPool)),
+//	m_imageViewPool(std::move(other.m_imageViewPool)),
+//	m_imagePool(std::move(other.m_imagePool)),
+//	m_attachmentAllocator(std::move(other.m_attachmentAllocator)),
+//	m_shaderStorage(std::move(other.m_shaderStorage)),
+//	m_pipelineStorage2(std::move(other.m_pipelineStorage2))
+//
+//{
+//
+//}
+
+vulkan::LogicalDevice& vulkan::LogicalDevice::operator=(LogicalDevice&& other) noexcept
+{
+	if (this != &other)
+	{
+		assert(false);
+	}
+	return *this;
+}
+
 
 void vulkan::LogicalDevice::aquired_image(uint32_t index, VkSemaphore semaphore) noexcept
 {
 	if (m_wsiState.aquireSemaphores[index] != VK_NULL_HANDLE)
-		frame().recycle_semaphore(m_wsiState.aquireSemaphores[index]);
+		get_deletion_queue().queue_semaphore_deletion(m_wsiState.aquireSemaphores[index]); //can be recycled
 	m_wsiState.aquireSemaphores[index] = semaphore;
 	m_wsiState.swapchain_touched = false;
 	m_wsiState.index = index;
@@ -290,7 +321,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 			auto tmp = present;
 			present = request_semaphore();
 			if (tmp != VK_NULL_HANDLE)
-				frame().recycle_semaphore(tmp);
+				get_deletion_queue().queue_semaphore_deletion(tmp); //can be recycled
 			signalInfos[submitCounts - 1ull].push_back(VkSemaphoreSubmitInfo
 			{
 				.sType { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO },
@@ -363,52 +394,11 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 
 	for (const auto& waitInfo : queue.waitInfos)
 		if (!waitInfo.value)
-			frame().recycle_semaphore(waitInfo.semaphore);
+			get_deletion_queue().queue_semaphore_deletion(waitInfo.semaphore); //can be recycled
 	
 	queue.waitInfos.clear();
 	//Can possibly recycle semaphores now
 }
-
-void vulkan::LogicalDevice::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
-{
-	frame().queue_framebuffer_deletion(framebuffer);
-}
-
-void vulkan::LogicalDevice::queue_image_deletion(VkImage image) noexcept
-{
-	frame().queue_image_deletion(image);
-}
-
-void vulkan::LogicalDevice::queue_image_view_deletion(VkImageView imageView) noexcept
-{
-	frame().queue_image_view_deletion(imageView);
-}
-
-void vulkan::LogicalDevice::queue_buffer_view_deletion(VkBufferView bufferView) noexcept
-{
-	frame().queue_buffer_view_deletion(bufferView);
-}
-
-void vulkan::LogicalDevice::queue_image_sampler_deletion(VkSampler sampler) noexcept
-{
-	frame().queue_image_sampler_deletion(sampler);
-}
-
-void vulkan::LogicalDevice::queue_buffer_deletion(VkBuffer buffer) noexcept
-{
-	frame().queue_buffer_deletion(buffer);
-}
-
-void vulkan::LogicalDevice::queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept
-{
-	frame().queue_acceleration_structure_deletion(accelerationStructure);
-}
-
-void vulkan::LogicalDevice::queue_allocation_deletion(VmaAllocation allocation) noexcept
-{
-	frame().queue_allocation_deletion(allocation);
-}
-
 void vulkan::LogicalDevice::add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value, bool flush)
 {
 	assert(stages != 0);
@@ -460,7 +450,7 @@ void vulkan::LogicalDevice::submit_empty(CommandBufferType type, FenceHandle* fe
 
 	for (const auto& waitInfo : queue.waitInfos)
 		if (!waitInfo.value)
-			frame().recycle_semaphore(waitInfo.semaphore);
+			get_deletion_queue().queue_semaphore_deletion(waitInfo.semaphore); //can be recycled
 	queue.waitInfos.clear();
 
 	if (fence)
@@ -630,26 +620,9 @@ uint32_t vulkan::LogicalDevice::get_thread_index() const noexcept {
 uint32_t vulkan::LogicalDevice::get_thread_count() const noexcept {
 	return 1;
 }
-const vulkan::PhysicalDevice& vulkan::LogicalDevice::get_physical_device() const noexcept
-{
-	return r_physicalDevice;
-}
 
-const vulkan::LogicalDeviceWrapper& vulkan::LogicalDevice::get_device() const noexcept
-{
-	return m_device;
-}
-
-VkDevice vulkan::LogicalDevice::get_device_handle() const noexcept
-{
-	return m_device.get_handle();
-}
-
-VkAllocationCallbacks* vulkan::LogicalDevice::get_allocator() const noexcept {
-	return m_allocator;
-}
-vulkan::Allocator* vulkan::LogicalDevice::get_vma_allocator() const noexcept {
-	return m_vmaAllocator.get();
+const vulkan::Allocator& vulkan::LogicalDevice::get_vma_allocator() const noexcept {
+	return m_vmaAllocator;
 }
 const VkPhysicalDeviceProperties& vulkan::LogicalDevice::get_physical_device_properties() const noexcept {
 	return r_physicalDevice.get_properties();
@@ -737,16 +710,6 @@ VkPipelineCache vulkan::LogicalDevice::get_pipeline_cache() const noexcept {
 		return *m_pipelineCache;
 	else
 		return VK_NULL_HANDLE;
-}
-
-std::span<vulkan::Queue const> vulkan::LogicalDevice::get_queues(const vulkan::Queue::Type type) const noexcept
-{
-	return m_queues[static_cast<size_t>(type)];
-}
-
-std::span<vulkan::Queue> vulkan::LogicalDevice::get_queues(const vulkan::Queue::Type type) noexcept
-{
-	return m_queues[static_cast<size_t>(type)];
 }
 
 void vulkan::LogicalDevice::create_queues(const QueueInfos& queueInfos) noexcept
@@ -943,7 +906,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_image(const ImageInfo& info, V
 	VmaAllocationCreateInfo allocInfo{
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
 	};
-	if (auto result = vmaCreateImage(get_vma_allocator()->get_handle(), &createInfo, &allocInfo, &image, &allocation, nullptr); result != VK_SUCCESS) {
+	if (auto result = vmaCreateImage(get_vma_allocator(), &createInfo, &allocInfo, &image, &allocation, nullptr); result != VK_SUCCESS) {
 		throw Utility::VulkanException(result);
 	}
 	auto tmp = info;
@@ -1024,7 +987,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 				.alignment = memoryRequirements.alignment,
 				.memoryTypeBits = memoryRequirements.memoryTypeBits,
 			};
-			vmaAllocateMemory(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, &allocation, &allocInfo);
+			vmaAllocateMemory(m_vmaAllocator, &requirements, &allocCreateInfo, &allocation, &allocInfo);
 			mipTailBinds.reserve(1);
 			VkSparseMemoryBind mipTailBind{
 				.resourceOffset = sparseMemoryRequirement.imageMipTailOffset,
@@ -1046,7 +1009,7 @@ vulkan::ImageHandle vulkan::LogicalDevice::create_sparse_image(const ImageInfo& 
 			allocations.resize(info.arrayLayers);
 			allocInfos.resize(info.arrayLayers);
 			mipTailBinds.reserve(info.arrayLayers);
-			vmaAllocateMemoryPages(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, info.arrayLayers, allocations.data(), allocInfos.data());
+			vmaAllocateMemoryPages(m_vmaAllocator, &requirements, &allocCreateInfo, info.arrayLayers, allocations.data(), allocInfos.data());
 			for (uint32_t layer = 0; layer < info.arrayLayers; layer++) {
 
 				VkSparseMemoryBind mipTailBind{
@@ -1310,7 +1273,7 @@ bool vulkan::LogicalDevice::resize_sparse_image_up(Image& image, uint32_t baseMi
 	};
 	allocations.resize(allocationCount);
 	allocationInfos.resize(allocationCount);
-	vmaAllocateMemoryPages(m_vmaAllocator->get_handle(), &requirements, &allocCreateInfo, allocationCount, allocations.data(), allocationInfos.data());
+	vmaAllocateMemoryPages(m_vmaAllocator, &requirements, &allocCreateInfo, allocationCount, allocations.data(), allocationInfos.data());
 	allocationHandles.reserve(allocationCount);
 	imageBinds.reserve(allocationCount);
 	
@@ -1521,15 +1484,16 @@ vulkan::CommandPool& vulkan::LogicalDevice::get_pool(CommandBufferType type)
 }
 
 
-void vulkan::LogicalDevice::create_vma_allocator()
-{
-
-	VmaAllocator allocator;
-	if (auto result = m_device.vmaCreateAllocator(VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT, r_physicalDevice, m_allocator, r_instance, r_physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) {
-		throw Utility::VulkanException(result);
-	}
-	m_vmaAllocator = std::make_unique<Allocator>(allocator);
-}
+//void vulkan::LogicalDevice::create_vma_allocator()
+//{
+//
+//	::VmaAllocator allocator;
+//	if (auto result = m_device.vmaCreateAllocator(VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT, r_physicalDevice, m_allocator, 
+//		r_instance, r_physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) {
+//		throw Utility::VulkanException(result);
+//	}
+//	m_vmaAllocatorPtr = std::make_unique<Allocator>(allocator);
+//}
 
 vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, [[maybe_unused]] bool flush)
 {
@@ -1563,7 +1527,7 @@ vulkan::BufferHandle vulkan::LogicalDevice::create_buffer(const BufferInfo& info
 		//.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		.usage = info.memoryUsage,
 	};
-	vmaCreateBuffer(m_vmaAllocator->get_handle(), &bufferCreateInfo, &allocInfo, &buffer, &allocation, nullptr);
+	vmaCreateBuffer(m_vmaAllocator, &bufferCreateInfo, &allocInfo, &buffer, &allocation, nullptr);
 	BufferInfo tmp = info;
 	tmp.usage = usage;
 	auto handle(m_bufferPool->emplace(*this, buffer, allocation, tmp));
@@ -1711,7 +1675,7 @@ VkQueue vulkan::LogicalDevice::get_graphics_queue()  const noexcept
 
 
 
-void vulkan::LogicalDevice::create_default_sampler()
+std::expected<void, vulkan::Error> vulkan::LogicalDevice::create_default_sampler() noexcept
 {
 	VkSamplerCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
@@ -1835,9 +1799,14 @@ void vulkan::LogicalDevice::create_default_sampler()
 			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 			break;
 		}
-		m_defaultSampler[i] = std::make_unique<Sampler>(*this, createInfo);
-		m_bindlessSet.set_sampler(VkDescriptorImageInfo{.sampler = m_defaultSampler[i]->get_handle()});
+		if (auto sampler = Sampler::create(*this, createInfo); sampler) {
+			m_defaultSampler[i] = std::make_unique<Sampler>(std::move(*sampler));
+			m_bindlessSet.set_sampler(VkDescriptorImageInfo{ .sampler = m_defaultSampler[i]->get_handle() });
+		}
+		else
+			return std::unexpected{sampler.error()};
 	}
+	return {};
 }
 
 vulkan::Sampler* vulkan::LogicalDevice::get_default_sampler(DefaultSampler samplerType) const noexcept
@@ -1846,22 +1815,33 @@ vulkan::Sampler* vulkan::LogicalDevice::get_default_sampler(DefaultSampler sampl
 	return m_defaultSampler[static_cast<size_t>(samplerType)].get();
 }
 
-void vulkan::LogicalDevice::wait_on_idle_queue(CommandBufferType type)
+std::expected<vulkan::LogicalDevice, vulkan::Error> vulkan::LogicalDevice::create_device(const vulkan::Instance& parentInstance, const vulkan::PhysicalDevice& physicalDevice, VkDevice device, const QueueInfos& queueInfos) noexcept
 {
-	switch (type) {
-	case CommandBufferType::Generic:
-		m_device.vkQueueWaitIdle(m_graphics);
-		break;
-	case CommandBufferType::Compute:
-		m_device.vkQueueWaitIdle(m_compute);
-		break;
-	case CommandBufferType::Transfer:
-		m_device.vkQueueWaitIdle(m_transfer);
-		break;
-	default:
-		break;
-	}
+	//r_instance(parentInstance),
+	//	r_physicalDevice(physicalDevice),
+	//	m_device(device, nullptr),
+	//	m_fenceManager(*this),
+	//	m_semaphoreManager(*this),
+	//	m_allocationPool(new Utility::Pool<Allocation>()),
+	//	m_bufferPool(new Utility::LinkedBucketList<Buffer>()),
+	//	m_imageViewPool(new Utility::LinkedBucketList<ImageView>()),
+	//	m_imagePool(new Utility::LinkedBucketList<Image>()),
+	//	m_attachmentAllocator(new AttachmentAllocator(*this)),
+	//	m_shaderStorage(new ShaderStorage(*this)),
+	//	m_pipelineStorage2(new PipelineStorage2(*this)),
+	//	m_bindlessPool(*this),
+	//	m_bindlessSet(m_bindlessPool.allocate_set()),
+	//	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
+	//{
+	//	assert(queueInfos.graphicsFamilyQueueIndex != ~0u);
+	//	create_queues(queueInfos);
+	//	create_default_sampler();
+	//}
+	//create_queues(queueInfos);
+
+	return std::unexpected{vulkan::Error{VK_SUCCESS}};
 }
+
 void vulkan::LogicalDevice::wait_idle()
 {
 	wait_no_lock();
@@ -1895,11 +1875,6 @@ vulkan::LogicalDevice::FrameResource::FrameResource(LogicalDevice& device) : r_d
 vulkan::LogicalDevice::FrameResource::~FrameResource()
 {
 	begin();
-}
-
-void vulkan::LogicalDevice::FrameResource::recycle_semaphore(VkSemaphore sempahore)
-{
-	recycledSemaphores.push_back(sempahore);
 }
 
 std::vector<vulkan::CommandBufferHandle>& vulkan::LogicalDevice::FrameResource::get_submissions(CommandBufferType type) noexcept
@@ -1954,9 +1929,8 @@ void vulkan::LogicalDevice::FrameResource::wait_for_fence(FenceHandle&& fence) n
 
 void vulkan::LogicalDevice::FrameResource::delete_signal_semaphores() noexcept
 {
-	recycledSemaphores.insert(recycledSemaphores.end(), signalSemaphores.cbegin(), signalSemaphores.cend());
-	//deletedSemaphores.insert(deletedSemaphores.end(), signalSemaphores.cbegin(), signalSemaphores.cend());
-	signalSemaphores.clear();
+	for(auto semaphore : signalSemaphores)
+		r_device.get_deletion_queue().queue_semaphore_deletion(semaphore);
 }
 
 void vulkan::LogicalDevice::FrameResource::begin()
@@ -1971,63 +1945,16 @@ void vulkan::LogicalDevice::FrameResource::begin()
 			assert(false);
 			throw Utility::VulkanException(result);
 		}
-#ifdef DEBUGSUBMISSIONS
-		std::cout << "Frame(" << std::to_string(r_device.m_currentFrame) << ")\n\t FencesWait: ";
-		for (auto& fence : fences)
-			std::cout << std::hex << fence << " ";
-		std::cout << std::endl;
-#endif
+
 		waitForFences.clear();
 	}
 	reset_command_pools();
-	delete_resources();
 	read_queries(); //TODO move timestamp queries to profiler
 }
 
 void vulkan::LogicalDevice::FrameResource::clear_fences()
 {
 	waitForFences.clear();
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept
-{
-	if (auto res = std::find(deletedFramebuffer.cbegin(), deletedFramebuffer.cend(), framebuffer); res == deletedFramebuffer.cend())
-		deletedFramebuffer.push_back(framebuffer);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_image_deletion(VkImage image) noexcept
-{
-	deletedImages.push_back(image);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_image_view_deletion(VkImageView imageView) noexcept
-{
-	deletedImageViews.push_back(imageView);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_buffer_view_deletion(VkBufferView bufferView) noexcept
-{
-	deletedBufferViews.push_back(bufferView);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_image_sampler_deletion(VkSampler sampler) noexcept
-{
-	deletedSampler.push_back(sampler);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept
-{
-	deletedAccelerationStructures.push_back(accelerationStructure);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_buffer_deletion(VkBuffer buffer) noexcept
-{
-	deletedBuffer.push_back(buffer);
-}
-
-void vulkan::LogicalDevice::FrameResource::queue_allocation_deletion(VmaAllocation allocation) noexcept
-{
-	deletedAllocations.push_back(allocation);
 }
 
 bool vulkan::LogicalDevice::FrameResource::has_graphics_cmd() const noexcept
@@ -2069,50 +1996,3 @@ void vulkan::LogicalDevice::FrameResource::reset_command_pools()
 	}
 }
 
-void vulkan::LogicalDevice::FrameResource::delete_resources()
-{
-	for (auto fb : deletedFramebuffer)
-		r_device.get_device().vkDestroyFramebuffer(fb, r_device.get_allocator());
-
-	deletedFramebuffer.clear();
-
-	for (auto semaphore : deletedSemaphores)
-		r_device.destroy_semaphore(semaphore);
-
-	deletedSemaphores.clear();
-
-	for (auto semaphore : recycledSemaphores) 
-		r_device.m_semaphoreManager.recycle_semaphore(semaphore);
-	
-	recycledSemaphores.clear();
-
-	for (auto buffer : deletedBuffer) {
-		r_device.get_device().vkDestroyBuffer(buffer, r_device.get_allocator());
-	}
-	deletedBuffer.clear();
-	for (auto accelerationStructure : deletedAccelerationStructures) {
-		r_device.get_device().vkDestroyAccelerationStructureKHR(accelerationStructure, r_device.get_allocator());
-	}
-	deletedAccelerationStructures.clear();
-	for (auto image : deletedImages) {
-		r_device.get_device().vkDestroyImage( image, r_device.get_allocator());
-	}
-	deletedImages.clear();
-	for (auto sampler : deletedSampler) {
-		r_device.get_device().vkDestroySampler( sampler, r_device.get_allocator());
-	}
-	deletedSampler.clear();
-	for (auto imageView : deletedImageViews) {
-		r_device.get_device().vkDestroyImageView( imageView, r_device.get_allocator());
-	}
-	deletedImageViews.clear();
-
-	for (auto bufferView : deletedBufferViews) {
-		r_device.get_device().vkDestroyBufferView( bufferView, r_device.get_allocator());
-	}
-	deletedBufferViews.clear();
-	for (auto allocation : deletedAllocations) {
-		r_device.get_vma_allocator()->free_allocation(allocation);
-	}
-	deletedAllocations.clear();
-}

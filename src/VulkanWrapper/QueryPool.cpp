@@ -1,12 +1,34 @@
-#include "QueryPool.hpp"
-#include "LogicalDevice.h"
-#include "Instance.h"
+#include "VulkanWrapper/QueryPool.hpp"
+
 #include <bit>
+
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
 
 vulkan::QueryPool::QueryPool(LogicalDevice& device, VkQueryPool queryPool, uint32_t maxQueryCount)
 	: VulkanObject<VkQueryPool>(device, queryPool),
 	m_maxQueryCount(maxQueryCount)
 {
+}
+
+vulkan::QueryPool::QueryPool(QueryPool&& other) noexcept
+	: VulkanObject<VkQueryPool>(std::move(other)),
+	m_usedQueryCount(other.m_usedQueryCount),
+	m_maxQueryCount(other.m_maxQueryCount)
+{
+}
+
+vulkan::QueryPool& vulkan::QueryPool::operator=(QueryPool&& other) noexcept
+{
+	if(this != &other)
+	{
+		assert(&r_device == &other.r_device);
+		m_handle = other.m_handle;
+		other.m_handle = VK_NULL_HANDLE;
+		m_usedQueryCount = other.m_usedQueryCount;
+		m_maxQueryCount = other.m_maxQueryCount;
+	}
+	return *this;
 }
 
 vulkan::QueryPool::~QueryPool()
@@ -34,8 +56,10 @@ uint32_t vulkan::QueryPool::operator++(int)
 
 void vulkan::QueryPool::destroy()
 {
-	if (m_handle)
-		r_device.get_device().vkDestroyQueryPool(m_handle, r_device.get_allocator());
+	if (m_handle) {
+		r_device.get_deletion_queue().queue_query_pool_deletion(m_handle);
+		m_handle = VK_NULL_HANDLE;
+	}
 }
 
 vulkan::TimestampQueryPool::TimestampQueryPool(LogicalDevice& device, uint32_t maxQueryCount)
@@ -83,7 +107,7 @@ void vulkan::TimestampQueryPool::create()
 		.queryCount {m_maxQueryCount},
 		.pipelineStatistics {}
 	};
-	r_device.get_device().vkCreateQueryPool( &createInfo, r_device.get_allocator(), &m_handle);
+	auto result = r_device.get_device().vkCreateQueryPool( &createInfo, r_device.get_allocator(), &m_handle);
 	m_results.resize(m_maxQueryCount);
 	m_usedQueryCount = 0;
 	QueryPool::reset(0, m_maxQueryCount);

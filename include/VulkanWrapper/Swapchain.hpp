@@ -1,6 +1,11 @@
 #pragma once
-#include "VulkanForwards.h"
+
+#include <vector>
+
 #include "VulkanIncludes.h"
+
+#include "VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
 
 namespace vulkan
 {

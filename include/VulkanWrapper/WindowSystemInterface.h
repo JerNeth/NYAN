@@ -1,8 +1,13 @@
 #pragma once
 #ifndef VKWINDOWSYSTEMINTERFACE_H
 #define VKWINDOWSYSTEMINTERFACE_H
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
+
+#include <vector>
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+
 namespace vulkan {
 	class WindowSystemInterface {
 	public:

@@ -1,28 +1,44 @@
-#include "Sampler.h"
+#include "VulkanWrapper/Sampler.hpp"
+
 #include "LogicalDevice.h"
-#include "Utility/Exceptions.h"
 
-vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSamplerCreateInfo& createInfo):
-	r_device(device),
-	m_createInfo(createInfo)
-{
+#include "VulkanWrapper/LogicalDevice.h"
 
-	if (auto result = r_device.get_device().vkCreateSampler( &m_createInfo, r_device.get_allocator(), &m_vkHandle); result != VK_SUCCESS) {
-		throw Utility::VulkanException(result);
-	}
-}
 vulkan::Sampler::~Sampler() noexcept{
-	if (m_vkHandle != VK_NULL_HANDLE) {
-		r_device.queue_image_sampler_deletion(m_vkHandle);
-		m_vkHandle = VK_NULL_HANDLE;
+	if (m_handle != VK_NULL_HANDLE) {
+		r_device.get_deletion_queue().queue_sampler_deletion(m_handle);
+		m_handle = VK_NULL_HANDLE;
 	}
 }
 
 vulkan::Sampler::Sampler(Sampler&& other) noexcept :
-	r_device(other.r_device),
-	m_createInfo(other.m_createInfo)
+	VulkanObject<VkSampler_T*>(other.r_device, other.m_handle)
+	//m_createInfo(other.m_createInfo)
 {
-	if (this != &other) {
-		std::swap(m_vkHandle, other.m_vkHandle);
+	other.m_handle = VK_NULL_HANDLE;
+}
+
+vulkan::Sampler& vulkan::Sampler::operator=(Sampler&& other) noexcept
+{
+	if(this != &other)
+	{
+		
 	}
+	return *this;
+}
+
+std::expected<vulkan::Sampler, vulkan::Error> vulkan::Sampler::create(vulkan::LogicalDevice& device, const VkSamplerCreateInfo& createInfo) noexcept
+{
+	VkSampler handle;
+	if (const auto result = device.get_device().vkCreateSampler(&createInfo, device.get_allocator(), &handle); result != VK_SUCCESS) {
+		return std::unexpected{vulkan::Error{result}};
+	}
+	return Sampler{device, handle};
+}
+
+vulkan::Sampler::Sampler(vulkan::LogicalDevice& device, const VkSampler handle) noexcept :
+	VulkanObject<VkSampler_T*>(device, handle)
+	//m_createInfo(createInfo)
+{
+
 }

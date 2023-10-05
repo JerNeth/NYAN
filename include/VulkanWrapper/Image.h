@@ -1,12 +1,16 @@
 #ifndef VKIMAGE_H
 #define VKIMAGE_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
-#include <Util>
-#include "LinAlg.h"
 #include <optional>
-#include "Allocator.h"
+#include <utility>
+
+#include "LinAlg.h"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
+#include "VulkanWrapper/Allocator.h"
 
 namespace vulkan {
 	constexpr std::array<const char*,9> ImageLayoutNames{
@@ -496,7 +500,7 @@ namespace vulkan {
 		uint32_t baseArrayLayer = 0;
 		uint32_t layerCount = 1;
 	};
-	class ImageView : public Utility::UIDC, public VulkanObject<VkImageView> {
+	class ImageView : public VulkanObject<VkImageView> {
 	public:
 		ImageView(LogicalDevice& parent, const ImageViewCreateInfo & info);
 		ImageView(ImageView& other) = delete;
@@ -517,7 +521,7 @@ namespace vulkan {
 	private:
 		ImageViewCreateInfo m_info;
 	};
-	class Image : public Utility::UIDC, public VulkanObject<VkImage> {
+	class Image : public VulkanObject<VkImage> {
 	public:
 		Image(LogicalDevice& parent, VkImage image, const ImageInfo& info, const std::vector< AllocationHandle>& allocations = {}, uint32_t mipTail = 0);
 		Image(Image&) = delete;

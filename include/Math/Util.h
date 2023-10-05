@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <cmath>
 #include <algorithm>
+#include <bit>
 
 namespace Math {
 

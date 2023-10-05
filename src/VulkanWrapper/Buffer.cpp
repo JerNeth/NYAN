@@ -1,6 +1,6 @@
-#include "Buffer.h"
-#include "Instance.h"
-#include "LogicalDevice.h"
+#include "VulkanWrapper/Buffer.h"
+
+#include "VulkanWrapper/LogicalDevice.h"
 
 
 vulkan::Buffer::Buffer(LogicalDevice& device, VkBuffer buffer, VmaAllocation allocation, const BufferInfo& info):
@@ -45,22 +45,22 @@ void vulkan::Buffer::swap_contents(Buffer& other) noexcept {
 void* vulkan::Buffer::map_data() noexcept
 {
 	if(!maped)
-		r_device.get_vma_allocator()->map_memory(m_allocation, reinterpret_cast<void**>(&maped));
+		maped = *r_device.get_vma_allocator().map_memory(m_allocation);
 	return maped;
 }
 void vulkan::Buffer::unmap_data() noexcept
 {
 	if (maped)
-		r_device.get_vma_allocator()->unmap_memory(m_allocation);
+		r_device.get_vma_allocator().unmap_memory(m_allocation);
 	maped = nullptr;
 }
 void vulkan::Buffer::flush(uint32_t offset, uint32_t size)
 {
-	r_device.get_vma_allocator()->flush(m_allocation, offset,static_cast<uint32_t>(size == ~0u ? m_info.size : size));
+	r_device.get_vma_allocator().flush(m_allocation, offset,static_cast<uint32_t>(size == ~0u ? m_info.size : size));
 }
 void vulkan::Buffer::invalidate(uint32_t offset, uint32_t size)
 {
-	r_device.get_vma_allocator()->invalidate(m_allocation, offset, static_cast<uint32_t>(size == ~0u ? m_info.size : size));
+	r_device.get_vma_allocator().invalidate(m_allocation, offset, static_cast<uint32_t>(size == ~0u ? m_info.size : size));
 }
 VkDeviceAddress vulkan::Buffer::get_address() const
 {
@@ -78,7 +78,9 @@ VkDeviceAddress vulkan::Buffer::get_address() const
 vulkan::Buffer::~Buffer()
 {
 	if(maped)
-		r_device.get_vma_allocator()->unmap_memory(m_allocation);
-	r_device.queue_buffer_deletion(m_handle);
-	r_device.queue_allocation_deletion(m_allocation);
+		r_device.get_vma_allocator().unmap_memory(m_allocation);
+	if(m_handle)
+		r_device.get_deletion_queue().queue_buffer_deletion(m_handle);
+	if(m_allocation)
+		r_device.get_deletion_queue().queue_allocation_deletion(m_allocation);
 }

@@ -2,6 +2,12 @@
 #ifndef VKPIPELINECONFIG_H
 #define VKPIPELINECONFIG_H
 
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/Utility.h"
+
+
 namespace vulkan {
 	constexpr unsigned BLEND_FACTOR_BITS = Utility::bit_width(VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA) + 1;
 	constexpr unsigned BLEND_OP_BITS = Utility::bit_width(VK_BLEND_OP_MAX) + 1;
@@ -16,14 +22,14 @@ namespace vulkan {
 	constexpr unsigned RASTERIZATION_SAMPLE_BITS = Utility::bit_width(VK_SAMPLE_COUNT_16_BIT) + 1;
 
 	struct BlendAttachment {
-		VkBool32 blend_enable : 1;
-		VkBlendFactor src_color_blend : BLEND_FACTOR_BITS;
-		VkBlendFactor dst_color_blend : BLEND_FACTOR_BITS;
-		VkBlendOp color_blend_op : BLEND_OP_BITS;
-		VkBlendFactor src_alpha_blend : BLEND_FACTOR_BITS;
-		VkBlendFactor dst_alpha_blend : BLEND_FACTOR_BITS;
-		VkBlendOp alpha_blend_op : BLEND_OP_BITS;
-		VkColorComponentFlags color_write_mask : WRITE_MASK_BITS;
+		VkBool32 blendEnable : 1;
+		VkBlendFactor srcColorBlend : BLEND_FACTOR_BITS;
+		VkBlendFactor dstColorBlend : BLEND_FACTOR_BITS;
+		VkBlendOp colorBlendOp : BLEND_OP_BITS;
+		VkBlendFactor srcAlphaBlend : BLEND_FACTOR_BITS;
+		VkBlendFactor dstAlphaBlend : BLEND_FACTOR_BITS;
+		VkBlendOp alphaBlendOp : BLEND_OP_BITS;
+		VkColorComponentFlags colorWriteMask : WRITE_MASK_BITS;
 	};
 
 	struct DynamicGraphicsPipelineState {
@@ -50,49 +56,49 @@ namespace vulkan {
 			SIZE
 		};
 		Utility::bitset<static_cast<size_t>(DynamicState::SIZE), DynamicState> flags;
-		VkBool32 depth_write_enable : 1;
-		VkBool32 depth_test_enable : 1;
-		VkBool32 depth_bias_enable : 1;
-		VkBool32 depth_bounds_test_enable : 1;
-		VkCompareOp depth_compare_op : COMPARE_OP_BITS;
+		VkBool32 depthWriteEnable : 1;
+		VkBool32 depthTestEnable : 1;
+		VkBool32 depthBiasEnable : 1;
+		VkBool32 depthBoundsTestEnable : 1;
+		VkCompareOp depthCompareOp : COMPARE_OP_BITS;
 
-		VkBool32 stencil_test_enable : 1;
-		VkStencilOp stencil_front_fail : STENCIL_OP_BITS;
-		VkStencilOp stencil_front_pass : STENCIL_OP_BITS;
-		VkStencilOp stencil_front_depth_fail : STENCIL_OP_BITS;
-		VkCompareOp stencil_front_compare_op : COMPARE_OP_BITS;
+		VkBool32 stencilTestEnable : 1;
+		VkStencilOp stencilFrontFail : STENCIL_OP_BITS;
+		VkStencilOp stencilFrontPass : STENCIL_OP_BITS;
+		VkStencilOp stencilFrontDepthFail : STENCIL_OP_BITS;
+		VkCompareOp stencilFrontCompareOp : COMPARE_OP_BITS;
 
-		VkStencilOp stencil_back_fail : STENCIL_OP_BITS;
-		VkStencilOp stencil_back_pass : STENCIL_OP_BITS;
-		VkStencilOp stencil_back_depth_fail : STENCIL_OP_BITS;
-		VkCompareOp stencil_back_compare_op : COMPARE_OP_BITS;
+		VkStencilOp stencilBackFail : STENCIL_OP_BITS;
+		VkStencilOp stencilBackPass : STENCIL_OP_BITS;
+		VkStencilOp stencilBackDepthFail : STENCIL_OP_BITS;
+		VkCompareOp stencilBackCompareOp : COMPARE_OP_BITS;
 
-		VkCullModeFlags cull_mode : CULL_MODE_BITS;
-		VkFrontFace front_face : 2;
-		VkBool32 primitive_restart_enable : 1;
-		VkBool32 rasterizer_discard_enable : 1;
-		VkPrimitiveTopology primitive_topology : TOPOLOGY_BITS;
-		uint32_t stencil_front_reference : 8;
-		uint32_t stencil_front_write_mask : 8;
-		uint32_t stencil_front_compare_mask : 8;
-		uint32_t stencil_back_reference : 8;
-		uint32_t stencil_back_write_mask : 8;
-		uint32_t stencil_back_compare_mask : 8;
+		VkCullModeFlags cullMode : CULL_MODE_BITS;
+		VkFrontFace frontFace : 2;
+		VkBool32 primitiveRestartEnable : 1;
+		VkBool32 rasterizerDiscardEnable : 1;
+		VkPrimitiveTopology primitiveTopology : TOPOLOGY_BITS;
+		uint32_t stencilFrontReference : 8;
+		uint32_t stencilFrontWriteMask : 8;
+		uint32_t stencilFrontCompareMask : 8;
+		uint32_t stencilBackReference : 8;
+		uint32_t stencilBackWriteMask : 8;
+		uint32_t stencilBackCompareMask : 8;
 	};
 
 	struct GraphicsPipelineState {
-		VkPolygonMode polygon_mode : POLYGON_MODE_BITS;
+		VkPolygonMode polygonMode : POLYGON_MODE_BITS;
 
-		VkSampleCountFlagBits rasterization_samples : RASTERIZATION_SAMPLE_BITS;
-		VkBool32 alpha_to_coverage : 1;
-		VkBool32 alpha_to_one : 1;
-		VkBool32 sample_shading : 1;
+		VkSampleCountFlagBits rasterizationSamples : RASTERIZATION_SAMPLE_BITS;
+		VkBool32 alphaToCoverage : 1;
+		VkBool32 alphaToOne : 1;
+		VkBool32 sampleShading : 1;
 
-		VkBool32 logic_op_enable : 1;
-		VkLogicOp logic_op : LOGIC_OP_BITS;
+		VkBool32 logicOpEnable : 1;
+		VkLogicOp logicOp : LOGIC_OP_BITS;
 
 		//All devices supporting tessellation use 32 as max value
-		uint32_t patch_control_points : Utility::bit_width(32);
+		uint32_t patchControlPoints : Utility::bit_width(32);
 
 		std::array<BlendAttachment, MAX_ATTACHMENTS> blendAttachments{};
 

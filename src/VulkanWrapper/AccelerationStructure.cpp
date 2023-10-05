@@ -1,8 +1,10 @@
 #include "AccelerationStructure.h"
-#include "PhysicalDevice.hpp"
-#include "LogicalDevice.h"
-#include "CommandBuffer.h"
+
+#include "Math/LinAlg.h"
+
 #include "VulkanWrapper/PhysicalDevice.hpp"
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/CommandBuffer.h"
 
 
 
@@ -45,7 +47,7 @@ vulkan::AccelerationStructure& vulkan::AccelerationStructure::operator=(Accelera
 vulkan::AccelerationStructure::~AccelerationStructure()
 {
 	if (m_handle) {
-		r_device.queue_acceleration_structure_deletion(m_handle);
+		r_device.get_deletion_queue().queue_acceleration_structure_deletion(m_handle);
 		m_handle = VK_NULL_HANDLE;
 		m_reference = 0;
 	}

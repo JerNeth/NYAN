@@ -1,9 +1,14 @@
 #ifndef VKINSTANCE_H
 #define VKINSTANCE_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
 #include <span>
+#include <vector>
+#include <memory>
+#include <string>
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
 
 namespace vulkan {
 	class Instance {
@@ -50,6 +55,8 @@ namespace vulkan {
 		~Instance() noexcept;
 		Instance(Instance&) = delete;
 		Instance& operator=(Instance&) = delete;
+		Instance(Instance&& other) noexcept;
+		Instance& operator=(Instance&& other) noexcept;
 		//LogicalDevice setup_device_direct();
 		std::unique_ptr<LogicalDevice> setup_device(const std::span<const char*>& requiredExtensions, const std::span<const char*>& optionalExtensions);
 #ifdef WIN32
@@ -61,6 +68,7 @@ namespace vulkan {
 		operator VkInstance() const noexcept;
 		std::span<const PhysicalDevice> get_physical_devices() const noexcept;
 		std::span<PhysicalDevice> get_physical_devices() noexcept;
+		void get_version() const noexcept;
 	private:
 		void create_instance( std::span<const char*> requiredExtensions, std::span<const char*> optionalExtensions, uint32_t applicationVersion = 0, uint32_t engineVersion = 0);
 
@@ -78,20 +86,19 @@ namespace vulkan {
 		VkInstance m_instance { VK_NULL_HANDLE };
 		VkSurfaceKHR m_surface { VK_NULL_HANDLE };
 		size_t m_bestDeviceIdx = 0;
-		std::vector<PhysicalDevice> m_physicalDevices;
+		std::vector<PhysicalDevice> m_physicalDevices {};
 		VkAllocationCallbacks* m_allocator = NULL;
 		VkDebugUtilsMessengerEXT m_debugMessenger {VK_NULL_HANDLE};
 
-		Validation m_validation;
-		std::vector<const char*> m_usedExtensions;
-		std::vector<const char*> m_layers;
-		std::vector<VkLayerProperties> m_availableLayers;
-		std::vector<VkExtensionProperties> m_availableExtensions;
-		Extensions m_extensions;
+		Validation m_validation {};
+		std::vector<const char*> m_usedExtensions {};
+		std::vector<const char*> m_layers {};
+		std::vector<VkLayerProperties> m_availableLayers {};
+		std::vector<VkExtensionProperties> m_availableExtensions {};
+		Extensions m_extensions {};
 		
-		std::string m_applicationName;
-		std::string m_engineName;
-		friend class LogicalDevice;
+		std::string m_applicationName {};
+		std::string m_engineName {};
 	};
 }
 #endif

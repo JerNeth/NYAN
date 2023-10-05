@@ -4,6 +4,7 @@
 #include "VkWrapper.h"
 #include "VulkanRenderer"
 #include "glfwWrapper.h"
+#include "GLFWWrapper/Library.hpp"
 #include "Settings.h"
 #include "Input.h"
 namespace nyan {
@@ -41,8 +42,8 @@ namespace nyan {
 		const std::string m_name;
 		const std::string m_engineName{ "NYAN" };
 		Settings m_settings;
-
-		std::unique_ptr<glfww::Library> m_glfwLibrary;
+		
+		std::unique_ptr<glfw::Library> m_glfwLibrary;
 		std::unique_ptr<glfww::Monitor> m_monitor;
 		std::unique_ptr<glfww::Window> m_window;
 		std::unique_ptr<nyan::Input> m_input;

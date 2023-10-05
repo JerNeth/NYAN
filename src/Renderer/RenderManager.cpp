@@ -1,15 +1,19 @@
 #include "Renderer/RenderManager.h"
-#include "Renderer/Light.h"
+
+
 #include "Utility/Exceptions.h"
+
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/CommandBuffer.h"
 #include "VulkanWrapper/AccelerationStructure.h"
 #include "VulkanWrapper/Shader.h"
 #include "VulkanWrapper/PhysicalDevice.hpp"
 
+#include "Renderer/Light.h"
+
 nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytracing, const std::filesystem::path& directory) :
 	r_device(device),
-	m_rendergraph(r_device),
+	m_renderGraph(r_device),
 	m_shaderManager(r_device),
 	m_textureManager(r_device, false, directory),
 	m_materialManager(r_device, m_textureManager),
@@ -23,82 +27,6 @@ nyan::RenderManager::RenderManager(vulkan::LogicalDevice& device, bool useRaytra
 		r_device.get_physical_device().get_extensions().ray_tracing_pipeline),
 	m_primaryCamera(entt::null)
 {
-}
-nyan::Rendergraph& nyan::RenderManager::get_render_graph()
-{
-	return m_rendergraph;
-}
-const nyan::Rendergraph& nyan::RenderManager::get_render_graph() const
-{
-	return m_rendergraph;
-}
-vulkan::ShaderManager& nyan::RenderManager::get_shader_manager() 
-{ 
-	return m_shaderManager;
-}
-const vulkan::ShaderManager& nyan::RenderManager::get_shader_manager() const
-{
-	return m_shaderManager;
-}
-nyan::TextureManager& nyan::RenderManager::get_texture_manager()
-{
-	return m_textureManager;
-}
-const nyan::TextureManager& nyan::RenderManager::get_texture_manager() const
-{
-	return m_textureManager;
-}
-nyan::MaterialManager& nyan::RenderManager::get_material_manager()
-{
-	return m_materialManager;
-}
-const nyan::MaterialManager& nyan::RenderManager::get_material_manager() const
-{
-	return m_materialManager;
-}
-nyan::MeshManager& nyan::RenderManager::get_mesh_manager()
-{
-	return m_meshManager;
-}
-const nyan::MeshManager& nyan::RenderManager::get_mesh_manager() const
-{
-	return m_meshManager;
-}
-nyan::InstanceManager& nyan::RenderManager::get_instance_manager()
-{
-	return m_instanceManager;
-}
-const nyan::InstanceManager& nyan::RenderManager::get_instance_manager() const
-{
-	return m_instanceManager;
-}
-nyan::SceneManager& nyan::RenderManager::get_scene_manager()
-{
-	return m_sceneManager;
-}
-const nyan::SceneManager& nyan::RenderManager::get_scene_manager() const
-{
-	return m_sceneManager;
-}
-
-entt::registry& nyan::RenderManager::get_registry()
-{
-	return m_registry;
-}
-
-const entt::registry& nyan::RenderManager::get_registry() const
-{
-	return m_registry;
-}
-
-nyan::Profiler& nyan::RenderManager::get_profiler()
-{
-	return m_profiler;
-}
-
-const nyan::Profiler& nyan::RenderManager::get_profiler() const
-{
-	return m_profiler;
 }
 
 void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& materials)
@@ -264,7 +192,7 @@ void nyan::RenderManager::begin_frame()
 {
 	m_profiler.begin_frame();
 	//Resources are valid after this point, views created and bound
-	m_rendergraph.begin_frame();
+	m_renderGraph.begin_frame();
 	//Skeletal animations have to be before the mesh manager build
 	//Has to be before instance manager build and instance manager update
 

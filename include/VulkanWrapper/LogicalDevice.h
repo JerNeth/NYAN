@@ -1,23 +1,32 @@
 #ifndef VKLOGICALDEVICE_H
 #define VKLOGICALDEVICE_H
 #pragma once
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
 
 #include <functional>
+#include <span>
+#include <expected>
 
 #include "Util"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
 #include "Manager.h"
-#include "DescriptorSet.h"
-#include "Queue.hpp"
-#include "DeviceWrapper.hpp"
+#include "VulkanWrapper/DescriptorSet.h"
+#include "VulkanWrapper/DescriptorPool.hpp"
+#include "VulkanWrapper/Queue.hpp"
+#include "VulkanWrapper/DeviceWrapper.hpp"
+#include "VulkanWrapper/VulkanError.hpp"
+#include "VulkanWrapper/Sampler.hpp"
+#include "VulkanWrapper/DeletionQueue.hpp"
+#include "VulkanWrapper/Allocator.hpp"
 
 namespace vulkan {
 	//Important to delete the device after everything else
 
 	struct InputData {
-		const void* ptr;
-		size_t size;
+		const void* ptr{ nullptr };
+		size_t size{ 0 };
 		size_t stride {0};
 	};
 
@@ -63,7 +72,6 @@ namespace vulkan {
 		public:
 			FrameResource(LogicalDevice& device);
 			~FrameResource();
-			void recycle_semaphore(VkSemaphore sempahore);
 			std::vector<CommandBufferHandle>& get_submissions(CommandBufferType type) noexcept;
 			vulkan::CommandPool& get_pool(CommandBufferType type) noexcept;
 			vulkan::TimestampQueryPool& get_timestamps() noexcept;
@@ -76,22 +84,12 @@ namespace vulkan {
 			void begin();
 			void end();
 			void clear_fences();
-			void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
-			void queue_image_deletion(VkImage image) noexcept;
-			void queue_image_view_deletion(VkImageView imageView) noexcept;
-			void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
-			void queue_image_sampler_deletion(VkSampler sampler) noexcept;
-			void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
-			void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
-			void queue_buffer_deletion(VkBuffer buffer) noexcept;
-			void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 			bool has_graphics_cmd() const noexcept;
 			bool has_transfer_cmd() const noexcept;
 			bool has_compute_cmd() const noexcept;
 		private:
 			void read_queries();
 			void reset_command_pools();
-			void delete_resources();
 
 			LogicalDevice& r_device;
 			uint32_t frameIndex = 0;
@@ -104,19 +102,7 @@ namespace vulkan {
 			std::vector<CommandBufferHandle> submittedComputeCmds;
 			std::vector<CommandBufferHandle> submittedTransferCmds;
 			std::vector<TimestampQueryPool> timestamps;
-
-
-			std::vector<VkBufferView> deletedBufferViews;
-			std::vector<VkImageView> deletedImageViews;
-			std::vector<VkSampler> deletedSampler;
-			std::vector<VkImage> deletedImages;
-			std::vector<VkBuffer> deletedBuffer;
-			std::vector<VkAccelerationStructureKHR> deletedAccelerationStructures;
-			std::vector<VmaAllocation> deletedAllocations;
-			std::vector<VkFramebuffer> deletedFramebuffer;
-			std::vector<VkSemaphore> deletedSemaphores;
-			std::vector<VkSemaphore> recycledSemaphores;
-
+			
 			std::vector<VkSemaphore> signalSemaphores;
 			std::vector<FenceHandle> waitForFences;
 
@@ -141,16 +127,14 @@ namespace vulkan {
 			const vulkan::PhysicalDevice& physicalDevice,
 			VkDevice device, uint32_t graphicsFamilyQueueIndex,
 			uint32_t computeFamilyQueueIndex, uint32_t transferFamilyQueueIndex);
-		LogicalDevice(const vulkan::Instance& parentInstance, 
-			const vulkan::PhysicalDevice& physicalDevice,
-			VkDevice device, const QueueInfos& queueInfos);
 		~LogicalDevice();
 		LogicalDevice(LogicalDevice&) = delete;
 		LogicalDevice& operator=(LogicalDevice&) = delete;
-		LogicalDevice(LogicalDevice&&) = delete;
-		LogicalDevice& operator=(LogicalDevice&&) = delete;
-		void wait_idle();
 
+		LogicalDevice(LogicalDevice&&) noexcept;
+		LogicalDevice& operator=(LogicalDevice&&) noexcept;
+
+		void wait_idle();
 
 		BufferHandle create_buffer(const BufferInfo& info, const std::vector<InputData>& initialData, bool flush = true);
 		ImageViewHandle create_image_view(const ImageViewCreateInfo& info);
@@ -181,17 +165,6 @@ namespace vulkan {
 		[[deprecated]] void next_frame();
 		[[deprecated]] void end_frame();
 		[[deprecated]] void submit_queue(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount = 0, VkSemaphore* semaphores = nullptr, uint64_t* semaphoreValues = nullptr);
-		[[deprecated]] void queue_framebuffer_deletion(VkFramebuffer framebuffer) noexcept;
-		[[deprecated]] void queue_image_deletion(VkImage image) noexcept;
-		[[deprecated]] void queue_image_view_deletion(VkImageView imageView) noexcept;
-		[[deprecated]] void queue_buffer_view_deletion(VkBufferView bufferView) noexcept;
-		[[deprecated]] void queue_image_sampler_deletion(VkSampler sampler) noexcept;
-		[[deprecated]] void queue_acceleration_structure_deletion(VkAccelerationStructureKHR accelerationStructure) noexcept;
-		[[deprecated]] void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
-		[[deprecated]] void queue_buffer_deletion(VkBuffer buffer) noexcept;
-		[[deprecated]] void queue_allocation_deletion(VmaAllocation allocation) noexcept;
-		//void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags stages, bool flush = false);
-		//void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphore>& semaphores, const std::vector<VkPipelineStageFlags>& stages, bool flush = false);
 		[[deprecated]] void add_wait_semaphore(CommandBufferType type, VkSemaphore semaphore, VkPipelineStageFlags2 stages, uint64_t value = 0, bool flush = false);
 		[[deprecated]] void add_wait_semaphores(CommandBufferType type, const std::vector<VkSemaphoreSubmitInfo >& submitInfos, bool flush = false);
 		[[deprecated]] void submit_empty(CommandBufferType type, FenceHandle* fence, uint32_t semaphoreCount, VkSemaphore* semaphore, uint64_t* semaphoreValues = nullptr);
@@ -211,11 +184,29 @@ namespace vulkan {
 
 		[[deprecated]] uint32_t get_thread_index() const noexcept;
 		[[deprecated]] uint32_t get_thread_count() const noexcept;
-		[[nodiscard]] const PhysicalDevice& get_physical_device() const noexcept;
-		[[nodiscard]] const LogicalDeviceWrapper& get_device() const noexcept;
-		[[nodiscard]] VkDevice get_device_handle() const noexcept;
-		[[nodiscard]] VkAllocationCallbacks* get_allocator() const noexcept;
-		[[nodiscard]] Allocator* get_vma_allocator() const noexcept;
+
+		[[nodiscard]] const PhysicalDevice& get_physical_device() const noexcept
+		{
+			return r_physicalDevice;
+		}
+		[[nodiscard]] const LogicalDeviceWrapper& get_device() const noexcept
+		{
+			return m_device;
+		}
+		[[nodiscard]] DeletionQueue& get_deletion_queue() noexcept
+		{
+			return m_deletionQueue;
+		}
+		[[nodiscard]] VkDevice get_device_handle() const noexcept
+		{
+			return m_device.get_handle();
+		}
+		[[nodiscard]] VkAllocationCallbacks* get_allocator() const noexcept
+		{
+			return m_allocator;
+		}
+		[[nodiscard]] const Allocator& get_vma_allocator() const noexcept;
+
 		[[nodiscard]] const VkPhysicalDeviceProperties& get_physical_device_properties() const noexcept;
 
 		[[deprecated]] DescriptorSet& get_bindless_set() noexcept;
@@ -230,12 +221,10 @@ namespace vulkan {
 		[[deprecated]] uint32_t get_swapchain_height() const noexcept;
 		[[deprecated]] VkBool32 supports_sparse_textures() const noexcept;
 		[[deprecated]] VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect);
-		uint32_t get_compute_family() const noexcept;
-		uint32_t get_graphics_family() const noexcept;
+		[[deprecated]] uint32_t get_compute_family() const noexcept;
+		[[deprecated]] uint32_t get_graphics_family() const noexcept;
 		VkPipelineCache get_pipeline_cache() const noexcept;
 		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
-
-		void wait_on_idle_queue(CommandBufferType type);
 
 		[[deprecated]] Queue& get_queue(CommandBufferType type) noexcept {
 			switch (type) {
@@ -250,10 +239,30 @@ namespace vulkan {
 				return m_graphics;
 			}
 		}
-		std::span<vulkan::Queue const> get_queues(vulkan::Queue::Type) const noexcept;
-		std::span<vulkan::Queue> get_queues(vulkan::Queue::Type) noexcept;
+
+		[[nodiscard]] std::span<vulkan::Queue const> get_queues(vulkan::Queue::Type type) const noexcept
+		{
+			return m_queues[static_cast<size_t>(type)];
+		}
+		[[nodiscard]] std::span<vulkan::Queue> get_queues(vulkan::Queue::Type type) noexcept
+		{
+			return m_queues[static_cast<size_t>(type)];
+		}
+
+		static std::expected<LogicalDevice, vulkan::Error> create_device(const vulkan::Instance& parentInstance,
+		                                                            const vulkan::PhysicalDevice& physicalDevice,
+		                                                            VkDevice device, const QueueInfos& queueInfos) noexcept;
+		LogicalDevice(const vulkan::Instance& parentInstance,
+			const vulkan::PhysicalDevice& physicalDevice,
+			VkDevice device,
+			const QueueInfos& queueInfos);
 
 	private:
+		LogicalDevice(const vulkan::Instance& parentInstance,
+			const vulkan::PhysicalDevice& physicalDevice,
+			VkDevice device,
+			const QueueInfos& queueInfos, int a);
+
 		void create_queues(const QueueInfos& queueInfos) noexcept;
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
 		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
@@ -266,8 +275,8 @@ namespace vulkan {
 
 		std::vector<CommandBufferHandle>& get_current_submissions(CommandBufferType type);
 		CommandPool& get_pool(CommandBufferType type);
-		void create_vma_allocator();
-		void create_default_sampler();
+		//void create_vma_allocator();
+		std::expected<void, vulkan::Error> create_default_sampler() noexcept;
 
 		/// *******************************************************************
 		/// Member variables
@@ -277,9 +286,9 @@ namespace vulkan {
 		const PhysicalDevice& r_physicalDevice;
 		LogicalDeviceWrapper m_device;
 
-		VkAllocationCallbacks* m_allocator = NULL;
-		std::unique_ptr<Allocator> m_vmaAllocator;
-
+		VkAllocationCallbacks* m_allocator{ nullptr };
+		Allocator m_vmaAllocator;
+		DeletionQueue m_deletionQueue;
 
 		FenceManager m_fenceManager;
 		SemaphoreManager m_semaphoreManager;

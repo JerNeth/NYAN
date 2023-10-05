@@ -1,12 +1,17 @@
 #ifndef VKPIPELINE_H
 #define VKPIPELINE_H
 #pragma once
-#include "VulkanIncludes.h"
-#include <Util>
-#include "VulkanForwards.h"
-#include "PipelineConfig.h"
-
 #include <filesystem>
+
+#include <Util>
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/PipelineConfig.h"
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
+#include "VulkanWrapper/VulkanError.hpp"
+
 
 namespace vulkan {
 
@@ -32,57 +37,57 @@ namespace vulkan {
 			DynamicGraphicsPipelineState::DynamicState::PrimitiveRestartEnabled,
 			DynamicGraphicsPipelineState::DynamicState::RasterizerDiscardEnabled,
 		},
-		.depth_write_enable {VK_TRUE},
-		.depth_test_enable {VK_TRUE},
-		.depth_bias_enable {VK_FALSE},
-		.depth_bounds_test_enable {VK_FALSE},
-		.depth_compare_op {VK_COMPARE_OP_GREATER_OR_EQUAL}, //Use GE because of inverse Z VK_COMPARE_OP_GREATER_OR_EQUAL
+		.depthWriteEnable {VK_TRUE},
+		.depthTestEnable {VK_TRUE},
+		.depthBiasEnable {VK_FALSE},
+		.depthBoundsTestEnable {VK_FALSE},
+		.depthCompareOp {VK_COMPARE_OP_GREATER_OR_EQUAL}, //Use GE because of inverse Z VK_COMPARE_OP_GREATER_OR_EQUAL
 
-		.stencil_test_enable {VK_FALSE},
-		.stencil_front_fail {},
-		.stencil_front_pass {},
-		.stencil_front_depth_fail {},
-		.stencil_front_compare_op {},
+		.stencilTestEnable {VK_FALSE},
+		.stencilFrontFail {},
+		.stencilFrontPass {},
+		.stencilFrontDepthFail {},
+		.stencilFrontCompareOp {},
 
-		.stencil_back_fail {},
-		.stencil_back_pass {},
-		.stencil_back_depth_fail {},
-		.stencil_back_compare_op {},
+		.stencilBackFail {},
+		.stencilBackPass {},
+		.stencilBackDepthFail {},
+		.stencilBackCompareOp {},
 
-		.cull_mode {VK_CULL_MODE_BACK_BIT},
-		.front_face {VK_FRONT_FACE_COUNTER_CLOCKWISE},
+		.cullMode {VK_CULL_MODE_BACK_BIT},
+		.frontFace {VK_FRONT_FACE_COUNTER_CLOCKWISE},
 		//.front_face {VK_FRONT_FACE_CLOCKWISE},
-		.primitive_restart_enable {VK_FALSE},
-		.rasterizer_discard_enable {VK_FALSE},
-		.primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
+		.primitiveRestartEnable {VK_FALSE},
+		.rasterizerDiscardEnable {VK_FALSE},
+		.primitiveTopology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST},
 	};
 	constexpr BlendAttachment defaultBlendAttachment{
-		.blend_enable {VK_FALSE},
-		.src_color_blend {},
-		.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+		.blendEnable {VK_FALSE},
+		.srcColorBlend {},
+		.colorWriteMask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 	};
 	constexpr BlendAttachment alphaBlendAttachment{
-		.blend_enable {VK_TRUE},
-		.src_color_blend {VK_BLEND_FACTOR_SRC_ALPHA},
-		.dst_color_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
-		.color_blend_op {VK_BLEND_OP_ADD},
-		.src_alpha_blend {VK_BLEND_FACTOR_SRC_ALPHA},
-		.dst_alpha_blend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
-		.alpha_blend_op {VK_BLEND_OP_ADD},
-		.color_write_mask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
+		.blendEnable {VK_TRUE},
+		.srcColorBlend {VK_BLEND_FACTOR_SRC_ALPHA},
+		.dstColorBlend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+		.colorBlendOp {VK_BLEND_OP_ADD},
+		.srcAlphaBlend {VK_BLEND_FACTOR_SRC_ALPHA},
+		.dstAlphaBlend {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA},
+		.alphaBlendOp {VK_BLEND_OP_ADD},
+		.colorWriteMask {VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT}
 	};
 	constexpr GraphicsPipelineState defaultGraphicsPipelineState{
-		.polygon_mode {VK_POLYGON_MODE_FILL},
-		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
-		.logic_op_enable {VK_FALSE},
-		.patch_control_points {0},
+		.polygonMode {VK_POLYGON_MODE_FILL},
+		.rasterizationSamples {VK_SAMPLE_COUNT_1_BIT},
+		.logicOpEnable {VK_FALSE},
+		.patchControlPoints {0},
 		.blendAttachments {defaultBlendAttachment}
 	};
 	constexpr GraphicsPipelineState alphaBlendedGraphicsPipelineState{
-		.polygon_mode {VK_POLYGON_MODE_FILL},
-		.rasterization_samples {VK_SAMPLE_COUNT_1_BIT},
-		.logic_op_enable {VK_FALSE},
-		.patch_control_points {0},
+		.polygonMode {VK_POLYGON_MODE_FILL},
+		.rasterizationSamples {VK_SAMPLE_COUNT_1_BIT},
+		.logicOpEnable {VK_FALSE},
+		.patchControlPoints {0},
 		.blendAttachments { alphaBlendAttachment }
 	};
 	// Blend Logic Pseudo Code

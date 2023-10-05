@@ -1,11 +1,12 @@
 #pragma once
 #ifndef VKACCELERATIONSTRUCTURE_H
 #define VKACCELERATIONSTRUCTURE_H
-#include <Util>
-#include <Math/LinAlg.h>
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
-#include "Buffer.h"
+
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
+#include "VulkanWrapper/Buffer.h"
 
 namespace vulkan {
 

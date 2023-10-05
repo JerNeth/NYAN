@@ -1,18 +1,27 @@
 #pragma once
 
-#include "VulkanIncludes.h"
-#include "VulkanForwards.h"
+#include <expected>
+#include <vector>
 
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/VulkanForwards.h"
+#include "VulkanWrapper/VulkanObject.h"
 namespace vulkan {
 	class QueryPool : public VulkanObject<VkQueryPool> {
 	public:
 		QueryPool(LogicalDevice& device, VkQueryPool queryPool, uint32_t maxQueryCount);
+		QueryPool(QueryPool&) = delete;
+		QueryPool(QueryPool&& other) noexcept;
+		QueryPool& operator=(QueryPool& other) = delete;
+		QueryPool& operator=(QueryPool&& other) noexcept;
 		~QueryPool();
 		void reset(uint32_t firstQuery, uint32_t queryCount);
 		uint32_t& operator++();
 		uint32_t operator++(int);
 	protected:
 		void destroy();
+
 		uint32_t m_usedQueryCount{ 0 };
 		uint32_t m_maxQueryCount{ 0 };
 	private:

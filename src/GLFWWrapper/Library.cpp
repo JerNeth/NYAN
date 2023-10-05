@@ -5,7 +5,7 @@
 #include "glfwIncludes.h"
 
 namespace glfw {
-	std::expected<Library, Error> Library::create_library(const CreateInfo& createInfo) noexcept
+	std::expected<Library, Error> Library::create(const CreateInfo& createInfo) noexcept
 	{
 
 		{
@@ -162,7 +162,8 @@ namespace glfw {
 	}
 
 	Library::Library(const CreateInfo& createInfo) noexcept :
-		m_createInfo(createInfo)
+		m_createInfo(createInfo),
+		m_initialized(true)
 	{
 	}
 

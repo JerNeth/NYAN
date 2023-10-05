@@ -15,4 +15,14 @@ const int SAMPLED_IMAGE_BINDING = 3;
 const int STORAGE_IMAGE_BINDING = 4;
 const int ACCELERATION_STRUCTURE_BINDING = 5;
 
+#ifdef __cplusplus
+namespace vulkan {
+	static constexpr inline uint32_t storageBufferBinding = STORAGE_BUFFER_BINDING;
+	static constexpr inline uint32_t uniformBufferBinding = UNIFORM_BUFFER_BINDING;
+	static constexpr inline uint32_t samplerBinding = SAMPLER_BINDING;
+	static constexpr inline uint32_t sampledImageBinding = SAMPLED_IMAGE_BINDING;
+	static constexpr inline uint32_t storageImageBinding = STORAGE_IMAGE_BINDING;
+	static constexpr inline uint32_t accelerationStructureBinding = ACCELERATION_STRUCTURE_BINDING;
+};
+#endif
 #endif
