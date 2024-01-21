@@ -73,7 +73,7 @@ namespace vulkan {
 				m_shaderInstanceMapping2.emplace(h(), shaderInstanceId);
 				return shaderInstanceId;
 			}
-			Utility::log(std::format("Requested shader not found {}\n", name));
+			Utility::Logger::warning().format("Requested shader not found {}\n", name);
 			return invalidShaderId;
 		}
 		//ShaderId get_shader_instance_id(const std::string& name) const noexcept;

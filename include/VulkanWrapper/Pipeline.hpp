@@ -2,6 +2,7 @@
 #define VKPIPELINE_H
 #pragma once
 #include <filesystem>
+#include <expected>
 
 #include <Util>
 
@@ -100,78 +101,42 @@ namespace vulkan {
 	//}
 
 	//finalColor = finalColor & colorWriteMask;
-	class PipelineLayout2 : public VulkanObject<VkPipelineLayout> {
+	class PipelineLayout : public VulkanObject<VkPipelineLayout> {
 	public:
-		PipelineLayout2(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets);
-		~PipelineLayout2();
-		PipelineLayout2(PipelineLayout2&) = delete;
-		PipelineLayout2(PipelineLayout2&&) = delete;
-		PipelineLayout2& operator=(PipelineLayout2&) = delete;
-		PipelineLayout2& operator=(PipelineLayout2&&) = delete;
+		PipelineLayout(LogicalDevice& device, const std::vector<VkDescriptorSetLayout>& sets);
+		~PipelineLayout();
+		PipelineLayout(PipelineLayout&) = delete;
+		PipelineLayout(PipelineLayout&&) noexcept;
+		PipelineLayout& operator=(PipelineLayout&) = delete;
+		PipelineLayout& operator=(PipelineLayout&&) noexcept;
 	private:
 	};
 
-	class PipelineCache: public VulkanObject<VkPipelineCache>   {
-		//Curtesy of https://zeux.io/2019/07/17/serializing-pipeline-cache/
-		struct PipelineCachePrefixHeader {
-			static constexpr uint32_t magicNumberValue = 0x68636163u;
-			uint32_t magicNumber; // an arbitrary magic header to make sure this is actually our file
-			uint32_t dataSize; // equal to *pDataSize returned by vkGetPipelineCacheData
-			uint64_t dataHash; // a hash of pipeline cache data, including the header
-
-			uint32_t vendorID; // equal to VkPhysicalDeviceProperties::vendorID
-			uint32_t deviceID; // equal to VkPhysicalDeviceProperties::deviceID
-			uint32_t driverVersion; // equal to VkPhysicalDeviceProperties::driverVersion
-			uint32_t driverABI; // equal to sizeof(void*)
-
-			std::array<uint8_t, VK_UUID_SIZE>  uuid; // equal to VkPhysicalDeviceProperties::pipelineCacheUUID
-
-			friend bool operator==(const PipelineCachePrefixHeader& left, const PipelineCachePrefixHeader& right) {
-				return left.magicNumber == right.magicNumber &&
-					left.dataSize == right.dataSize &&
-					left.dataHash == right.dataHash &&
-					left.vendorID == right.vendorID &&
-					left.deviceID == right.deviceID &&
-					left.driverVersion == right.driverVersion &&
-					left.driverABI == right.driverABI &&
-					left.uuid == right.uuid;
-			}
-		};
+	class Pipeline : public VulkanObject<VkPipeline> {
 	public:
-		PipelineCache(LogicalDevice& device, std::filesystem::path path);
-		PipelineCache(PipelineCache&) = delete;
-		PipelineCache(PipelineCache&&) = delete;
-		PipelineCache& operator=(PipelineCache&) = delete;
-		PipelineCache& operator=(PipelineCache&&) = delete;
-		~PipelineCache() noexcept;
-	private:
-		std::filesystem::path m_path;
-	};
-	class Pipeline2 : public VulkanObject<VkPipeline> {
-	public:
-		Pipeline2(LogicalDevice& parent, const GraphicsPipelineConfig& config);
-		Pipeline2(LogicalDevice& parent, const ComputePipelineConfig& config);
-		Pipeline2(LogicalDevice& parent, const RaytracingPipelineConfig& config);
-		VkPipelineLayout get_layout() const noexcept;
-		const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
+		Pipeline(LogicalDevice& parent, const GraphicsPipelineConfig& config);
+		Pipeline(LogicalDevice& parent, const ComputePipelineConfig& config);
+		Pipeline(LogicalDevice& parent, const RaytracingPipelineConfig& config);
+		[[nodiscard]] VkPipelineLayout get_layout() const noexcept;
+		[[nodiscard]] const DynamicGraphicsPipelineState& get_dynamic_state() const noexcept;
 	private:
 		VkPipelineLayout m_layout { VK_NULL_HANDLE };
 		VkPipelineBindPoint m_type { VK_PIPELINE_BIND_POINT_GRAPHICS };
 		DynamicGraphicsPipelineState m_initialDynamicState {};
 	};
 
-	class PipelineStorage2 {
+	class PipelineStorage {
 	public:
-		PipelineStorage2(LogicalDevice& device);
-		~PipelineStorage2();
-		Pipeline2* get_pipeline(PipelineId pipelineId);
-		const Pipeline2* get_pipeline(PipelineId pipelineId) const;
-		PipelineId add_pipeline(const ComputePipelineConfig& config);
-		PipelineId add_pipeline(const GraphicsPipelineConfig& config);
-		PipelineId add_pipeline(const RaytracingPipelineConfig& config);
+		PipelineStorage(LogicalDevice& device);
+		~PipelineStorage();
+		[[nodiscard]] Pipeline* get_pipeline(PipelineId pipelineId);
+		[[nodiscard]] const Pipeline* get_pipeline(PipelineId pipelineId) const;
+		[[nodiscard]] PipelineId add_pipeline(const ComputePipelineConfig& config);
+		[[nodiscard]] PipelineId add_pipeline(const GraphicsPipelineConfig& config);
+		[[nodiscard]] PipelineId add_pipeline(const RaytracingPipelineConfig& config);
 	private:
 		LogicalDevice& r_device;
-		Utility::LinkedBucketList<Pipeline2> m_pipelines;
+		Utility::LinkedBucketList<Pipeline> m_pipelines;
 	};
 
 	class PipelineBind {
@@ -193,7 +158,7 @@ namespace vulkan {
 
 	class GraphicsPipelineBind : public PipelineBind {
 	public:
-		GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		GraphicsPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout);
 		void set_depth_bias_enabled(bool enabled);
 		void set_depth_write_enabled(bool enabled);
 		void set_depth_test_enabled(bool enabled);
@@ -229,7 +194,7 @@ namespace vulkan {
 	};
 	class ComputePipelineBind : public PipelineBind {
 	public:
-		ComputePipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		ComputePipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout);
 		void dispatch(uint32_t groupCountX = 1, uint32_t groupCountY = 1, uint32_t groupCountZ = 1);
 		//void dispatch
 	private:
@@ -237,7 +202,7 @@ namespace vulkan {
 	};
 	class RaytracingPipelineBind : public PipelineBind {
 	public:
-		RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint);
+		RaytracingPipelineBind(VkCommandBuffer cmd, VkPipelineLayout layout);
 		void trace_rays(const VkStridedDeviceAddressRegionKHR* raygenSBT, const VkStridedDeviceAddressRegionKHR* missSBT,
 			const VkStridedDeviceAddressRegionKHR* hitSBT, const VkStridedDeviceAddressRegionKHR* callableSBT,
 			uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);

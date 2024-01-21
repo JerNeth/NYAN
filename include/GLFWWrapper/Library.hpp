@@ -1,7 +1,10 @@
 #pragma once
-#include "Error.hpp"
-
 #include <expected>
+#include <span>
+
+#include "GLFWWrapper/Error.hpp"
+#include "GLFWWrapper/Monitor.hpp"
+#include "GLFWWrapper/Window.hpp"
 
 namespace glfw
 {

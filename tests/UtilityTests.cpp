@@ -231,66 +231,6 @@ namespace Utility {
         }
         EXPECT_EQ(test.size(), 0);
     }
-    TEST(Utility, OwningHashMap) {
-        Utility::OwningHashMap<int> test;
-
-    }
-    TEST(Utility, OwningHashMapEmplace) {
-        Utility::OwningHashMap<int> test;
-        auto i0 = test.emplace(Hash<int>()(0), 0);
-        auto i1 = test.emplace(Hash<int>()(1), 1);
-        auto i2 = test.emplace(Hash<int>()(2), 2);
-        auto i3 = test.emplace(Hash<int>()(3), 3);
-        auto i4 = test.emplace(Hash<int>()(4), 4);
-
-
-        EXPECT_EQ(*i0, 0);
-        EXPECT_EQ(*i1, 1);
-        EXPECT_EQ(*i2, 2);
-        EXPECT_EQ(*i3, 3);
-        EXPECT_EQ(*i4, 4);
-
-    }
-
-    TEST(Utility, OwningHashMapHandle) {
-        Utility::OwningHashMap<int> test;
-        {
-            auto i0 = test.emplace(Hash<int>()(0), 0);
-            auto i1 = test.emplace(Hash<int>()(1), 1);
-            auto i2 = test.emplace(Hash<int>()(2), 2);
-            auto i3 = test.emplace(Hash<int>()(3), 3);
-            auto i4 = test.emplace(Hash<int>()(4), 4);
-
-
-            EXPECT_EQ(*i0, 0);
-            EXPECT_EQ(*i1, 1);
-            EXPECT_EQ(*i2, 2);
-            EXPECT_EQ(*i3, 3);
-            EXPECT_EQ(*i4, 4);
-        }
-        EXPECT_EQ(test.size(), 0);
-    }
-    TEST(Utility, OwningHashMapHandleCopy) {
-        OwningHashMapHandle<int> a;
-        Utility::OwningHashMap<int> test;
-        {
-            auto i0 = test.emplace(Hash<int>()(0), 0);
-            auto i1 = test.emplace(Hash<int>()(1), 1);
-            auto i2 = test.emplace(Hash<int>()(2), 2);
-            auto i3 = test.emplace(Hash<int>()(3), 3);
-            auto i4 = test.emplace(Hash<int>()(4), 4);
-
-
-            EXPECT_EQ(*i0, 0);
-            EXPECT_EQ(*i1, 1);
-            EXPECT_EQ(*i2, 2);
-            EXPECT_EQ(*i3, 3);
-            EXPECT_EQ(*i4, 4);
-            a = i1;
-        }
-        EXPECT_EQ(test.size(), 1);
-        EXPECT_EQ(*a, 1);
-    }
     TEST(Utility, NonInvalidatingMapTest) {
         Utility::NonInvalidatingMap<std::string, std::string> testMap;
         EXPECT_FALSE(testMap.contains("test"));

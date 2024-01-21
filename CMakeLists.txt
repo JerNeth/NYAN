@@ -1,15 +1,12 @@
-﻿cmake_minimum_required (VERSION 3.26)
-#set(CMAKE_CXX_STANDARD 20)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+﻿cmake_minimum_required (VERSION 3.28)
 
 include(CheckIPOSupported)
 
 cmake_policy(SET CMP0091 NEW)
 project(NYAN
         VERSION 0.0.1
-        LANGUAGES C CXX)
-#include("UserSettings.txt")
+        LANGUAGES CXX C)
+include("UserSettings.txt")
 #Project Wide Settings
 #All Options which change the ABI come here
 message("Detected ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -21,52 +18,23 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 # ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+
+option(BUILD_TESTS "Build tests" ON)
+option(BUILD_SAMPLES "Build samples" ON)
+
+
+# ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
 
 find_package(Threads REQUIRED)
 
 #find_package(Vulkan REQUIRED COMPONENTS glslc SPIRV-Tools volk)
-find_package(Vulkan REQUIRED COMPONENTS glslc)
+#find_package(Vulkan REQUIRED COMPONENTS glslc)
 
-# SPIRV-Cross
-#if(NOT Vulkan_SPIRV-Tools_FOUND OR TRUE)
-if(TRUE)
-    message("spriv-cross-core not found fetching from repo")
-    include("${CMAKE_SOURCE_DIR}/vendor/SPIRV-Cross.cmake")
-    set(SPIRV_LIB spirv-cross-core)
-else()
-    #NOTE: requires cmake 3.24
-    #NOTE: currently not working
-    set(SPIRV_LIB Vulkan::SPIRV-Tools)
-endif()
-
-# GLFW
-include("${CMAKE_SOURCE_DIR}/vendor/GLFW.cmake")
-
-# GTest
-include("${CMAKE_SOURCE_DIR}/vendor/GTest.cmake")
-
-# Imgui
-include("${CMAKE_SOURCE_DIR}/vendor/Imgui.cmake")
-
-# VMA
-include("${CMAKE_SOURCE_DIR}/vendor/VMA.cmake")
-
-# Volk
-include("${CMAKE_SOURCE_DIR}/vendor/Volk.cmake")
-
-# STB
-include("${CMAKE_SOURCE_DIR}/vendor/STB.cmake")
-
-# ENTT
-include("${CMAKE_SOURCE_DIR}/vendor/EnTT.cmake")
-
-# ENTT Editor
-add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/EnTTEditor")
-
-# TinyGLTF
-add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/tinyGLTF")
+add_subdirectory(thirdparty)
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -85,7 +53,6 @@ include("${CMAKE_SOURCE_DIR}/src/local.cmake")
 # ---------------------------------------------------------------------------
 
 add_subdirectory(shader)
-
 
 # ---------------------------------------------------------------------------
 # Executables
@@ -112,18 +79,20 @@ target_sources(Engine
 #    LINK_FLAGS "/ENTRY:mainCRTStartup /SUBSYSTEM:WINDOWS")
 
 #target_link_libraries(Third-Party-Dependencies spirv-cross-core vma Vulkan::Vulkan volk::volk imgui fbx z xml2)
-target_link_libraries(vma_implementation PUBLIC volk::volk)
+target_link_libraries(vma_implementation 
+        PUBLIC volk::volk)
+        #PRIVATE Vulkan::Headers)
 #target_link_libraries(Engine glfw Vulkan::Vulkan spirv-cross-core vma volk::volk imgui stb EnTT imgui_entt_entity_editor )
 #target_link_libraries(Engine PUBLIC glfw Vulkan::Vulkan volk::volk vma ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
 
-target_link_libraries(Engine PUBLIC glfw volk::volk vma_implementation ${SPIRV_LIB} EnTT imgui_entt_entity_editor imgui implot)
+target_link_libraries(Engine PUBLIC glfw volk::volk vma_implementation spirv-cross-cpp EnTT imgui_entt_entity_editor imgui implot Threads::Threads)
 target_link_libraries(tinygltf PUBLIC stb)
 target_link_libraries(Engine PRIVATE stb tinygltf )
 target_link_libraries(Engine PUBLIC shaders)
 
 
 check_ipo_supported(RESULT ipo_result OUTPUT output
-                    LANGUAGES C CXX)
+                    LANGUAGES CXX)
 if(ipo_result AND NOT CONFIG:DEBUG)
   #set_property(TARGET Engine PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
   set_property(TARGET Engine PROPERTY
@@ -149,12 +118,10 @@ target_compile_definitions(Engine PUBLIC
     $<$<CXX_COMPILER_ID:MSVC>:>
     $<$<CXX_COMPILER_ID:Clang>:__clang__>)
 
-#target_compile_features(FBXReader PUBLIC 
-#    cxx_std_20
-#)
 target_compile_features(Engine PUBLIC 
     cxx_std_23
 )
+
 #set_target_properties(Engine PROPERTIES 
 #    UNITY_BUILD on
 #)
@@ -192,4 +159,14 @@ target_link_libraries(HeadlessTest Engine)
 # Testing
 # ---------------------------------------------------------------------------
 
-include("${CMAKE_SOURCE_DIR}/test/local.cmake")
+if (BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()
+
+# ---------------------------------------------------------------------------
+# Samples
+# ---------------------------------------------------------------------------
+
+if (BUILD_SAMPLES)
+    add_subdirectory(samples)
+endif ()

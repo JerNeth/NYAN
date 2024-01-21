@@ -38,7 +38,7 @@ void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& m
 				m_textureManager.request_texture(material.diffuseTex);
 		}
 		catch (Utility::FileNotFoundException e) {
-			Utility::log_error().message(e.what());
+			Utility::Logger::error_message(e.what());
 			material.diffuseTex = "";
 		}
 		try {
@@ -46,7 +46,7 @@ void nyan::RenderManager::add_materials(const std::vector<nyan::MaterialData>& m
 				m_textureManager.request_texture(material.normalTex);
 		}
 		catch (Utility::FileNotFoundException e) {
-			Utility::log_error().message(e.what());
+			Utility::Logger::error_message(e.what());
 			material.normalTex = "";
 		}
 		m_materialManager.add_material(material);

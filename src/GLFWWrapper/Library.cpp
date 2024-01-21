@@ -124,11 +124,11 @@ namespace glfw {
 		}
 	}
 
-	Library::Library(Library&& other) noexcept
+	Library::Library(Library&& other) noexcept :
+		m_createInfo(other.m_createInfo),
+		m_initialized(other.m_initialized)
 	{
-		m_initialized = other.m_initialized;
 		other.m_initialized = false;
-		m_createInfo = other.m_createInfo;
 	}
 
 	Library& Library::operator=(Library&& other) noexcept
@@ -161,10 +161,23 @@ namespace glfw {
 		}
 	}
 
+	static void monitor_callback(GLFWmonitor* monitor, const int event) noexcept
+	{
+		if (event == GLFW_CONNECTED)
+		{
+			// The monitor was connected
+		}
+		else if (event == GLFW_DISCONNECTED)
+		{
+			// The monitor was disconnected
+		}
+	}
+
 	Library::Library(const CreateInfo& createInfo) noexcept :
 		m_createInfo(createInfo),
 		m_initialized(true)
 	{
+		glfwSetMonitorCallback(monitor_callback);
 	}
 
 }

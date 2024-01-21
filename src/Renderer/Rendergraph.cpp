@@ -3,7 +3,7 @@
 
 #include "VulkanWrapper/Image.h"
 #include "VulkanWrapper/CommandBuffer.h"
-#include "VulkanWrapper/Pipeline.h"
+#include "VulkanWrapper/Pipeline.hpp"
 
 #include "Renderer/Profiler.hpp"
 
@@ -259,7 +259,7 @@ void nyan::Renderpass::apply_pre_barriers(vulkan::CommandBuffer& cmd)
 			static_cast<uint32_t>(m_imageBarriers2.postIndex - m_imageBarriers2.preIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.preIndex);
 
 	if constexpr (debugBarriers) {
-		auto log = Utility::log();
+		auto log = Utility::Logger::info();
 		log.format("Pre Pass \"{}\": ", m_name);
 		for (auto i = m_imageBarriers2.preIndex; i < m_imageBarriers2.postIndex; i++)
 			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
@@ -288,7 +288,7 @@ void nyan::Renderpass::apply_post_barriers(vulkan::CommandBuffer& cmd)
 			static_cast<uint32_t>(m_imageBarriers2.barriers.size() - m_imageBarriers2.postIndex), m_imageBarriers2.barriers.data() + m_imageBarriers2.postIndex);
 
 	if constexpr (debugBarriers) {
-		auto log = Utility::log();
+		auto log = Utility::Logger::info();
 		log.format("Post Pass \"{}\": ", m_name);
 		for (auto i = m_imageBarriers2.postIndex; i < m_imageBarriers2.barriers.size(); i++)
 			log.format("\n\tSource Family {} -> Destination Family {}", m_imageBarriers2.barriers[i].srcQueueFamilyIndex, m_imageBarriers2.barriers[i].dstQueueFamilyIndex);
@@ -369,7 +369,7 @@ uint32_t nyan::Renderpass::get_write_bind(RenderResource::Id id, Write::Type typ
 	if (res != m_writes.cend())
 		return res->binding;
 
-	Utility::log_warning().format("Resource ({}): invalid write bind", resource.name);
+	Utility::Logger::error().format("Resource ({}): invalid write bind", resource.name);
 	return InvalidResourceId.id;
 }
 
@@ -382,7 +382,7 @@ uint32_t nyan::Renderpass::get_read_bind(RenderResource::Id id, Read::Type type)
 	if (res != m_reads.cend())
 		return res->binding;
 
-	Utility::log_warning().format("Resource ({}): invalid read bind", resource.name);
+	Utility::Logger::error().format("Resource ({}): invalid read bind", resource.name);
 	return InvalidResourceId.id;
 }
 
@@ -963,7 +963,7 @@ bool nyan::Rendergraph::resource_exists(RenderResource::Id id)
 void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 {
 	if (m_swapchainResource == InvalidResourceId) {
-		Utility::log().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", static_cast<uint32_t>(src_const.id));
+		Utility::Logger::error().format("Renderpass: %d tries to write to an invalid swapchain, this shouldn't happen", static_cast<uint32_t>(src_const.id));
 		assert(false);
 		return;
 	}
@@ -971,12 +971,12 @@ void nyan::Rendergraph::swapchain_present_transition(Renderpass::Id src_const)
 	assert(src.get_type() == Renderpass::Type::Generic);
 
 	auto& resource = m_renderresources.get(m_swapchainResource);
-	Utility::log().format("Swap Present Ressource ({}) Renderpass ({})", resource.name.data(), src.m_name.data());
+	Utility::Logger::verbose().format("Swap Present Ressource ({}) Renderpass ({})", resource.name.data(), src.m_name.data());
 	assert(resource.uses.size() > src_const.id);
 	auto usage = resource.uses[src_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: %d thinks the swapchain image is a buffer", static_cast<uint32_t>(src_const.id));
+		Utility::Logger::error().format("Renderpass: %d thinks the swapchain image is a buffer", static_cast<uint32_t>(src_const.id));
 		assert(false);
 		return;
 	}
@@ -1074,7 +1074,7 @@ void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to
 	auto& dst = m_renderpasses.get(to);
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass ({}) -> ({}) wants to transition something which isn't an image ({}), which is not supported yet",
+		Utility::Logger::error().format("Renderpass ({}) -> ({}) wants to transition something which isn't an image ({}), which is not supported yet",
 			src.m_name, dst.m_name, resource.name);
 		assert(false);
 		return;
@@ -1235,21 +1235,21 @@ void nyan::Rendergraph::set_up_transition(Renderpass::Id from, Renderpass::Id to
 	}
 
 	if (debugBarriers) {
-		Utility::log().format("Ressource ({}) Renderpass ({}) -> ({})", resource.name, src.m_name, dst.m_name);
+		Utility::Logger::verbose().format("Ressource ({}) Renderpass ({}) -> ({})", resource.name, src.m_name, dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 		imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 	}
 	if (imageBarrier.oldLayout != imageBarrier.newLayout && imageBarrier.newLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-		Utility::log().format("Renderpass {} -> {}, Possibly no Barrier needed here", src.m_name, dst.m_name);
+		Utility::Logger::info().format("Renderpass {} -> {}, Possibly no Barrier needed here", src.m_name, dst.m_name);
 		return;
 	}
 
 	if (imageBarrier.oldLayout == imageBarrier.newLayout &&
 		imageBarrier.srcQueueFamilyIndex == imageBarrier.dstQueueFamilyIndex &&
 		srcUsage.only(RenderResource::ImageUse::Attachment) && dstUsage.only(RenderResource::ImageUse::Attachment)) {
-		Utility::log().format("Renderpass {} -> {}, Barrier for attachment only usage without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
+		Utility::Logger::verbose().format("Renderpass {} -> {}, Barrier for attachment only usage without layout transition or Queue Ownership transfer", src.m_name, dst.m_name);
 	}
 	else {
 		src.add_post_barrier(imageBarrier, resource.m_id);
@@ -1317,7 +1317,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 				if (first) {
 					first = false;
 					initialLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-					Utility::log().format("First usage of image %d is sampling, is this intended?", resource.name);
+					Utility::Logger::verbose().format("First usage of image %d is sampling, is this intended?", resource.name);
 				}
 			}
 			if (use.any_of(RenderResource::ImageUse::ImageLoad, RenderResource::ImageUse::ImageStore)) {
@@ -1346,7 +1346,7 @@ void nyan::Rendergraph::update_render_resource_image(RenderResource& resource)
 				if (first) {
 					first = false;
 					initialLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-					Utility::log().format("First usage of image %d is as copy source, is this intended?", resource.name);
+					Utility::Logger::verbose().format("First usage of image %d is as copy source, is this intended?", resource.name);
 				}
 			}
 		}
@@ -1412,7 +1412,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 	auto usage = resource.uses[dst_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: {} tries not supported resource transition", dst.m_name);
+		Utility::Logger::error().format("Renderpass: {} tries not supported resource transition", dst.m_name);
 		assert(false);
 		return;
 	}
@@ -1444,7 +1444,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		assert(!usage.test(RenderResource::ImageUse::ImageLoad)); //Technically possible, but unreasonable?
 		assert(!usage.test(RenderResource::ImageUse::ImageStore));
 		if (!usage.any_of(RenderResource::ImageUse::BlitTarget, RenderResource::ImageUse::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst.m_name);
+			Utility::Logger::error().format("Renderpass: {} tries to sample an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		//TODO: Compute Shader
@@ -1456,7 +1456,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		assert(!usage.test(RenderResource::ImageUse::Attachment));
 		assert(!usage.test(RenderResource::ImageUse::Sample));  //Technically possible, but unreasonable?
 		if (!usage.any_of(RenderResource::ImageUse::BlitTarget, RenderResource::ImageUse::CopyTarget)) {
-			Utility::log().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst.m_name);
+			Utility::Logger::error().format("Renderpass: {} tries to load an undefined target, this shouldn't happen", dst.m_name);
 			assert(false);
 		}
 		assert(false);
@@ -1487,7 +1487,7 @@ void nyan::Rendergraph::set_up_first_transition(Renderpass::Id dst_const, const 
 		return;
 
 	if (debugBarriers) {
-		Utility::log().format("Ressource ({}) Renderpass ({})", resource.name.data(), dst.m_name);
+		Utility::Logger::verbose().format("Ressource ({}) Renderpass ({})", resource.name.data(), dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
@@ -1505,7 +1505,7 @@ void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResour
 	auto usage = resource.uses[dst_const.id];
 
 	if (resource.m_type != RenderResource::Type::Image) {
-		Utility::log().format("Renderpass: {} tries not supported resource copy", dst.m_name);
+		Utility::Logger::error().format("Renderpass: {} tries not supported resource copy", dst.m_name);
 		assert(false);
 		return;
 	}
@@ -1619,7 +1619,7 @@ void nyan::Rendergraph::set_up_copy(Renderpass::Id dst_const, const RenderResour
 	assert(dst.get_type() == Renderpass::Type::Generic);
 
 	if (debugBarriers) {
-		Utility::log().format("Copy Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
+		Utility::Logger::verbose().format("Copy Ressource ({}) Renderpass ({})", resource.name, dst.m_name);
 		imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;

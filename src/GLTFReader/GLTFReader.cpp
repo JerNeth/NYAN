@@ -30,10 +30,10 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 		ret = loader.LoadASCIIFromFile(&model, &err, &warn, path.string());
 
 	if (!warn.empty())
-		Utility::log_warning(warn);
+		Utility::Logger::warning_message(warn);
 
 	if (!err.empty())
-		Utility::log_warning(err);
+		Utility::Logger::error_message(err);
 	if (!ret)
 		return;
 
@@ -299,7 +299,7 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						offset += stride;
 						assert(offset <= bufferView.byteLength);
 					}
-					Utility::log_warning().format("Mesh: {}, TEXCOORD_1 unsupported attribute", nMesh.name);
+					Utility::Logger::warning().format("Mesh: {}, TEXCOORD_1 unsupported attribute", nMesh.name);
 				}
 				else if (attribute == "TEXCOORD_2") {
 					decltype(nMesh.uvs2)::value_type uv;
@@ -322,10 +322,10 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 						offset += stride;
 						assert(offset <= bufferView.byteLength);
 					}
-					Utility::log_warning().format("Mesh: {}, TEXCOORD_2 unsupported attribute", nMesh.name);
+					Utility::Logger::warning().format("Mesh: {}, TEXCOORD_2 unsupported attribute", nMesh.name);
 				}
 				else if(attribute == "COLOR_0") {
-					Utility::log_warning().format("Mesh: {}, COLOR_0 unsupported attribute",nMesh.name);
+					Utility::Logger::warning().format("Mesh: {}, COLOR_0 unsupported attribute",nMesh.name);
 				}
 				else {
 					assert(false && "unsupported attribute");
@@ -336,21 +336,21 @@ void nyan::GLTFReader::load_file(const std::filesystem::path& path)
 			}
 			auto& material = materialManager.get_material(materialMap[primitive.material]);
 			if (nMesh.tangents.empty()) {
-				Utility::log_warning().format("{}: has no tangents, skipping mesh", nMesh.name);
+				Utility::Logger::warning().format("{}: has no tangents, skipping mesh", nMesh.name);
 				nMesh.tangents.clear();
 				nMesh.tangents.resize(nMesh.normals.size(), decltype(nMesh.tangents)::value_type{ -1, 0, 0, 1 });
 				//continue;
 			}
 			if (nMesh.uvs0.empty()) {
-				Utility::log_warning().format("{}: has no uvs, skipping mesh", nMesh.name);
+				Utility::Logger::warning().format("{}: has no uvs, skipping mesh", nMesh.name);
 				//continue;
 			}
 			if (nMesh.normals.empty()) {
-				Utility::log_warning().format("{}: has no normals, skipping mesh", nMesh.name);
+				Utility::Logger::warning().format("{}: has no normals, skipping mesh", nMesh.name);
 				//continue;
 			}
 			if (nMesh.positions.empty()) {
-				Utility::log_warning().format("{}: has no positions, skipping mesh", nMesh.name);
+				Utility::Logger::warning().format("{}: has no positions, skipping mesh", nMesh.name);
 				//continue;
 			}
 			assert(nMesh.tangents.size() == nMesh.uvs0.size() || nMesh.uvs0.size() == 0);

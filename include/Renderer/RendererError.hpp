@@ -1,10 +1,5 @@
 #pragma once
 
-//Current workaround to get source_location with clang 15, TODO: remove when upgrading to 16.0
-#ifndef __cpp_consteval
-#define __cpp_consteval 201811L  // NOLINT(clang-diagnostic-reserved-macro-identifier)
-#endif
-
 #include <source_location>
 
 namespace renderer

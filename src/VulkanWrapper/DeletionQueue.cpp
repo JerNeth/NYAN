@@ -1,16 +1,3 @@
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
-#include "DeletionQueue.hpp"
 #include "VulkanWrapper/DeletionQueue.hpp"
 
 #include "VulkanWrapper/LogicalDevice.h"
@@ -27,8 +14,8 @@ namespace vulkan
 	vulkan::DeletionQueue::DeletionQueue(DeletionQueue&& other) noexcept :
 		r_device(other.r_device),
 		m_currentEpoch(other.m_currentEpoch),
-		m_deletionQueues(std::move(other.m_deletionQueues)),
-		m_deletionEmpty(std::move(other.m_deletionEmpty))
+		m_deletionEmpty(std::move(other.m_deletionEmpty)),
+		m_deletionQueues(std::move(other.m_deletionQueues))
 	{
 		for (size_t epoch = 0; epoch < numEpochs; ++epoch)
 			m_deletionEmpty[epoch] = true;
@@ -129,6 +116,15 @@ namespace vulkan
 		m_deletionEmpty[m_currentEpoch] = false;
 		currentQueue.descriptorPools.push_back(descriptorPool);
 	}
+
+	void DeletionQueue::queue_descriptor_set_layout_deletion(VkDescriptorSetLayout descriptorSetLayout) noexcept
+	{
+		assert(m_currentEpoch < numEpochs);
+		auto& currentQueue = m_deletionQueues[m_currentEpoch];
+		m_deletionEmpty[m_currentEpoch] = false;
+		currentQueue.descriptorSetLayouts.push_back(descriptorSetLayout);
+	}
+
 	void vulkan::DeletionQueue::queue_command_pool_deletion(VkCommandPool commandPool) noexcept
 	{
 		assert(m_currentEpoch < numEpochs);
@@ -191,6 +187,10 @@ namespace vulkan
 			for (auto pool : currentQueue.descriptorPools)
 				r_device.get_device().vkDestroyDescriptorPool(pool, r_device.get_allocator());
 			currentQueue.descriptorPools.clear();
+
+			for (auto setLayout : currentQueue.descriptorSetLayouts)
+				r_device.get_device().vkDestroyDescriptorSetLayout(setLayout, r_device.get_allocator());
+			currentQueue.descriptorSetLayouts.clear();
 
 			for (auto pool : currentQueue.commandPools)
 				r_device.get_device().vkDestroyCommandPool(pool, r_device.get_allocator());

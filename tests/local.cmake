@@ -1,4 +1,6 @@
 
+include(GoogleTest)
+
 # ---------------------------------------------------------------------------
 # Files
 # ---------------------------------------------------------------------------
@@ -32,3 +34,5 @@ target_compile_features(tester PUBLIC
 )
 add_test(NAME Utility.UnitTests 
         COMMAND tester)
+
+gtest_discover_tests(tester)

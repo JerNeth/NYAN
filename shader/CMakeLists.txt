@@ -13,6 +13,9 @@ list(FILTER SHADER_GLSL EXCLUDE REGEX ".*\\tmp\\.*")
 find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
 
 function(add_spirv_shader INPUT_FILE OUTPUT_FILE)
+
+    #recursivly parse .h and .glsl dependencies found in shader, fairly broad check, 
+    #i.e. changed, commented out files would trigger recompile, but since that only costs a bit of recompile it is acceptable
     set(DEPENDENCIES "")
     set(DEPENDENCIESREC "")
     list(APPEND DEPENDENCIESREC "${INPUT_FILE}")

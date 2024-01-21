@@ -23,6 +23,12 @@ namespace vulkan {
         }
         void set_debug_label(const char* name) const noexcept;
         //static const std::string& get_debug_label(uint64_t id);
+        LogicalDevice& get_device() noexcept {
+            return r_device;
+        }
+        const LogicalDevice& get_device() const noexcept {
+            return r_device;
+        }
     protected:
         explicit constexpr VulkanObject(LogicalDevice& device) noexcept
             : r_device(device),

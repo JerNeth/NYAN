@@ -1,11 +1,18 @@
 cmake_minimum_required (VERSION 3.14)
 include(FetchContent)
+
+
+if(NOT DEFINED repo_imgui OR NOT EXISTS ${repo_imgui})
+	message("Imgui not locally specified, fetching remote")
+	set(repo_imgui https://github.com/ocornut/imgui.git)
+endif()
 FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG        master
-  GIT_SHALLOW    true
+	imgui
+	GIT_REPOSITORY ${repo_imgui}
+	GIT_TAG        master
+	GIT_SHALLOW    true
 )
+
 FetchContent_MakeAvailable(imgui)
 set(IMGUI_SRC 
 	${imgui_SOURCE_DIR}/imgui.cpp
@@ -24,12 +31,18 @@ target_compile_definitions(imgui PUBLIC ImTextureID=ImU64)
 #message(${imgui_SOURCE_DIR})
 #message(${IMGUI_SRC})
 
+
+if(NOT DEFINED repo_implot OR NOT EXISTS ${repo_implot})
+	message("Implot not locally specified, fetching remote")
+	set(repo_implot https://github.com/epezent/implot)
+endif()
 FetchContent_Declare(
-  implot
-  GIT_REPOSITORY https://github.com/epezent/implot
-  GIT_TAG        master
-  GIT_SHALLOW    true
+	implot
+	GIT_REPOSITORY ${repo_implot}
+	GIT_TAG        master
+	GIT_SHALLOW    true
 )
+
 FetchContent_MakeAvailable(implot)
 set(IMPLOT_SRC 
 	${implot_SOURCE_DIR}/implot.cpp

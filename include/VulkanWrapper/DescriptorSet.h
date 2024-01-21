@@ -13,7 +13,7 @@
 namespace vulkan {
 	class DescriptorSet {
 	public:
-		DescriptorSet(DescriptorPool& pool, VkDescriptorSet vkHandle) noexcept;
+		DescriptorSet(const DescriptorPool& pool, VkDescriptorSet vkHandle) noexcept;
 		//void set_tex(binding, tex);
 		uint32_t set_storage_buffer(const VkDescriptorBufferInfo& bufferInfo) noexcept;
 		uint32_t set_uniform_buffer(const VkDescriptorBufferInfo& bufferInfo) noexcept;
@@ -62,7 +62,7 @@ namespace vulkan {
 			uint32_t binding;
 			uint32_t arrayElement;
 		};
-		DescriptorPool& r_pool;
+		const DescriptorPool& r_pool;
 		VkDescriptorSet m_vkHandle;
 		std::vector<uint32_t> m_storageBufferFsi;
 		std::vector<uint32_t> m_uniformBufferFsi;

@@ -62,10 +62,10 @@ namespace vulkan {
 	struct Group;
 	struct RaytracingPipelineConfig;
 
-	class PipelineStorage2;
-	class PipelineLayout2;
+	class PipelineStorage;
+	class PipelineLayout;
 	class PipelineCache;
-	class Pipeline2;
+	class Pipeline;
 	class PipelineBind;
 	class GraphicsPipelineBind;
 	class ComputePipelineBind;

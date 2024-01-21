@@ -461,7 +461,6 @@ namespace Math {
 		constexpr friend inline Vec cross(Vec const& lhs, Vec const& rhs) {
 			return lhs.cross(rhs);
 		}
-	private:
 		std::array<Scalar, Size> m_data;
 	};
 	template<ScalarT Scalar,

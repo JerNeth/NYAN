@@ -2,17 +2,15 @@
 
 #include <cassert>
 
-#include "Utility/Exceptions.h"
+#include "VulkanWrapper/PhysicalDevice.hpp"
+#include "VulkanWrapper/LogicalDevice.h"
+#include "VulkanWrapper/Image.h"
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/Pipeline.hpp"
+#include "VulkanWrapper/AccelerationStructure.h"
+#include "VulkanWrapper/QueryPool.hpp"
 
-#include "Vulkanwrapper/PhysicalDevice.hpp"
-#include "Vulkanwrapper/LogicalDevice.h"
-#include "Vulkanwrapper/Image.h"
-#include "Vulkanwrapper/Buffer.h"
-#include "Vulkanwrapper/Pipeline.h"
-#include "Vulkanwrapper/AccelerationStructure.h"
-#include "Vulkanwrapper/QueryPool.hpp"
-
-vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type) :
+vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer handle, CommandBufferType type) noexcept :
 	VulkanObject(parent, handle),
 	m_type(type)
 {
@@ -24,17 +22,17 @@ vulkan::CommandBuffer::CommandBuffer(LogicalDevice& parent, VkCommandBuffer hand
 	}
 }
 
-void vulkan::CommandBuffer::begin_rendering(const VkRenderingInfo& info)
+void vulkan::CommandBuffer::begin_rendering(const VkRenderingInfo& info) noexcept
 {
 	r_device.get_device().vkCmdBeginRendering(m_handle, &info);
 }
 
-void vulkan::CommandBuffer::end_rendering()
+void vulkan::CommandBuffer::end_rendering() noexcept
 {
 	r_device.get_device().vkCmdEndRendering(m_handle);
 }
 
-vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(PipelineId pipelineIdentifier)
+vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(PipelineId pipelineIdentifier) noexcept
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
 	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
@@ -90,10 +88,10 @@ vulkan::GraphicsPipelineBind vulkan::CommandBuffer::bind_graphics_pipeline(Pipel
 	auto set = r_device.get_bindless_set().get_set();
 	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
-	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_GRAPHICS };
+	return { m_handle, pipeline->get_layout()};
 }
 
-vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(PipelineId pipelineIdentifier)
+vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(PipelineId pipelineIdentifier) noexcept
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
 	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
@@ -101,24 +99,24 @@ vulkan::ComputePipelineBind vulkan::CommandBuffer::bind_compute_pipeline(Pipelin
 	auto set = r_device.get_bindless_set().get_set();
 	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
 
-	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_COMPUTE };
+	return { m_handle, pipeline->get_layout()};
 }
 
-vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(PipelineId pipelineIdentifier)
+vulkan::RaytracingPipelineBind vulkan::CommandBuffer::bind_raytracing_pipeline(PipelineId pipelineIdentifier) noexcept
 {
 	auto* pipeline = r_device.get_pipeline_storage().get_pipeline(pipelineIdentifier);
 	r_device.get_device().vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, *pipeline);
 	auto set = r_device.get_bindless_set().get_set();
 	r_device.get_device().vkCmdBindDescriptorSets(m_handle, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline->get_layout(), 0, 1, &set, 0, nullptr);
-	return { m_handle, pipeline->get_layout(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR };
+	return { m_handle, pipeline->get_layout()};
 }
 
-void vulkan::CommandBuffer::write_timestamp(VkPipelineStageFlags2 stage, TimestampQueryPool& queryPool, uint32_t query)
+void vulkan::CommandBuffer::write_timestamp(VkPipelineStageFlags2 stage, TimestampQueryPool& queryPool, uint32_t query) noexcept
 {
 	r_device.get_device().vkCmdWriteTimestamp2(m_handle, stage, queryPool, query);
 }
 
-void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size)
+void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, VkDeviceSize dstOffset, VkDeviceSize srcOffset, VkDeviceSize size) noexcept
 {
 	VkBufferCopy copy{
 		.srcOffset = srcOffset,
@@ -128,24 +126,24 @@ void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, Vk
 	copy_buffer(dst, src, &copy, 1);
 }
 
-void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount)
+void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src, const VkBufferCopy* copies, uint32_t copyCount) noexcept
 {
 	r_device.get_device().vkCmdCopyBuffer(m_handle, src.get_handle(), dst.get_handle(), copyCount, copies);
 }
 
-void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src)
+void vulkan::CommandBuffer::copy_buffer(const Buffer& dst, const Buffer& src) noexcept
 {
 	copy_buffer(dst, src, 0, 0, dst.get_info().size);
 }
 
-void vulkan::CommandBuffer::fill_buffer(const Buffer& dst, uint32_t data)
+void vulkan::CommandBuffer::fill_buffer(const Buffer& dst, uint32_t data) noexcept
 {
 	r_device.get_device().vkCmdFillBuffer(m_handle, dst, 0, dst.get_size(), data);
 }
 
 void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const VkOffset3D& dstOffset, const VkOffset3D& dstExtent,
 	const VkOffset3D& srcOffset, const VkOffset3D& srcExtent, uint32_t dstLevel,
-	uint32_t srcLevel, uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter)
+	uint32_t srcLevel, uint32_t dstLayer, uint32_t srcLayer, uint32_t layerCount, VkFilter filter) noexcept
 {
 	const auto addOffset = [](const VkOffset3D& a, const VkOffset3D& b) -> VkOffset3D { return { a.x + b.x, a.y + b.y, a.z + b.z }; };
 	for (uint32_t layer = 0; layer < layerCount; layer++) {
@@ -177,7 +175,7 @@ void vulkan::CommandBuffer::blit_image(const Image& dst, const Image& src, const
 	}
 }
 
-void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkImageLayout srcLayout, VkImageLayout dstLayout, uint32_t mipLevel)
+void vulkan::CommandBuffer::copy_image(const Image& src, const Image& dst, VkImageLayout srcLayout, VkImageLayout dstLayout, uint32_t mipLevel) noexcept
 {
 	VkImageCopy region{
 		.srcSubresource 
@@ -210,7 +208,7 @@ static constexpr bool implies(bool a, bool b) noexcept {
 	return !a || b;
 }
 
-void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffer& buffer, const std::span<const VkBufferImageCopy> regions, VkImageLayout srcLayout)
+void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffer& buffer, const std::span<const VkBufferImageCopy> regions, VkImageLayout srcLayout) noexcept
 {
 	assert(!regions.empty());
 	assert(regions.data());
@@ -252,7 +250,7 @@ void vulkan::CommandBuffer::copy_image_to_buffer(const Image& image, const Buffe
 }
 
 
-void vulkan::CommandBuffer::generate_mips(const Image& image)
+void vulkan::CommandBuffer::generate_mips(const Image& image) noexcept
 {
 	auto& info = image.get_info();
 	VkOffset3D size{.x = static_cast<int32_t>(info.width), .y = static_cast<int32_t>(info.height), .z = static_cast<int32_t>(info.depth)};
@@ -284,13 +282,13 @@ void vulkan::CommandBuffer::generate_mips(const Image& image)
 	}
 }
 
-void vulkan::CommandBuffer::copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits)
+void vulkan::CommandBuffer::copy_buffer_to_image(const Image& image, const Buffer& buffer, uint32_t blitCounts, const VkBufferImageCopy* blits) noexcept
 {
 	r_device.get_device().vkCmdCopyBufferToImage(m_handle, buffer.get_handle(), image.get_handle(),
 		image.is_optimal() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL , blitCounts, blits);
 }
 
-void vulkan::CommandBuffer::copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact)
+void vulkan::CommandBuffer::copy_acceleration_structure(const AccelerationStructure& src, const AccelerationStructure& dst, bool compact) noexcept
 {
 	assert(src.is_compactable() == compact && "Tried to compact a non compactable acceleration structure");
 	VkCopyAccelerationStructureInfoKHR info{
@@ -303,7 +301,7 @@ void vulkan::CommandBuffer::copy_acceleration_structure(const AccelerationStruct
 	r_device.get_device().vkCmdCopyAccelerationStructureKHR(m_handle, &info);
 }
 
-void vulkan::CommandBuffer::mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier)
+void vulkan::CommandBuffer::mip_barrier(const Image& image, VkImageLayout layout, VkPipelineStageFlags srcStage, VkAccessFlags srcAccess, bool needBarrier) noexcept
 {
 	assert(image.get_info().mipLevels > 1);
 	std::array<VkImageMemoryBarrier, 2> barriers {};
@@ -336,7 +334,7 @@ void vulkan::CommandBuffer::mip_barrier(const Image& image, VkImageLayout layout
 
 void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineStageFlags dstStages, uint32_t barrierCount,
 	const VkMemoryBarrier* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier* bufferBarriers,
-	uint32_t imageBarrierCounts, const VkImageMemoryBarrier* imageBarriers)
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier* imageBarriers) noexcept
 {
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER));
@@ -348,24 +346,24 @@ void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkPipelineSt
 		globals, bufferBarrierCounts, bufferBarriers, imageBarrierCounts, imageBarriers);
 }
 
-void vulkan::CommandBuffer::barrier2(const VkMemoryBarrier2& global, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::barrier2(const VkMemoryBarrier2& global, VkDependencyFlags dependencyFlags) noexcept
 {
 	barrier2(1, &global, 0, nullptr, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::barrier2(const VkBufferMemoryBarrier2& bufferBarrier, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::barrier2(const VkBufferMemoryBarrier2& bufferBarrier, VkDependencyFlags dependencyFlags) noexcept
 {
 	barrier2(0, nullptr, 1, &bufferBarrier, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::barrier2(const VkImageMemoryBarrier2& imageBarrier, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::barrier2(const VkImageMemoryBarrier2& imageBarrier, VkDependencyFlags dependencyFlags) noexcept
 {
 	barrier2(0, nullptr, 0, nullptr, 1, &imageBarrier, dependencyFlags);
 }
 
 void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrier2* globals,
 	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
-	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
@@ -400,22 +398,24 @@ void vulkan::CommandBuffer::barrier2(uint32_t barrierCount, const VkMemoryBarrie
 	};
 	r_device.get_device().vkCmdPipelineBarrier2(m_handle, &dependencyInfo);
 }
-void vulkan::CommandBuffer::barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::barrier2(uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	barrier2(0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::barrier2(uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::barrier2(uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	barrier2(0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::reset_event2(VkEvent event, VkPipelineStageFlags2 stages)
+void vulkan::CommandBuffer::reset_event2(VkEvent event, VkPipelineStageFlags2 stages) noexcept
 {
 	r_device.get_device().vkCmdResetEvent2(m_handle, event, stages);
 }
 
-void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals,
+	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
@@ -440,22 +440,24 @@ void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, con
 	r_device.get_device().vkCmdSetEvent2(m_handle, event, &dependencyInfo);
 }
 
-void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags) noexcept
 {
 	set_event2(event, barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	set_event2(event, 0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::set_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	set_event2(event, 0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, 
+	uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers,
+	uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	assert(!(imageBarrierCounts != 0) || (imageBarriers != nullptr));
 	assert(!(imageBarrierCounts != 0) || (imageBarriers[0].sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2));
@@ -491,22 +493,22 @@ void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, co
 	wait_events2(1, &event, &dependencyInfo);
 }
 
-void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t barrierCount, const VkMemoryBarrier2* globals, VkDependencyFlags dependencyFlags) noexcept
 {
 	wait_event2(event, barrierCount, globals, 0, nullptr, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t bufferBarrierCounts, const VkBufferMemoryBarrier2* bufferBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	wait_event2(event, 0, nullptr, bufferBarrierCounts, bufferBarriers, 0, nullptr, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags)
+void vulkan::CommandBuffer::wait_event2(VkEvent event, uint32_t imageBarrierCounts, const VkImageMemoryBarrier2* imageBarriers, VkDependencyFlags dependencyFlags) noexcept
 {
 	wait_event2(event, 0, nullptr, 0, nullptr, imageBarrierCounts, imageBarriers, dependencyFlags);
 }
 
-void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo)
+void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* event, const VkDependencyInfo* dependencyInfo) noexcept
 {
 	assert(eventCount);
 	assert(event);
@@ -514,17 +516,20 @@ void vulkan::CommandBuffer::wait_events2(uint32_t eventCount, const VkEvent* eve
 	r_device.get_device().vkCmdWaitEvents2(m_handle, eventCount, event, dependencyInfo);
 }
 
-void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess)
+void vulkan::CommandBuffer::barrier(VkPipelineStageFlags srcStages, VkAccessFlags srcAccess, VkPipelineStageFlags dstStages, VkAccessFlags dstAccess) noexcept
 {
 	VkMemoryBarrier barrier{
 		.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 		.srcAccessMask = srcAccess,
 		.dstAccessMask = dstAccess
 	};
-	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 
+		1, &barrier, 0, nullptr, 0, nullptr);
 }
 
-void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStages, VkAccessFlags srcAccessFlags, VkPipelineStageFlags dstStages, VkAccessFlags dstAccessFlags)
+void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldLayout, 
+	VkImageLayout newLayout, VkPipelineStageFlags srcStages, 
+	VkAccessFlags srcAccessFlags, VkPipelineStageFlags dstStages, VkAccessFlags dstAccessFlags) noexcept
 {
 	VkImageMemoryBarrier barrier{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -547,7 +552,7 @@ void vulkan::CommandBuffer::image_barrier(const Image& image, VkImageLayout oldL
 	r_device.get_device().vkCmdPipelineBarrier(m_handle, srcStages, dstStages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
-void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout layout, const VkClearColorValue* clearColor)
+void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout layout, const VkClearColorValue* clearColor) noexcept
 {
 	VkImageSubresourceRange range{
 		.aspectMask {VK_IMAGE_ASPECT_COLOR_BIT},
@@ -559,7 +564,7 @@ void vulkan::CommandBuffer::clear_color_image(const Image& image, VkImageLayout 
 	r_device.get_device().vkCmdClearColorImage(m_handle, image.get_handle(), layout, clearColor, 1, &range);
 }
 
-void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor)
+void vulkan::CommandBuffer::clear_depth_image(const Image& image, VkImageLayout layout, const VkClearDepthStencilValue* clearColor) noexcept
 {
 	assert(false);
 	VkImageSubresourceRange range{
@@ -582,14 +587,15 @@ void vulkan::CommandBuffer::touch_swapchain() noexcept
 	m_swapchainTouched = true;
 }
 
-void vulkan::CommandBuffer::end()
+std::expected<void, vulkan::Error> vulkan::CommandBuffer::end() noexcept
 {
 	if (auto result = r_device.get_device().vkEndCommandBuffer(m_handle); result != VK_SUCCESS) {
-		throw Utility::VulkanException(result);
+		return std::unexpected{ vulkan::Error{result} };
 	}
+	return {};
 }
 
-void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
+void vulkan::CommandBuffer::begin_region(const char* name, const float* color) noexcept
 {
 	if constexpr (debugMarkers) {
 		if (r_device.get_physical_device().get_extensions().debug_utils) {
@@ -625,7 +631,7 @@ void vulkan::CommandBuffer::begin_region(const char* name, const float* color)
 	}
 }
 
-void vulkan::CommandBuffer::end_region()
+void vulkan::CommandBuffer::end_region() noexcept
 {
 	if constexpr (debugMarkers) {
 		if (r_device.get_physical_device().get_extensions().debug_utils) {

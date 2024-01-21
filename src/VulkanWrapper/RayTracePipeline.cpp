@@ -1,9 +1,12 @@
 #include "VulkanWrapper/RayTracePipeline.h"
-#include "VulkanWrapper/Buffer.h"
-#include "VulkanWrapper/Pipeline.h"
-#include "VulkanWrapper/PhysicalDevice.hpp"
 
 #include "Utility/Exceptions.h"
+
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/Pipeline.hpp"
+#include "VulkanWrapper/PhysicalDevice.hpp"
+#include "VulkanWrapper/LogicalDevice.h"
+
 
 vulkan::RTPipeline::RTPipeline(vulkan::LogicalDevice& device, const vulkan::RaytracingPipelineConfig& config) :
 	r_device(device),

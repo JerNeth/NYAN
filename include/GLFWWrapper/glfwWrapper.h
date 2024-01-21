@@ -10,48 +10,6 @@
 #include "Utility/Log.h"
 
 namespace glfww {
-	class Library {
-	public:
-		Library() {
-			if (glfwInit() == GLFW_FALSE)
-				throw std::runtime_error("GLFW could not be initiated");
-		}
-		Library(std::vector<std::pair<int, int>> hints) {
-			for (auto it : hints) {
-				glfwInitHint(it.first, it.second);
-				const char* error_msg;
-				int error = glfwGetError(&error_msg);
-				if (error) {
-					if (error == GLFW_INVALID_ENUM) 
-						Utility::log_warning().format("GLFW: Invalid Enum: {}", error_msg);
-					else if (error == GLFW_INVALID_VALUE)
-						Utility::log_warning().format("GLFW: Invalid Value: {}", error_msg);
-				}
-			}
-			if (glfwInit() == GLFW_FALSE)
-				throw std::runtime_error("GLFW could not be initiated");
-		}
-		[[nodiscard]] std::vector<const char*> get_required_extensions() const {
-			uint32_t glfwExtensionCount = 0;
-			const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-			std::vector<const char*> ret;
-			ret.reserve(glfwExtensionCount);
-			for (uint32_t i = 0; i < glfwExtensionCount; i++)
-				ret.push_back(glfwExtensions[i]);
-			#ifdef X_PROTOCOL
-			ret.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-			#endif
-			return ret;
-		}
-		~Library() {
-			glfwTerminate();
-		}
-		// No reason to keep these
-		Library(const Library&) = delete;
-		Library(Library&& other) = delete;
-		Library& operator=(const Library&) = delete;
-		Library& operator=(Library&& other) = delete;
-	};
 	enum class WindowMode {
 		Windowed,
 		WindowedBorderless, //good enough, low latency in actual use cases
@@ -290,14 +248,7 @@ namespace glfww {
 		inline bool should_close() {
 			return glfwWindowShouldClose(m_window);
 		}
-		void swap_buffers() {
-			glfwSwapBuffers(m_window);
-			const char* error_msg;
-			int error = glfwGetError(&error_msg);
-			if(error != 0)
-				throw std::runtime_error(error_msg);
-		
-		}
+
 		void configure_imgui() {
 			auto& io = ImGui::GetIO();
 			io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
@@ -320,7 +271,7 @@ namespace glfww {
 			io.KeyMap[ImGuiKey_Space] = GLFW_KEY_SPACE;
 			io.KeyMap[ImGuiKey_Enter] = GLFW_KEY_ENTER;
 			io.KeyMap[ImGuiKey_Escape] = GLFW_KEY_ESCAPE;
-			io.KeyMap[ImGuiKey_KeyPadEnter] = GLFW_KEY_KP_ENTER;
+			io.KeyMap[ImGuiKey_KeypadEnter] = GLFW_KEY_KP_ENTER;
 			io.KeyMap[ImGuiKey_A] = GLFW_KEY_A;
 			io.KeyMap[ImGuiKey_C] = GLFW_KEY_C;
 			io.KeyMap[ImGuiKey_V] = GLFW_KEY_V;
@@ -332,7 +283,7 @@ namespace glfww {
 			io.GetClipboardTextFn = ImGui_ImplGlfw_GetClipboardText;
 			io.ClipboardUserData = m_window;
 			#if defined(_WIN32)
-			io.ImeWindowHandle = (void*)glfwGetWin32Window(m_window);
+			//io.ImeWindowHandle = (void*)glfwGetWin32Window(m_window);
 			#endif
 			glfwSetKeyCallback(m_window, []([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, [[maybe_unused]] int mods) {
 				ImGuiIO& io = ImGui::GetIO();

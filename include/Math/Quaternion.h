@@ -298,12 +298,6 @@ namespace Math {
 
 			//return Vec<Scalar, 3>{ roll_x, pitch_y, yaw_z };
 		}
-		// ============================================================================================================
-		// Frens
-		// ============================================================================================================
-		template<ScalarT, size_t, size_t, bool> friend class Mat;
-		template<ScalarT, size_t> friend class Vec;
-	private:
 		Scalar m_real;
 		Vec<Scalar, 3> m_imaginary;
 		// I would really prefer C++20 concepts instead of this

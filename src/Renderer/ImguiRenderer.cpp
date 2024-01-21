@@ -1,13 +1,16 @@
 #include "Renderer/ImguiRenderer.h"
+
 #include "entt/entt.hpp"
+#include "implot.h"
+
 #include "VulkanWrapper/CommandBuffer.h"
-#include "VulkanWrapper/Pipeline.h"
+#include "VulkanWrapper/Pipeline.hpp"
 #include "VulkanWrapper/Buffer.h"
 #include "VulkanWrapper/Image.h"
+
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/CameraController.h"
 #include "Renderer/Light.h"
-#include "implot.h"
 //#include "Renderer/DDGIManager.h"
 using namespace vulkan;
 
@@ -261,8 +264,8 @@ void nyan::ImguiRenderer::end_frame()
 void nyan::ImguiRenderer::create_cmds(ImDrawData* draw_data, CommandBuffer& cmd)
 {
 	auto pipelineBind = cmd.bind_graphics_pipeline(m_pipeline);
-	int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-	int fb_height = (int)(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+	const int fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+	const int fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 	pipelineBind.bind_index_buffer((*m_dataBuffer)->get_handle() , m_bufferOffsets[3], sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 	std::array buffers{
 		(*m_dataBuffer)->get_handle(),

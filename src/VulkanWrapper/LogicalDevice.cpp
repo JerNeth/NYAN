@@ -6,7 +6,7 @@
 #include "Utility/Exceptions.h"
 
 #include "Allocator.h"
-#include "Pipeline.h"
+#include "VulkanWrapper/Pipeline.hpp"
 #include "Shader.h"
 #include "Instance.h"
 #include "Image.h"
@@ -19,6 +19,7 @@
 #include "QueryPool.hpp"
 #include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/Queue.hpp"
+#include "VulkanWrapper/PipelineCache.hpp"
 
 
 vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
@@ -28,8 +29,8 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
+	m_vmaAllocator(*vulkan::Allocator::create(r_instance, *this)),//TODO, handle error
 	m_deletionQueue(*this),
-	m_vmaAllocator(*vulkan::Allocator::create(r_instance,*this)),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
 	m_allocationPool(new Utility::Pool<Allocation>()),
@@ -41,10 +42,11 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_compute(computeFamilyQueueIndex == ~0u ? graphicsFamilyQueueIndex : computeFamilyQueueIndex),
 	m_transfer(transferFamilyQueueIndex == ~0u ? graphicsFamilyQueueIndex : transferFamilyQueueIndex),
 	m_shaderStorage(new ShaderStorage(*this)),
-	m_pipelineStorage2(new PipelineStorage2(* this)),
-	m_bindlessPool(*this),
-	m_bindlessSet(m_bindlessPool.allocate_set()),
-	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
+	m_pipelineStorage(new PipelineStorage(* this)),
+	m_defaultSamplers(*this),
+	m_bindlessPool(*DescriptorPool::create_descriptor_pool(*this)), //TODO, handle error
+	m_bindlessSet(*m_bindlessPool.allocate_set()),//TODO, handle error
+	m_bindlessPipelineLayout(new PipelineLayout(*this, { m_bindlessPool.get_layout() }))
 {
 	volkLoadDevice(device);
 
@@ -53,7 +55,11 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance,
 	m_device.vkGetDeviceQueue(m_transfer.familyIndex, 0, &m_transfer.queue);
 
 	//create_vma_allocator();
-	create_default_sampler();
+
+	m_defaultSamplers.create_default_samplers(); //TODO: handle error
+	for (auto samplerIdx = static_cast<uint32_t>(DefaultSampler::NearestClamp); samplerIdx < static_cast<uint32_t>(DefaultSampler::Size); ++samplerIdx) //TODO, probably better to move elsewhere
+		m_bindlessSet.set_sampler(VkDescriptorImageInfo{ .sampler = m_defaultSamplers.get_sampler(static_cast<DefaultSampler>(samplerIdx)) });
+
 	m_frameResources.reserve(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_frameResources.emplace_back(new FrameResource{*this});
@@ -64,8 +70,8 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, con
 	r_instance(parentInstance),
 	r_physicalDevice(physicalDevice),
 	m_device(device, nullptr),
+	m_vmaAllocator(*vulkan::Allocator::create(r_instance, *this)),//TODO, handle error
 	m_deletionQueue(*this),
-	m_vmaAllocator(*vulkan::Allocator::create(r_instance, *this)),
 	m_fenceManager(*this),
 	m_semaphoreManager(*this),
 	m_allocationPool(new Utility::Pool<Allocation>()),
@@ -74,14 +80,18 @@ vulkan::LogicalDevice::LogicalDevice(const vulkan::Instance& parentInstance, con
 	m_imagePool(new Utility::LinkedBucketList<Image>()),
 	m_attachmentAllocator(new AttachmentAllocator(*this)),
 	m_shaderStorage(new ShaderStorage(*this)),
-	m_pipelineStorage2(new PipelineStorage2(*this)),
-	m_bindlessPool(*this),
-	m_bindlessSet(m_bindlessPool.allocate_set()),
-	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
+	m_pipelineStorage(new PipelineStorage(*this)),
+	m_defaultSamplers(*this),
+	m_bindlessPool(*DescriptorPool::create_descriptor_pool(*this)),//TODO, handle error
+	m_bindlessSet(*m_bindlessPool.allocate_set()),//TODO, handle error
+	m_bindlessPipelineLayout(new PipelineLayout(*this, { m_bindlessPool.get_layout() }))
 {
 	assert(queueInfos.graphicsFamilyQueueIndex != ~0u);
 	create_queues(queueInfos);
-	create_default_sampler();
+
+	m_defaultSamplers.create_default_samplers(); //TODO: handle error
+	for(auto samplerIdx = static_cast<uint32_t>(DefaultSampler::NearestClamp); samplerIdx < static_cast<uint32_t>(DefaultSampler::Size); ++samplerIdx) //TODO, probably better to move elsewhere
+		m_bindlessSet.set_sampler(VkDescriptorImageInfo{ .sampler = m_defaultSamplers.get_sampler(static_cast<DefaultSampler>(samplerIdx)) });
 }
 
 vulkan::LogicalDevice::~LogicalDevice()
@@ -110,7 +120,7 @@ vulkan::LogicalDevice::~LogicalDevice()
 //	m_imagePool(std::move(other.m_imagePool)),
 //	m_attachmentAllocator(std::move(other.m_attachmentAllocator)),
 //	m_shaderStorage(std::move(other.m_shaderStorage)),
-//	m_pipelineStorage2(std::move(other.m_pipelineStorage2))
+//	m_pipelineStorage(std::move(other.m_pipelineStorage))
 //
 //{
 //
@@ -118,7 +128,7 @@ vulkan::LogicalDevice::~LogicalDevice()
 
 vulkan::LogicalDevice& vulkan::LogicalDevice::operator=(LogicalDevice&& other) noexcept
 {
-	if (this != &other)
+	if (this != std::addressof(other))
 	{
 		assert(false);
 	}
@@ -386,7 +396,7 @@ void vulkan::LogicalDevice::submit_queue(CommandBufferType type, FenceHandle* fe
 			throw Utility::DeviceLostException("Could not submit to Queue");
 		}
 		else {
-			Utility::log_error().location().format("VK: error %d while submitting queue", static_cast<int>(result));
+			Utility::Logger::error().location().format("VK: error %d while submitting queue", static_cast<int>(result));
 			throw Utility::VulkanException(result);
 		}
 	}
@@ -587,21 +597,22 @@ void vulkan::LogicalDevice::add_fence_callback(VkFence fence, std::function<void
 	m_fenceCallbacks.emplace(fence, callback);
 }
 
-void vulkan::LogicalDevice::create_pipeline_cache(const std::string& path)
+void vulkan::LogicalDevice::create_pipeline_cache(const std::string& path) noexcept
 {
-	m_pipelineCache = std::make_unique<PipelineCache>(*this, path);
+	if(auto pipelineCache = vulkan::PipelineCache::create(*this, path))
+		m_pipelineCache = std::make_unique<PipelineCache>(std::move(*pipelineCache));
 }
 
-vulkan::ShaderStorage& vulkan::LogicalDevice::get_shader_storage()
+vulkan::ShaderStorage& vulkan::LogicalDevice::get_shader_storage() noexcept
 {
 	assert(m_shaderStorage);
 	return *m_shaderStorage;
 }
 
-vulkan::PipelineStorage2& vulkan::LogicalDevice::get_pipeline_storage()
+vulkan::PipelineStorage& vulkan::LogicalDevice::get_pipeline_storage() noexcept
 {
-	assert(m_pipelineStorage2);
-	return *m_pipelineStorage2;
+	assert(m_pipelineStorage);
+	return *m_pipelineStorage;
 }
 
 vulkan::LogicalDevice::FrameResource& vulkan::LogicalDevice::frame()
@@ -636,7 +647,7 @@ vulkan::DescriptorPool& vulkan::LogicalDevice::get_bindless_pool() noexcept
 {
 	return m_bindlessPool;
 }
-vulkan::PipelineLayout2& vulkan::LogicalDevice::get_bindless_pipeline_layout() noexcept
+vulkan::PipelineLayout& vulkan::LogicalDevice::get_bindless_pipeline_layout() noexcept
 {
 	assert(m_bindlessPipelineLayout);
 	return *m_bindlessPipelineLayout;
@@ -710,6 +721,16 @@ VkPipelineCache vulkan::LogicalDevice::get_pipeline_cache() const noexcept {
 		return *m_pipelineCache;
 	else
 		return VK_NULL_HANDLE;
+}
+
+const vulkan::SamplerStorage& vulkan::LogicalDevice::get_default_samplers() const noexcept
+{
+	return m_defaultSamplers;
+}
+
+vulkan::SamplerStorage& vulkan::LogicalDevice::get_default_samplers() noexcept
+{
+	return m_defaultSamplers;
 }
 
 void vulkan::LogicalDevice::create_queues(const QueueInfos& queueInfos) noexcept
@@ -815,13 +836,13 @@ void validate_image_create_info(const vulkan::LogicalDevice& device, const VkIma
 
 	if (createInfo.imageType == VK_IMAGE_TYPE_1D) {
 		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension1D)
-			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension1D);
 		if (createInfo.extent.height != 1)
-			Utility::log_error().location(location).format("Requested image height \"{}\" doesn't match 1D Image type",
+			Utility::Logger::error().location(location).format("Requested image height \"{}\" doesn't match 1D Image type",
 				createInfo.extent.height);
 		if (createInfo.extent.depth != 1)
-			Utility::log_error().location(location).format("Requested image depth \"{}\" doesn't match 1D Image type",
+			Utility::Logger::error().location(location).format("Requested image depth \"{}\" doesn't match 1D Image type",
 				createInfo.extent.depth);
 		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension1D);
 		assert(createInfo.extent.height == 1);
@@ -831,13 +852,13 @@ void validate_image_create_info(const vulkan::LogicalDevice& device, const VkIma
 	
 	if (createInfo.imageType == VK_IMAGE_TYPE_2D) {
 		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension2D)
-			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension2D);
 		if (createInfo.extent.height > device.get_physical_device_properties().limits.maxImageDimension2D)
-			Utility::log_error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.height, device.get_physical_device_properties().limits.maxImageDimension2D);
 		if (createInfo.extent.depth != 1)
-			Utility::log_error().location(location).format("Requested image depth \"{}\" doesn't match 2D Image type",
+			Utility::Logger::error().location(location).format("Requested image depth \"{}\" doesn't match 2D Image type",
 				createInfo.extent.depth);
 		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension2D);
 		assert(createInfo.extent.height <= device.get_physical_device_properties().limits.maxImageDimension2D);
@@ -846,13 +867,13 @@ void validate_image_create_info(const vulkan::LogicalDevice& device, const VkIma
 	}
 	if (createInfo.imageType == VK_IMAGE_TYPE_3D) {
 		if (createInfo.extent.width > device.get_physical_device_properties().limits.maxImageDimension3D)
-			Utility::log_error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image width \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.width, device.get_physical_device_properties().limits.maxImageDimension3D);
 		if (createInfo.extent.height > device.get_physical_device_properties().limits.maxImageDimension3D)
-			Utility::log_error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image height \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.height, device.get_physical_device_properties().limits.maxImageDimension3D);
 		if (createInfo.extent.depth > device.get_physical_device_properties().limits.maxImageDimension3D)
-			Utility::log_error().location(location).format("Requested image depth \"{}\" exceeds device limits \"{}\"",
+			Utility::Logger::error().location(location).format("Requested image depth \"{}\" exceeds device limits \"{}\"",
 				createInfo.extent.depth, device.get_physical_device_properties().limits.maxImageDimension3D);
 		assert(createInfo.extent.width <= device.get_physical_device_properties().limits.maxImageDimension3D);
 		assert(createInfo.extent.height <= device.get_physical_device_properties().limits.maxImageDimension3D);
@@ -1673,148 +1694,6 @@ VkQueue vulkan::LogicalDevice::get_graphics_queue()  const noexcept
 	return m_graphics.queue;
 }
 
-
-
-std::expected<void, vulkan::Error> vulkan::LogicalDevice::create_default_sampler() noexcept
-{
-	VkSamplerCreateInfo createInfo{
-		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
-	};
-	createInfo.maxLod = VK_LOD_CLAMP_NONE;
-	for (int i = 0; i < static_cast<int>(DefaultSampler::Size); i++) {
-		auto type = static_cast<DefaultSampler>(i);
-		switch (type) {
-		case DefaultSampler::NearestShadow:
-		case DefaultSampler::LinearShadow:
-			createInfo.compareEnable = VK_TRUE;
-			createInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-			break;
-		default:
-			createInfo.compareEnable = VK_FALSE;
-			break;
-		}
-
-		switch (type) {
-		case DefaultSampler::Anisotropic2Wrap:
-		case DefaultSampler::Anisotropic2Clamp:
-		case DefaultSampler::Anisotropic4Wrap:
-		case DefaultSampler::Anisotropic4Clamp:
-		case DefaultSampler::Anisotropic8Wrap:
-		case DefaultSampler::Anisotropic8Clamp:
-		case DefaultSampler::Anisotropic16Wrap:
-		case DefaultSampler::Anisotropic16Clamp:
-		case DefaultSampler::TrilinearClamp:
-		case DefaultSampler::TrilinearWrap:
-			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			break;
-		default:
-			createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-			break;
-		}
-		switch (type) {
-		case DefaultSampler::Anisotropic2Wrap:
-		case DefaultSampler::Anisotropic2Clamp:
-		case DefaultSampler::Anisotropic4Wrap:
-		case DefaultSampler::Anisotropic4Clamp:
-		case DefaultSampler::Anisotropic8Wrap:
-		case DefaultSampler::Anisotropic8Clamp:
-		case DefaultSampler::Anisotropic16Wrap:
-		case DefaultSampler::Anisotropic16Clamp:
-			createInfo.anisotropyEnable = VK_TRUE;
-			break;
-		default:
-			createInfo.anisotropyEnable = VK_FALSE;
-			break;
-		}
-
-		switch (type) {
-		case DefaultSampler::Anisotropic2Wrap:
-		case DefaultSampler::Anisotropic2Clamp:
-		case DefaultSampler::Anisotropic4Wrap:
-		case DefaultSampler::Anisotropic4Clamp:
-		case DefaultSampler::Anisotropic8Wrap:
-		case DefaultSampler::Anisotropic8Clamp:
-		case DefaultSampler::Anisotropic16Wrap:
-		case DefaultSampler::Anisotropic16Clamp:
-		case DefaultSampler::LinearClamp:
-		case DefaultSampler::LinearWrap:
-		case DefaultSampler::TrilinearClamp:
-		case DefaultSampler::TrilinearWrap:
-		case DefaultSampler::LinearShadow:
-			createInfo.magFilter = VK_FILTER_LINEAR;
-			createInfo.minFilter = VK_FILTER_LINEAR;
-			break;
-		default:
-			createInfo.magFilter = VK_FILTER_NEAREST;
-			createInfo.minFilter = VK_FILTER_NEAREST;
-			break;
-		}
-
-		switch (type) {
-		case DefaultSampler::Anisotropic2Wrap:
-		case DefaultSampler::Anisotropic2Clamp:
-			createInfo.maxAnisotropy = 2.0f;
-			break;
-		case DefaultSampler::Anisotropic4Wrap:
-		case DefaultSampler::Anisotropic4Clamp:
-			createInfo.maxAnisotropy = 4.0f;
-			break;
-		case DefaultSampler::Anisotropic8Wrap:
-		case DefaultSampler::Anisotropic8Clamp:
-			createInfo.maxAnisotropy = 8.0f;
-			break;
-		case DefaultSampler::Anisotropic16Wrap:
-		case DefaultSampler::Anisotropic16Clamp:
-			createInfo.maxAnisotropy = 16.0f;
-			break;
-		default:
-			createInfo.maxAnisotropy = 1.0f;
-			break;
-		}
-
-		switch (type) {
-		case DefaultSampler::Anisotropic2Clamp:
-		case DefaultSampler::Anisotropic4Clamp:
-		case DefaultSampler::Anisotropic8Clamp:
-		case DefaultSampler::Anisotropic16Clamp:
-		case DefaultSampler::LinearShadow:
-		case DefaultSampler::NearestShadow:
-		case DefaultSampler::TrilinearClamp:
-		case DefaultSampler::LinearClamp:
-		case DefaultSampler::NearestClamp:
-			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			break;
-		case DefaultSampler::Anisotropic2Wrap:
-		case DefaultSampler::Anisotropic4Wrap:
-		case DefaultSampler::Anisotropic8Wrap:
-		case DefaultSampler::Anisotropic16Wrap:
-		case DefaultSampler::LinearWrap:
-		case DefaultSampler::TrilinearWrap:
-		case DefaultSampler::NearestWrap:
-		default:
-			createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			break;
-		}
-		if (auto sampler = Sampler::create(*this, createInfo); sampler) {
-			m_defaultSampler[i] = std::make_unique<Sampler>(std::move(*sampler));
-			m_bindlessSet.set_sampler(VkDescriptorImageInfo{ .sampler = m_defaultSampler[i]->get_handle() });
-		}
-		else
-			return std::unexpected{sampler.error()};
-	}
-	return {};
-}
-
-vulkan::Sampler* vulkan::LogicalDevice::get_default_sampler(DefaultSampler samplerType) const noexcept
-{
-	assert(samplerType < DefaultSampler::Size);
-	return m_defaultSampler[static_cast<size_t>(samplerType)].get();
-}
-
 std::expected<vulkan::LogicalDevice, vulkan::Error> vulkan::LogicalDevice::create_device(const vulkan::Instance& parentInstance, const vulkan::PhysicalDevice& physicalDevice, VkDevice device, const QueueInfos& queueInfos) noexcept
 {
 	//r_instance(parentInstance),
@@ -1828,10 +1707,10 @@ std::expected<vulkan::LogicalDevice, vulkan::Error> vulkan::LogicalDevice::creat
 	//	m_imagePool(new Utility::LinkedBucketList<Image>()),
 	//	m_attachmentAllocator(new AttachmentAllocator(*this)),
 	//	m_shaderStorage(new ShaderStorage(*this)),
-	//	m_pipelineStorage2(new PipelineStorage2(*this)),
+	//	m_pipelineStorage(new PipelineStorage(*this)),
 	//	m_bindlessPool(*this),
 	//	m_bindlessSet(m_bindlessPool.allocate_set()),
-	//	m_bindlessPipelineLayout(new PipelineLayout2(*this, { m_bindlessPool.get_layout() }))
+	//	m_bindlessPipelineLayout(new PipelineLayout(*this, { m_bindlessPool.get_layout() }))
 	//{
 	//	assert(queueInfos.graphicsFamilyQueueIndex != ~0u);
 	//	create_queues(queueInfos);

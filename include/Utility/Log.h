@@ -3,9 +3,6 @@
 #pragma once
 
 #include <string_view>
-#ifndef __cpp_consteval
-#define __cpp_consteval 201811L
-#endif
 #include <source_location>
 #include <format>
 #include <iostream>
@@ -20,22 +17,28 @@ namespace Utility {
 			Warn,
 			Error
 		};
-		constexpr Logger(Type type = Type::Info) : m_type(type) {
+	private:
+
+		explicit constexpr Logger(Type type = Type::Info) noexcept : m_type(type) {
 
 		}
-		constexpr Logger(const Logger& other) : m_type(other.m_type), m_newLine(other.m_newLine) {
 
-		}
+	public:
+
+		constexpr Logger(const Logger& other) noexcept = default;
+
 		constexpr Logger(Logger&& other) noexcept : m_type(other.m_type), m_newLine(other.m_newLine) {
 			other.m_newLine = false;
 		}
-		constexpr Logger& operator=(const Logger& other) {
-			m_type = other.m_type;
-			m_newLine = other.m_newLine;
+		constexpr Logger& operator=(const Logger& other) noexcept {
+			if (this != std::addressof(other)) {
+				m_type = other.m_type;
+				m_newLine = other.m_newLine;
+			}
 			return *this;
 		}
 		constexpr Logger& operator=(Logger&& other) noexcept {
-			if (this != &other) {
+			if (this != std::addressof(other)) {
 				m_type = other.m_type;
 				m_newLine = other.m_newLine;
 				other.m_newLine = false;
@@ -52,7 +55,7 @@ namespace Utility {
 				stream() << message;
 			return *this;
 		}
-		Logger&& message(const std::string_view message) && {
+		Logger&& message(const std::string_view message) &&  {
 			if constexpr (loggingEnabled)
 				stream() << message;
 			return std::move(*this);
@@ -92,7 +95,7 @@ namespace Utility {
 			return std::move(*this);
 		}
 	private:
-		std::ostream& stream() const {
+		[[nodiscard]] std::ostream& stream() const noexcept{
 			if (m_type == Type::Error) {
 				return std::cerr;
 			}
@@ -104,47 +107,40 @@ namespace Utility {
 		Type m_type {Type::Info};
 		bool m_newLine = true;
 		static constexpr bool loggingEnabled = true;
-		
+
+	public:
+		static Logger verbose() noexcept
+		{
+			return Logger{ Logger::Type::Verbose };
+		}
+		static Logger warning() noexcept
+		{
+			return Logger{ Logger::Type::Warn };
+		}
+		static Logger info() noexcept
+		{
+			return Logger{ Logger::Type::Info };
+		}
+		static Logger error() noexcept
+		{
+			return Logger{ Logger::Type::Error };
+		}
+		static Logger verbose_message(const std::string_view message)
+		{
+			return verbose().message(message);
+		}
+		static Logger warning_message(const std::string_view message)
+		{
+			return warning().message(message);
+		}
+		static Logger info_message(const std::string_view message)
+		{
+			return info().message(message);
+		}
+		static Logger error_message(const std::string_view message)
+		{
+			return error().message(message);
+		}
 	};
-	inline Logger log()
-	{
-		return Logger{};
-	}
-	inline Logger log_verbose()
-	{
-		return Logger{ Logger::Type::Verbose };
-	}
-	inline Logger log_warning()
-	{
-		return Logger{ Logger::Type::Warn };
-	}
-	inline Logger log_info()
-	{
-		return Logger{ Logger::Type::Info };
-	}
-	inline Logger log_error()
-	{
-		return Logger{ Logger::Type::Error };
-	}
-	inline Logger log(const std::string_view message)
-	{
-		return log().message(message);
-	}
-	inline Logger log_verbose(const std::string_view message)
-	{
-		return log_verbose().message(message);
-	}
-	inline Logger log_warning(const std::string_view message)
-	{
-		return log_warning().message(message);
-	}
-	inline Logger log_info(const std::string_view message)
-	{
-		return log_info().message(message);
-	}
-	inline Logger log_error(const std::string_view message)
-	{
-		return log_error().message(message);
-	}
 }
 #endif //!UTILITYLOG_H

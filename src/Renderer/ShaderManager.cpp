@@ -16,7 +16,7 @@ static std::vector<uint32_t> read_binary_file(const std::filesystem::path& path)
 		in.close();
 	}
 	else {
-		Utility::log("Could not open: \"" + path.string() + '\"');
+		Utility::Logger::warning_message("Could not open: \"" + path.string() + '\"');
 	}
 
 	return data;
@@ -60,7 +60,7 @@ void vulkan::ShaderManager::load_shaders(const std::filesystem::path& shaderDire
 		}
 	}
 	else {
-		Utility::log("Invalid shader directory given");
+		Utility::Logger::warning_message("Given shader directory non existent");
 	}
 }
 

@@ -8,6 +8,7 @@
 
 #include "VulkanWrapper/VulkanIncludes.h"
 
+#include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/VulkanForwards.h"
 
 namespace vulkan {

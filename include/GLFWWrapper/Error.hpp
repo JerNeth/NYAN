@@ -1,8 +1,6 @@
 #pragma once
 
-#ifndef __cpp_consteval
-#define __cpp_consteval 201811L
-#endif
+
 #include <source_location>
 #include <string_view>
 #include <string>

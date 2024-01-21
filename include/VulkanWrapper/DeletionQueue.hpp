@@ -24,6 +24,7 @@ namespace vulkan
 			std::vector<VkSemaphore> semaphores;
 			std::vector<VmaAllocation> allocations;
 			std::vector<VkDescriptorPool> descriptorPools;
+			std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 			std::vector<VkCommandPool> commandPools;
 			std::vector<VkQueryPool> queryPools;
 		};
@@ -49,6 +50,7 @@ namespace vulkan
 		void queue_semaphore_deletion(VkSemaphore semaphore) noexcept;
 		void queue_allocation_deletion(VmaAllocation allocation) noexcept;
 		void queue_descriptor_pool_deletion(VkDescriptorPool descriptorPool) noexcept;
+		void queue_descriptor_set_layout_deletion(VkDescriptorSetLayout descriptorSetLayout) noexcept;
 		void queue_command_pool_deletion(VkCommandPool commandPool) noexcept;
 		void queue_query_pool_deletion(VkQueryPool queryPool) noexcept;
 	private:

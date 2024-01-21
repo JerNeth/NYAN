@@ -144,7 +144,7 @@ bool nyan::Application::setup_glfw()
 {
 	auto result = glfw::Library::create();
 	if (!result) {
-		Utility::log_error(result.error().what());
+		Utility::Logger::error_message(result.error().what());
 		return false;
 	}
 	m_glfwLibrary = std::make_unique<glfw::Library>(std::move(*result));
@@ -203,8 +203,10 @@ bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation
 		switch(platform) {
 			case glfw::Library::Platform::Win32:
 				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-#ifdef VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+#ifdef VK_KHR_win32_surface
 				requiredExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#else
+				assert(false);
 #endif
 				break;
 			case glfw::Library::Platform::Cocoa: 
@@ -213,20 +215,23 @@ bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation
 				break;
 			case glfw::Library::Platform::X11: 
 				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-#ifdef VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+#ifdef VK_KHR_xlib_surface
 				requiredExtensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+#else
+				assert(false);
 #endif
 				break;
 			case glfw::Library::Platform::Wayland: 
 				requiredExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-#ifdef VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+#ifdef VK_KHR_wayland_surface
 				requiredExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#else
+				assert(false);
 #endif
 				break;
 			case glfw::Library::Platform::Null: 
 				break;
 			case glfw::Library::Platform::AnyPlatform: assert(false);
-			default: ;
 		}
 		//VK_KHR_SURFACE_EXTENSION_NAME;
 
@@ -257,7 +262,7 @@ bool nyan::Application::setup_vulkan_instance(const vulkan::Instance::Validation
 		m_vulkanInstance = std::make_unique<vulkan::Instance>(validation, requiredExtensions, optionalExtensions, m_name, m_engineName);
 	}
 	catch (const Utility::VulkanException& error) {
-		Utility::log_error(error.what());
+		Utility::Logger::error_message(error.what());
 		return false;
 	}
 	return true;
@@ -391,7 +396,7 @@ bool nyan::Application::setup_vulkan_device()
 		m_vulkanDevice->create_pipeline_cache("pipeline.cache");
 	}
 	catch (const Utility::VulkanException& error) {
-		Utility::log_error(error.what());
+		Utility::Logger::error_message(error.what());
 		return false;
 	}
 	return true;
@@ -415,7 +420,7 @@ bool nyan::Application::setup_vulkan_surface()
 		//}
 	}
 	catch (const Utility::VulkanException& error) {
-		Utility::log_error(error.what());
+		Utility::Logger::error_message(error.what());
 		return false;
 	}
 	return true;

@@ -6,6 +6,7 @@
 
 #include "VulkanForwards.h"
 #include "VulkanWrapper/VulkanObject.h"
+#include "VulkanWrapper/VulkanError.hpp"
 namespace vulkan
 {
 	struct DescriptorCreateInfo {
@@ -17,27 +18,24 @@ namespace vulkan
 		uint32_t acceleration_structure_count{ 0 };
 	};
 	class DescriptorPool : public VulkanObject<VkDescriptorPool> {
+	private:
+		DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo, VkDescriptorSetLayout layout, VkDescriptorPool pool) noexcept;
 	public:
-		friend class DescriptorSet;
-		DescriptorPool(LogicalDevice& device);
-		DescriptorPool(LogicalDevice& device, const DescriptorCreateInfo& createInfo);
 		~DescriptorPool() noexcept;
 		DescriptorPool(DescriptorPool&) = delete;
-
 		DescriptorPool(DescriptorPool&& other) noexcept;
-
 		DescriptorPool& operator=(DescriptorPool&) = delete;
-
 		DescriptorPool& operator=(DescriptorPool&& other) noexcept;
 
 		//void get_set()
-		DescriptorSet allocate_set();
-		const DescriptorCreateInfo& get_info() const;
-		VkDescriptorSetLayout get_layout() const;
+		[[nodiscard]] std::expected<DescriptorSet, vulkan::Error> allocate_set() const noexcept;
+		[[nodiscard]] const DescriptorCreateInfo& get_info() const noexcept;
+		[[nodiscard]] VkDescriptorSetLayout get_layout() const noexcept;
 
-		static std::expected<DescriptorPool, VkResult> create_descriptor_pool(LogicalDevice& device);
+		[[nodiscard]] static std::expected<DescriptorPool, vulkan::Error> create_descriptor_pool(LogicalDevice& device, DescriptorCreateInfo createInfo) noexcept;
+		[[nodiscard]] static std::expected<DescriptorPool, vulkan::Error> create_descriptor_pool(LogicalDevice& device) noexcept;
 	private:
-		VkDescriptorSetLayout m_layout;
+		VkDescriptorSetLayout m_layout {VK_NULL_HANDLE};
 		DescriptorCreateInfo m_createInfo;
 	};
 }

@@ -113,16 +113,16 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes, [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
-	Utility::Logger logger{};
+	auto logger = Utility::Logger::info();
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		logger = Utility::log_verbose("[Verbose] ");
+		logger = Utility::Logger::verbose_message("[Verbose] ");
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		logger = Utility::log_info("[Info] ");
+		logger = Utility::Logger::info_message("[Info] ");
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		logger = Utility::log_warning("[Warning] ");
+		logger = Utility::Logger::warning_message("[Warning] ");
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		logger = Utility::log_error("[Error] ");
+		logger = Utility::Logger::error_message("[Error] ");
 
 	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
 		logger.message("[General] ");
@@ -455,7 +455,7 @@ bool vulkan::Instance::use_extension(const char* extension) noexcept
 			return true;
 		}
 	}
-	Utility::log().location().format("Requested instance extension not available: {}", extension);
+	Utility::Logger::info().location().format("Requested instance extension not available: {}", extension);
 	return false;
 }
 bool vulkan::Instance::use_layer(const char* layerName) noexcept
@@ -467,7 +467,7 @@ bool vulkan::Instance::use_layer(const char* layerName) noexcept
 			return true;
 		}
 	}
-	Utility::log().location().format("Requested instance layer not available: {}", layerName);
+	Utility::Logger::info().location().format("Requested instance layer not available: {}", layerName);
 	return false;
 }
 void vulkan::Instance::init_layers() noexcept
@@ -529,7 +529,7 @@ void vulkan::Instance::init_physical_devices() noexcept
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
 		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
-		Utility::log_info().format("Vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType, 
+		Utility::Logger::info().format("Vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType, 
 			VK_API_VERSION_VARIANT(properties.apiVersion), VK_API_VERSION_MAJOR(properties.apiVersion),
 			VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
 	}

@@ -132,7 +132,7 @@ int main(const int argc, char const* const* const argv)
 
 	auto& deferredPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Pass", nyan::Renderpass::Type::Generic));
 
-	auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
+	//auto& deferredRTPass = rendergraph.get_pass(rendergraph.add_pass("Deferred-Lighting-Pass", nyan::Renderpass::Type::Generic));
 
 	auto& forwardPass = rendergraph.get_pass(rendergraph.add_pass("Forward-Pass", nyan::Renderpass::Type::Generic));
 
@@ -142,7 +142,7 @@ int main(const int argc, char const* const* const argv)
 
 	nyan::MeshRenderer meshRenderer(device, registry, renderManager, deferredPass, gbuffer);
 	//nyan::DeferredRayShadowsLighting deferredLighting2(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
-	nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
+	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredRTPass, gbuffer, lighting);
 	nyan::ForwardMeshRenderer forwardMeshRenderer(device, registry, renderManager, forwardPass, lighting, gbuffer.depth);
 	//nyan::DeferredLighting deferredLighting(device, registry, renderManager, deferredLightingPass);
 	nyan::LightComposite lightComposite(device, registry, renderManager, compositePass, lighting);

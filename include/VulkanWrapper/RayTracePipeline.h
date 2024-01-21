@@ -2,8 +2,9 @@
 #ifndef VKRAYTRACEPIPELINE_H
 #define VKRAYTRACEPIPELINE_H
 
-#include "VkWrapper.h"
-#include "Pipeline.h"
+#include "VulkanWrapper/VulkanIncludes.h"
+
+#include "VulkanWrapper/Pipeline.hpp"
 
 
 namespace vulkan {

@@ -300,7 +300,7 @@ bool vulkan::PhysicalDevice::use_extension(const char* extension) noexcept
 			return true;
 		}
 	}
-	Utility::log().location().format("Requested device extension not available: {}", extension);
+	Utility::Logger::info().location().format("Requested device extension not available: {}", extension);
 	return false;
 }
 

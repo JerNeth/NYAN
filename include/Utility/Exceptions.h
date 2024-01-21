@@ -2,9 +2,6 @@
 #define UTEXCEPTIONS_H
 #pragma once
 #include <cassert>
-#ifndef __cpp_consteval
-#define __cpp_consteval 201811L
-#endif
 #include <source_location>
 #include <filesystem>
 #include <format>

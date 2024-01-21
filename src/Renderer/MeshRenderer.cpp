@@ -1,12 +1,15 @@
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/RenderGraph.h"
-#include "Renderer/RenderManager.h"
-#include "VulkanWrapper/CommandBuffer.h"
-#include "VulkanWrapper/Buffer.h"
-#include "VulkanWrapper/Pipeline.h"
-#include "VulkanWrapper/Shader.h"
+
 #include "entt/entt.hpp"
 #include "Utility/Exceptions.h"
+
+#include "VulkanWrapper/CommandBuffer.h"
+#include "VulkanWrapper/Buffer.h"
+#include "VulkanWrapper/Pipeline.hpp"
+#include "VulkanWrapper/Shader.h"
+
+#include "Renderer/RenderGraph.h"
+#include "Renderer/RenderManager.h"
 
 nyan::MeshRenderer::MeshRenderer(vulkan::LogicalDevice& device, entt::registry& registry, nyan::RenderManager& renderManager, nyan::Renderpass& pass, const GBuffer& gbuffer) :
 	Renderer(device, registry, renderManager, pass),

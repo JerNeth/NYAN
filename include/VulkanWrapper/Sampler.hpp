@@ -3,6 +3,7 @@
 #pragma once
 
 #include <expected>
+#include <vector>
 
 #include "VulkanWrapper/VulkanIncludes.h"
 
@@ -18,13 +19,25 @@ namespace vulkan {
 		Sampler(Sampler&) = delete;
 		Sampler(Sampler&& other) noexcept;
 		Sampler& operator=(Sampler&) = delete;
-		Sampler& operator=(Sampler&&) noexcept;
+		Sampler& operator=(Sampler&& other) noexcept;
 
 		static std::expected<vulkan::Sampler, vulkan::Error> create(vulkan::LogicalDevice& device, const VkSamplerCreateInfo& createInfo) noexcept;
 	private:
-		Sampler(LogicalDevice& parent, VkSampler handle) noexcept;
+		Sampler(LogicalDevice& device, VkSampler handle) noexcept;
 
 		//VkSamplerCreateInfo m_createInfo;
+	};
+
+	class SamplerStorage
+	{
+	public:
+		SamplerStorage(LogicalDevice& device) noexcept;
+		[[nodiscard]] Sampler& get_sampler(DefaultSampler samplerType) noexcept;
+		[[nodiscard]] const Sampler& get_sampler(DefaultSampler samplerType) const noexcept;
+		[[nodiscard]] std::expected<void, vulkan::Error> create_default_samplers() noexcept;
+	private:
+		LogicalDevice& r_device;
+		std::vector<Sampler> m_samplers;
 	};
 }
 

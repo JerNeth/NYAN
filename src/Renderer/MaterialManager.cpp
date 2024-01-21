@@ -92,7 +92,7 @@ nyan::MaterialId nyan::MaterialManager::add_material(const PBRMaterialData& data
 nyan::MaterialId nyan::MaterialManager::get_material(const std::string& name)
 {
 	if (m_materialIndex.find(name) == m_materialIndex.end()) {
-		Utility::log().format("Couldn't get material \"{}\"", name);
+		Utility::Logger::warning().format("Couldn't get material \"{}\"", name);
 		return nyan::shaders::INVALID_BINDING;
 	}
 	assert(m_materialIndex.find(name) != m_materialIndex.end());

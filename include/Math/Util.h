@@ -26,17 +26,17 @@ namespace Math {
 	inline constexpr auto min(const S& a, const B& b) noexcept -> decltype(a + b)  {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE => min(a,b) gives you the opposite result compared to max(a,b)
-		if (!(a > b))
-			return a;
-		return b;
+		if (!(static_cast<decltype(a + b)>(a) > static_cast<decltype(a + b)>(b)))
+			return static_cast<decltype(a + b)>(a);
+		return static_cast<decltype(a + b)>(b);
 	}
 	template<ScalarT S, ScalarT B>
 	inline constexpr auto max(const S& a, const B& b) noexcept-> decltype(a + b) {
 		//Assuming IEEE-754
 		//If either is NaN, > returns FALSE
-		if (a > b)
-			return a;
-		return b;
+		if (static_cast<decltype(a + b)>(a) > static_cast<decltype(a + b)>(b))
+			return static_cast<decltype(a + b)>(a);
+		return static_cast<decltype(a + b)>(b);
 	}
 	/*
 	If val is NaN => returns min

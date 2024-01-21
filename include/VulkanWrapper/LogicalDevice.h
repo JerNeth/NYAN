@@ -175,12 +175,12 @@ namespace vulkan {
 		[[deprecated]] void clear_semaphores() noexcept;
 		[[deprecated]] void add_fence_callback(VkFence fence, std::function<void(void)> callback);
 
-		void create_pipeline_cache(const std::string& path);
-		ShaderStorage& get_shader_storage();
-		PipelineStorage2& get_pipeline_storage();
+		void create_pipeline_cache(const std::string& path) noexcept;
+		[[nodiscard]] ShaderStorage& get_shader_storage() noexcept;
+		[[nodiscard]] PipelineStorage& get_pipeline_storage() noexcept;
 
-		FrameResource& frame();
-		FrameResource& previous_frame();
+		[[deprecated]] FrameResource& frame();
+		[[deprecated]] FrameResource& previous_frame();
 
 		[[deprecated]] uint32_t get_thread_index() const noexcept;
 		[[deprecated]] uint32_t get_thread_count() const noexcept;
@@ -211,7 +211,7 @@ namespace vulkan {
 
 		[[deprecated]] DescriptorSet& get_bindless_set() noexcept;
 		[[deprecated]] DescriptorPool& get_bindless_pool() noexcept;
-		[[deprecated]] PipelineLayout2& get_bindless_pipeline_layout() noexcept;
+		[[deprecated]] PipelineLayout& get_bindless_pipeline_layout() noexcept;
 
 
 		[[deprecated]] Viewport get_swapchain_viewport_and_scissor() const noexcept;
@@ -223,8 +223,9 @@ namespace vulkan {
 		[[deprecated]] VkSparseImageMemoryRequirements get_sparse_memory_requirements(VkImage image, VkImageAspectFlags aspect);
 		[[deprecated]] uint32_t get_compute_family() const noexcept;
 		[[deprecated]] uint32_t get_graphics_family() const noexcept;
-		VkPipelineCache get_pipeline_cache() const noexcept;
-		Sampler* get_default_sampler(DefaultSampler samplerType) const noexcept;
+		[[nodiscard]] VkPipelineCache get_pipeline_cache() const noexcept;
+		[[nodiscard]] const SamplerStorage& get_default_samplers() const noexcept;
+		[[nodiscard]] SamplerStorage& get_default_samplers() noexcept;
 
 		[[deprecated]] Queue& get_queue(CommandBufferType type) noexcept {
 			switch (type) {
@@ -264,19 +265,19 @@ namespace vulkan {
 			const QueueInfos& queueInfos, int a);
 
 		void create_queues(const QueueInfos& queueInfos) noexcept;
+
 		ImageBuffer create_staging_buffer(const ImageInfo& info, InitialImageData* initialData, uint32_t baseMipLevel = 0);
 		ImageHandle create_image(const ImageInfo& info, VkImageUsageFlags usage);
 		ImageHandle create_sparse_image(const ImageInfo& info, VkImageUsageFlags usage);
-		void transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout);
-		void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
-		void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
-		bool resize_sparse_image_up(Image& handle, uint32_t baseMipLevel = 0);
-		void resize_sparse_image_down(Image& handle, uint32_t baseMipLevel);
+		[[deprecated]] void transition_image(ImageHandle& handle, VkImageLayout oldLayout, VkImageLayout newLayout);
+		[[deprecated]] void update_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr);
+		[[deprecated]] void update_sparse_image_with_buffer(const ImageInfo& info, Image& image, const ImageBuffer& buffer, vulkan::FenceHandle* fence = nullptr, uint32_t mipLevel = 0);
+		[[deprecated]] bool resize_sparse_image_up(Image& image, uint32_t baseMipLevel = 0);
+		[[deprecated]] void resize_sparse_image_down(Image& image, uint32_t baseMipLevel);
 
-		std::vector<CommandBufferHandle>& get_current_submissions(CommandBufferType type);
-		CommandPool& get_pool(CommandBufferType type);
+		[[deprecated]] std::vector<CommandBufferHandle>& get_current_submissions(CommandBufferType type);
+		[[deprecated]] CommandPool& get_pool(CommandBufferType type);
 		//void create_vma_allocator();
-		std::expected<void, vulkan::Error> create_default_sampler() noexcept;
 
 		/// *******************************************************************
 		/// Member variables
@@ -302,7 +303,7 @@ namespace vulkan {
 		std::unique_ptr<Utility::LinkedBucketList<Image>> m_imagePool;
 		WSIState m_wsiState;
 
-		std::unique_ptr<AttachmentAllocator> m_attachmentAllocator;
+		[[deprecated]] std::unique_ptr<AttachmentAllocator> m_attachmentAllocator;
 		LogicalDevice::Queue m_graphics;
 		LogicalDevice::Queue m_compute;
 		LogicalDevice::Queue m_transfer;
@@ -315,16 +316,16 @@ namespace vulkan {
 
 
 		std::unique_ptr<ShaderStorage> m_shaderStorage;
-		std::unique_ptr<PipelineStorage2> m_pipelineStorage2;
+		std::unique_ptr<PipelineStorage> m_pipelineStorage;
 
 
-		std::array<std::unique_ptr<Sampler>, static_cast<size_t>(vulkan::DefaultSampler::Size)> m_defaultSampler;
+		SamplerStorage m_defaultSamplers;
 
 		std::unique_ptr<PipelineCache> m_pipelineCache;
 
 		DescriptorPool m_bindlessPool;
 		DescriptorSet m_bindlessSet;
-		std::unique_ptr < PipelineLayout2> m_bindlessPipelineLayout;
+		std::unique_ptr < PipelineLayout> m_bindlessPipelineLayout;
 	};
 }
 #endif // VKLOGICALDEVICE_H

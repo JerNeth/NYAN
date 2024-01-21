@@ -93,7 +93,8 @@ namespace MM {
 		bool entityHasComponent(Registry& registry, EntityType& entity, ComponentTypeID type_id)
 		{
 			const auto storage_it = registry.storage(type_id);
-			return storage_it != registry.storage().end() && storage_it->second.contains(entity);
+			return false;
+			//return storage_it != registry.storage().end() && storage_it->second.contains(entity);
 		}
 
 	public:
@@ -144,7 +145,7 @@ namespace MM {
 					for (auto&& curr : registry.storage()) {
 						if (auto& storage = curr.second; storage.contains(old_e)) {
 							// TODO: do something with the return value. returns false on failure.
-							storage.emplace(e, storage.get(old_e));
+							//storage.emplace(e, storage.get(old_e));
 						}
 					}
 				}
@@ -245,34 +246,34 @@ namespace MM {
 			ImGui::Unindent();
 			ImGui::Separator();
 
-			if (comp_list.empty()) {
-				ImGui::Text("Orphans:");
-				registry.each([&registry](auto e) {
-					if (registry.orphan(e)) {
-						MM_IEEE_ENTITY_WIDGET(e, registry, false);
-					}
-					});
-			}
-			else {
-				entt::basic_runtime_view<entt::basic_sparse_set<EntityType>> view{};
-				for (const auto type : comp_list) {
-					auto storage_it = registry.storage(type);
-					if (storage_it != registry.storage().end()) {
-						view.iterate(registry.storage(type)->second);
-					}
-				}
+			//if (comp_list.empty()) {
+			//	ImGui::Text("Orphans:");
+			//	registry.storage().each([&registry](auto e) {
+			//		if (registry.orphan(e)) {
+			//			MM_IEEE_ENTITY_WIDGET(e, registry, false);
+			//		}
+			//		});
+			//}
+			//else {
+			//	entt::basic_runtime_view<entt::basic_sparse_set<EntityType>> view{};
+			//	for (const auto type : comp_list) {
+			//		auto storage_it = registry.storage(type);
+			//		if (storage_it != registry.storage().end()) {
+			//			view.iterate(registry.storage(type)->second);
+			//		}
+			//	}
 
-				// TODO: add support for exclude
+			//	// TODO: add support for exclude
 
-				ImGui::Text("%llu Entities Matching:", view.size_hint());
+			//	ImGui::Text("%llu Entities Matching:", view.size_hint());
 
-				if (ImGui::BeginChild("entity list")) {
-					for (auto e : view) {
-						MM_IEEE_ENTITY_WIDGET(e, registry, false);
-					}
-				}
-				ImGui::EndChild();
-			}
+			//	if (ImGui::BeginChild("entity list")) {
+			//		for (auto e : view) {
+			//			MM_IEEE_ENTITY_WIDGET(e, registry, false);
+			//		}
+			//	}
+			//	ImGui::EndChild();
+			//}
 		}
 
 		[[deprecated("Use renderEditor() instead. And manage the window yourself.")]]
