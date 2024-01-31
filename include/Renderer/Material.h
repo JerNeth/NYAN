@@ -1,7 +1,7 @@
 #pragma once
 #ifndef RDMATERIAL_H
 #define RDMATERIAL_H
-#include "LinAlg.h"
+import NYANMath;
 #include <string>
 namespace nyan {
 	struct MaterialId {

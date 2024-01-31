@@ -2,7 +2,7 @@
 #ifndef RDSHADERINTERFACE_H
 #define RDSHADERINTERFACE_H
 
-#include "LinAlg.h"
+import NYANMath;
 #define uint uint32_t
 #define int int32_t
 #define Indices VkDeviceAddress

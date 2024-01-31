@@ -1,6 +1,6 @@
 #include "AccelerationStructure.h"
 
-#include "Math/LinAlg.h"
+import NYANMath;
 
 #include "VulkanWrapper/PhysicalDevice.hpp"
 #include "VulkanWrapper/LogicalDevice.h"

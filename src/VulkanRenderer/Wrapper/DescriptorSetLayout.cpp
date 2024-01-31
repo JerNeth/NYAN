@@ -1,0 +1,213 @@
+module;
+
+#include <array>
+#include <cassert>
+#include <utility>
+#include <string_view>
+
+#include "volk.h"
+
+module NYANVulkanWrapper;
+import NYANLog;
+
+using namespace nyan::vulkan::wrapper;
+
+DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept :
+	Object(other.r_device, other.m_handle),
+	r_deletionQueue(other.r_deletionQueue),
+	m_info(other.m_info)
+{
+	other.m_handle = VK_NULL_HANDLE;
+}
+
+DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other) noexcept
+{
+	if(this != std::addressof(other))
+	{
+		assert(std::addressof(r_device) == std::addressof(other.r_device));
+		std::swap(m_handle, other.m_handle);
+		std::swap(m_info, other.m_info);
+	}
+	return *this;
+}
+
+DescriptorSetLayout::~DescriptorSetLayout() noexcept
+{
+	if (m_handle != VK_NULL_HANDLE)
+		r_deletionQueue.queue_descriptor_set_layout_deletion(m_handle);
+}
+
+const DescriptorSetLayout::DescriptorInfo& DescriptorSetLayout::get_info() const noexcept
+{
+	return m_info;
+}
+
+VkDescriptorType DescriptorSetLayout::bindless_binding_to_type(const uint32_t binding) noexcept
+{
+	switch (binding) {
+	case DescriptorSetLayout::storageBufferBinding:
+		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case DescriptorSetLayout::uniformBufferBinding:
+		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	case DescriptorSetLayout::samplerBinding:
+		return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case DescriptorSetLayout::sampledImageBinding:
+		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	case DescriptorSetLayout::storageImageBinding:
+		return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	case DescriptorSetLayout::accelerationStructureBinding:
+		return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	default:
+		assert(false);
+		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	}
+}
+
+std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDevice& device, DescriptorInfo info) noexcept
+{
+	const auto& physicalDevice = device.get_physical_device();
+	const auto& vulkan12Properties = physicalDevice.get_vulkan12_properties();
+	const auto& rtProperties = physicalDevice.get_acceleration_structure_properties();
+
+
+	//Not sure if validation instead of error is better here.
+	auto validateDescriptorCount = [&](std::string_view message, auto& info, auto maxVal)
+		{
+			if (info > maxVal) {
+				util::log::Logger::warning().format(message, info, maxVal);
+				info = maxVal;
+			}
+		};
+
+	validateDescriptorCount("Not enough bindless storage buffers {} | {}", info.storageBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers);
+	validateDescriptorCount("Not enough bindless uniform buffers {} | {}", info.uniformBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers);
+	validateDescriptorCount("Not enough bindless sampled images {} | {}", info.sampledImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages);
+	validateDescriptorCount("Not enough bindless storage images  {} | {}", info.storageImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages);
+	validateDescriptorCount("Not enough bindless bindless samplers {} | {}", info.samplerCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers);
+	validateDescriptorCount("Not enough bindless acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures);
+
+	std::array bindings{
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = storageBufferBinding,
+			.descriptorType = bindless_binding_to_type(storageBufferBinding),
+			.descriptorCount = info.storageBufferCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = uniformBufferBinding,
+			.descriptorType = bindless_binding_to_type(uniformBufferBinding),
+			.descriptorCount = info.uniformBufferCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = samplerBinding,
+			.descriptorType = bindless_binding_to_type(samplerBinding),
+			.descriptorCount = info.samplerCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = sampledImageBinding,
+			.descriptorType = bindless_binding_to_type(sampledImageBinding),
+			.descriptorCount = info.sampledImageCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = storageImageBinding,
+			.descriptorType = bindless_binding_to_type(storageImageBinding),
+			.descriptorCount = info.storageImageCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = accelerationStructureBinding,
+			.descriptorType = bindless_binding_to_type(accelerationStructureBinding),
+			.descriptorCount = info.accelerationStructureCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		}
+	};
+	if (!device.get_enabled_extensions().accelerationStructure)
+		bindings[5].descriptorCount = 0;
+
+	uint32_t bindingCount = 0;
+	for (uint32_t i = 0; i < bindings.size(); ++i)
+		if (bindings[i].descriptorCount)
+			bindingCount = i + 1;
+		
+
+	VkDescriptorBindingFlags flag{ 0 };
+
+	const auto& vulkan12Features = physicalDevice.get_vulkan12_features();
+
+	if (vulkan12Features.descriptorBindingPartiallyBound) {
+		//	//VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+		flag |= VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+	}
+	if (vulkan12Features.descriptorBindingUpdateUnusedWhilePending) {
+		//	//VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+		flag |= VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+	}
+
+	std::array<VkDescriptorBindingFlags, bindings.size()> flags;
+	flags.fill(flag);
+
+	if (vulkan12Features.descriptorBindingStorageBufferUpdateAfterBind) {
+		flags[storageBufferBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+	if (vulkan12Features.descriptorBindingUniformBufferUpdateAfterBind) {
+		flags[uniformBufferBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+	if (vulkan12Features.descriptorBindingSampledImageUpdateAfterBind) {
+		flags[samplerBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		flags[sampledImageBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT; 
+	}
+	if (vulkan12Features.descriptorBindingStorageImageUpdateAfterBind) {
+		flags[storageImageBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+	}
+
+	if (info.accelerationStructureCount) {
+		if (physicalDevice.get_acceleration_structure_features().descriptorBindingAccelerationStructureUpdateAfterBind) {
+			flags[accelerationStructureBinding] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		}
+	}
+
+	VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+		.bindingCount = bindingCount,
+		.pBindingFlags = flags.data()
+	};
+
+	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.pNext = &flagsCreateInfo,
+		.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+		.bindingCount = bindingCount,
+		.pBindings = bindings.data()
+	};
+	const auto& deviceWrapper = device.get_device();
+	VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
+	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, deviceWrapper.get_allocator_callbacks(), &layout); result != VK_SUCCESS) {
+		return std::unexpected{ Error{result} };
+	}
+
+	return DescriptorSetLayout{ deviceWrapper, layout, device.get_deletion_queue(), std::move(info)};
+}
+
+DescriptorSetLayout::DescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapper,
+	VkDescriptorSetLayout layout, DeletionQueue& deletionQueue, DescriptorInfo info) noexcept :
+	Object(deviceWrapper, layout),
+	r_deletionQueue(deletionQueue),
+	m_info(std::move(info))
+{
+	assert(m_handle != VK_NULL_HANDLE);
+}

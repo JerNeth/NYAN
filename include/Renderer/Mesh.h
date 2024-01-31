@@ -1,7 +1,7 @@
 #pragma once
 #ifndef RDMESH_H
 #define RDMESH_H
-#include "LinAlg.h"
+import NYANMath;
 #include <vector>
 #include <string>
 #include "Material.h"

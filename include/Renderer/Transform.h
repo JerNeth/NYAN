@@ -1,5 +1,5 @@
 #pragma once
-#include "LinAlg.h"
+import NYANMath;
 
 namespace nyan {
 	struct Transform {

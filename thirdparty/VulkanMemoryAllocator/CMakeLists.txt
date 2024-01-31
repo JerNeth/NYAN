@@ -4,9 +4,9 @@ include(FetchContent)
 find_package(VulkanMemoryAllocator QUIET)
 
 if(NOT VulkanMemoryAllocator_FOUND)
-	message("VulkanMemoryAllocator_FOUND not installed, checking if locally specified")
+	message("VulkanMemoryAllocator not installed, checking if locally specified")
 	if(NOT DEFINED repo_vma OR NOT EXISTS ${repo_vma})
-		message("VulkanMemoryAllocator_FOUND not locally specified, fetching remote")
+		message("VulkanMemoryAllocator not locally specified, fetching remote")
 		set(repo_vma https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
 	endif()
 	FetchContent_Declare(

@@ -1,9 +1,9 @@
 #pragma once
 #ifndef RDTEXTUREMANAGER_H
 #define RDTEXTUREMANAGER_H
+import NYANMath;
 #include <filesystem>
 #include "VkWrapper.h"
-#include "LinAlg.h"
 #include "LogicalDevice.h"
 #include "Image.h"
 #include "Utility/DDSReader.h"

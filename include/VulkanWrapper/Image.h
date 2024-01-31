@@ -1,10 +1,10 @@
 #ifndef VKIMAGE_H
 #define VKIMAGE_H
 #pragma once
+import NYANMath;
+
 #include <optional>
 #include <utility>
-
-#include "LinAlg.h"
 
 #include "VulkanWrapper/VulkanIncludes.h"
 

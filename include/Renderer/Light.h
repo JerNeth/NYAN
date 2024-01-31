@@ -1,7 +1,7 @@
 #pragma once
 #ifndef RDLIGHT_H
 #define RDLIGHT_H
-#include "LinAlg.h"
+import NYANMath;
 #include <string>
 namespace nyan {
 	struct LightParameters {

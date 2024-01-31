@@ -1,11 +1,12 @@
 #ifndef VKSHADER_H
 #define VKSHADER_H
 #pragma once
+import NYANMath;
+
 #include <typeinfo>
 
 #include <Util>
 
-#include "LinAlg.h"
 
 #include "VulkanWrapper/VulkanIncludes.h"
 

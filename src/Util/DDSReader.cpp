@@ -1,6 +1,5 @@
 #include "Utility/DDSReader.h"
-#include "LinAlg.h"
-#include "VulkanWrapper/VulkanIncludes.h"
+import NYANMath;
 #include "VkWrapper.h"
 #include "Image.h"
 

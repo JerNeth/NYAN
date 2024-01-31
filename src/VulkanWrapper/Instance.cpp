@@ -1,8 +1,7 @@
-#include "Instance.h"
-#include "Instance.h"
+#include "VulkanWrapper/Instance.h"
+import NYANMath;
 #include "VulkanWrapper/LogicalDevice.h"
 #include "VulkanWrapper/PhysicalDevice.hpp"
-#include "VulkanWrapper/Instance.h"
 #include "Utility/Exceptions.h"
 
 #include <stdexcept>

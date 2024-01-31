@@ -1,5 +1,4 @@
 #pragma once
-#include "LinAlg.h"
 #include "glfwWrapper.h"
 #include <unordered_map>
 #include <array>

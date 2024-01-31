@@ -1,7 +1,7 @@
 #ifndef VKMAXVALS_H
 #define VKMAXVALS_H
 #pragma once
-#include "Math/LinAlg.h"
+import NYANMath;
 
 namespace vulkan {
 	constexpr uint8_t MAX_BINDINGS = 16u;

@@ -4,7 +4,6 @@
 # ---------------------------------------------------------------------------
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include/Math
     ${CMAKE_SOURCE_DIR}/include/Geometry
     ${CMAKE_SOURCE_DIR}/include/Core
     ${CMAKE_SOURCE_DIR}/include/GLFWWrapper
@@ -16,8 +15,6 @@ include_directories(SYSTEM
 )
 
 
-
-set(GLOB MATH_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/Math)
 set(GLOB CORE_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/Core)
 set(GLOB GLFWWRAPPER_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/GLFWWrapper)
 set(GLOB FBXREADER_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/FBXReader)
@@ -27,10 +24,6 @@ set(GLOB UTILITY_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/Utility)
 set(GLOB GLTFREADER_H_DIR ${CMAKE_CURRENT_LIST_DIR}/include/GLTFReader)
 set(GLOB INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-file(GLOB MATH_H CONFIGURE_DEPENDS
-    ${MATH_H_DIR}/*.h
-    ${MATH_H_DIR}/*.hpp
-    )
 file(GLOB CORE_H CONFIGURE_DEPENDS
     ${CORE_H_DIR}/*.h
     ${CORE_H_DIR}/*.hpp
