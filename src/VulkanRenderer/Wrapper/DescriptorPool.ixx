@@ -1,6 +1,7 @@
 module;
 
 #include <expected>
+#include <vector>
 
 #include "volk.h"
 

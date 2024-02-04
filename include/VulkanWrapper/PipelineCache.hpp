@@ -26,16 +26,7 @@ namespace vulkan
 
 			std::array<uint8_t, VK_UUID_SIZE>  uuid; // equal to VkPhysicalDeviceProperties::pipelineCacheUUID
 
-			friend bool operator==(const PipelineCachePrefixHeader& left, const PipelineCachePrefixHeader& right) {
-				return left.magicNumber == right.magicNumber &&
-					left.dataSize == right.dataSize &&
-					left.dataHash == right.dataHash &&
-					left.vendorID == right.vendorID &&
-					left.deviceID == right.deviceID &&
-					left.driverVersion == right.driverVersion &&
-					left.driverABI == right.driverABI &&
-					left.uuid == right.uuid;
-			}
+			friend bool operator==(const PipelineCachePrefixHeader& left, const PipelineCachePrefixHeader& right) noexcept = default;
 		};
 		PipelineCache(LogicalDevice& device, VkPipelineCache handle, std::filesystem::path path) noexcept;
 	public:

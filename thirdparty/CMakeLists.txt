@@ -8,6 +8,8 @@ add_subdirectory(GLFW)
 
 add_subdirectory(Imgui)
 
+add_subdirectory(MagicEnum)
+
 add_subdirectory(NYANUtil)
 
 add_subdirectory(SPIRV-Cross)

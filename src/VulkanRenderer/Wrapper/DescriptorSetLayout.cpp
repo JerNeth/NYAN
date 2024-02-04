@@ -74,7 +74,7 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 	auto validateDescriptorCount = [&](std::string_view message, auto& info, auto maxVal)
 		{
 			if (info > maxVal) {
-				util::log::Logger::warning().format(message, info, maxVal);
+				util::log::warning().format(message, info, maxVal);
 				info = maxVal;
 			}
 		};
@@ -196,7 +196,7 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 	};
 	const auto& deviceWrapper = device.get_device();
 	VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
-	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, deviceWrapper.get_allocator_callbacks(), &layout); result != VK_SUCCESS) {
+	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) {
 		return std::unexpected{ Error{result} };
 	}
 

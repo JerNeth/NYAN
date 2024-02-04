@@ -91,7 +91,7 @@ std::expected<DescriptorPool, Error> DescriptorPool::create(LogicalDevice& devic
 
 	VkDescriptorPool pool{ VK_NULL_HANDLE };
 
-	if (auto result = deviceWrapper.vkCreateDescriptorPool(&poolCreateInfo, deviceWrapper.get_allocator_callbacks(), &pool); result != VK_SUCCESS)
+	if (auto result = deviceWrapper.vkCreateDescriptorPool(&poolCreateInfo, &pool); result != VK_SUCCESS)
 		return std::unexpected{ Error{result} };
 
 	std::vector setLayouts{ numDescriptorSets, layout.get_handle() };

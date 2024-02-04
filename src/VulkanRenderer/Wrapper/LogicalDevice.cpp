@@ -62,7 +62,7 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 					});
 			} else
 			{
-				util::log::Logger::warning_message("[LogicalDevice] Requested queues from non-existent queue families");
+				util::log::warning_message("[LogicalDevice] Requested queues from non-existent queue families");
 			}
 		}
 	};

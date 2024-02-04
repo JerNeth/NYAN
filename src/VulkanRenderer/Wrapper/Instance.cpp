@@ -7,6 +7,7 @@ module;
 #include <string_view>
 #include <vector>
 #include <array>
+#include <optional>
 
 #include "volk.h"
 module NYANVulkanWrapper;
@@ -155,41 +156,63 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes, [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
-	auto logger = nyan::util::log::Logger::info();
+
+	auto fun = [&](auto logger)
+	{
+		if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+			logger.message("[General] ");
+		if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+			logger.message("[Validation] ");
+		if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+			logger.message("[Performance] ");
+		if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
+			logger.message("[Device Address Binding] ");
+
+		std::string tabs = "";
+		std::array<uint8_t, 3> color {255, 255, 255};
+		if (pCallbackData->queueLabelCount) {
+			for (size_t labelIdx = 0; labelIdx < pCallbackData->queueLabelCount; ++labelIdx) {
+				tabs += "\t";
+				pCallbackData->pQueueLabels[labelIdx].color;
+				color = std::array<uint8_t, 3> {static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
+					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
+					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
+				logger.format(color, "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
+			}
+		}
+		if (pCallbackData->cmdBufLabelCount) {
+			for (size_t labelIdx = 0; labelIdx < pCallbackData->cmdBufLabelCount; ++labelIdx) {
+				tabs += "\t";
+				color = std::array<uint8_t, 3> { static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
+					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
+					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
+				logger.format(color, "\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
+			}
+		}
+		if (pCallbackData->objectCount) {
+			if (pCallbackData->pObjects[0].pObjectName) {
+				logger.format("\n{} [{:#x}] [{}] {}", tabs, pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType), pCallbackData->pObjects[0].pObjectName);
+			}
+			else {
+				logger.format("\n{} [{:#x}] [{}]", tabs, pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType));
+			}
+		}
+
+		logger.format("\n {}", pCallbackData->pMessageIdName);
+		logger.format("\n {}", pCallbackData->pMessage);
+	};
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		logger = nyan::util::log::Logger::verbose_message("[Verbose] ");
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		logger = nyan::util::log::Logger::info_message("[Info] ");
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		logger = nyan::util::log::Logger::warning_message("[Warning] ");
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		logger = nyan::util::log::Logger::error_message("[Error] ");
-
-	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
-		logger.message("[General] ");
-	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
-		logger.message("[Validation] ");
-	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
-		logger.message("[Performance] ");
-	if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT)
-		logger.message("[Device Address Binding] ");
-
-	if (pCallbackData->queueLabelCount)
-		logger.format("\n {}", pCallbackData->pQueueLabels[0].pLabelName);
-	if (pCallbackData->cmdBufLabelCount)
-		logger.format("\n {}", pCallbackData->pCmdBufLabels[0].pLabelName);
-	if (pCallbackData->objectCount) {
-		if (pCallbackData->pObjects[0].pObjectName) {
-			logger.format("\n\t [{:#x}] [{}] {}", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType), pCallbackData->pObjects[0].pObjectName);
-		}
-		else {
-			logger.format("\n\t [{:#x}] [{}]", pCallbackData->pObjects[0].objectHandle, get_object_string(pCallbackData->pObjects[0].objectType));
-		}
-	}
-
-	logger.format("\n {}", pCallbackData->pMessageIdName);
-	logger.format("\n {}", pCallbackData->pMessage);
+		fun(nyan::util::log::verbose_message("[Verbose] "));
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		fun(nyan::util::log::info_message("[Info] "));
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		fun(nyan::util::log::warning_message("[Warning] "));
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		fun(nyan::util::log::error_message("[Error] "));
+	else
+		fun(nyan::util::log::error_message("[Info] "));
+	
 
 	return VK_FALSE;
 }
@@ -273,7 +296,7 @@ std::expected<std::vector<PhysicalDevice>, PhysicalDeviceCreationError> enumerat
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
 		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
 			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
-		nyan::util::log::Logger::info().format("[Instance] Found vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType,
+		nyan::util::log::info().format("[Instance] Found vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType,
 		                                       VK_API_VERSION_VARIANT(properties.apiVersion), VK_API_VERSION_MAJOR(properties.apiVersion),
 		                                       VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
 	}
@@ -366,7 +389,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 					requestedExtensions.push_back(extensionName);
 				return true;
 			}
-			util::log::Logger::info().location().format("Extension: \"{}\" not available", extensionName);
+			util::log::info().location().format("Extension: \"{}\" not available", extensionName);
 			return false;
 		};
 
@@ -405,7 +428,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 	if (add_extensions(requiredExtensions))
 		return std::unexpected{ InstanceCreationError::Type::RequiredExtensionNotPresentError };
 	if (add_extensions(optionalExtension))
-		util::log::Logger::warning_message("[Instance] Requested optional instance extensions not all available");
+		util::log::warning_message("[Instance] Requested optional instance extensions not all available");
 
 	if (vkEnumerateInstanceVersion == nullptr)
 		return std::unexpected{ InstanceCreationError::Type::APIVersionNotSupportedError };

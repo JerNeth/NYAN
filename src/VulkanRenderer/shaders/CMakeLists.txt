@@ -72,16 +72,16 @@ foreach(shader ${SHADER_SRC})
     get_filename_component(shader_name ${shader} NAME_WE)
     get_filename_component(shader_type ${shader} EXT)
     string(REPLACE "." "" shader_type ${shader_type})
-    set(shaderoutput "${PROJECT_BINARY_DIR}/shaders/${shader_name}_${shader_type}.spv")
+    set(shaderoutput "${CMAKE_CURRENT_BINARY_DIR}/${shader_name}_${shader_type}.spv")
     add_spirv_shader(${shader} "${shaderoutput}")
     list(APPEND SHADERS "${shaderoutput}")
 endforeach()
 
 
-add_custom_target(vulkan_local_shaders DEPENDS ${SHADERS})
+add_custom_target(local_shaders DEPENDS ${SHADERS})
 
-add_library(vulkan_shaders INTERFACE)
-target_include_directories(vulkan_shaders INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
-target_sources(vulkan_shaders INTERFACE ${SHADER_H})
+add_library(shaders INTERFACE)
+target_include_directories(shaders INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
+target_sources(shaders INTERFACE ${SHADER_H})
 
-add_dependencies(vulkan_shaders vulkan_local_shaders)
+add_dependencies(shaders local_shaders)

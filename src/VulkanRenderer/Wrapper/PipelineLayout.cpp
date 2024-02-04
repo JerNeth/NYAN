@@ -6,6 +6,7 @@ module;
 #include "volk.h"
 
 module NYANVulkanWrapper;
+import NYANData;
 import NYANLog;
 
 using namespace nyan::vulkan::wrapper;
@@ -39,10 +40,13 @@ std::expected<PipelineLayout, Error> nyan::vulkan::wrapper::PipelineLayout::crea
 		.offset = 0,
 		.size = pushConstantSize,
 	};
-	std::vector<VkDescriptorSetLayout> setLayouts;
-	setLayouts.reserve(descriptorSetLayouts.size());
+	util::data::DynArray<VkDescriptorSetLayout> setLayouts;
+	if (!setLayouts.reserve(descriptorSetLayouts.size()))
+		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
+
 	for (const auto& layout : descriptorSetLayouts)
-		setLayouts.push_back(layout.get_handle());
+		if (!setLayouts.push_back(layout.get_handle()))
+			return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -53,7 +57,7 @@ std::expected<PipelineLayout, Error> nyan::vulkan::wrapper::PipelineLayout::crea
 	};
 
 	VkPipelineLayout handle{ VK_NULL_HANDLE };
-	if (auto result = deviceWrapper.vkCreatePipelineLayout(&pipelineLayoutCreateInfo, deviceWrapper.get_allocator_callbacks(), &m_handle); result != VK_SUCCESS) {
+	if (auto result = deviceWrapper.vkCreatePipelineLayout(&pipelineLayoutCreateInfo, &handle); result != VK_SUCCESS) {
 		return std::unexpected{ result };
 	}
 	return PipelineLayout{deviceWrapper, handle, deletionQueue};

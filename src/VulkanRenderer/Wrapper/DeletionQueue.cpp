@@ -184,35 +184,35 @@ void DeletionQueue::clear_epoch(const size_t epoch) noexcept
 		auto& currentQueue = m_deletionQueues[epoch];
 
 		for (const auto imageView : currentQueue.imageViews)
-			r_device.vkDestroyImageView(imageView, r_device.get_allocator_callbacks());
+			r_device.vkDestroyImageView(imageView);
 		currentQueue.imageViews.clear();
 
 		for (const auto bufferView : currentQueue.bufferViews)
-			r_device.vkDestroyBufferView(bufferView, r_device.get_allocator_callbacks());
+			r_device.vkDestroyBufferView(bufferView);
 		currentQueue.bufferViews.clear();
 
 		for (const auto sampler : currentQueue.samplers)
-			r_device.vkDestroySampler(sampler, r_device.get_allocator_callbacks());
+			r_device.vkDestroySampler(sampler);
 		currentQueue.samplers.clear();
 
 		for (const auto image : currentQueue.images)
-			r_device.vkDestroyImage(image, r_device.get_allocator_callbacks());
+			r_device.vkDestroyImage(image);
 		currentQueue.images.clear();
 
 		for (const auto buffer : currentQueue.buffers)
-			r_device.vkDestroyBuffer(buffer, r_device.get_allocator_callbacks());
+			r_device.vkDestroyBuffer(buffer);
 		currentQueue.buffers.clear();
 
 		for (const auto accelerationStructure : currentQueue.accelerationStructures)
-			r_device.vkDestroyAccelerationStructureKHR(accelerationStructure, r_device.get_allocator_callbacks());
+			r_device.vkDestroyAccelerationStructureKHR(accelerationStructure);
 		currentQueue.accelerationStructures.clear();
 
 		for (const auto framebuffer : currentQueue.framebuffers)
-			r_device.vkDestroyFramebuffer(framebuffer, r_device.get_allocator_callbacks());
+			r_device.vkDestroyFramebuffer(framebuffer);
 		currentQueue.framebuffers.clear();
 
 		for (const auto semaphore : currentQueue.semaphores)
-			r_device.vkDestroySemaphore(semaphore, r_device.get_allocator_callbacks());
+			r_device.vkDestroySemaphore(semaphore);
 		currentQueue.semaphores.clear();
 
 		for (const auto allocation : currentQueue.allocations)
@@ -220,27 +220,27 @@ void DeletionQueue::clear_epoch(const size_t epoch) noexcept
 		currentQueue.allocations.clear();
 
 		for (const auto pool : currentQueue.descriptorPools)
-			r_device.vkDestroyDescriptorPool(pool, r_device.get_allocator_callbacks());
+			r_device.vkDestroyDescriptorPool(pool);
 		currentQueue.descriptorPools.clear();
 
 		for (const auto setLayout : currentQueue.descriptorSetLayouts)
-			r_device.vkDestroyDescriptorSetLayout(setLayout, r_device.get_allocator_callbacks());
+			r_device.vkDestroyDescriptorSetLayout(setLayout);
 		currentQueue.descriptorSetLayouts.clear();
 
 		for (const auto pool : currentQueue.commandPools)
-			r_device.vkDestroyCommandPool(pool, r_device.get_allocator_callbacks());
+			r_device.vkDestroyCommandPool(pool);
 		currentQueue.commandPools.clear();
 
 		for (const auto pool : currentQueue.queryPools)
-			r_device.vkDestroyQueryPool(pool, r_device.get_allocator_callbacks());
+			r_device.vkDestroyQueryPool(pool);
 		currentQueue.queryPools.clear();
 
 		for (const auto pipeline : currentQueue.pipelines)
-			r_device.vkDestroyPipeline(pipeline, r_device.get_allocator_callbacks());
+			r_device.vkDestroyPipeline(pipeline);
 		currentQueue.pipelines.clear();
 
 		for (const auto pipelineLayout : currentQueue.pipelineLayouts)
-			r_device.vkDestroyPipelineLayout(pipelineLayout, r_device.get_allocator_callbacks());
+			r_device.vkDestroyPipelineLayout(pipelineLayout);
 		currentQueue.pipelineLayouts.clear();
 	}
 }

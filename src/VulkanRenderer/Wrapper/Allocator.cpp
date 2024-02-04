@@ -73,8 +73,8 @@ std::expected<Allocator, Error> Allocator::create(const Instance& instance, cons
                                                   VmaAllocatorCreateFlags createFlags) noexcept
 {
 	::VmaAllocator allocator;
-	if (const auto result = logicalDevice.vmaCreateAllocator(createFlags, physicalDevice.get_handle(), logicalDevice.get_allocator_callbacks(),
-	                                                         instance.get_handle(), physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) {
+	if (const auto result = logicalDevice.vmaCreateAllocator(createFlags, physicalDevice.get_handle(),
+	instance.get_handle(), physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) {
 		return std::unexpected{ Error{result} };
 	}
 	return Allocator{ logicalDevice, allocator };

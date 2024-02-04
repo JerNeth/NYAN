@@ -4,6 +4,8 @@ import NYANLog;
 #include <memory>
 #include <array>
 #include <vector>
+#include <fstream>
+#include <filesystem>
 
 #include <gtest/gtest.h>
 
@@ -12,6 +14,22 @@ namespace nyan
 	namespace vulkan
 	{
         namespace wrapper {
+            static std::vector<uint32_t> read_binary_file(const std::filesystem::path& path)
+            {
+
+                std::vector<uint32_t> data;
+                std::ifstream in(path, std::ios::binary);
+                if (in.is_open()) {
+                    auto size = std::filesystem::file_size(path);
+                    data.resize(size / sizeof(uint32_t));
+                    in.read(reinterpret_cast<char*>(data.data()), size);
+                    in.close();
+                }
+                else {
+                }
+
+                return data;
+            }
             auto instance_test_setup()
             {
                 Instance::ValidationSettings validationSettings{};
@@ -173,15 +191,15 @@ namespace nyan
                         GTEST_SKIP() << "Error creating Transfer queue, skipping  Logical Device Tests";
                     {
                         auto& queues = logicalDevice->get_queues(Queue::Type::Graphics);
-                        queues[0].wait_idle();
+                        //queues[0].wait_idle();
                     }
                     {
                         auto& queues = logicalDevice->get_queues(Queue::Type::Compute);
-                        queues[0].wait_idle();
+                        //queues[0].wait_idle();
                     }
                     {
                         auto& queues = logicalDevice->get_queues(Queue::Type::Transfer);
-                        queues[0].wait_idle();
+                        //queues[0].wait_idle();
                     }
 
                     auto setLayoutResult = DescriptorSetLayout::create(*logicalDevice, { 16, 16, 16, 16, 16, 16 });
@@ -189,10 +207,46 @@ namespace nyan
                     if (!setLayoutResult)
                         GTEST_SKIP() << "Error creating descriptor set layout, skipping Logical Device Tests";
 
-                    auto setPoolResult = DescriptorPool::create(*logicalDevice, *setLayoutResult, 2);
+                    auto setPoolResult = DescriptorPool::create(*logicalDevice, *setLayoutResult, 21);
 
                     if (!setPoolResult)
                         GTEST_SKIP() << "Error creating descriptor set pool, skipping Logical Device Tests";
+
+                    auto& sets = setPoolResult->get_sets();
+
+                    auto pipelineLayoutResult = PipelineLayout::create(logicalDevice->get_device(), logicalDevice->get_deletion_queue(), { &*setLayoutResult, 1 });
+
+                    if (!pipelineLayoutResult)
+                        GTEST_SKIP() << "Error creating pipelineLayout, skipping Logical Device Tests";
+
+
+                    auto shaderCode = read_binary_file("shader/test_comp.spv");
+                    if (shaderCode.empty())
+                        GTEST_SKIP() << "Error reading shader, skipping Logical Device Tests";
+
+                    auto shaderResult = Shader::create(*logicalDevice, shaderCode);
+                    if (!shaderResult)
+                        GTEST_SKIP() << "Error creating shader, skipping Logical Device Tests";
+
+                    auto shaderInstance = shaderResult->create_shader_instance();
+                    shaderInstance.set_spec_constant(0, 1u);
+                    shaderInstance.set_spec_constant(1, 1u);
+                    shaderInstance.set_spec_constant(2, 1u);
+                    shaderInstance.set_spec_constant(3, 5u);
+
+
+                    auto pipelineCacheResult = PipelineCache::create(*logicalDevice, {});
+                    if (!pipelineCacheResult)
+                        GTEST_SKIP() << "Error creating pipeline Cache, skipping Logical Device Tests";
+
+                    auto pipelineResult = ComputePipeline::create(logicalDevice->get_device(), *pipelineLayoutResult , shaderInstance, *pipelineCacheResult);
+
+                    if (!pipelineResult)
+                        GTEST_SKIP() << "Error creating pipeline, skipping Logical Device Tests";
+
+
+                    //auto shaderInstanceId = shaderStorage.add_instance(shaderId);
+                    //m_shaderInstanceMapping[entry.path().stem().string()] = shaderInstanceId;
 
                 }
                 LogicalDeviceTestFixture()

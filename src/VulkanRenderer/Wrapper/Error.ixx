@@ -17,12 +17,12 @@ export namespace nyan::vulkan::wrapper
 		constexpr [[nodiscard]] const char* get_message() const noexcept;
 	private:
 		VkResult m_result{ VK_SUCCESS };
-		const char* m_message{ "" };
+		//const char* m_message{ "" };
 	};
 	class InstanceCreationError
 	{
 	public:
-		enum class Type
+		enum class Type : uint32_t
 		{
 			VolkInitializationError,
 			RequiredExtensionNotPresentError,
@@ -37,12 +37,12 @@ export namespace nyan::vulkan::wrapper
 		constexpr [[nodiscard]] const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
-		const char* m_message{ "" };
+		//const char* m_message{ "" };
 	};
 	class PhysicalDeviceCreationError
 	{
 	public:
-		enum class Type
+		enum class Type : uint32_t
 		{
 			OutOfMemoryError,
 			LayerNotPresent,
@@ -53,12 +53,12 @@ export namespace nyan::vulkan::wrapper
 		constexpr [[nodiscard]] const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
-		const char* m_message{ "" };
+		//const char* m_message{ "" };
 	};
 	class LogicalDeviceCreationError
 	{
 	public:
-		enum class Type
+		enum class Type : uint32_t
 		{
 			DeviceLostError,
 			AllocatorCreationError,
@@ -73,12 +73,12 @@ export namespace nyan::vulkan::wrapper
 		constexpr [[nodiscard]] const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
-		const char* m_message{ "" };
+		//const char* m_message{ "" };
 	};
 	class PhysicalDeviceSelectionError
 	{
 	public:
-		enum class Type
+		enum class Type : uint32_t
 		{
 			NoPhysicalDeviceFoundError,
 			NoValidPhysicalDeviceError
@@ -88,14 +88,14 @@ export namespace nyan::vulkan::wrapper
 		constexpr [[nodiscard]] const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
-		const char* m_message{ "" };
+		//const char* m_message{ "" };
 	};
 
 }
 
 constexpr nyan::vulkan::wrapper::Error::Error(const VkResult result, const std::source_location& location) noexcept :
-	m_result(result),
-	m_message("")
+	m_result(result)
+	//m_message("")
 {
 }
 
@@ -111,7 +111,8 @@ constexpr VkResult nyan::vulkan::wrapper::Error::get_result() const noexcept
 }
 constexpr const char* nyan::vulkan::wrapper::Error::get_message() const noexcept
 {
-	return m_message;
+	//return m_message;
+	return nullptr;
 }
 
 constexpr nyan::vulkan::wrapper::InstanceCreationError::InstanceCreationError(Type type,
@@ -127,7 +128,8 @@ constexpr nyan::vulkan::wrapper::InstanceCreationError::Type nyan::vulkan::wrapp
 
 constexpr const char* nyan::vulkan::wrapper::InstanceCreationError::get_message() const noexcept
 {
-	return m_message;
+	//return m_message;
+	return nullptr;
 }
 
 constexpr nyan::vulkan::wrapper::PhysicalDeviceCreationError::PhysicalDeviceCreationError(Type type,
@@ -144,7 +146,8 @@ get_type() const noexcept
 
 constexpr const char* nyan::vulkan::wrapper::PhysicalDeviceCreationError::get_message() const noexcept
 {
-	return m_message;
+	//return m_message;
+	return nullptr;
 }
 
 constexpr nyan::vulkan::wrapper::LogicalDeviceCreationError::LogicalDeviceCreationError(Type type,
@@ -161,7 +164,8 @@ get_type() const noexcept
 
 constexpr const char* nyan::vulkan::wrapper::LogicalDeviceCreationError::get_message() const noexcept
 {
-	return m_message;
+	//return m_message;
+	return nullptr;
 }
 
 constexpr nyan::vulkan::wrapper::PhysicalDeviceSelectionError::PhysicalDeviceSelectionError(Type type,
@@ -178,5 +182,6 @@ constexpr nyan::vulkan::wrapper::PhysicalDeviceSelectionError::Type nyan::vulkan
 
 constexpr const char* nyan::vulkan::wrapper::PhysicalDeviceSelectionError::get_message() const noexcept
 {
-	return m_message;
+	//return m_message;
+	return nullptr;
 }

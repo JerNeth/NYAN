@@ -57,7 +57,8 @@ target_link_libraries(VulkanWrapper
 	PRIVATE 
 		volk::volk
 		vma_implementation
-		spirv-cross-cpp 
+		spirv-cross-cpp
+		magic_enum::magic_enum
 		Threads::Threads
 )
 target_link_libraries(VulkanWrapper 

@@ -16,7 +16,7 @@ export namespace nyan::vulkan::wrapper
 	class Object
 	{
 	public:
-		[[nodiscard]] HandleClass get_handle() const noexcept
+		[[nodiscard]]const HandleClass& get_handle() const noexcept
 		{
 			return m_handle;
 		}

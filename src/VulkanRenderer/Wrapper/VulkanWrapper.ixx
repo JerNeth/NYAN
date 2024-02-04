@@ -19,7 +19,7 @@ import :LogicalDeviceWrapper;
 import :Object;
 export import :PhysicalDevice;
 export import :Pipeline;
-import :PipelineCache;
+export import :PipelineCache;
 export import :PipelineLayout;
 export import :Queue;
 export import :Sampler;

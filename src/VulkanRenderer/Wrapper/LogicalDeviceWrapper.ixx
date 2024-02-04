@@ -42,9 +42,9 @@ export namespace nyan::vulkan::wrapper
 			return m_table.vkAllocateDescriptorSets(m_handle, pAllocateInfo, pDescriptorSets);
 		}
 
-		VkResult vkAllocateMemory(const VkMemoryAllocateInfo* pAllocateInfo, const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) const noexcept
+		VkResult vkAllocateMemory(const VkMemoryAllocateInfo* pAllocateInfo, VkDeviceMemory* pMemory) const noexcept
 		{
-			return m_table.vkAllocateMemory(m_handle, pAllocateInfo, pAllocator, pMemory);
+			return m_table.vkAllocateMemory(m_handle, pAllocateInfo, m_allocatorCallbacks, pMemory);
 		}
 
 		VkResult vkBindBufferMemory(const VkBuffer buffer, const VkDeviceMemory memory, const VkDeviceSize memoryOffset) const noexcept
@@ -334,273 +334,242 @@ export namespace nyan::vulkan::wrapper
 		}
 		VkResult vkCreateBuffer(
 			const VkBufferCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkBuffer* pBuffer) const noexcept
 		{
-			return m_table.vkCreateBuffer(m_handle, pCreateInfo, pAllocator, pBuffer);
+			return m_table.vkCreateBuffer(m_handle, pCreateInfo, m_allocatorCallbacks, pBuffer);
 		}
 		VkResult vkCreateBufferView(
 			const VkBufferViewCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkBufferView* pView) const noexcept
 		{
-			return m_table.vkCreateBufferView(m_handle, pCreateInfo, pAllocator, pView);
+			return m_table.vkCreateBufferView(m_handle, pCreateInfo, m_allocatorCallbacks, pView);
 		}
 		VkResult vkCreateCommandPool(
 			const VkCommandPoolCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkCommandPool* pCommandPool) const noexcept
 		{
-			return m_table.vkCreateCommandPool(m_handle, pCreateInfo, pAllocator, pCommandPool);
+			return m_table.vkCreateCommandPool(m_handle, pCreateInfo, m_allocatorCallbacks, pCommandPool);
 		}
 		VkResult vkCreateComputePipelines(
 			const VkPipelineCache                             pipelineCache,
 			const uint32_t                                    createInfoCount,
 			const VkComputePipelineCreateInfo* pCreateInfos,
-			const VkAllocationCallbacks* pAllocator,
 			VkPipeline* pPipelines) const noexcept
 		{
-			return m_table.vkCreateComputePipelines(m_handle, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+			return m_table.vkCreateComputePipelines(m_handle, pipelineCache, createInfoCount, pCreateInfos, m_allocatorCallbacks, pPipelines);
 		}
 
 		VkResult vkCreateDescriptorPool(
 			const VkDescriptorPoolCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkDescriptorPool* pDescriptorPool) const noexcept
 		{
-			return m_table.vkCreateDescriptorPool(m_handle, pCreateInfo, pAllocator, pDescriptorPool);
+			return m_table.vkCreateDescriptorPool(m_handle, pCreateInfo, m_allocatorCallbacks, pDescriptorPool);
 		}
 
 		VkResult vkCreateDescriptorSetLayout(
 			const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkDescriptorSetLayout* pSetLayout) const noexcept
 		{
-			return m_table.vkCreateDescriptorSetLayout(m_handle, pCreateInfo, pAllocator, pSetLayout);
+			return m_table.vkCreateDescriptorSetLayout(m_handle, pCreateInfo, m_allocatorCallbacks, pSetLayout);
 		}
 		VkResult vkCreateEvent(
 			const VkEventCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkEvent* pEvent) const noexcept
 		{
-			return m_table.vkCreateEvent(m_handle, pCreateInfo, pAllocator, pEvent);
+			return m_table.vkCreateEvent(m_handle, pCreateInfo, m_allocatorCallbacks, pEvent);
 		}
 
 		VkResult vkCreateFence(
 			const VkFenceCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkFence* pFence) const noexcept
 		{
-			return m_table.vkCreateFence(m_handle, pCreateInfo, pAllocator, pFence);
+			return m_table.vkCreateFence(m_handle, pCreateInfo, m_allocatorCallbacks, pFence);
 		}
 		VkResult vkCreateFramebuffer(
 			const VkFramebufferCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkFramebuffer* pFramebuffer) const noexcept
 		{
-			return m_table.vkCreateFramebuffer(m_handle, pCreateInfo, pAllocator, pFramebuffer);
+			return m_table.vkCreateFramebuffer(m_handle, pCreateInfo, m_allocatorCallbacks, pFramebuffer);
 		}
 		VkResult vkCreateGraphicsPipelines(
 			const VkPipelineCache                             pipelineCache,
 			const uint32_t                                    createInfoCount,
 			const VkGraphicsPipelineCreateInfo* pCreateInfos,
-			const VkAllocationCallbacks* pAllocator,
 			VkPipeline* pPipelines) const noexcept
 		{
-			return m_table.vkCreateGraphicsPipelines(m_handle, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+			return m_table.vkCreateGraphicsPipelines(m_handle, pipelineCache, createInfoCount, pCreateInfos, m_allocatorCallbacks, pPipelines);
 		}
 
 		VkResult vkCreateImage(
 			const VkImageCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkImage* pImage) const noexcept
 		{
-			return m_table.vkCreateImage(m_handle, pCreateInfo, pAllocator, pImage);
+			return m_table.vkCreateImage(m_handle, pCreateInfo, m_allocatorCallbacks, pImage);
 		}
 		VkResult vkCreateImageView(
 			const VkImageViewCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkImageView* pView) const noexcept
 		{
-			return m_table.vkCreateImageView(m_handle, pCreateInfo, pAllocator, pView);
+			return m_table.vkCreateImageView(m_handle, pCreateInfo, m_allocatorCallbacks, pView);
 		}
 		VkResult vkCreatePipelineCache(
 			const VkPipelineCacheCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkPipelineCache* pPipelineCache) const noexcept
 		{
-			return m_table.vkCreatePipelineCache(m_handle, pCreateInfo, pAllocator, pPipelineCache);
+			return m_table.vkCreatePipelineCache(m_handle, pCreateInfo, m_allocatorCallbacks, pPipelineCache);
 		}
 
 		VkResult vkCreatePipelineLayout(
 			const VkPipelineLayoutCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkPipelineLayout* pPipelineLayout) const noexcept
 		{
-			return m_table.vkCreatePipelineLayout(m_handle, pCreateInfo, pAllocator, pPipelineLayout);
+			return m_table.vkCreatePipelineLayout(m_handle, pCreateInfo, m_allocatorCallbacks, pPipelineLayout);
 		}
 		VkResult vkCreateQueryPool(
 			const VkQueryPoolCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkQueryPool* pQueryPool) const noexcept
 		{
-			return m_table.vkCreateQueryPool(m_handle, pCreateInfo, pAllocator, pQueryPool);
+			return m_table.vkCreateQueryPool(m_handle, pCreateInfo, m_allocatorCallbacks, pQueryPool);
 		}
 		VkResult vkCreateRenderPass(
 			const VkRenderPassCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkRenderPass* pRenderPass) const noexcept
 		{
-			return m_table.vkCreateRenderPass(m_handle, pCreateInfo, pAllocator, pRenderPass);
+			return m_table.vkCreateRenderPass(m_handle, pCreateInfo, m_allocatorCallbacks, pRenderPass);
 		}
 
 		VkResult vkCreateSampler(
 			const VkSamplerCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkSampler* pSampler) const noexcept
 		{
-			return m_table.vkCreateSampler(m_handle, pCreateInfo, pAllocator, pSampler);
+			return m_table.vkCreateSampler(m_handle, pCreateInfo, m_allocatorCallbacks, pSampler);
 		}
 
 		VkResult vkCreateSemaphore(
 			const VkSemaphoreCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkSemaphore* pSemaphore) const noexcept
 		{
-			return m_table.vkCreateSemaphore(m_handle, pCreateInfo, pAllocator, pSemaphore);
+			return m_table.vkCreateSemaphore(m_handle, pCreateInfo, m_allocatorCallbacks, pSemaphore);
 		}
 		VkResult vkCreateShaderModule(
 			const VkShaderModuleCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkShaderModule* pShaderModule) const noexcept
 		{
-			return m_table.vkCreateShaderModule(m_handle, pCreateInfo, pAllocator, pShaderModule);
+			return m_table.vkCreateShaderModule(m_handle, pCreateInfo, m_allocatorCallbacks, pShaderModule);
 		}
 		void vkDestroyBuffer(
-			const VkBuffer                                    buffer,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkBuffer                                    buffer) const noexcept
 		{
-			m_table.vkDestroyBuffer(m_handle, buffer, pAllocator);
+			m_table.vkDestroyBuffer(m_handle, buffer, m_allocatorCallbacks);
 		}
 		void vkDestroyBufferView(
-			const VkBufferView                                bufferView,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkBufferView                                bufferView) const noexcept
 		{
-			m_table.vkDestroyBufferView(m_handle, bufferView, pAllocator);
+			m_table.vkDestroyBufferView(m_handle, bufferView, m_allocatorCallbacks);
 		}
 		void vkDestroyCommandPool(
-			const VkCommandPool                               commandPool,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkCommandPool                               commandPool) const noexcept
 		{
-			m_table.vkDestroyCommandPool(m_handle, commandPool, pAllocator);
+			m_table.vkDestroyCommandPool(m_handle, commandPool, m_allocatorCallbacks);
 		}
 		void vkDestroyDescriptorPool(
-			const VkDescriptorPool                            descriptorPool,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkDescriptorPool                            descriptorPool) const noexcept
 		{
-			m_table.vkDestroyDescriptorPool(m_handle, descriptorPool, pAllocator);
+			m_table.vkDestroyDescriptorPool(m_handle, descriptorPool, m_allocatorCallbacks);
 		}
 		void vkDestroyDescriptorSetLayout(
-			const VkDescriptorSetLayout                       descriptorSetLayout,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkDescriptorSetLayout                       descriptorSetLayout) const noexcept
 		{
-			m_table.vkDestroyDescriptorSetLayout(m_handle, descriptorSetLayout, pAllocator);
+			m_table.vkDestroyDescriptorSetLayout(m_handle, descriptorSetLayout, m_allocatorCallbacks);
 		}
 
-		void vkDestroyDevice(
-			const VkAllocationCallbacks* pAllocator) const noexcept
+		void vkDestroyDevice() const noexcept
 		{
-			m_table.vkDestroyDevice(m_handle, pAllocator);
+			m_table.vkDestroyDevice(m_handle, m_allocatorCallbacks);
 		}
 
 		void vkDestroyEvent(
-			const VkEvent                                     event,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkEvent                                     event) const noexcept
 		{
-			m_table.vkDestroyEvent(m_handle, event, pAllocator);
+			m_table.vkDestroyEvent(m_handle, event, m_allocatorCallbacks);
 		}
 
 		void vkDestroyFence(
-			const VkFence                                     fence,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkFence                                     fence) const noexcept
 		{
-			m_table.vkDestroyFence(m_handle, fence, pAllocator);
+			m_table.vkDestroyFence(m_handle, fence, m_allocatorCallbacks);
 		}
 
 		void vkDestroyFramebuffer(
-			const VkFramebuffer                               framebuffer,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkFramebuffer                               framebuffer) const noexcept
 		{
-			m_table.vkDestroyFramebuffer(m_handle, framebuffer, pAllocator);
+			m_table.vkDestroyFramebuffer(m_handle, framebuffer, m_allocatorCallbacks);
 		}
 		void vkDestroyImage(
-			const VkImage                                     image,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkImage                                     image) const noexcept
 		{
-			m_table.vkDestroyImage(m_handle, image, pAllocator);
+			m_table.vkDestroyImage(m_handle, image, m_allocatorCallbacks);
 		}
 		void vkDestroyImageView(
-			const VkImageView                                 imageView,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkImageView                                 imageView) const noexcept
 		{
-			m_table.vkDestroyImageView(m_handle, imageView, pAllocator);
+			m_table.vkDestroyImageView(m_handle, imageView, m_allocatorCallbacks);
 		}
 		void vkDestroyPipeline(
-			const VkPipeline                                  pipeline,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkPipeline                                  pipeline) const noexcept
 		{
-			m_table.vkDestroyPipeline(m_handle, pipeline, pAllocator);
+			m_table.vkDestroyPipeline(m_handle, pipeline, m_allocatorCallbacks);
 		}
 		void vkDestroyPipelineCache(
-			const VkPipelineCache                             pipelineCache,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkPipelineCache                             pipelineCache) const noexcept
 		{
-			m_table.vkDestroyPipelineCache(m_handle, pipelineCache, pAllocator);
+			m_table.vkDestroyPipelineCache(m_handle, pipelineCache, m_allocatorCallbacks);
 		}
 		void vkDestroyPipelineLayout(
-			const VkPipelineLayout                            pipelineLayout,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkPipelineLayout                            pipelineLayout) const noexcept
 		{
-			m_table.vkDestroyPipelineLayout(m_handle, pipelineLayout, pAllocator);
+			m_table.vkDestroyPipelineLayout(m_handle, pipelineLayout, m_allocatorCallbacks);
 		}
 		void vkDestroyQueryPool(
-			const VkQueryPool                                 queryPool,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkQueryPool                                 queryPool) const noexcept
 		{
-			m_table.vkDestroyQueryPool(m_handle, queryPool, pAllocator);
+			m_table.vkDestroyQueryPool(m_handle, queryPool, m_allocatorCallbacks);
 		}
 
 		void vkDestroyRenderPass(
-			const VkRenderPass                                renderPass,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkRenderPass                                renderPass) const noexcept
 		{
-			m_table.vkDestroyRenderPass(m_handle, renderPass, pAllocator);
+			m_table.vkDestroyRenderPass(m_handle, renderPass, m_allocatorCallbacks);
 		}
 
 		void vkDestroySampler(
-			const VkSampler                                   sampler,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkSampler                                   sampler) const noexcept
 		{
-			m_table.vkDestroySampler(m_handle, sampler, pAllocator);
+			m_table.vkDestroySampler(m_handle, sampler, m_allocatorCallbacks);
 		}
 		void vkDestroySemaphore(
-			const VkSemaphore                                 semaphore,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkSemaphore                                 semaphore) const noexcept
 		{
-			m_table.vkDestroySemaphore(m_handle, semaphore, pAllocator);
+			m_table.vkDestroySemaphore(m_handle, semaphore, m_allocatorCallbacks);
 		}
 
 		void vkDestroyShaderModule(
-			const VkShaderModule                              shaderModule,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkShaderModule                              shaderModule) const noexcept
 		{
-			m_table.vkDestroyShaderModule(m_handle, shaderModule, pAllocator);
+			m_table.vkDestroyShaderModule(m_handle, shaderModule, m_allocatorCallbacks);
 		}
 
 		VkResult vkDeviceWaitIdle() const noexcept
 		{
 			return m_table.vkDeviceWaitIdle(m_handle);
 		}
+		VkResult vkBeginCommandBuffer(
+			const VkCommandBuffer           commandBuffer,
+			const VkCommandBufferBeginInfo* pBeginInfo) const noexcept
+		{
+			return m_table.vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+		}
+
 		VkResult vkEndCommandBuffer(
 			const VkCommandBuffer                             commandBuffer) const noexcept
 		{
@@ -628,10 +597,9 @@ export namespace nyan::vulkan::wrapper
 		}
 
 		void vkFreeMemory(
-			const VkDeviceMemory                              memory,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkDeviceMemory                              memory) const noexcept
 		{
-			m_table.vkFreeMemory(m_handle, memory, pAllocator);
+			m_table.vkFreeMemory(m_handle, memory, m_allocatorCallbacks);
 		}
 		void vkGetBufferMemoryRequirements(
 			const VkBuffer                                    buffer,
@@ -847,29 +815,25 @@ export namespace nyan::vulkan::wrapper
 
 		VkResult vkCreateDescriptorUpdateTemplate(
 			const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate) const noexcept
 		{
-			return m_table.vkCreateDescriptorUpdateTemplate(m_handle, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
+			return m_table.vkCreateDescriptorUpdateTemplate(m_handle, pCreateInfo, m_allocatorCallbacks, pDescriptorUpdateTemplate);
 		}
 		VkResult vkCreateSamplerYcbcrConversion(
 			const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkSamplerYcbcrConversion* pYcbcrConversion) const noexcept
 		{
-			return m_table.vkCreateSamplerYcbcrConversion(m_handle, pCreateInfo, pAllocator, pYcbcrConversion);
+			return m_table.vkCreateSamplerYcbcrConversion(m_handle, pCreateInfo, m_allocatorCallbacks, pYcbcrConversion);
 		}
 		void  vkDestroyDescriptorUpdateTemplate(
-			const VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkDescriptorUpdateTemplate                  descriptorUpdateTemplate) const noexcept
 		{
-			m_table.vkDestroyDescriptorUpdateTemplate(m_handle, descriptorUpdateTemplate, pAllocator);
+			m_table.vkDestroyDescriptorUpdateTemplate(m_handle, descriptorUpdateTemplate, m_allocatorCallbacks);
 		}
 		void vkDestroySamplerYcbcrConversion(
-			const VkSamplerYcbcrConversion                    ycbcrConversion,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkSamplerYcbcrConversion                    ycbcrConversion) const noexcept
 		{
-			m_table.vkDestroySamplerYcbcrConversion(m_handle, ycbcrConversion, pAllocator);
+			m_table.vkDestroySamplerYcbcrConversion(m_handle, ycbcrConversion, m_allocatorCallbacks);
 		}
 		void vkGetBufferMemoryRequirements2(
 			const VkBufferMemoryRequirementsInfo2* pInfo,
@@ -971,10 +935,9 @@ export namespace nyan::vulkan::wrapper
 
 		VkResult  vkCreateRenderPass2(
 			const VkRenderPassCreateInfo2* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkRenderPass* pRenderPass) const noexcept
 		{
-			return m_table.vkCreateRenderPass2(m_handle, pCreateInfo, pAllocator, pRenderPass);
+			return m_table.vkCreateRenderPass2(m_handle, pCreateInfo, m_allocatorCallbacks, pRenderPass);
 		}
 		VkDeviceAddress  vkGetBufferDeviceAddress(
 			const VkBufferDeviceAddressInfo* pInfo) const noexcept
@@ -1210,17 +1173,15 @@ export namespace nyan::vulkan::wrapper
 
 		VkResult   vkCreatePrivateDataSlot(
 			const VkPrivateDataSlotCreateInfo* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkPrivateDataSlot* pPrivateDataSlot) const noexcept
 		{
-			return m_table.vkCreatePrivateDataSlot(m_handle, pCreateInfo, pAllocator, pPrivateDataSlot);
+			return m_table.vkCreatePrivateDataSlot(m_handle, pCreateInfo, m_allocatorCallbacks, pPrivateDataSlot);
 		}
 
 		void  vkDestroyPrivateDataSlot(
-			const VkPrivateDataSlot                           privateDataSlot,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkPrivateDataSlot                           privateDataSlot) const noexcept
 		{
-			m_table.vkDestroyPrivateDataSlot(m_handle, privateDataSlot, pAllocator);
+			m_table.vkDestroyPrivateDataSlot(m_handle, privateDataSlot, m_allocatorCallbacks);
 		}
 		void  vkGetDeviceBufferMemoryRequirements(
 			const VkDeviceBufferMemoryRequirements* pInfo,
@@ -1376,17 +1337,15 @@ export namespace nyan::vulkan::wrapper
 		}
 		VkResult  vkCreateMicromapEXT(
 			const VkMicromapCreateInfoEXT* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkMicromapEXT* pMicromap) const noexcept
 		{
-			return m_table.vkCreateMicromapEXT(m_handle, pCreateInfo, pAllocator, pMicromap);
+			return m_table.vkCreateMicromapEXT(m_handle, pCreateInfo, m_allocatorCallbacks, pMicromap);
 		}
 
 		void  vkDestroyMicromapEXT(
-			const VkMicromapEXT                               micromap,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkMicromapEXT                               micromap) const noexcept
 		{
-			m_table.vkDestroyMicromapEXT(m_handle, micromap, pAllocator);
+			m_table.vkDestroyMicromapEXT(m_handle, micromap, m_allocatorCallbacks);
 		}
 		void  vkGetDeviceMicromapCompatibilityEXT(
 			const VkMicromapVersionInfoEXT* pVersionInfo,
@@ -1496,16 +1455,14 @@ export namespace nyan::vulkan::wrapper
 		}
 		VkResult  vkCreateAccelerationStructureKHR(
 			const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkAccelerationStructureKHR* pAccelerationStructure) const noexcept
 		{
-			return m_table.vkCreateAccelerationStructureKHR(m_handle, pCreateInfo, pAllocator, pAccelerationStructure);
+			return m_table.vkCreateAccelerationStructureKHR(m_handle, pCreateInfo, m_allocatorCallbacks, pAccelerationStructure);
 		}
 		void  vkDestroyAccelerationStructureKHR(
-			const VkAccelerationStructureKHR                  accelerationStructure,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkAccelerationStructureKHR                  accelerationStructure) const noexcept
 		{
-			m_table.vkDestroyAccelerationStructureKHR(m_handle, accelerationStructure, pAllocator);
+			m_table.vkDestroyAccelerationStructureKHR(m_handle, accelerationStructure, m_allocatorCallbacks);
 		}
 		void  vkGetAccelerationStructureBuildSizesKHR(
 			const VkAccelerationStructureBuildTypeKHR         buildType,
@@ -1539,10 +1496,9 @@ export namespace nyan::vulkan::wrapper
 #endif /* defined(VK_KHR_acceleration_structure) */
 #if defined(VK_KHR_deferred_host_operations)
 		VkResult  vkCreateDeferredOperationKHR(
-			const VkAllocationCallbacks* pAllocator,
 			VkDeferredOperationKHR* pDeferredOperation) const noexcept
 		{
-			return m_table.vkCreateDeferredOperationKHR(m_handle, pAllocator, pDeferredOperation);
+			return m_table.vkCreateDeferredOperationKHR(m_handle, m_allocatorCallbacks, pDeferredOperation);
 		}
 		VkResult  vkDeferredOperationJoinKHR(
 			const VkDeferredOperationKHR                      operation) const noexcept
@@ -1550,10 +1506,9 @@ export namespace nyan::vulkan::wrapper
 			return m_table.vkDeferredOperationJoinKHR(m_handle, operation);
 		}
 		void  vkDestroyDeferredOperationKHR(
-			const VkDeferredOperationKHR                      operation,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkDeferredOperationKHR                      operation) const noexcept
 		{
-			m_table.vkDestroyDeferredOperationKHR(m_handle, operation, pAllocator);
+			m_table.vkDestroyDeferredOperationKHR(m_handle, operation, m_allocatorCallbacks);
 		}
 
 		uint32_t  vkGetDeferredOperationMaxConcurrencyKHR(
@@ -1603,11 +1558,10 @@ export namespace nyan::vulkan::wrapper
 			const VkPipelineCache                             pipelineCache,
 			const uint32_t                                    createInfoCount,
 			const VkRayTracingPipelineCreateInfoKHR* pCreateInfos,
-			const VkAllocationCallbacks* pAllocator,
 			VkPipeline* pPipelines) const noexcept
 		{
 			return m_table.vkCreateRayTracingPipelinesKHR(m_handle, deferredOperation, pipelineCache, createInfoCount, pCreateInfos,
-			                                              pAllocator, pPipelines);
+				m_allocatorCallbacks, pPipelines);
 		}
 
 		VkResult  vkGetRayTracingCaptureReplayShaderGroupHandlesKHR(
@@ -1648,16 +1602,14 @@ export namespace nyan::vulkan::wrapper
 		}
 		VkResult vkCreateSwapchainKHR(
 			const VkSwapchainCreateInfoKHR* pCreateInfo,
-			const VkAllocationCallbacks* pAllocator,
 			VkSwapchainKHR* pSwapchain) const noexcept
 		{
-			return m_table.vkCreateSwapchainKHR(m_handle, pCreateInfo, pAllocator, pSwapchain);
+			return m_table.vkCreateSwapchainKHR(m_handle, pCreateInfo, m_allocatorCallbacks, pSwapchain);
 		}
 		void  vkDestroySwapchainKHR(
-			const VkSwapchainKHR                              swapchain,
-			const VkAllocationCallbacks* pAllocator) const noexcept
+			const VkSwapchainKHR                              swapchain) const noexcept
 		{
-			m_table.vkDestroySwapchainKHR(m_handle, swapchain, pAllocator);
+			m_table.vkDestroySwapchainKHR(m_handle, swapchain, m_allocatorCallbacks);
 		}
 		VkResult  vkGetSwapchainImagesKHR(
 			const VkSwapchainKHR                              swapchain,
@@ -1676,7 +1628,6 @@ export namespace nyan::vulkan::wrapper
 		VkResult vmaCreateAllocator(
 			VmaAllocatorCreateFlags flags,
 			VkPhysicalDevice physicalDevice,
-			const VkAllocationCallbacks* pAllocationCallbacks,
 			VkInstance instance,
 			uint32_t apiVersion,
 			VmaAllocator* pAllocator)const noexcept;
@@ -1823,7 +1774,7 @@ nyan::vulkan::wrapper::LogicalDeviceWrapper::LogicalDeviceWrapper(const VkDevice
 nyan::vulkan::wrapper::LogicalDeviceWrapper::~LogicalDeviceWrapper() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE) {
-		vkDestroyDevice(m_allocatorCallbacks);
+		this->vkDestroyDevice();
 		m_handle = VK_NULL_HANDLE;
 	}
 }
@@ -1849,7 +1800,7 @@ nyan::vulkan::wrapper::LogicalDeviceWrapper& nyan::vulkan::wrapper::LogicalDevic
 }
 
 VkResult nyan::vulkan::wrapper::LogicalDeviceWrapper::vmaCreateAllocator(VmaAllocatorCreateFlags flags,
-	VkPhysicalDevice physicalDevice, const VkAllocationCallbacks* pAllocationCallbacks, VkInstance instance,
+	VkPhysicalDevice physicalDevice, VkInstance instance,
 	uint32_t apiVersion, VmaAllocator* pAllocator) const noexcept
 {
 	VmaVulkanFunctions vulkanFunctions{
@@ -1887,7 +1838,7 @@ VkResult nyan::vulkan::wrapper::LogicalDeviceWrapper::vmaCreateAllocator(VmaAllo
 		.flags = flags,
 		.physicalDevice = physicalDevice,
 		.device = m_handle,
-		.pAllocationCallbacks = pAllocationCallbacks,
+		.pAllocationCallbacks = m_allocatorCallbacks,
 		.pVulkanFunctions = &vulkanFunctions,
 		.instance = instance,
 		.vulkanApiVersion = apiVersion,
