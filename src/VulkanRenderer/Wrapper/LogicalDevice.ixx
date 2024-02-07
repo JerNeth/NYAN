@@ -4,11 +4,12 @@ module;
 #include <array>
 
 export module NYANVulkanWrapper:LogicalDevice;
+import :Allocator;
+import :DeletionQueue;
 import :Error;
-import :PhysicalDevice;
 import :Instance;
 import :LogicalDeviceWrapper;
-import :DeletionQueue;
+import :PhysicalDevice;
 import :Queue;
 
 export namespace nyan::vulkan::wrapper
@@ -37,6 +38,9 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] const PhysicalDevice::Extensions& get_enabled_extensions() const noexcept;
 
 		[[nodiscard]] const std::vector<Queue>& get_queues(Queue::Type type) const noexcept;
+
+		[[nodiscard]] Allocator& get_allocator() noexcept;
+		[[nodiscard]] const Allocator& get_allocator() const noexcept;
 
 	private:
 

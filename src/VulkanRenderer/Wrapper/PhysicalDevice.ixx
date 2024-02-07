@@ -34,6 +34,7 @@ export namespace nyan::vulkan::wrapper
 			uint32_t atomicFloats : 1 { 0 };
 			uint32_t presentId : 1 { 0 };
 			uint32_t presentWait : 1 { 0 };
+			uint32_t pushDescriptors : 1 { 0 };
 			//Promoted to Vulkan 1.3
 			uint32_t copyCommands : 1 { 0 };
 			uint32_t dynamicRendering : 1 { 0 };
@@ -161,6 +162,7 @@ export namespace nyan::vulkan::wrapper
 					.atomicFloats  {~atomicFloats },
 					.presentId  {~presentId },
 					.presentWait  {~presentWait },
+					.pushDescriptors {~pushDescriptors},
 					.copyCommands  {~copyCommands },
 					.dynamicRendering  {~dynamicRendering },
 					.formatFeatureFlags2  {~formatFeatureFlags2 },
@@ -228,6 +230,7 @@ export namespace nyan::vulkan::wrapper
 					lhs.atomicFloats & rhs.atomicFloats,
 					lhs.presentId & rhs.presentId,
 					lhs.presentWait & rhs.presentWait,
+					lhs.pushDescriptors & rhs.pushDescriptors,
 					lhs.copyCommands & rhs.copyCommands,
 					lhs.dynamicRendering & rhs.dynamicRendering,
 					lhs.formatFeatureFlags2 & rhs.formatFeatureFlags2,
@@ -295,6 +298,7 @@ export namespace nyan::vulkan::wrapper
 					lhs.atomicFloats | rhs.atomicFloats,
 					lhs.presentId | rhs.presentId,
 					lhs.presentWait | rhs.presentWait,
+					lhs.pushDescriptors | rhs.pushDescriptors,
 					lhs.copyCommands | rhs.copyCommands,
 					lhs.dynamicRendering | rhs.dynamicRendering,
 					lhs.formatFeatureFlags2 | rhs.formatFeatureFlags2,
@@ -378,6 +382,7 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] const VkPhysicalDeviceAccelerationStructurePropertiesKHR& get_acceleration_structure_properties() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& get_ray_tracing_pipeline_properties() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceMeshShaderPropertiesEXT& get_mesh_shader_properties() const noexcept;
+		[[nodiscard]] const VkPhysicalDevicePushDescriptorPropertiesKHR& get_push_descriptor_properties() const noexcept;
 
 		[[nodiscard]] const Extensions& get_available_extensions() const noexcept;
 
@@ -404,7 +409,7 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDevice m_handle{ VK_NULL_HANDLE };
 		Type m_type;
 
-		std::array<uint32_t, static_cast<size_t>(Queue::Type::Size)> m_queueFamilyIndices{ ~0u , ~0u , ~0u , ~0u , ~0u };
+		magic_enum::containers::array<Queue::Type, uint32_t> m_queueFamilyIndices{ ~0u , ~0u , ~0u , ~0u , ~0u };
 
 		Extensions m_availableExtensions{};
 		std::vector<VkQueueFamilyProperties> m_queueFamilyProperties{};
@@ -421,6 +426,7 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDeviceMeshShaderFeaturesEXT m_meshShaderFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
 		VkPhysicalDevicePresentIdFeaturesKHR  m_presentIdFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR };
 		VkPhysicalDevicePresentWaitFeaturesKHR   m_presentWaitFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR };
+
 
 		//Promoted to Vulkan 1.3
 		VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT m_pipelineCreationCacheControlFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT };
@@ -465,6 +471,7 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDeviceAccelerationStructurePropertiesKHR m_accelerationStructureProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR };
 		VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rayTracingPipelineProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
 		VkPhysicalDeviceMeshShaderPropertiesEXT m_meshShaderProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
+		VkPhysicalDevicePushDescriptorPropertiesKHR m_pushDescriptorProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR };
 
 		//Promoted to Vulkan 1.3
 		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT m_subgroupSizeControlProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES };

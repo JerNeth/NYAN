@@ -6,15 +6,23 @@ module;
 #include "vk_mem_alloc.h"
 
 export module NYANVulkanWrapper:Allocator;
+import :LogicalDeviceWrapper;
 import :Error;
 import :Object;
-import :LogicalDeviceWrapper;
 
 export namespace nyan::vulkan::wrapper
 {
 	class Instance;
 	class PhysicalDevice;
-	class Allocator : Object<VmaAllocator>
+
+	class Allocation {
+	public:
+
+	private:
+
+	};
+
+	class Allocator : public Object<VmaAllocator>
 	{
 	public:
 		Allocator(Allocator& other) = delete;
@@ -32,7 +40,7 @@ export namespace nyan::vulkan::wrapper
 
 		void free_allocation(VmaAllocation allocation) const noexcept;
 
-		static [[nodiscard]] std::expected<Allocator, Error> create(const Instance& instance, const LogicalDeviceWrapper& logicalDevice,
+		[[nodiscard]] static std::expected<Allocator, Error> create(const Instance& instance, const LogicalDeviceWrapper& logicalDevice,
 		                                                            const PhysicalDevice& physicalDevice, VmaAllocatorCreateFlags createFlags) noexcept;
 	private:
 		Allocator(const LogicalDeviceWrapper& device, VmaAllocator allocator) noexcept;

@@ -1625,6 +1625,18 @@ export namespace nyan::vulkan::wrapper
 			return m_table.vkQueuePresentKHR(queue, pPresentInfo);
 		}
 #endif /* defined(VK_KHR_swapchain) */
+#if defined(VK_KHR_push_descriptor)
+		void vkCmdPushDescriptorSetKHR(
+			VkCommandBuffer                             commandBuffer,
+			VkPipelineBindPoint                         pipelineBindPoint,
+			VkPipelineLayout                            layout,
+			uint32_t                                    set,
+			uint32_t                                    descriptorWriteCount,
+			const VkWriteDescriptorSet* pDescriptorWrites)  const noexcept
+		{
+			m_table.vkCmdPushDescriptorSetKHR(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+		}
+#endif/* defined(VK_KHR_push_descriptor) */
 		VkResult vmaCreateAllocator(
 			VmaAllocatorCreateFlags flags,
 			VkPhysicalDevice physicalDevice,

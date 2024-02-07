@@ -2,8 +2,11 @@ module;
 
 #include <expected>
 
+#include "volk.h"
+
 export module NYANVulkanWrapper:CommandBuffer;
 import :LogicalDeviceWrapper;
+import :PipelineLayout;
 import :Queue;
 import :Object;
 import :Error;
@@ -11,6 +14,40 @@ import :Error;
 export namespace nyan::vulkan::wrapper
 {
 	class CommandPool;
+	class ComputePipeline;
+	class DescriptorSet;
+
+	class PipelineBind 
+	{
+	public:
+
+		void push_descriptor_set(uint32_t firstSet) const noexcept;
+		void bind_descriptor_set(uint32_t firstSet, const DescriptorSet& set) const noexcept;
+		template<typename T>
+		void push_constants(const T& t) const noexcept
+		{
+			static_assert(sizeof(T) < PipelineLayout::pushConstantSize);
+			r_device.vkCmdPushConstants(m_cmd, m_layout, VK_SHADER_STAGE_ALL, 0, sizeof(T), &t);
+		}
+	protected:
+		PipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout, VkPipelineBindPoint bindPoint) noexcept;
+
+		const LogicalDeviceWrapper& r_device;
+
+		VkCommandBuffer m_cmd;
+		VkPipelineLayout m_layout;
+		VkPipelineBindPoint m_bindPoint;
+	};
+
+	class ComputePipelineBind : public PipelineBind
+	{
+	public:
+		ComputePipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+
+		void dispatch(uint32_t groupCountX = 1, uint32_t groupCountY = 1, uint32_t groupCountZ = 1) const noexcept;
+
+	};
+
 	class CommandBuffer : public Object<VkCommandBuffer>
 	{
 	public:
@@ -41,7 +78,7 @@ export namespace nyan::vulkan::wrapper
 
 
 		//[[nodiscard]] GraphicsPipelineBind bind_graphics_pipeline(PipelineId pipelineIdentifier) noexcept;
-		//[[nodiscard]] ComputePipelineBind bind_compute_pipeline(PipelineId pipelineIdentifier) noexcept;
+		[[nodiscard]] ComputePipelineBind bind_pipeline(const ComputePipeline& pipeline) noexcept;
 		//[[nodiscard]] RaytracingPipelineBind bind_raytracing_pipeline(PipelineId pipelineIdentifier) noexcept;
 
 		void begin_region(const char* name, const float* color = nullptr) noexcept;

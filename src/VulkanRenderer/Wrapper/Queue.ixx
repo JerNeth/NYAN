@@ -5,7 +5,11 @@ module;
 #include <array>
 #include <vector>
 
+#include "magic_enum.hpp"
+#include "magic_enum_containers.hpp"
+
 #include "volk.h"
+#include "vk_mem_alloc.h"
 
 export module NYANVulkanWrapper:Queue;
 import :Error;
@@ -22,8 +26,7 @@ export namespace nyan::vulkan::wrapper
 			Compute,
 			Transfer,
 			Encode,
-			Decode,
-			Size
+			Decode
 		};
 	public:
 		Queue(const LogicalDeviceWrapper& device, VkQueue handle, Type type, uint32_t queueFamilyIndex, float priority) noexcept;
@@ -41,7 +44,7 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] uint32_t get_queue_family_index() const noexcept;
 		[[nodiscard]] float get_priority() const noexcept;
 		[[nodiscard]] bool is_present_capable() const noexcept;
-
+		
 	private:
 
 		Type m_type;
@@ -50,5 +53,5 @@ export namespace nyan::vulkan::wrapper
 		bool m_presentCapable {false};
 	};
 	template<typename T>
-	using QueueContainer = std::array < std::vector<T>, static_cast<size_t>(Queue::Type::Size)>;
+	using QueueContainer = magic_enum::containers::array<Queue::Type,  std::vector<T>>;
 }

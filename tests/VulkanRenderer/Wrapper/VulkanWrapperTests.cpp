@@ -168,11 +168,12 @@ namespace nyan
                     auto physicalDevice = *physicalDeviceResult;
 
                     QueueContainer<float> queuePriorities;
-                    queuePriorities[static_cast<size_t>(Queue::Type::Graphics)].push_back(1.f);
-                    queuePriorities[static_cast<size_t>(Queue::Type::Compute)].push_back(1.f);
-                    queuePriorities[static_cast<size_t>(Queue::Type::Transfer)].push_back(1.f);
+                    queuePriorities[Queue::Type::Graphics].push_back(1.f);
+                    queuePriorities[Queue::Type::Compute].push_back(1.f);
+                    queuePriorities[Queue::Type::Transfer].push_back(1.f);
 
                     PhysicalDevice::Extensions extensions{
+                        .pushDescriptors {1}
                     };
                     auto logicalDeviceCreateResult = LogicalDevice::create(*instance, physicalDevice,
                         nullptr, extensions, queuePriorities);
@@ -181,13 +182,13 @@ namespace nyan
                     logicalDevice = std::make_unique<LogicalDevice>(std::move(*logicalDeviceCreateResult));
 
 
-                    if (logicalDevice->get_queues(Queue::Type::Graphics).size() != queuePriorities[static_cast<size_t>(Queue::Type::Graphics)].size())
+                    if (logicalDevice->get_queues(Queue::Type::Graphics).size() != queuePriorities[Queue::Type::Graphics].size())
                         GTEST_SKIP() << "Error creating Graphics queue, skipping  Logical Device Tests";
 
-                    if (logicalDevice->get_queues(Queue::Type::Compute).size() != queuePriorities[static_cast<size_t>(Queue::Type::Compute)].size())
+                    if (logicalDevice->get_queues(Queue::Type::Compute).size() != queuePriorities[Queue::Type::Compute].size())
                         GTEST_SKIP() << "Error creating Compute queue, skipping  Logical Device Tests";
 
-                    if (logicalDevice->get_queues(Queue::Type::Transfer).size() != queuePriorities[static_cast<size_t>(Queue::Type::Transfer)].size())
+                    if (logicalDevice->get_queues(Queue::Type::Transfer).size() != queuePriorities[Queue::Type::Transfer].size())
                         GTEST_SKIP() << "Error creating Transfer queue, skipping  Logical Device Tests";
                     {
                         auto& queues = logicalDevice->get_queues(Queue::Type::Graphics);
@@ -202,7 +203,7 @@ namespace nyan
                         //queues[0].wait_idle();
                     }
 
-                    auto setLayoutResult = DescriptorSetLayout::create(*logicalDevice, { 16, 16, 16, 16, 16, 16 });
+                    auto setLayoutResult = DescriptorSetLayout::create(*logicalDevice, { 16, 16, 16, 16, 16, 16, 16 });
 
                     if (!setLayoutResult)
                         GTEST_SKIP() << "Error creating descriptor set layout, skipping Logical Device Tests";
@@ -214,7 +215,21 @@ namespace nyan
 
                     auto& sets = setPoolResult->get_sets();
 
-                    auto pipelineLayoutResult = PipelineLayout::create(logicalDevice->get_device(), logicalDevice->get_deletion_queue(), { &*setLayoutResult, 1 });
+
+                    auto pushSetLayoutResult = PushDescriptorSetLayout::create(*logicalDevice, DescriptorSetLayout::DescriptorInfo{
+                            .storageBufferCount{ 1 },
+                            .uniformBufferCount{ 0 },
+                            .samplerCount{ 0 },
+                            .sampledImageCount{ 0 },
+                            .storageImageCount{ 0 },
+                            .inputAttachmentCount{ 0 },
+                            .accelerationStructureCount{ 0 }
+                        });
+
+                    if (!pushSetLayoutResult)
+                        GTEST_SKIP() << "Error creating push descriptor set layout, skipping Logical Device Tests";
+
+                    auto pipelineLayoutResult = PipelineLayout::create(logicalDevice->get_device(), logicalDevice->get_deletion_queue(), { static_cast<DescriptorSetLayout*>(& *pushSetLayoutResult), 1});
 
                     if (!pipelineLayoutResult)
                         GTEST_SKIP() << "Error creating pipelineLayout, skipping Logical Device Tests";
@@ -244,6 +259,7 @@ namespace nyan
                     if (!pipelineResult)
                         GTEST_SKIP() << "Error creating pipeline, skipping Logical Device Tests";
 
+                    auto bufferResult = StorageBuffer::create(*logicalDevice, 65536);
 
                     //auto shaderInstanceId = shaderStorage.add_instance(shaderId);
                     //m_shaderInstanceMapping[entry.path().stem().string()] = shaderInstanceId;

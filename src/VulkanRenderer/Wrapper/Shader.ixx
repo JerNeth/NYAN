@@ -21,20 +21,20 @@ export namespace nyan::vulkan::wrapper
 	{
 	public:
 		enum class Stage : uint32_t {
-			Vertex = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_VERTEX_BIT)),// 0,
-			TesselationControl = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)), //1,
-			TesselationEvaluation = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)), //2,
-			Geometry = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_GEOMETRY_BIT)), //3,
-			Fragment = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_FRAGMENT_BIT)), //4,
-			Compute = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_COMPUTE_BIT)),//5,
-			Task = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_TASK_BIT_NV)), //6,
-			Mesh = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_MESH_BIT_NV)), //7,
-			Raygen = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_RAYGEN_BIT_NV)),//8
-			AnyHit = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_ANY_HIT_BIT_NV)),//9
-			ClosestHit = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV)),//10
-			Miss = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_MISS_BIT_NV)),//11
-			Intersection = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_INTERSECTION_BIT_NV)),//12
-			Callable = std::countr_zero(static_cast<uint64_t>(VK_SHADER_STAGE_CALLABLE_BIT_NV))//13
+			Vertex = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_VERTEX_BIT)),// 0,
+			TesselationControl = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)), //1,
+			TesselationEvaluation = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)), //2,
+			Geometry = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_GEOMETRY_BIT)), //3,
+			Fragment = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_FRAGMENT_BIT)), //4,
+			Compute = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_COMPUTE_BIT)),//5,
+			Task = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_TASK_BIT_NV)), //6,
+			Mesh = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_MESH_BIT_NV)), //7,
+			Raygen = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_RAYGEN_BIT_NV)),//8
+			AnyHit = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_ANY_HIT_BIT_NV)),//9
+			ClosestHit = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV)),//10
+			Miss = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_MISS_BIT_NV)),//11
+			Intersection = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_INTERSECTION_BIT_NV)),//12
+			Callable = std::countr_zero(static_cast<uint32_t>(VK_SHADER_STAGE_CALLABLE_BIT_NV))//13
 		};
 
 		struct SpecializationConstant {

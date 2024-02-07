@@ -45,6 +45,8 @@ std::vector<const char*> PhysicalDevice::Extensions::generate_extension_list(uin
 		extensionList.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
 	if (presentWait)
 		extensionList.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+	if (pushDescriptors)
+		extensionList.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
 	if (apiVersion < VK_API_VERSION_1_3) {
 		if (copyCommands)
@@ -212,13 +214,15 @@ PhysicalDevice::Extensions PhysicalDevice::Extensions::generate_extension(std::s
 	if (extensionName.compare(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME) == 0)
 		return Extensions { .vertexInputDynamicState = 1 };
 	if (extensionName.compare(VK_EXT_MESH_SHADER_EXTENSION_NAME) == 0)
-		return Extensions { .meshShader = 1 };
+		return Extensions{ .meshShader = 1 };
 	if (extensionName.compare(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME) == 0)
 		return Extensions { .atomicFloats = 1 };
 	if (extensionName.compare(VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0)
 		return Extensions { .presentId = 1 };
 	if (extensionName.compare(VK_KHR_PRESENT_WAIT_EXTENSION_NAME) == 0)
-		return Extensions { .presentWait = 1 };
+		return Extensions{ .presentWait = 1 };
+	if (extensionName.compare(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME) == 0)
+		return Extensions{ .pushDescriptors = 1 };
 
 	if (extensionName.compare(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME) == 0)
 		return Extensions { .copyCommands = 1 };
@@ -407,6 +411,11 @@ const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& PhysicalDevice::get_ray_t
 const VkPhysicalDeviceMeshShaderPropertiesEXT& PhysicalDevice::get_mesh_shader_properties() const noexcept
 {
 	return m_meshShaderProperties;
+}
+
+const VkPhysicalDevicePushDescriptorPropertiesKHR& PhysicalDevice::get_push_descriptor_properties() const noexcept
+{
+	return m_pushDescriptorProperties;
 }
 
 const PhysicalDevice::Extensions& PhysicalDevice::get_available_extensions() const noexcept
@@ -649,8 +658,7 @@ VkPhysicalDevice PhysicalDevice::get_handle() const noexcept
 
 uint32_t nyan::vulkan::wrapper::PhysicalDevice::get_queue_family_index(Queue::Type queueType) const noexcept
 {
-	assert(queueType != Queue::Type::Size);
-	return m_queueFamilyIndices[static_cast<size_t>(queueType)];
+	return m_queueFamilyIndices[queueType];
 }
 
 PhysicalDevice::Type PhysicalDevice::get_type() const noexcept
@@ -698,20 +706,20 @@ void PhysicalDevice::init_queues() noexcept
 	for (uint32_t i = 0; i < m_queueFamilyProperties.size(); i++) {
 		const auto& queue = m_queueFamilyProperties[i];
 		if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_VIDEO_ENCODE_BIT_KHR | VK_QUEUE_VIDEO_DECODE_BIT_KHR)) == VK_QUEUE_TRANSFER_BIT) {
-			if (m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Transfer)] == ~0u)
-				m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Transfer)] = i;
+			if (m_queueFamilyIndices[Queue::Type::Transfer] == ~0u)
+				m_queueFamilyIndices[Queue::Type::Transfer] = i;
 		}
 		else if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == VK_QUEUE_COMPUTE_BIT) {
-			m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Compute)] = i;
+			m_queueFamilyIndices[Queue::Type::Compute] = i;
 		}
 		else if ((queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) == VK_QUEUE_GRAPHICS_BIT) {
-			m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Graphics)] = i;
+			m_queueFamilyIndices[Queue::Type::Graphics] = i;
 		}
 		else if ((queue.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR) == VK_QUEUE_VIDEO_ENCODE_BIT_KHR) {
-			m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Encode)] = i;
+			m_queueFamilyIndices[Queue::Type::Encode] = i;
 		}
 		else if ((queue.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) == VK_QUEUE_VIDEO_DECODE_BIT_KHR) {
-			m_queueFamilyIndices[static_cast<size_t>(Queue::Type::Decode)] = i;
+			m_queueFamilyIndices[Queue::Type::Decode] = i;
 		}
 	}
 }
@@ -875,11 +883,13 @@ void PhysicalDevice::init_properties() noexcept
 
 	m_rayTracingPipelineProperties.pNext = &m_meshShaderProperties;
 
-	m_meshShaderProperties.pNext = nullptr;
+	m_meshShaderProperties.pNext = &m_pushDescriptorProperties;
+
+	m_pushDescriptorProperties.pNext = nullptr;
 
 	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
 	{
-		m_meshShaderProperties.pNext = &m_subgroupSizeControlProperties;
+		m_pushDescriptorProperties.pNext = &m_subgroupSizeControlProperties;
 		m_subgroupSizeControlProperties.pNext = &m_texelBufferAlignmentProperties;
 		m_texelBufferAlignmentProperties.pNext = &m_inlineUniformBlockProperties;
 		m_inlineUniformBlockProperties.pNext = &m_maintenance4Properties;

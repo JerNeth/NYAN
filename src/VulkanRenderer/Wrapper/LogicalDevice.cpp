@@ -3,6 +3,8 @@ module;
 #include <cassert>
 #include <utility>
 
+#include "magic_enum_all.hpp"
+
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
@@ -49,8 +51,9 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 
 	std::vector< VkDeviceQueueCreateInfo> queueCreateInfos;
 
-	for(size_t queueType = 0; queueType < static_cast<size_t>(Queue::Type::Size); ++queueType)
-	{
+
+	magic_enum::enum_for_each<Queue::Type>([&](auto val) {
+		constexpr Queue::Type queueType = val;
 		auto queueFamilyIndex = physicalDevice.get_queue_family_index(static_cast<Queue::Type>(queueType));
 		if (!queuePriorities[queueType].empty()) {
 			if (queueFamilyIndex != ~0u) {
@@ -60,12 +63,14 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 					.queueCount = static_cast<uint32_t>(queuePriorities[queueType].size()),
 					.pQueuePriorities = queuePriorities[queueType].data()
 					});
-			} else
+			}
+			else
 			{
 				util::log::warning_message("[LogicalDevice] Requested queues from non-existent queue families");
 			}
 		}
-	};
+
+		});
 	
 
 	assert(!queueCreateInfos.empty());
@@ -141,9 +146,17 @@ const PhysicalDevice::Extensions& LogicalDevice::get_enabled_extensions() const 
 
 const std::vector<Queue>& LogicalDevice::get_queues(Queue::Type type) const noexcept
 {
-	const auto typeVal = static_cast<size_t>(type);
-	assert(typeVal < static_cast<size_t>(Queue::Type::Size));
-	return m_queues[typeVal];
+	return m_queues[type];
+}
+
+Allocator& LogicalDevice::get_allocator() noexcept
+{
+	return m_allocator;
+}
+
+const Allocator& LogicalDevice::get_allocator() const noexcept
+{
+	return m_allocator;
 }
 
 LogicalDevice::LogicalDevice(LogicalDeviceWrapper device, PhysicalDevice physicalDevice, Allocator allocator,
@@ -160,16 +173,17 @@ LogicalDevice::LogicalDevice(LogicalDeviceWrapper device, PhysicalDevice physica
 
 void LogicalDevice::init_queues(const QueueContainer<float>& queuePriorities) noexcept
 {
-	for (size_t queueType = 0; queueType < static_cast<size_t>(Queue::Type::Size); ++queueType)
-	{
-		if (auto queueFamilyIndex = m_physicalDevice.get_queue_family_index(static_cast<Queue::Type>(queueType)); queueFamilyIndex != ~0u) {
+	magic_enum::enum_for_each<Queue::Type>([&](auto val) {
+		constexpr Queue::Type queueType = val;
+		if (auto queueFamilyIndex = m_physicalDevice.get_queue_family_index(queueType); queueFamilyIndex != ~0u) {
 			for (uint32_t queueIdx = 0; queueIdx < queuePriorities[queueType].size(); ++queueIdx) {
 				VkQueue queueHandle{ VK_NULL_HANDLE };
 				m_deviceWrapper.vkGetDeviceQueue(queueFamilyIndex, queueIdx, &queueHandle);
 				assert(queueHandle != VK_NULL_HANDLE);
-				m_queues[queueType].emplace_back(m_deviceWrapper, queueHandle, static_cast<Queue::Type>(queueType), queueFamilyIndex, queuePriorities[queueType][queueIdx]);
+				m_queues[queueType].emplace_back(m_deviceWrapper, queueHandle, queueType, queueFamilyIndex, queuePriorities[queueType][queueIdx]);
 			}
 		}
-	}
+
+		});
 
 }

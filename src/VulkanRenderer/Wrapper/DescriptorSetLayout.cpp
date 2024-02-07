@@ -55,6 +55,8 @@ VkDescriptorType DescriptorSetLayout::bindless_binding_to_type(const uint32_t bi
 		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	case DescriptorSetLayout::storageImageBinding:
 		return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	case DescriptorSetLayout::inputAttachmentBinding:
+		return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 	case DescriptorSetLayout::accelerationStructureBinding:
 		return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 	default:
@@ -84,7 +86,14 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 	validateDescriptorCount("Not enough bindless sampled images {} | {}", info.sampledImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages);
 	validateDescriptorCount("Not enough bindless storage images  {} | {}", info.storageImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages);
 	validateDescriptorCount("Not enough bindless bindless samplers {} | {}", info.samplerCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers);
+	validateDescriptorCount("Not enough bindless input attachments {} | {}", info.inputAttachmentCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindInputAttachments);
 	validateDescriptorCount("Not enough bindless acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures);
+
+	auto descriptorSum = info.storageBufferCount + info.uniformBufferCount + info.sampledImageCount + info.storageImageCount + info.samplerCount + info.inputAttachmentCount + info.accelerationStructureCount;
+	if (descriptorSum > vulkan12Properties.maxPerStageUpdateAfterBindResources) {
+		util::log::error().format("Not enough bindless descriptors {} | {}", descriptorSum, vulkan12Properties.maxPerStageUpdateAfterBindResources);
+		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
+	}
 
 	std::array bindings{
 		VkDescriptorSetLayoutBinding
@@ -129,6 +138,14 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 		},
 		VkDescriptorSetLayoutBinding
 		{
+			.binding = inputAttachmentBinding,
+			.descriptorType = bindless_binding_to_type(inputAttachmentBinding),
+			.descriptorCount = info.inputAttachmentCount,
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
 			.binding = accelerationStructureBinding,
 			.descriptorType = bindless_binding_to_type(accelerationStructureBinding),
 			.descriptorCount = info.accelerationStructureCount,
@@ -137,7 +154,7 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 		}
 	};
 	if (!device.get_enabled_extensions().accelerationStructure)
-		bindings[5].descriptorCount = 0;
+		bindings[6].descriptorCount = 0;
 
 	uint32_t bindingCount = 0;
 	for (uint32_t i = 0; i < bindings.size(); ++i)
@@ -210,4 +227,133 @@ DescriptorSetLayout::DescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapp
 	m_info(std::move(info))
 {
 	assert(m_handle != VK_NULL_HANDLE);
+}
+
+std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescriptorSetLayout::create(LogicalDevice& device, DescriptorInfo info) noexcept
+{
+	if (!device.get_enabled_extensions().pushDescriptors)
+		return std::unexpected{ Error{VK_ERROR_EXTENSION_NOT_PRESENT} };
+
+	const auto& physicalDevice = device.get_physical_device();
+	const auto& limits = physicalDevice.get_properties().limits;
+	const auto& vulkan12Properties = physicalDevice.get_vulkan12_properties();
+	const auto& rtProperties = physicalDevice.get_acceleration_structure_properties();
+	const auto& pushDescriptorProperties = physicalDevice.get_push_descriptor_properties();
+
+
+	//Not sure if validation instead of error is better here.
+	auto validateDescriptorCount = [&](std::string_view message, auto& info, auto maxVal)
+		{
+			if (info > maxVal) {
+				util::log::warning().format(message, info, maxVal);
+				info = maxVal;
+			}
+		};
+
+	validateDescriptorCount("Not enough descriptor storage buffers {} | {}", info.storageBufferCount, limits.maxPerStageDescriptorStorageBuffers);
+	validateDescriptorCount("Not enough descriptor uniform buffers {} | {}", info.uniformBufferCount, limits.maxPerStageDescriptorUniformBuffers);
+	validateDescriptorCount("Not enough descriptor sampled images {} | {}", info.sampledImageCount, limits.maxPerStageDescriptorSampledImages);
+	validateDescriptorCount("Not enough descriptor storage images  {} | {}", info.storageImageCount, limits.maxPerStageDescriptorStorageImages);
+	validateDescriptorCount("Not enough descriptor bindless samplers {} | {}", info.samplerCount, limits.maxPerStageDescriptorSamplers);
+	validateDescriptorCount("Not enough descriptor input attachements {} | {}", info.inputAttachmentCount, limits.maxPerStageDescriptorInputAttachments);
+	validateDescriptorCount("Not enough descriptor acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxPerStageDescriptorAccelerationStructures);
+	auto descriptorSum = info.storageBufferCount + info.uniformBufferCount + info.sampledImageCount + info.storageImageCount + info.samplerCount + info.inputAttachmentCount + info.accelerationStructureCount;
+	if (descriptorSum > pushDescriptorProperties.maxPushDescriptors) {
+		util::log::error().format("Not enough push descriptors {} | {}", descriptorSum, pushDescriptorProperties.maxPushDescriptors);
+		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
+	}
+	if (descriptorSum > limits.maxPerStageResources) {
+		util::log::error().format("Not enough descriptors {} | {}", descriptorSum, limits.maxPerStageResources);
+		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
+	}
+
+
+
+	std::array bindings{
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = storageBufferBinding,
+			.descriptorType = bindless_binding_to_type(storageBufferBinding),
+			.descriptorCount = info.storageBufferCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = uniformBufferBinding,
+			.descriptorType = bindless_binding_to_type(uniformBufferBinding),
+			.descriptorCount = info.uniformBufferCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = samplerBinding,
+			.descriptorType = bindless_binding_to_type(samplerBinding),
+			.descriptorCount = info.samplerCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = sampledImageBinding,
+			.descriptorType = bindless_binding_to_type(sampledImageBinding),
+			.descriptorCount = info.sampledImageCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = storageImageBinding,
+			.descriptorType = bindless_binding_to_type(storageImageBinding),
+			.descriptorCount = info.storageImageCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = inputAttachmentBinding,
+			.descriptorType = bindless_binding_to_type(inputAttachmentBinding),
+			.descriptorCount = info.inputAttachmentCount,
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.pImmutableSamplers = nullptr
+		},
+		VkDescriptorSetLayoutBinding
+		{
+			.binding = accelerationStructureBinding,
+			.descriptorType = bindless_binding_to_type(accelerationStructureBinding),
+			.descriptorCount = info.accelerationStructureCount,
+			.stageFlags = VK_SHADER_STAGE_ALL,
+			.pImmutableSamplers = nullptr
+		}
+	};
+	if (!device.get_enabled_extensions().accelerationStructure)
+		bindings[6].descriptorCount = 0;
+
+	uint32_t bindingCount = 0;
+	for (uint32_t i = 0; i < bindings.size(); ++i)
+		if (bindings[i].descriptorCount)
+			bindingCount = i + 1;
+
+
+	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR ,
+		.bindingCount = bindingCount,
+		.pBindings = bindings.data()
+	};
+	const auto& deviceWrapper = device.get_device();
+	VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
+	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) {
+		return std::unexpected{ Error{result} };
+	}
+
+	return PushDescriptorSetLayout{ deviceWrapper, layout, device.get_deletion_queue(), std::move(info) };
+}
+
+PushDescriptorSetLayout::PushDescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapper, VkDescriptorSetLayout layout, DeletionQueue& deletionQueue, DescriptorInfo info) noexcept :
+	DescriptorSetLayout(deviceWrapper, layout, deletionQueue, std::move(info))
+{
+
 }

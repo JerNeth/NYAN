@@ -69,9 +69,9 @@ std::expected<Renderer, RendererCreationError> Renderer::create() noexcept
 		return std::unexpected{ RendererCreationError::Type:: };
 
 	QueueContainer<float> queuePriorities;
-	queuePriorities[static_cast<size_t>(Queue::Type::Graphics)].push_back(1.f);
-	queuePriorities[static_cast<size_t>(Queue::Type::Compute)].push_back(1.f);
-	queuePriorities[static_cast<size_t>(Queue::Type::Transfer)].push_back(1.f);
+	queuePriorities[Queue::Type::Graphics].push_back(1.f);
+	queuePriorities[Queue::Type::Compute].push_back(1.f);
+	queuePriorities[Queue::Type::Transfer].push_back(1.f);
 
 	PhysicalDevice::Extensions extensions{
 	};

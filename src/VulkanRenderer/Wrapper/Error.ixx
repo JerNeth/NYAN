@@ -13,8 +13,8 @@ export namespace nyan::vulkan::wrapper
 	public:
 		constexpr Error(VkResult result, const std::source_location& location = std::source_location::current()) noexcept;
 		constexpr explicit operator VkResult() const noexcept;
-		constexpr [[nodiscard]] VkResult get_result() const noexcept;
-		constexpr [[nodiscard]] const char* get_message() const noexcept;
+		[[nodiscard]] constexpr VkResult get_result() const noexcept;
+		[[nodiscard]] constexpr const char* get_message() const noexcept;
 	private:
 		VkResult m_result{ VK_SUCCESS };
 		//const char* m_message{ "" };
@@ -33,8 +33,8 @@ export namespace nyan::vulkan::wrapper
 			UnknownError
 		};
 		constexpr InstanceCreationError(Type type, const std::source_location& location = std::source_location::current()) noexcept;
-		constexpr [[nodiscard]] Type get_type() const noexcept;
-		constexpr [[nodiscard]] const char* get_message() const noexcept;
+		[[nodiscard]] constexpr Type get_type() const noexcept;
+		[[nodiscard]] constexpr const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
 		//const char* m_message{ "" };
@@ -49,8 +49,8 @@ export namespace nyan::vulkan::wrapper
 			UnknownError
 		};
 		constexpr PhysicalDeviceCreationError(Type type, const std::source_location& location = std::source_location::current()) noexcept;
-		constexpr [[nodiscard]] Type get_type() const noexcept;
-		constexpr [[nodiscard]] const char* get_message() const noexcept;
+		[[nodiscard]] constexpr Type get_type() const noexcept;
+		[[nodiscard]] constexpr const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
 		//const char* m_message{ "" };
@@ -69,8 +69,8 @@ export namespace nyan::vulkan::wrapper
 			UnknownError
 		};
 		constexpr LogicalDeviceCreationError(Type type, const std::source_location& location = std::source_location::current()) noexcept;
-		constexpr [[nodiscard]] Type get_type() const noexcept;
-		constexpr [[nodiscard]] const char* get_message() const noexcept;
+		[[nodiscard]] constexpr Type get_type() const noexcept;
+		[[nodiscard]] constexpr const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
 		//const char* m_message{ "" };
@@ -84,8 +84,8 @@ export namespace nyan::vulkan::wrapper
 			NoValidPhysicalDeviceError
 		};
 		constexpr PhysicalDeviceSelectionError(Type type, const std::source_location& location = std::source_location::current()) noexcept;
-		constexpr [[nodiscard]] Type get_type() const noexcept;
-		constexpr [[nodiscard]] const char* get_message() const noexcept;
+		[[nodiscard]] constexpr Type get_type() const noexcept;
+		[[nodiscard]] constexpr const char* get_message() const noexcept;
 	private:
 		Type m_type{ };
 		//const char* m_message{ "" };
