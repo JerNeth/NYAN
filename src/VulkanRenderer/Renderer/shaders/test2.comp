@@ -1,26 +1,10 @@
 #version 450
 //#extension GL_ARB_separate_shader_objects : enable
-#extension GL_KHR_vulkan_glsl : enable
 
 layout(local_size_x_id = 1) in;
 layout(local_size_y_id = 2) in;
 layout(local_size_z_id = 3) in;
 layout(constant_id = 4) const uint testVal = 2;
-
-
-layout(set = 0, binding = 0, std430) writeonly buffer WriteUInts {
-	uint u[];
-} writeUInts[2];
-
-layout(set = 0, binding = 0, std430) readonly buffer ReadUInts {
-	uint u[];
-} readUInts[2];
-
-layout(std430, push_constant) uniform PushConstants
-{
-	uint binding0;
-    uint binding1;
-} constants;
 
 void main() {
     //outColor = subpassLoad(inputColor);
@@ -28,7 +12,4 @@ void main() {
 //    vec4 color = imageLoad(inputColor, coord);
 //    imageStore(outputColor, coord, color);
     //outColor = vec4(0.5, 0.2, 0.8, 1.0);
-	for(int i = 0; i < testVal; i++) 
-		writeUInts[constants.binding1].u[i] = readUInts[constants.binding0].u[i] + testVal;
-
 }

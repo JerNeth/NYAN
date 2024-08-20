@@ -42,11 +42,11 @@ export namespace nyan::vulkan::wrapper
 
 		~DescriptorSetLayout() noexcept;
 
-		const DescriptorInfo& get_info() const noexcept;
+		[[nodiscard]] const DescriptorInfo& get_info() const noexcept;
 
-		static VkDescriptorType bindless_binding_to_type(const uint32_t binding) noexcept;
+		[[nodiscard]] static VkDescriptorType bindless_binding_to_type(const uint32_t binding) noexcept;
 
-		[[nodiscard]] static std::expected<DescriptorSetLayout, Error> create(LogicalDevice& device, DescriptorInfo info) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<DescriptorSetLayout, Error> create(LogicalDevice& device, DescriptorInfo info) noexcept;
 
 
 	protected:
@@ -61,7 +61,7 @@ export namespace nyan::vulkan::wrapper
 	{
 	public:
 
-		[[nodiscard]] static std::expected<PushDescriptorSetLayout, Error> create(LogicalDevice& device, DescriptorInfo info) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<PushDescriptorSetLayout, Error> create(LogicalDevice& device, DescriptorInfo info) noexcept;
 	private:
 		PushDescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapper, VkDescriptorSetLayout layout, DeletionQueue& deletionQueue, DescriptorInfo info) noexcept;
 

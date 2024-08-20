@@ -5,23 +5,24 @@ module;
 #include "volk.h"
 
 export module NYANVulkanWrapper:CommandBuffer;
+import :Buffer;
+import :Error;
 import :LogicalDeviceWrapper;
+import :Object;
+import :Pipeline;
 import :PipelineLayout;
 import :Queue;
-import :Object;
-import :Error;
 
 export namespace nyan::vulkan::wrapper
 {
 	class CommandPool;
-	class ComputePipeline;
 	class DescriptorSet;
 
 	class PipelineBind 
 	{
 	public:
 
-		void push_descriptor_set(uint32_t firstSet) const noexcept;
+		void push_descriptor_set(uint32_t firstSet, const StorageBuffer& buffer, VkDeviceSize offset = 0, VkDeviceSize range = VK_WHOLE_SIZE) const noexcept;
 		void bind_descriptor_set(uint32_t firstSet, const DescriptorSet& set) const noexcept;
 		template<typename T>
 		void push_constants(const T& t) const noexcept
@@ -42,11 +43,51 @@ export namespace nyan::vulkan::wrapper
 	class ComputePipelineBind : public PipelineBind
 	{
 	public:
-		ComputePipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+		friend class CommandBuffer;
 
 		void dispatch(uint32_t groupCountX = 1, uint32_t groupCountY = 1, uint32_t groupCountZ = 1) const noexcept;
 
+	private:
+		ComputePipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+
 	};
+
+	class GraphicsPipelineBind : public PipelineBind
+	{
+	public:
+		void set_viewport(uint16_t width, uint16_t height, float minDepth = 0.f, float maxDepth = 1.f) const noexcept;
+		void set_scissor(uint16_t width, uint16_t height, uint16_t x = 0, uint16_t y = 0) const noexcept;
+	protected:
+		GraphicsPipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+	};
+
+	class VertexPipelineBind : public GraphicsPipelineBind
+	{
+	public:
+		friend class CommandBuffer;
+
+	private:
+		VertexPipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+	};
+
+	class MeshPipelineBind : public GraphicsPipelineBind
+	{
+	public:
+		friend class CommandBuffer;
+
+	private:
+		MeshPipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+	};
+
+	class RayTracingPipelineBind : public PipelineBind
+	{
+	public:
+		friend class CommandBuffer;
+
+	private:
+		RayTracingPipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer cmd, VkPipelineLayout layout) noexcept;
+	};
+
 
 	class CommandBuffer : public Object<VkCommandBuffer>
 	{
@@ -77,7 +118,7 @@ export namespace nyan::vulkan::wrapper
 		//void end_rendering() noexcept;
 
 
-		//[[nodiscard]] GraphicsPipelineBind bind_graphics_pipeline(PipelineId pipelineIdentifier) noexcept;
+		[[nodiscard]] VertexPipelineBind bind_vertex_pipeline(const VertexShaderGraphicsPipeline& pipeline, GraphicsPipeline::DynamicStates dynamicDefaultsMask = ~GraphicsPipeline::DynamicStates{}) noexcept;
 		[[nodiscard]] ComputePipelineBind bind_pipeline(const ComputePipeline& pipeline) noexcept;
 		//[[nodiscard]] RaytracingPipelineBind bind_raytracing_pipeline(PipelineId pipelineIdentifier) noexcept;
 
@@ -86,24 +127,30 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] Queue::Type get_type() const noexcept;
 
 	private:
-		CommandBuffer(const LogicalDeviceWrapper& device, VkCommandBuffer handle, Queue::Type type) noexcept;
+		CommandBuffer(const LogicalDeviceWrapper& device, VkCommandBuffer handle, Queue& queue) noexcept;
 
+		Queue& r_queue;
 		State m_state;
-		Queue::Type m_type;
 	};
 
 	class CommandBufferAccessor
 	{
 	public:
 		friend class CommandPool;
+		friend class Queue;
 	private:
-		static void set_state(CommandBuffer& cmd, const CommandBuffer::State state) noexcept
-		{
-			cmd.m_state = state;
-		}
-		static CommandBuffer::State get_state(const CommandBuffer& cmd) noexcept
+		static CommandBuffer::State& state(CommandBuffer& cmd) noexcept
 		{
 			return cmd.m_state;
+		}
+		static const CommandBuffer::State& state(const CommandBuffer& cmd) noexcept
+		{
+			return cmd.m_state;
+		}
+
+		static CommandBuffer create(auto&&... args) noexcept 
+		{
+			return CommandBuffer{std::forward<decltype(args)>(args)...};
 		}
 	};
 }

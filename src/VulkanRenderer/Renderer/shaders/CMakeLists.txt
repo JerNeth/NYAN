@@ -78,10 +78,10 @@ foreach(shader ${SHADER_SRC})
 endforeach()
 
 
-add_custom_target(local_shaders DEPENDS ${SHADERS})
+add_custom_target(local_renderer_shaders DEPENDS ${SHADERS})
 
-add_library(shaders INTERFACE)
-target_include_directories(shaders INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
-target_sources(shaders INTERFACE ${SHADER_H})
+add_library(renderer_shaders INTERFACE)
+target_include_directories(renderer_shaders INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
+target_sources(renderer_shaders INTERFACE ${SHADER_H})
 
-add_dependencies(shaders local_shaders)
+add_dependencies(renderer_shaders local_renderer_shaders)

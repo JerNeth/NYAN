@@ -156,7 +156,7 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 [[maybe_unused]] static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageTypes, [[maybe_unused]] const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
-
+	
 	auto fun = [&](auto logger)
 	{
 		if (messageTypes & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
@@ -177,7 +177,8 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 				color = std::array<uint8_t, 3> {static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
-				logger.format(color, "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
+				//logger.format(color, "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);  //TODO
+				logger.format( "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
 			}
 		}
 		if (pCallbackData->cmdBufLabelCount) {
@@ -186,7 +187,8 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 				color = std::array<uint8_t, 3> { static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
-				logger.format(color, "\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
+				//logger.format(color, "\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName); //TODO
+				logger.format("\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
 			}
 		}
 		if (pCallbackData->objectCount) {
@@ -203,15 +205,15 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 	};
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		fun(nyan::util::log::verbose_message("[Verbose] "));
+		fun(std::move(nyan::util::log::verbose_message("[Verbose] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		fun(nyan::util::log::info_message("[Info] "));
+		fun(std::move(nyan::util::log::info_message("[Info] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		fun(nyan::util::log::warning_message("[Warning] "));
+		fun(std::move(nyan::util::log::warning_message("[Warning] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		fun(nyan::util::log::error_message("[Error] "));
+		fun(std::move(nyan::util::log::error_message("[Error] ")));
 	else
-		fun(nyan::util::log::error_message("[Info] "));
+		fun(std::move(nyan::util::log::error_message("[Info] ")));
 	
 
 	return VK_FALSE;
@@ -389,7 +391,8 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 					requestedExtensions.push_back(extensionName);
 				return true;
 			}
-			util::log::info().location().format("Extension: \"{}\" not available", extensionName);
+			// util::log::info().location().format("Extension: \"{}\" not available", extensionName);  //TODO
+			util::log::info().format("Extension: \"{}\" not available", extensionName);
 			return false;
 		};
 

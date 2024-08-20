@@ -1,11 +1,12 @@
 module;
 
+#include <array>
 #include <expected>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <array>
 
 #include "volk.h"
 
@@ -20,8 +21,8 @@ export namespace nyan::vulkan::wrapper
 	public:
 		struct Extensions {
 			uint32_t swapchain : 1 { 0 };
+			uint32_t swapchainMaintenance1 : 1 { 0 };
 			uint32_t fullscreenExclusive : 1 { 0 };
-			uint32_t debugUtils : 1 { 0 };
 			uint32_t debugMarker : 1 { 0 };
 			uint32_t accelerationStructure : 1 { 0 };
 			uint32_t rayTracingPipeline : 1 { 0 };
@@ -35,6 +36,11 @@ export namespace nyan::vulkan::wrapper
 			uint32_t presentId : 1 { 0 };
 			uint32_t presentWait : 1 { 0 };
 			uint32_t pushDescriptors : 1 { 0 };
+			uint32_t externalMemoryHost : 1 { 0 };
+			uint32_t descriptorBuffer : 1 { 0 };
+			uint32_t hostImageCopy : 1 {0};
+			uint32_t dynamicRenderingLocalRead : 1 {0};
+			uint32_t maintenance5 : 1 {0};
 			//Promoted to Vulkan 1.3
 			uint32_t copyCommands : 1 { 0 };
 			uint32_t dynamicRendering : 1 { 0 };
@@ -85,7 +91,7 @@ export namespace nyan::vulkan::wrapper
 			uint32_t separateStencilUsage : 1 { 0 };
 			uint32_t shaderViewportIndexLayer : 1 { 0 };
 
-			static Extensions vulkan12_core() noexcept
+			constexpr static Extensions vulkan12_core() noexcept
 			{
 				return {
 					.bit8Storage  {1},
@@ -114,7 +120,7 @@ export namespace nyan::vulkan::wrapper
 					.shaderViewportIndexLayer  {1}
 				};
 			}
-			static Extensions vulkan13_core() noexcept
+			constexpr static Extensions vulkan13_core() noexcept
 			{
 				return vulkan12_core() | Extensions{
 					.copyCommands { 1 },
@@ -143,13 +149,13 @@ export namespace nyan::vulkan::wrapper
 				};
 			}
 
-			bool operator==(const Extensions& other) const noexcept = default;
+			bool constexpr operator==(const Extensions& other) const noexcept = default;
 			Extensions operator~() const noexcept
 			{
 				return {
 					.swapchain  {~swapchain },
+					.swapchainMaintenance1 {~swapchainMaintenance1},
 					.fullscreenExclusive  {~fullscreenExclusive },
-					.debugUtils  {~debugUtils },
 					.debugMarker  {~debugMarker },
 					.accelerationStructure  {~accelerationStructure },
 					.rayTracingPipeline  {~rayTracingPipeline },
@@ -163,6 +169,11 @@ export namespace nyan::vulkan::wrapper
 					.presentId  {~presentId },
 					.presentWait  {~presentWait },
 					.pushDescriptors {~pushDescriptors},
+					.externalMemoryHost {~externalMemoryHost},
+					.descriptorBuffer {~descriptorBuffer},
+					.hostImageCopy {~hostImageCopy},
+					.dynamicRenderingLocalRead {~dynamicRenderingLocalRead},
+					.maintenance5 {~maintenance5},
 					.copyCommands  {~copyCommands },
 					.dynamicRendering  {~dynamicRendering },
 					.formatFeatureFlags2  {~formatFeatureFlags2 },
@@ -212,140 +223,150 @@ export namespace nyan::vulkan::wrapper
 					.shaderViewportIndexLayer  {~shaderViewportIndexLayer }
 				};
 			}
-			friend Extensions operator&(const Extensions& lhs, const Extensions& rhs) noexcept
+			friend constexpr Extensions operator&(const Extensions& lhs, const Extensions& rhs) noexcept
 			{
-				return {
-					lhs.swapchain & rhs.swapchain,
-					lhs.fullscreenExclusive & rhs.fullscreenExclusive,
-					lhs.debugUtils & rhs.debugUtils,
-					lhs.debugMarker & rhs.debugMarker,
-					lhs.accelerationStructure & rhs.accelerationStructure,
-					lhs.rayTracingPipeline & rhs.rayTracingPipeline,
-					lhs.rayQuery & rhs.rayQuery,
-					lhs.pipelineLibrary & rhs.pipelineLibrary,
-					lhs.deferredHostOperations & rhs.deferredHostOperations,
-					lhs.performanceQuery & rhs.performanceQuery,
-					lhs.vertexInputDynamicState & rhs.vertexInputDynamicState,
-					lhs.meshShader & rhs.meshShader,
-					lhs.atomicFloats & rhs.atomicFloats,
-					lhs.presentId & rhs.presentId,
-					lhs.presentWait & rhs.presentWait,
-					lhs.pushDescriptors & rhs.pushDescriptors,
-					lhs.copyCommands & rhs.copyCommands,
-					lhs.dynamicRendering & rhs.dynamicRendering,
-					lhs.formatFeatureFlags2 & rhs.formatFeatureFlags2,
-					lhs.maintenance4 & rhs.maintenance4,
-					lhs.shaderIntegerDotProduct & rhs.shaderIntegerDotProduct,
-					lhs.shaderNonSemanticInfo & rhs.shaderNonSemanticInfo,
-					lhs.shaderTerminateInvocation & rhs.shaderTerminateInvocation,
-					lhs.synchronization2 & rhs.synchronization2,
-					lhs.zeroInitializeWorkgroupMemory & rhs.zeroInitializeWorkgroupMemory,
-					lhs.formats4444 & rhs.formats4444,
-					lhs.extendedDynamicState & rhs.extendedDynamicState,
-					lhs.extendedDynamicState2 & rhs.extendedDynamicState2,
-					lhs.imageRobustness & rhs.imageRobustness,
-					lhs.inlineUniformBlock & rhs.inlineUniformBlock,
-					lhs.pipelineCreationCacheControl & rhs.pipelineCreationCacheControl,
-					lhs.pipelineCreationFeedback & rhs.pipelineCreationFeedback,
-					lhs.privateData & rhs.privateData,
-					lhs.shaderDemoteToHelperInvocation & rhs.shaderDemoteToHelperInvocation,
-					lhs.subgroupSizeControl & rhs.subgroupSizeControl,
-					lhs.texelBufferAlignment & rhs.texelBufferAlignment,
-					lhs.textureCompressionAstcHdr & rhs.textureCompressionAstcHdr,
-					lhs.toolingInfo & rhs.toolingInfo,
-					lhs.ycbcr2plane444Formats & rhs.ycbcr2plane444Formats,
-					lhs.bit8Storage & rhs.bit8Storage,
-					lhs.bufferDeviceAddress & rhs.bufferDeviceAddress,
-					lhs.createRenderpass2 & rhs.createRenderpass2,
-					lhs.depthStencilResolve & rhs.depthStencilResolve,
-					lhs.drawIndirectCount & rhs.drawIndirectCount,
-					lhs.driverProperties & rhs.driverProperties,
-					lhs.imageFormatList & rhs.imageFormatList,
-					lhs.imagelessFramebuffer & rhs.imagelessFramebuffer,
-					lhs.samplerMirrorClampToEdge & rhs.samplerMirrorClampToEdge,
-					lhs.separateDepthStencilLayouts & rhs.separateDepthStencilLayouts,
-					lhs.shaderAtomicInt64 & rhs.shaderAtomicInt64,
-					lhs.shaderFloat16Int8 & rhs.shaderFloat16Int8,
-					lhs.shaderFloatControls & rhs.shaderFloatControls,
-					lhs.shaderSubgroupExtendedTypes & rhs.shaderSubgroupExtendedTypes,
-					lhs.spirv14 & rhs.spirv14,
-					lhs.timelineSemaphore & rhs.timelineSemaphore,
-					lhs.uniformBufferStandardLayout & rhs.uniformBufferStandardLayout,
-					lhs.vulkanMemoryModel & rhs.vulkanMemoryModel,
-					lhs.descriptorIndexing & rhs.descriptorIndexing,
-					lhs.hostQueryReset & rhs.hostQueryReset,
-					lhs.samplerFilterMinmax & rhs.samplerFilterMinmax,
-					lhs.scalarBlockLayout & rhs.scalarBlockLayout,
-					lhs.separateStencilUsage & rhs.separateStencilUsage,
-					lhs.shaderViewportIndexLayer & rhs.shaderViewportIndexLayer,
+				return Extensions {
+					.swapchain  {lhs.swapchain & rhs.swapchain },
+					.swapchainMaintenance1 {lhs.swapchainMaintenance1 & rhs.swapchainMaintenance1},
+					.fullscreenExclusive  {lhs.fullscreenExclusive& rhs.fullscreenExclusive },
+					.debugMarker  {lhs.debugMarker& rhs.debugMarker },
+					.accelerationStructure  {lhs.accelerationStructure& rhs.accelerationStructure },
+					.rayTracingPipeline  {lhs.rayTracingPipeline& rhs.rayTracingPipeline },
+					.rayQuery  {lhs.rayQuery& rhs.rayQuery },
+					.pipelineLibrary  {lhs.pipelineLibrary& rhs.pipelineLibrary },
+					.deferredHostOperations  {lhs.deferredHostOperations& rhs.deferredHostOperations },
+					.performanceQuery  {lhs.performanceQuery& rhs.performanceQuery },
+					.vertexInputDynamicState  {lhs.vertexInputDynamicState& rhs.vertexInputDynamicState },
+					.meshShader  {lhs.meshShader& rhs.meshShader },
+					.atomicFloats  {lhs.atomicFloats& rhs.atomicFloats },
+					.presentId  {lhs.presentId& rhs.presentId },
+					.presentWait  {lhs.presentWait& rhs.presentWait },
+					.pushDescriptors {lhs.pushDescriptors& rhs.pushDescriptors },
+					.externalMemoryHost {lhs.externalMemoryHost& rhs.externalMemoryHost },
+					.descriptorBuffer {lhs.descriptorBuffer & rhs.descriptorBuffer},
+					.hostImageCopy {lhs.hostImageCopy & rhs.hostImageCopy},
+					.dynamicRenderingLocalRead {lhs.dynamicRenderingLocalRead & rhs.dynamicRenderingLocalRead},
+					.maintenance5 {lhs.maintenance5 & rhs.maintenance5},
+					.copyCommands  {lhs.copyCommands& rhs.copyCommands },
+					.dynamicRendering  {lhs.dynamicRendering& rhs.dynamicRendering },
+					.formatFeatureFlags2  {lhs.formatFeatureFlags2& rhs.formatFeatureFlags2 },
+					.maintenance4  {lhs.maintenance4& rhs.maintenance4 },
+					.shaderIntegerDotProduct  {lhs.shaderIntegerDotProduct& rhs.shaderIntegerDotProduct },
+					.shaderNonSemanticInfo  {lhs.shaderNonSemanticInfo& rhs.shaderNonSemanticInfo },
+					.shaderTerminateInvocation  {lhs.shaderTerminateInvocation& rhs.shaderTerminateInvocation },
+					.synchronization2  {lhs.synchronization2& rhs.synchronization2 },
+					.zeroInitializeWorkgroupMemory  {lhs.zeroInitializeWorkgroupMemory& rhs.zeroInitializeWorkgroupMemory },
+					.formats4444  {lhs.formats4444& rhs.formats4444 },
+					.extendedDynamicState  {lhs.extendedDynamicState& rhs.extendedDynamicState },
+					.extendedDynamicState2  {lhs.extendedDynamicState2& rhs.extendedDynamicState2 },
+					.imageRobustness  {lhs.imageRobustness& rhs.imageRobustness },
+					.inlineUniformBlock  {lhs.inlineUniformBlock& rhs.inlineUniformBlock },
+					.pipelineCreationCacheControl  {lhs.pipelineCreationCacheControl& rhs.pipelineCreationCacheControl },
+					.pipelineCreationFeedback  {lhs.pipelineCreationFeedback& rhs.pipelineCreationFeedback },
+					.privateData  {lhs.privateData& rhs.privateData },
+					.shaderDemoteToHelperInvocation  {lhs.shaderDemoteToHelperInvocation& rhs.shaderDemoteToHelperInvocation },
+					.subgroupSizeControl  {lhs.subgroupSizeControl& rhs.subgroupSizeControl },
+					.texelBufferAlignment  {lhs.texelBufferAlignment& rhs.texelBufferAlignment },
+					.textureCompressionAstcHdr  {lhs.textureCompressionAstcHdr& rhs.textureCompressionAstcHdr },
+					.toolingInfo  {lhs.toolingInfo& rhs.toolingInfo },
+					.ycbcr2plane444Formats  {lhs.ycbcr2plane444Formats& rhs.ycbcr2plane444Formats },
+					.bit8Storage  {lhs.bit8Storage& rhs.bit8Storage },
+					.bufferDeviceAddress  {lhs.bufferDeviceAddress& rhs.bufferDeviceAddress },
+					.createRenderpass2  {lhs.createRenderpass2& rhs.createRenderpass2 },
+					.depthStencilResolve  {lhs.depthStencilResolve& rhs.depthStencilResolve },
+					.drawIndirectCount  {lhs.drawIndirectCount& rhs.drawIndirectCount },
+					.driverProperties  {lhs.driverProperties& rhs.driverProperties },
+					.imageFormatList  {lhs.imageFormatList& rhs.imageFormatList },
+					.imagelessFramebuffer  {lhs.imagelessFramebuffer& rhs.imagelessFramebuffer },
+					.samplerMirrorClampToEdge  {lhs.samplerMirrorClampToEdge& rhs.samplerMirrorClampToEdge },
+					.separateDepthStencilLayouts  {lhs.separateDepthStencilLayouts& rhs.separateDepthStencilLayouts },
+					.shaderAtomicInt64  {lhs.shaderAtomicInt64& rhs.shaderAtomicInt64 },
+					.shaderFloat16Int8  {lhs.shaderFloat16Int8& rhs.shaderFloat16Int8 },
+					.shaderFloatControls  {lhs.shaderFloatControls& rhs.shaderFloatControls },
+					.shaderSubgroupExtendedTypes  {lhs.shaderSubgroupExtendedTypes& rhs.shaderSubgroupExtendedTypes },
+					.spirv14  {lhs.spirv14& rhs.spirv14 },
+					.timelineSemaphore  {lhs.timelineSemaphore& rhs.timelineSemaphore },
+					.uniformBufferStandardLayout  {lhs.uniformBufferStandardLayout& rhs.uniformBufferStandardLayout },
+					.vulkanMemoryModel  {lhs.vulkanMemoryModel& rhs.vulkanMemoryModel },
+					.descriptorIndexing  {lhs.descriptorIndexing& rhs.descriptorIndexing },
+					.hostQueryReset  {lhs.hostQueryReset& rhs.hostQueryReset },
+					.samplerFilterMinmax  {lhs.samplerFilterMinmax& rhs.samplerFilterMinmax },
+					.scalarBlockLayout  {lhs.scalarBlockLayout& rhs.scalarBlockLayout },
+					.separateStencilUsage  {lhs.separateStencilUsage& rhs.separateStencilUsage },
+					.shaderViewportIndexLayer  {lhs.shaderViewportIndexLayer & rhs.shaderViewportIndexLayer },
 				};
 			}
-			friend Extensions operator|(const Extensions& lhs, const Extensions& rhs) noexcept
+			friend constexpr Extensions operator|(const Extensions& lhs, const Extensions& rhs) noexcept
 			{
-				return {
-					lhs.swapchain | rhs.swapchain,
-					lhs.fullscreenExclusive | rhs.fullscreenExclusive,
-					lhs.debugUtils | rhs.debugUtils,
-					lhs.debugMarker | rhs.debugMarker,
-					lhs.accelerationStructure | rhs.accelerationStructure,
-					lhs.rayTracingPipeline | rhs.rayTracingPipeline,
-					lhs.rayQuery | rhs.rayQuery,
-					lhs.pipelineLibrary | rhs.pipelineLibrary,
-					lhs.deferredHostOperations | rhs.deferredHostOperations,
-					lhs.performanceQuery | rhs.performanceQuery,
-					lhs.vertexInputDynamicState | rhs.vertexInputDynamicState,
-					lhs.meshShader | rhs.meshShader,
-					lhs.atomicFloats | rhs.atomicFloats,
-					lhs.presentId | rhs.presentId,
-					lhs.presentWait | rhs.presentWait,
-					lhs.pushDescriptors | rhs.pushDescriptors,
-					lhs.copyCommands | rhs.copyCommands,
-					lhs.dynamicRendering | rhs.dynamicRendering,
-					lhs.formatFeatureFlags2 | rhs.formatFeatureFlags2,
-					lhs.maintenance4 | rhs.maintenance4,
-					lhs.shaderIntegerDotProduct | rhs.shaderIntegerDotProduct,
-					lhs.shaderNonSemanticInfo | rhs.shaderNonSemanticInfo,
-					lhs.shaderTerminateInvocation | rhs.shaderTerminateInvocation,
-					lhs.synchronization2 | rhs.synchronization2,
-					lhs.zeroInitializeWorkgroupMemory | rhs.zeroInitializeWorkgroupMemory,
-					lhs.formats4444 | rhs.formats4444,
-					lhs.extendedDynamicState | rhs.extendedDynamicState,
-					lhs.extendedDynamicState2 | rhs.extendedDynamicState2,
-					lhs.imageRobustness | rhs.imageRobustness,
-					lhs.inlineUniformBlock | rhs.inlineUniformBlock,
-					lhs.pipelineCreationCacheControl | rhs.pipelineCreationCacheControl,
-					lhs.pipelineCreationFeedback | rhs.pipelineCreationFeedback,
-					lhs.privateData | rhs.privateData,
-					lhs.shaderDemoteToHelperInvocation | rhs.shaderDemoteToHelperInvocation,
-					lhs.subgroupSizeControl | rhs.subgroupSizeControl,
-					lhs.texelBufferAlignment | rhs.texelBufferAlignment,
-					lhs.textureCompressionAstcHdr | rhs.textureCompressionAstcHdr,
-					lhs.toolingInfo | rhs.toolingInfo,
-					lhs.ycbcr2plane444Formats | rhs.ycbcr2plane444Formats,
-					lhs.bit8Storage | rhs.bit8Storage,
-					lhs.bufferDeviceAddress | rhs.bufferDeviceAddress,
-					lhs.createRenderpass2 | rhs.createRenderpass2,
-					lhs.depthStencilResolve | rhs.depthStencilResolve,
-					lhs.drawIndirectCount | rhs.drawIndirectCount,
-					lhs.driverProperties | rhs.driverProperties,
-					lhs.imageFormatList | rhs.imageFormatList,
-					lhs.imagelessFramebuffer | rhs.imagelessFramebuffer,
-					lhs.samplerMirrorClampToEdge | rhs.samplerMirrorClampToEdge,
-					lhs.separateDepthStencilLayouts | rhs.separateDepthStencilLayouts,
-					lhs.shaderAtomicInt64 | rhs.shaderAtomicInt64,
-					lhs.shaderFloat16Int8 | rhs.shaderFloat16Int8,
-					lhs.shaderFloatControls | rhs.shaderFloatControls,
-					lhs.shaderSubgroupExtendedTypes | rhs.shaderSubgroupExtendedTypes,
-					lhs.spirv14 | rhs.spirv14,
-					lhs.timelineSemaphore | rhs.timelineSemaphore,
-					lhs.uniformBufferStandardLayout | rhs.uniformBufferStandardLayout,
-					lhs.vulkanMemoryModel | rhs.vulkanMemoryModel,
-					lhs.descriptorIndexing | rhs.descriptorIndexing,
-					lhs.hostQueryReset | rhs.hostQueryReset,
-					lhs.samplerFilterMinmax | rhs.samplerFilterMinmax,
-					lhs.scalarBlockLayout | rhs.scalarBlockLayout,
-					lhs.separateStencilUsage | rhs.separateStencilUsage,
-					lhs.shaderViewportIndexLayer | rhs.shaderViewportIndexLayer,
+				return Extensions {
+					.swapchain  {lhs.swapchain | rhs.swapchain},
+					.swapchainMaintenance1  {lhs.swapchainMaintenance1 | rhs.swapchainMaintenance1},
+					.fullscreenExclusive  {lhs.fullscreenExclusive | rhs.fullscreenExclusive},
+					.debugMarker  {lhs.debugMarker | rhs.debugMarker},
+					.accelerationStructure  {lhs.accelerationStructure | rhs.accelerationStructure},
+					.rayTracingPipeline  {lhs.rayTracingPipeline | rhs.rayTracingPipeline},
+					.rayQuery  {lhs.rayQuery | rhs.rayQuery},
+					.pipelineLibrary  {lhs.pipelineLibrary | rhs.pipelineLibrary},
+					.deferredHostOperations  {lhs.deferredHostOperations | rhs.deferredHostOperations},
+					.performanceQuery  {lhs.performanceQuery | rhs.performanceQuery},
+					.vertexInputDynamicState  {lhs.vertexInputDynamicState | rhs.vertexInputDynamicState},
+					.meshShader  {lhs.meshShader | rhs.meshShader},
+					.atomicFloats  {lhs.atomicFloats | rhs.atomicFloats},
+					.presentId  {lhs.presentId | rhs.presentId},
+					.presentWait  {lhs.presentWait | rhs.presentWait},
+					.pushDescriptors {lhs.pushDescriptors | rhs.pushDescriptors},
+					.externalMemoryHost {lhs.externalMemoryHost | rhs.externalMemoryHost},
+					.descriptorBuffer {lhs.descriptorBuffer | rhs.descriptorBuffer},
+					.hostImageCopy {lhs.hostImageCopy | rhs.hostImageCopy},
+					.dynamicRenderingLocalRead {lhs.dynamicRenderingLocalRead | rhs.dynamicRenderingLocalRead},
+					.maintenance5 {lhs.maintenance5 | rhs.maintenance5},
+					.copyCommands  {lhs.copyCommands | rhs.copyCommands},
+					.dynamicRendering  {lhs.dynamicRendering | rhs.dynamicRendering},
+					.formatFeatureFlags2  {lhs.formatFeatureFlags2 | rhs.formatFeatureFlags2},
+					.maintenance4  {lhs.maintenance4 | rhs.maintenance4},
+					.shaderIntegerDotProduct  {lhs.shaderIntegerDotProduct | rhs.shaderIntegerDotProduct},
+					.shaderNonSemanticInfo  {lhs.shaderNonSemanticInfo | rhs.shaderNonSemanticInfo},
+					.shaderTerminateInvocation  {lhs.shaderTerminateInvocation | rhs.shaderTerminateInvocation},
+					.synchronization2  {lhs.synchronization2 | rhs.synchronization2},
+					.zeroInitializeWorkgroupMemory  {lhs.zeroInitializeWorkgroupMemory | rhs.zeroInitializeWorkgroupMemory},
+					.formats4444  {lhs.formats4444 | rhs.formats4444},
+					.extendedDynamicState  {lhs.extendedDynamicState | rhs.extendedDynamicState},
+					.extendedDynamicState2  {lhs.extendedDynamicState2 | rhs.extendedDynamicState2},
+					.imageRobustness  {lhs.imageRobustness | rhs.imageRobustness},
+					.inlineUniformBlock  {lhs.inlineUniformBlock | rhs.inlineUniformBlock},
+					.pipelineCreationCacheControl  {lhs.pipelineCreationCacheControl | rhs.pipelineCreationCacheControl},
+					.pipelineCreationFeedback  {lhs.pipelineCreationFeedback | rhs.pipelineCreationFeedback},
+					.privateData  {lhs.privateData | rhs.privateData},
+					.shaderDemoteToHelperInvocation  {lhs.shaderDemoteToHelperInvocation | rhs.shaderDemoteToHelperInvocation},
+					.subgroupSizeControl  {lhs.subgroupSizeControl | rhs.subgroupSizeControl},
+					.texelBufferAlignment  {lhs.texelBufferAlignment | rhs.texelBufferAlignment},
+					.textureCompressionAstcHdr  {lhs.textureCompressionAstcHdr | rhs.textureCompressionAstcHdr},
+					.toolingInfo  {lhs.toolingInfo | rhs.toolingInfo},
+					.ycbcr2plane444Formats  {lhs.ycbcr2plane444Formats | rhs.ycbcr2plane444Formats},
+					.bit8Storage  {lhs.bit8Storage | rhs.bit8Storage},
+					.bufferDeviceAddress  {lhs.bufferDeviceAddress | rhs.bufferDeviceAddress},
+					.createRenderpass2  {lhs.createRenderpass2 | rhs.createRenderpass2},
+					.depthStencilResolve  {lhs.depthStencilResolve | rhs.depthStencilResolve},
+					.drawIndirectCount  {lhs.drawIndirectCount | rhs.drawIndirectCount},
+					.driverProperties  {lhs.driverProperties | rhs.driverProperties},
+					.imageFormatList  {lhs.imageFormatList | rhs.imageFormatList},
+					.imagelessFramebuffer  {lhs.imagelessFramebuffer | rhs.imagelessFramebuffer},
+					.samplerMirrorClampToEdge  {lhs.samplerMirrorClampToEdge | rhs.samplerMirrorClampToEdge},
+					.separateDepthStencilLayouts  {lhs.separateDepthStencilLayouts | rhs.separateDepthStencilLayouts},
+					.shaderAtomicInt64  {lhs.shaderAtomicInt64 | rhs.shaderAtomicInt64},
+					.shaderFloat16Int8  {lhs.shaderFloat16Int8 | rhs.shaderFloat16Int8},
+					.shaderFloatControls  {lhs.shaderFloatControls | rhs.shaderFloatControls},
+					.shaderSubgroupExtendedTypes  {lhs.shaderSubgroupExtendedTypes | rhs.shaderSubgroupExtendedTypes},
+					.spirv14  {lhs.spirv14 | rhs.spirv14},
+					.timelineSemaphore  {lhs.timelineSemaphore | rhs.timelineSemaphore},
+					.uniformBufferStandardLayout  {lhs.uniformBufferStandardLayout | rhs.uniformBufferStandardLayout},
+					.vulkanMemoryModel  {lhs.vulkanMemoryModel | rhs.vulkanMemoryModel},
+					.descriptorIndexing  {lhs.descriptorIndexing | rhs.descriptorIndexing},
+					.hostQueryReset  {lhs.hostQueryReset | rhs.hostQueryReset},
+					.samplerFilterMinmax  {lhs.samplerFilterMinmax | rhs.samplerFilterMinmax},
+					.scalarBlockLayout  {lhs.scalarBlockLayout | rhs.scalarBlockLayout},
+					.separateStencilUsage  {lhs.separateStencilUsage | rhs.separateStencilUsage},
+					.shaderViewportIndexLayer  {lhs.shaderViewportIndexLayer | rhs.shaderViewportIndexLayer},
 				};
 			}
 			[[nodiscard]] std::vector<const char*> generate_extension_list(uint32_t apiVersion) const noexcept;
@@ -373,6 +394,11 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] const VkPhysicalDeviceRayQueryFeaturesKHR& get_ray_query_features() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT& get_vertex_input_dynamic_state_features() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceMeshShaderFeaturesEXT& get_mesh_shader_features() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceDescriptorBufferFeaturesEXT& get_descriptor_buffer_features() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceHostImageCopyFeaturesEXT& get_host_image_copy_features() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR& get_dynamic_rendering_local_read_features() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceMaintenance5FeaturesKHR& get_maintenance5_features() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT& get_swapchain_maintenance1_features() const noexcept;
 
 		[[nodiscard]] const VkPhysicalDeviceProperties& get_properties() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceSubgroupProperties& get_subgroup_properties() const noexcept;
@@ -383,10 +409,22 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& get_ray_tracing_pipeline_properties() const noexcept;
 		[[nodiscard]] const VkPhysicalDeviceMeshShaderPropertiesEXT& get_mesh_shader_properties() const noexcept;
 		[[nodiscard]] const VkPhysicalDevicePushDescriptorPropertiesKHR& get_push_descriptor_properties() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceExternalMemoryHostPropertiesEXT& get_external_memory_host_properties() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceDescriptorBufferPropertiesEXT& get_descriptor_buffer_properties() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceMaintenance5PropertiesKHR& get_maintenance5_properties() const noexcept;
+		[[nodiscard]] const VkPhysicalDeviceHostImageCopyPropertiesEXT& get_host_image_copy_properties() const noexcept;
+		[[nodiscard]] std::span<const VkImageLayout> get_host_image_copy_src_layouts() const noexcept;
+		[[nodiscard]] std::span<const VkImageLayout> get_host_image_copy_dst_layouts() const noexcept;
+
+		[[nodiscard]] const VkPhysicalDeviceMemoryProperties& get_memory_properties() const noexcept;
+
+		[[nodiscard]] const bool supports_rebar() const noexcept;
+
+		[[nodiscard]] const bool supports_bar() const noexcept;
 
 		[[nodiscard]] const Extensions& get_available_extensions() const noexcept;
 
-		[[nodiscard]] static std::expected<PhysicalDevice, PhysicalDeviceCreationError> create(VkPhysicalDevice handle);
+		[[nodiscard("must handle potential error")]] static std::expected<PhysicalDevice, PhysicalDeviceCreationError> create(VkPhysicalDevice handle);
 
 		//Must be called before using features for 
 		[[nodiscard]] const VkPhysicalDeviceFeatures2& build_feature_chain(const Extensions& extensions) noexcept;
@@ -401,6 +439,7 @@ export namespace nyan::vulkan::wrapper
 	private:
 		explicit PhysicalDevice(VkPhysicalDevice handle, const Extensions& availableExtensions) noexcept;
 		void init_type() noexcept;
+		void init_memory_properties() noexcept;
 		void init_queues() noexcept;
 		void init_features() noexcept;
 		void init_properties() noexcept;
@@ -409,10 +448,12 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDevice m_handle{ VK_NULL_HANDLE };
 		Type m_type;
 
-		magic_enum::containers::array<Queue::Type, uint32_t> m_queueFamilyIndices{ ~0u , ~0u , ~0u , ~0u , ~0u };
+		QueueTypeArray<uint32_t> m_queueFamilyIndices{ invalidQueueFamilyIndex, invalidQueueFamilyIndex, invalidQueueFamilyIndex, invalidQueueFamilyIndex, invalidQueueFamilyIndex };
+
+		bool m_supportsRebar{ false };
+		bool m_supportsBar{ false };
 
 		Extensions m_availableExtensions{};
-		std::vector<VkQueueFamilyProperties> m_queueFamilyProperties{};
 
 		VkPhysicalDeviceFeatures2 m_features{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		VkPhysicalDeviceVulkan11Features  m_11Features{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
@@ -426,6 +467,11 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDeviceMeshShaderFeaturesEXT m_meshShaderFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
 		VkPhysicalDevicePresentIdFeaturesKHR  m_presentIdFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR };
 		VkPhysicalDevicePresentWaitFeaturesKHR   m_presentWaitFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR };
+		VkPhysicalDeviceDescriptorBufferFeaturesEXT m_descriptorBufferFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
+		VkPhysicalDeviceHostImageCopyFeaturesEXT m_hostImageCopyFeatures{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT };
+		VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR m_dynamicRenderingLocalReadFeatures {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR};
+		VkPhysicalDeviceMaintenance5FeaturesKHR m_maintenance5Features{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR };
+		VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT m_swapchainMaintenance1Features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT };
 
 
 		//Promoted to Vulkan 1.3
@@ -472,6 +518,16 @@ export namespace nyan::vulkan::wrapper
 		VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rayTracingPipelineProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR };
 		VkPhysicalDeviceMeshShaderPropertiesEXT m_meshShaderProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
 		VkPhysicalDevicePushDescriptorPropertiesKHR m_pushDescriptorProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR };
+		VkPhysicalDeviceExternalMemoryHostPropertiesEXT m_externalMemoryHostProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT };
+		VkPhysicalDeviceDescriptorBufferPropertiesEXT m_descriptorBufferProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT };
+		VkPhysicalDeviceHostImageCopyPropertiesEXT m_hostImageCopyProperties{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT };
+		VkPhysicalDeviceMaintenance5PropertiesKHR m_maintenance5Properties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR };
+
+		static constexpr size_t numImageLayouts = 38;
+		std::array<VkImageLayout, numImageLayouts> m_hostImageCopySrcLayouts;
+		std::array<VkImageLayout, numImageLayouts> m_hostImageCopyDstLayouts;
+
+		VkPhysicalDeviceMemoryProperties m_memoryProperties{};
 
 		//Promoted to Vulkan 1.3
 		VkPhysicalDeviceSubgroupSizeControlPropertiesEXT m_subgroupSizeControlProperties{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES };

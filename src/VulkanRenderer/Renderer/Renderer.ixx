@@ -12,7 +12,7 @@ export namespace nyan::vulkan::renderer
 	{
 	public:
 
-		std::expected<Renderer, RendererCreationError> create() noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<Renderer, RendererCreationError> create() noexcept;
 	private:
 		Renderer() noexcept;
 	};

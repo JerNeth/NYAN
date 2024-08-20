@@ -328,7 +328,7 @@ std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescrip
 		}
 	};
 	if (!device.get_enabled_extensions().accelerationStructure)
-		bindings[6].descriptorCount = 0;
+		bindings[bindings.size() - 1].descriptorCount = 0;
 
 	uint32_t bindingCount = 0;
 	for (uint32_t i = 0; i < bindings.size(); ++i)

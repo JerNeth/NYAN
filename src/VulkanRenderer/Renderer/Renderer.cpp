@@ -2,11 +2,13 @@ module;
 
 #include <expected>
 #include <optional>
+#include <memory>
 #include <vector>
 
 //#include "volk.h"
 
 module NYANVulkanRenderer;
+import NYANVulkanWrapper;
 
 using namespace nyan::vulkan::renderer;
 using namespace nyan::vulkan::wrapper;
@@ -57,43 +59,42 @@ std::expected<Renderer, RendererCreationError> Renderer::create() noexcept
 
 	//PhysicalDevice::Extensions requiredDeviceExtensions = PhysicalDevice::Extensions::vulkan12_core();
 	PhysicalDevice::Extensions requiredDeviceExtensions = PhysicalDevice::Extensions{
-		.timelineSemaphore = 1,
-		.debugUtils = 1,
-		.bufferDeviceAddress = 1,
 		.swapchain = 1,
+		.bufferDeviceAddress = 1,
+		.timelineSemaphore = 1,
 		.descriptorIndexing = 1,
 	};
 
-	auto physicalDeviceResult = instance.select_physical_device(std::nullopt{}, requiredDeviceExtensions);
-	if(!physicalDeviceResult)
-		return std::unexpected{ RendererCreationError::Type:: };
+	auto physicalDeviceResult = instance.select_physical_device(std::nullopt, requiredDeviceExtensions);
+	//if(!physicalDeviceResult)
+	//	return std::unexpected{ RendererCreationError::Type:: };
 
 	QueueContainer<float> queuePriorities;
 	queuePriorities[Queue::Type::Graphics].push_back(1.f);
 	queuePriorities[Queue::Type::Compute].push_back(1.f);
 	queuePriorities[Queue::Type::Transfer].push_back(1.f);
 
-	PhysicalDevice::Extensions extensions{
-	};
-	auto logicalDeviceCreateResult = LogicalDevice::create(*instance, physicalDevice,
-		nullptr, extensions, queuePriorities);
-	if (!logicalDeviceCreateResult)
-		GTEST_SKIP() << "Could not create LogicalDevice, skipping  Logical Device Tests";
-	logicalDevice = std::make_unique<LogicalDevice>(std::move(*logicalDeviceCreateResult));
+	//PhysicalDevice::Extensions extensions{
+	//};
+	auto logicalDeviceCreateResult = LogicalDevice::create(instance, *physicalDeviceResult,
+		nullptr, requiredDeviceExtensions, queuePriorities);
+	//if (!logicalDeviceCreateResult)
+	//	GTEST_SKIP() << "Could not create LogicalDevice, skipping  Logical Device Tests";
+	auto logicalDevice = std::move(*logicalDeviceCreateResult);
 
 	{
-		auto& queues = logicalDevice->get_queues(Queue::Type::Graphics);
+		auto& queues = logicalDevice.get_queues(Queue::Type::Graphics);
 		queues[0].wait_idle();
 	}
 	{
-		auto& queues = logicalDevice->get_queues(Queue::Type::Compute);
+		auto& queues = logicalDevice.get_queues(Queue::Type::Compute);
 		queues[0].wait_idle();
 	}
 	{
-		auto& queues = logicalDevice->get_queues(Queue::Type::Transfer);
+		auto& queues = logicalDevice.get_queues(Queue::Type::Transfer);
 		queues[0].wait_idle();
 	}
 
 
-	return {};
+	return Renderer{};
 }

@@ -1,5 +1,6 @@
 module;
 
+#include <bit>
 #include <cassert>
 #include <string_view>
 
@@ -15,12 +16,20 @@ std::vector<const char*> PhysicalDevice::Extensions::generate_extension_list(uin
 {
 	std::vector<const char*> extensionList;
 
+	auto data = std::bit_cast<std::array<uint32_t, (sizeof(Extensions) + (sizeof(uint32_t) - 1)) / sizeof(uint32_t)>>(*this);
+
+	size_t size{ 0 };
+	for (auto d : data)
+		size += std::popcount(d);
+
+	extensionList.reserve(size);
+
 	if (swapchain)
 		extensionList.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	if (swapchainMaintenance1)
+		extensionList.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
 	if (fullscreenExclusive)
 		extensionList.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
-	if (debugUtils)
-		extensionList.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	if (debugMarker)
 		extensionList.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 	if (accelerationStructure)
@@ -47,6 +56,17 @@ std::vector<const char*> PhysicalDevice::Extensions::generate_extension_list(uin
 		extensionList.push_back(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
 	if (pushDescriptors)
 		extensionList.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+	if(externalMemoryHost)
+		extensionList.push_back(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME);
+	if (descriptorBuffer)
+		extensionList.push_back(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
+	if (hostImageCopy)
+		extensionList.push_back(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
+	if (maintenance5)
+		extensionList.push_back(VK_KHR_MAINTENANCE_5_EXTENSION_NAME);
+	if (dynamicRenderingLocalRead)
+		extensionList.push_back(VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
+
 
 	if (apiVersion < VK_API_VERSION_1_3) {
 		if (copyCommands)
@@ -162,6 +182,32 @@ PhysicalDevice::Extensions PhysicalDevice::Extensions::generate_dependent_extens
 		dependencies.deferredHostOperations = 1;
 	}
 
+	if (dependencies.descriptorBuffer && 
+			apiVersion < VK_API_VERSION_1_3) {
+		if (apiVersion < VK_API_VERSION_1_2) {
+			dependencies.bufferDeviceAddress = 1;
+			dependencies.descriptorIndexing = 1;
+		}
+		dependencies.synchronization2 = 1;
+	}
+
+	if (dependencies.hostImageCopy &&
+		apiVersion < VK_API_VERSION_1_3) {
+		dependencies.copyCommands = 1;
+		dependencies.formatFeatureFlags2 = 1;
+	}
+
+	if (dependencies.maintenance5 &&
+		apiVersion < VK_API_VERSION_1_3) {
+		dependencies.dynamicRendering = 1;
+	}
+
+	if (dependencies.dynamicRenderingLocalRead &&
+		apiVersion < VK_API_VERSION_1_3) {
+		dependencies.dynamicRendering = 1;
+	}
+
+
 	if (dependencies.presentWait)
 		dependencies.presentId = 1;
 
@@ -171,7 +217,11 @@ PhysicalDevice::Extensions PhysicalDevice::Extensions::generate_dependent_extens
 	if (dependencies.fullscreenExclusive)
 		dependencies.swapchain = 1;
 
-	if (dependencies.dynamicRendering)
+	if (dependencies.swapchainMaintenance1)
+		dependencies.swapchain = 1;
+
+	if (dependencies.dynamicRendering && 
+		apiVersion < VK_API_VERSION_1_2)
 		dependencies.depthStencilResolve = 1;
 
 	if (dependencies.depthStencilResolve)
@@ -193,10 +243,10 @@ PhysicalDevice::Extensions PhysicalDevice::Extensions::generate_extension(std::s
 {
 	if (extensionName.compare(VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0)
 		return Extensions{ .swapchain = 1 };
+	if (extensionName.compare(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME) == 0)
+		return Extensions{ .swapchainMaintenance1 = 1 };
 	if (extensionName.compare(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) == 0)
 		return Extensions { .fullscreenExclusive = 1 };
-	if (extensionName.compare(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
-		return Extensions { .debugUtils = 1 };
 	if (extensionName.compare(VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0)
 		return Extensions { .debugMarker = 1 };
 	if (extensionName.compare(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0)
@@ -223,6 +273,16 @@ PhysicalDevice::Extensions PhysicalDevice::Extensions::generate_extension(std::s
 		return Extensions{ .presentWait = 1 };
 	if (extensionName.compare(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME) == 0)
 		return Extensions{ .pushDescriptors = 1 };
+	if (extensionName.compare(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME) == 0)
+		return Extensions{ .externalMemoryHost = 1 };
+	if (extensionName.compare(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME) == 0)
+		return Extensions{ .descriptorBuffer = 1 };
+	if (extensionName.compare(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME) == 0)
+		return Extensions{ .hostImageCopy = 1 };
+	if (extensionName.compare(VK_KHR_MAINTENANCE_5_EXTENSION_NAME) == 0)
+		return Extensions{ .maintenance5 = 1 };
+	if (extensionName.compare(VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME) == 0)
+		return Extensions{ .dynamicRenderingLocalRead = 1 };
 
 	if (extensionName.compare(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME) == 0)
 		return Extensions { .copyCommands = 1 };
@@ -373,6 +433,31 @@ const VkPhysicalDeviceMeshShaderFeaturesEXT& PhysicalDevice::get_mesh_shader_fea
 	return m_meshShaderFeatures;
 }
 
+const VkPhysicalDeviceDescriptorBufferFeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_descriptor_buffer_features() const noexcept
+{
+	return m_descriptorBufferFeatures;
+}
+
+const VkPhysicalDeviceHostImageCopyFeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_features() const noexcept
+{
+	return m_hostImageCopyFeatures;
+}
+
+const VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_dynamic_rendering_local_read_features() const noexcept
+{
+	return m_dynamicRenderingLocalReadFeatures;
+}
+
+const VkPhysicalDeviceMaintenance5FeaturesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_maintenance5_features() const noexcept
+{
+	return m_maintenance5Features;
+}
+
+const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_swapchain_maintenance1_features() const noexcept
+{
+	return m_swapchainMaintenance1Features;
+}
+
 const VkPhysicalDeviceProperties& PhysicalDevice::get_properties() const noexcept
 {
 	return m_properties.properties;
@@ -418,6 +503,51 @@ const VkPhysicalDevicePushDescriptorPropertiesKHR& PhysicalDevice::get_push_desc
 	return m_pushDescriptorProperties;
 }
 
+const VkPhysicalDeviceExternalMemoryHostPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_external_memory_host_properties() const noexcept
+{
+	return m_externalMemoryHostProperties;
+}
+
+const VkPhysicalDeviceDescriptorBufferPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_descriptor_buffer_properties() const noexcept
+{
+	return m_descriptorBufferProperties;
+}
+
+const VkPhysicalDeviceMaintenance5PropertiesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_maintenance5_properties() const noexcept
+{
+	return m_maintenance5Properties;
+}
+
+const VkPhysicalDeviceHostImageCopyPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_properties() const noexcept
+{
+	return m_hostImageCopyProperties;
+}
+
+std::span<const VkImageLayout> nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_src_layouts() const noexcept
+{
+	return { m_hostImageCopySrcLayouts.data(), m_hostImageCopyProperties.copySrcLayoutCount };
+}
+
+std::span<const VkImageLayout> nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_dst_layouts() const noexcept
+{
+	return { m_hostImageCopyDstLayouts.data(), m_hostImageCopyProperties.copyDstLayoutCount };
+}
+
+const VkPhysicalDeviceMemoryProperties& nyan::vulkan::wrapper::PhysicalDevice::get_memory_properties() const noexcept
+{
+	return m_memoryProperties;
+}
+
+const bool PhysicalDevice::supports_rebar() const noexcept
+{
+	return m_supportsRebar;
+}
+
+const bool PhysicalDevice::supports_bar() const noexcept
+{
+	return m_supportsBar;
+}
+
 const PhysicalDevice::Extensions& PhysicalDevice::get_available_extensions() const noexcept
 {
 	return m_availableExtensions;
@@ -435,7 +565,9 @@ std::expected<PhysicalDevice, PhysicalDeviceCreationError> PhysicalDevice::creat
 		else
 			return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
 	}
+
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+
 	if (auto result = vkEnumerateDeviceExtensionProperties(handle, nullptr, &extensionCount, availableExtensions.data()); result != VK_SUCCESS) {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
@@ -445,11 +577,11 @@ std::expected<PhysicalDevice, PhysicalDeviceCreationError> PhysicalDevice::creat
 		else
 			return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
 	}
-	Extensions availableExtension;
+
+	Extensions availableExtension{};
+
 	for(const auto& extensionProperty : availableExtensions)
-	{
-		availableExtension = availableExtension & Extensions::generate_extension(extensionProperty.extensionName);
-	}
+		availableExtension = availableExtension | Extensions::generate_extension(extensionProperty.extensionName);
 	
 
 	return PhysicalDevice{ handle, availableExtension };
@@ -633,6 +765,31 @@ const VkPhysicalDeviceFeatures2& PhysicalDevice::build_feature_chain(const Exten
 		m_meshShaderFeatures.pNext = m_features.pNext;
 		m_features.pNext = &m_meshShaderFeatures;
 	}
+	if (extensions.descriptorBuffer)
+	{
+		m_descriptorBufferFeatures.pNext = m_features.pNext;
+		m_features.pNext = &m_descriptorBufferFeatures;
+	}
+	if (extensions.hostImageCopy)
+	{
+		m_hostImageCopyFeatures.pNext = m_features.pNext;
+		m_features.pNext = &m_hostImageCopyFeatures;
+	}
+	if (extensions.maintenance5)
+	{
+		m_maintenance5Features.pNext = m_features.pNext;
+		m_features.pNext = &m_maintenance5Features;
+	}
+	if (extensions.dynamicRenderingLocalRead)
+	{
+		m_dynamicRenderingLocalReadFeatures.pNext = m_features.pNext;
+		m_features.pNext = &m_dynamicRenderingLocalReadFeatures;
+	}
+	if (extensions.swapchainMaintenance1)
+	{
+		m_swapchainMaintenance1Features.pNext = m_features.pNext;
+		m_features.pNext = &m_swapchainMaintenance1Features;
+	}
 	if (extensions.atomicFloats)
 	{
 		m_atomicFloatFeatures.pNext = m_features.pNext;
@@ -675,10 +832,11 @@ PhysicalDevice::PhysicalDevice(VkPhysicalDevice handle, const Extensions& availa
 	m_handle(handle),
 	m_availableExtensions(availableExtensions)
 {
-	init_type();
+	init_memory_properties();
 	init_queues();
 	init_features();
 	init_properties();
+	init_type();
 }
 
 void PhysicalDevice::init_type() noexcept
@@ -696,15 +854,61 @@ void PhysicalDevice::init_type() noexcept
 		m_type = Type::Other;
 }
 
+void nyan::vulkan::wrapper::PhysicalDevice::init_memory_properties() noexcept
+{
+	vkGetPhysicalDeviceMemoryProperties(m_handle, &m_memoryProperties);
+
+	size_t largestDeviceHeapVisibleSize = 0;
+	size_t largestDeviceHeapVisibleIdx = VK_MAX_MEMORY_HEAPS;
+	size_t largestDeviceHeapSize = 0;
+	size_t largestDeviceHeapIdx = VK_MAX_MEMORY_HEAPS;
+
+	for (uint32_t memoryHeapIndex = 0; memoryHeapIndex < m_memoryProperties.memoryHeapCount; ++memoryHeapIndex)
+	{
+		const auto& heap = m_memoryProperties.memoryHeaps[memoryHeapIndex];
+
+		if (!(heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))
+			continue;
+
+		for (uint32_t memoryTypeIndex = 0; memoryTypeIndex < m_memoryProperties.memoryTypeCount; ++memoryTypeIndex)
+		{
+			const auto& type = m_memoryProperties.memoryTypes[memoryTypeIndex];
+
+			if (type.heapIndex != memoryHeapIndex)
+				continue;
+
+			assert(type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			if (!(type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+				continue;
+
+			if (heap.size > largestDeviceHeapSize) {
+				largestDeviceHeapSize = heap.size;
+				largestDeviceHeapIdx = memoryHeapIndex;
+			}
+
+			if (!(type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+				continue;
+
+			if (heap.size > largestDeviceHeapVisibleSize) {
+				largestDeviceHeapVisibleSize = heap.size;
+				largestDeviceHeapVisibleIdx = memoryHeapIndex;
+			}
+		}
+	}
+
+	m_supportsBar = largestDeviceHeapVisibleIdx != VK_MAX_MEMORY_HEAPS;
+	m_supportsRebar = (largestDeviceHeapVisibleIdx == largestDeviceHeapIdx) && (largestDeviceHeapIdx != VK_MAX_MEMORY_HEAPS);
+}
+
 void PhysicalDevice::init_queues() noexcept
 {
 	uint32_t numQueueFamilies = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(m_handle, &numQueueFamilies, nullptr);
-	m_queueFamilyProperties.resize(numQueueFamilies);
-	vkGetPhysicalDeviceQueueFamilyProperties(m_handle, &numQueueFamilies, m_queueFamilyProperties.data());
+	std::vector<VkQueueFamilyProperties> queueFamilyProperties{ numQueueFamilies, {} };
+	vkGetPhysicalDeviceQueueFamilyProperties(m_handle, &numQueueFamilies, queueFamilyProperties.data());
 
-	for (uint32_t i = 0; i < m_queueFamilyProperties.size(); i++) {
-		const auto& queue = m_queueFamilyProperties[i];
+	for (uint32_t i = 0; i < queueFamilyProperties.size(); i++) {
+		const auto& queue = queueFamilyProperties[i];
 		if ((queue.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_VIDEO_ENCODE_BIT_KHR | VK_QUEUE_VIDEO_DECODE_BIT_KHR)) == VK_QUEUE_TRANSFER_BIT) {
 			if (m_queueFamilyIndices[Queue::Type::Transfer] == ~0u)
 				m_queueFamilyIndices[Queue::Type::Transfer] = i;
@@ -738,7 +942,17 @@ void PhysicalDevice::init_features() noexcept
 
 	m_12Features.pNext = &m_13Features;
 
-	m_13Features.pNext = &m_atomicFloatFeatures;
+	m_13Features.pNext = &m_dynamicRenderingLocalReadFeatures;
+
+	m_dynamicRenderingLocalReadFeatures.pNext = &m_hostImageCopyFeatures;
+
+	m_hostImageCopyFeatures.pNext = &m_maintenance5Features;
+
+	m_maintenance5Features.pNext = &m_descriptorBufferFeatures;
+
+	m_descriptorBufferFeatures.pNext = &m_swapchainMaintenance1Features;
+
+	m_swapchainMaintenance1Features.pNext = &m_atomicFloatFeatures;
 
 	m_atomicFloatFeatures.pNext = &m_accelerationStructureFeatures;
 
@@ -865,17 +1079,18 @@ void PhysicalDevice::init_properties() noexcept
 	{
 		return;
 	}
-	m_properties.pNext = &m_subgroupProperties;
 
-	m_subgroupProperties.pNext = &m_11Properties;
+	if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
+		m_properties.pNext = &m_accelerationStructureProperties;
+	else
+		m_properties.pNext = &m_11Properties; //11 Properties were added with 1.2
 
 	m_11Properties.pNext = &m_12Properties;
-	if (m_properties.properties.apiVersion < VK_API_VERSION_1_2)
-		m_11Properties.pNext = &m_accelerationStructureProperties;
 
-	m_12Properties.pNext = &m_13Properties;
 	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
 		m_12Properties.pNext = &m_accelerationStructureProperties;
+	else
+		m_12Properties.pNext = &m_13Properties;
 
 	m_13Properties.pNext = &m_accelerationStructureProperties;
 
@@ -885,11 +1100,25 @@ void PhysicalDevice::init_properties() noexcept
 
 	m_meshShaderProperties.pNext = &m_pushDescriptorProperties;
 
-	m_pushDescriptorProperties.pNext = nullptr;
+	m_pushDescriptorProperties.pNext = &m_externalMemoryHostProperties;
+
+	m_externalMemoryHostProperties.pNext = &m_maintenance5Properties;
+
+	m_maintenance5Properties.pNext = &m_hostImageCopyProperties;
+
+	m_hostImageCopyProperties.pNext = &m_subgroupProperties;
+	m_hostImageCopyProperties.copySrcLayoutCount = m_hostImageCopySrcLayouts.size();
+	m_hostImageCopyProperties.copyDstLayoutCount = m_hostImageCopyDstLayouts.size();
+	m_hostImageCopyProperties.pCopySrcLayouts = m_hostImageCopySrcLayouts.data();
+	m_hostImageCopyProperties.pCopyDstLayouts = m_hostImageCopyDstLayouts.data();
+
+	m_subgroupProperties.pNext = &m_descriptorBufferProperties;
+
+	m_descriptorBufferProperties.pNext = nullptr;
 
 	if (m_properties.properties.apiVersion < VK_API_VERSION_1_3)
 	{
-		m_pushDescriptorProperties.pNext = &m_subgroupSizeControlProperties;
+		m_externalMemoryHostProperties.pNext = &m_subgroupSizeControlProperties;
 		m_subgroupSizeControlProperties.pNext = &m_texelBufferAlignmentProperties;
 		m_texelBufferAlignmentProperties.pNext = &m_inlineUniformBlockProperties;
 		m_inlineUniformBlockProperties.pNext = &m_maintenance4Properties;

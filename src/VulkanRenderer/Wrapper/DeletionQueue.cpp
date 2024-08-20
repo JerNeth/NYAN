@@ -49,127 +49,74 @@ void DeletionQueue::advance_epoch() noexcept
 
 void DeletionQueue::queue_image_view_deletion(VkImageView imageView) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.imageViews.push_back(imageView);
+	queue_item_deletion().imageViews.push_back(imageView);
 }
 
 void DeletionQueue::queue_buffer_view_deletion(const VkBufferView bufferView) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.bufferViews.push_back(bufferView);
+	queue_item_deletion().bufferViews.push_back(bufferView);
 }
 
 void DeletionQueue::queue_sampler_deletion(const VkSampler sampler) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.samplers.push_back(sampler);
+	queue_item_deletion().samplers.push_back(sampler);
 }
 void DeletionQueue::queue_image_deletion(const VkImage image) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.images.push_back(image);
+	queue_item_deletion().images.push_back(image);
 }
 void DeletionQueue::queue_buffer_deletion(const VkBuffer buffer) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.buffers.push_back(buffer);
+	queue_item_deletion().buffers.push_back(buffer);
 }
 void DeletionQueue::queue_acceleration_structure_deletion(const VkAccelerationStructureKHR accelerationStructure) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.accelerationStructures.push_back(accelerationStructure);
+	queue_item_deletion().accelerationStructures.push_back(accelerationStructure);
 }
 void DeletionQueue::queue_framebuffer_deletion(const VkFramebuffer framebuffer) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.framebuffers.push_back(framebuffer);
+	queue_item_deletion().framebuffers.push_back(framebuffer);
 }
 void DeletionQueue::queue_semaphore_deletion(const VkSemaphore semaphore) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.semaphores.push_back(semaphore);
+	queue_item_deletion().semaphores.push_back(semaphore);
 }
 void DeletionQueue::queue_allocation_deletion(const VmaAllocation allocation) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.allocations.push_back(allocation);
+	queue_item_deletion().allocations.push_back(allocation);
 }
 void DeletionQueue::queue_descriptor_pool_deletion(const VkDescriptorPool descriptorPool) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.descriptorPools.push_back(descriptorPool);
+	queue_item_deletion().descriptorPools.push_back(descriptorPool);
 }
 
 void DeletionQueue::queue_descriptor_set_layout_deletion(const VkDescriptorSetLayout descriptorSetLayout) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.descriptorSetLayouts.push_back(descriptorSetLayout);
+	queue_item_deletion().descriptorSetLayouts.push_back(descriptorSetLayout);
 }
 
 void DeletionQueue::queue_command_pool_deletion(const VkCommandPool commandPool) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.commandPools.push_back(commandPool);
+	queue_item_deletion().commandPools.push_back(commandPool);
 }
 void DeletionQueue::queue_query_pool_deletion(const VkQueryPool queryPool) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.queryPools.push_back(queryPool);
+	queue_item_deletion().queryPools.push_back(queryPool);
 }
 void DeletionQueue::queue_pipeline_deletion(VkPipeline pipeline) noexcept
 {
-	assert(m_currentEpoch < numEpochs);
-	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
-	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.pipelines.push_back(pipeline);
+	queue_item_deletion().pipelines.push_back(pipeline);
 }
 void DeletionQueue::queue_pipeline_layout_deletion(VkPipelineLayout pipelineLayout) noexcept
 {
+	queue_item_deletion().pipelineLayouts.push_back(pipelineLayout);
+}
+DeletionQueue::DeletionData& nyan::vulkan::wrapper::DeletionQueue::queue_item_deletion() noexcept
+{
 	assert(m_currentEpoch < numEpochs);
 	// ReSharper disable once CppUseStructuredBinding
-	auto& currentQueue = m_deletionQueues[m_currentEpoch];
 	m_deletionEmpty[m_currentEpoch] = false;
-	currentQueue.pipelineLayouts.push_back(pipelineLayout);
+	return m_deletionQueues[m_currentEpoch];
 }
 void DeletionQueue::clear_epoch(const size_t epoch) noexcept
 {

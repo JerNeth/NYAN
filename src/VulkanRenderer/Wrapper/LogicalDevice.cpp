@@ -149,6 +149,11 @@ const std::vector<Queue>& LogicalDevice::get_queues(Queue::Type type) const noex
 	return m_queues[type];
 }
 
+std::vector<Queue>& LogicalDevice::get_queues(Queue::Type type) noexcept
+{
+	return m_queues[type];
+}
+
 Allocator& LogicalDevice::get_allocator() noexcept
 {
 	return m_allocator;

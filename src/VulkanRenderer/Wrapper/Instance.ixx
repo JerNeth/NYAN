@@ -51,18 +51,18 @@ export namespace nyan::vulkan::wrapper
 			uint32_t waylandSurface : 1 {0};
 			uint32_t androidSurface : 1 {0};
 			uint32_t directfbSurface : 1 {0};
-			uint32_t acquireXlibSurface : 1 {0};
+			uint32_t acquireXlibSurface : 1 {0};  //Don't actually want that, exclusive display access
 			uint32_t directModeDisplay : 1 {0}; //Don't actually want that, it's for HMDs, exclusive display access
 			uint32_t display : 1 {0}; //Poor support on windows
-			uint32_t getDisplayProperties2 : 1 { 0}; //Depends on KHR_DISPLAY
-			uint32_t getSurfaceCapabilities2 : 1{ 0};
+			uint32_t getDisplayProperties2 : 1 {0}; //Depends on KHR_DISPLAY
+			uint32_t getSurfaceCapabilities2 : 1 {0};
 			uint32_t surfaceMaintenance1 : 1 {0};
 			uint32_t getPhysicalDeviceProperties2 : 1 {0}; //1.1 core
 			uint32_t swapchainColorSpaceExtension : 1 {0};
 			uint32_t validationFeatures : 1 {0};
 			uint32_t debugUtils : 1 {0};
 			bool operator==(const ExtensionSettings& other) const noexcept = default;
-			friend ExtensionSettings operator&(const ExtensionSettings& lhs, const ExtensionSettings& rhs) noexcept
+			static friend ExtensionSettings operator&(const ExtensionSettings& lhs, const ExtensionSettings& rhs) noexcept
 			{
 				return ExtensionSettings{
 					lhs.surface & rhs.surface,
@@ -84,7 +84,7 @@ export namespace nyan::vulkan::wrapper
 					lhs.debugUtils & rhs.debugUtils
 				};
 			}
-			friend ExtensionSettings operator|(const ExtensionSettings& lhs, const ExtensionSettings& rhs) noexcept
+			static friend ExtensionSettings operator|(const ExtensionSettings& lhs, const ExtensionSettings& rhs) noexcept
 			{
 				return ExtensionSettings{
 					lhs.surface | rhs.surface,
@@ -114,9 +114,9 @@ export namespace nyan::vulkan::wrapper
 		Instance& operator=(Instance&& other) noexcept;
 		[[nodiscard]] const std::vector<PhysicalDevice>& get_physical_devices() const noexcept;
 
-		[[nodiscard]] std::expected<PhysicalDevice, PhysicalDeviceSelectionError> select_physical_device(std::optional<uint64_t> deviceId, const PhysicalDevice::Extensions& requiredExtensions) const noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<PhysicalDevice, PhysicalDeviceSelectionError> select_physical_device(std::optional<uint64_t> deviceId, const PhysicalDevice::Extensions& requiredExtensions) const noexcept;
 
-		[[nodiscard]] static std::expected<Instance, InstanceCreationError> create(const ValidationSettings& validationSettings,
+		[[nodiscard("must handle potential error")]] static std::expected<Instance, InstanceCreationError> create(const ValidationSettings& validationSettings,
 		                                                             const ExtensionSettings& requiredExtensions, const ExtensionSettings& optionalExtension,
 		                                                             std::string_view applicationName = "", std::string_view engineName = "",
 		                                                             uint32_t applicationVersion = 0, uint32_t engineVersion = 0) noexcept;

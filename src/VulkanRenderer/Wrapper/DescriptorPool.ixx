@@ -34,7 +34,7 @@ export namespace nyan::vulkan::wrapper
 		 * \param numDescriptorSets 
 		 * \return 
 		 */
-		static [[nodiscard]] std::expected<DescriptorPool, Error> create(LogicalDevice& device, const DescriptorSetLayout& layout, uint32_t numDescriptorSets) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<DescriptorPool, Error> create(LogicalDevice& device, const DescriptorSetLayout& layout, uint32_t numDescriptorSets) noexcept;
 	private:
 		DescriptorPool(const LogicalDeviceWrapper& deviceWrapper, VkDescriptorPool handle, DeletionQueue& deletionQueue, std::vector<DescriptorSet>& sets) noexcept;
 		void reset() noexcept;

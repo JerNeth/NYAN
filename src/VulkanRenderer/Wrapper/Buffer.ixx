@@ -4,7 +4,6 @@ module;
 #include <span>
 
 #include "magic_enum.hpp"
-#include "magic_enum_containers.hpp"
 
 #include "volk.h"
 
@@ -14,6 +13,7 @@ import :Allocator;
 import :DeletionQueue;
 import :Object;
 import :Error;
+import :Queue;
 
 export namespace nyan::vulkan::wrapper
 {
@@ -21,49 +21,49 @@ export namespace nyan::vulkan::wrapper
 	class Buffer : public Object<VkBuffer>
 	{
 	public:
-		enum class UsageFlags : uint32_t
+		enum class UsageFlags : uint8_t
 		{
-			TransferSrc = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)),
-			TransferDst = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_TRANSFER_DST_BIT)),
-			UniformTexelBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)),
-			StorageTexelBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)),
-			UniformBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)),
-			StorageBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)),
-			IndexBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT)),
-			VertexBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)),
-			IndirectBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)),
-			ShaderDeviceAddress = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)),
-			VideoDecodeSrc = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR)),
-			VideoDecodeDst = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_VIDEO_DECODE_DST_BIT_KHR)),
-			AccelerationStructureBuildInputReadOnly = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR)),
-			AccelerationStructureStorageBit = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR)),
-			ShaderBindingTable = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR)),
-			VideoEncodeSrc = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_VIDEO_ENCODE_DST_BIT_KHR)),
-			VideoEncodeDst = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_VIDEO_ENCODE_SRC_BIT_KHR)),
-			SamplerDescriptorBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT)),
-			ResourceDescriptorBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT)),
-			PushDescriptorDescriptorBuffer = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT)),
-			MicromapBuildInput = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT)),
-			MicromapStorage = std::countr_zero(static_cast<uint32_t>(VK_BUFFER_USAGE_MICROMAP_STORAGE_BIT_EXT))
+			TransferSrc,
+			TransferDst,
+			UniformTexelBuffer,
+			StorageTexelBuffer,
+			UniformBuffer,
+			StorageBuffer,
+			IndexBuffer,
+			VertexBuffer,
+			IndirectBuffer,
+			ShaderDeviceAddress,
+			VideoDecodeSrc,
+			VideoDecodeDst,
+			AccelerationStructureBuildInputReadOnly,
+			AccelerationStructureStorageBit,
+			ShaderBindingTable,
+			VideoEncodeSrc,
+			VideoEncodeDst,
+			SamplerDescriptorBuffer,
+			ResourceDescriptorBuffer,
+			PushDescriptorDescriptorBuffer,
+			MicromapBuildInput,
+			MicromapStorage,
 		};
-		//using Usage = nyan::util::data::bitset<magic_enum::enum_count<UsageFlags>(), UsageFlags>;
-		using Usage = magic_enum::containers::bitset<UsageFlags>;
-		enum class Location : uint32_t {
-			Device,
-			Host
-		};
+		using BufferSize = uint32_t;
+		using Usage = nyan::util::data::bitset<magic_enum::enum_count<UsageFlags>(), UsageFlags>;
+		//using Usage = magic_enum::containers::bitset<UsageFlags>;
 		struct Options {
-			std::span<uint32_t> queueFamilies = {}
-			bool dedicatedAllocations{ false };
+			BufferSize size = {};
+			Queue::FamilyIndexGroup queueFamilies = {};
+			bool dedicatedAllocation { false };
 			bool mapable{ false };
 		};
-	private:
+	protected:
 		struct Data 
 		{
 			Usage usage;
-			Location location;
-			bool mapable;
-			bool shared;
+			Object::Location location;
+			Queue::FamilyIndexGroup queueFamilies;
+			BufferSize size{ 0 }; //Due to devices not supporting >4GB
+			VmaAllocation allocation{ VK_NULL_HANDLE};
+			void* ptr{ nullptr };
 		};
 
 	public:
@@ -73,18 +73,18 @@ export namespace nyan::vulkan::wrapper
 		Buffer& operator=(Buffer&) = delete;
 		Buffer& operator=(Buffer&& other) noexcept;
 
-		~Buffer() noexcept;
 
 		[[nodiscard]] bool shared() const noexcept;
-		[[nodiscard]] bool mapable() const noexcept;
-
-		[[nodiscard]] static std::expected<Buffer, Error> create(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Usage usage) noexcept;
+		[[nodiscard]] void* mapped_data() const noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<void, Error> flush() const noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<void, Error> invalidate() const noexcept;
 
 	protected:
-		Buffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, VkBuffer handle, Usage usage) noexcept;
+		Buffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
+		~Buffer() noexcept;
 
 		DeletionQueue& r_deletionQueue;
-
+		Allocator& r_allocator;
 		Data m_data;
 	};
 
@@ -92,10 +92,49 @@ export namespace nyan::vulkan::wrapper
 	{
 	public:
 
-		[[nodiscard]] static std::expected<StorageBuffer, Error> create(LogicalDevice& device, size_t size, const Options& options = {}) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<StorageBuffer, Error> create(LogicalDevice& device, const Options& options = {}) noexcept;
 
 	private:
-		StorageBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, VkBuffer handle) noexcept;
+		StorageBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
 
+	};
+
+	class UniformBuffer : public Buffer
+	{
+	public:
+
+		[[nodiscard("must handle potential error")]] static std::expected<UniformBuffer, Error> create(LogicalDevice& device, const Options& options = {}) noexcept;
+
+	private:
+		UniformBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
+
+	};
+
+	class AccelerationStructureBuffer : public Buffer
+	{
+	public:
+
+		[[nodiscard("must handle potential error")]] static std::expected<AccelerationStructureBuffer, Error> create(LogicalDevice& device, const Options& options = {}) noexcept;
+
+	private:
+		AccelerationStructureBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
+
+	};
+
+	class StagingBuffer : public Buffer
+	{
+	public:
+
+	private:
+		StagingBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
+	};
+	
+
+	class MeshBuffer : public Buffer
+	{
+	public:
+
+	private:
+		MeshBuffer(const LogicalDeviceWrapper& device, DeletionQueue& deletionQueue, Allocator& allocator, VkBuffer handle, Data data) noexcept;
 	};
 }

@@ -1,5 +1,7 @@
 module;
 
+#include <expected>
+
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
@@ -280,20 +282,17 @@ VkDebugReportObjectTypeEXT get_debug_report_object_type<VkAccelerationStructureK
 
 template<typename HandleClass>
 std::expected<void, Error> nyan::vulkan::wrapper::Object<HandleClass>::set_debug_label(const char* name) const noexcept {
-    //if (r_device.get_enabled_extensions().debugUtils) {
-	   // const VkDebugUtilsObjectNameInfoEXT label{
-    //        .sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
-    //        .pNext {nullptr},
-    //        .objectType {get_object_type<HandleClass>()},
-    //        .objectHandle {reinterpret_cast<uint64_t>(m_handle)},
-    //        .pObjectName {name},
-    //    };
-    //    if(auto result = vkSetDebugUtilsObjectNameEXT(r_device.get_device().get_handle(), &label); result != VK_SUCCESS)
-    //    {
-    //        return std::unexpected{nyan::vulkan::wrapper::Error{result } };
-    //    }
 
-    //}
+	const VkDebugUtilsObjectNameInfoEXT label{
+        .sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
+        .pNext {nullptr},
+        .objectType {get_object_type<HandleClass>()},
+        .objectHandle {reinterpret_cast<uint64_t>(m_handle)},
+        .pObjectName {name},
+    };
+    if(auto result = vkSetDebugUtilsObjectNameEXT(r_device.get_handle(), &label); result != VK_SUCCESS)
+        return std::unexpected{ result };
+ 
     return {};
     
 }

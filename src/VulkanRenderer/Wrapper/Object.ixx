@@ -16,11 +16,15 @@ export namespace nyan::vulkan::wrapper
 	class Object
 	{
 	public:
-		[[nodiscard]]const HandleClass& get_handle() const noexcept
+		enum class Location : uint8_t {
+			Device,
+			Host
+		};
+		[[nodiscard]] const HandleClass& get_handle() const noexcept
 		{
 			return m_handle;
 		}
-		[[nodiscard]] std::expected<void, Error> set_debug_label(const char* name) const noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<void, Error> set_debug_label(const char* name) const noexcept;
 	protected:
 		explicit constexpr Object(const LogicalDeviceWrapper& device) noexcept
 			: r_device(device),

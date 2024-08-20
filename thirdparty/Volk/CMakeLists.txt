@@ -15,7 +15,7 @@ endif()
 FetchContent_Declare(
 	volk
 	GIT_REPOSITORY ${repo_volk}
-	GIT_TAG        vulkan-sdk-1.3.275
+	GIT_TAG        vulkan-sdk-1.3.290
 	GIT_SHALLOW    true
 )
 FetchContent_MakeAvailable(volk)

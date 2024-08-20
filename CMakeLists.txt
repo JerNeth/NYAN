@@ -7,9 +7,9 @@ project(NYAN
         VERSION 0.0.1
         LANGUAGES CXX C)
 
-#if(EXISTS "UserSettings.txt")
+if(EXISTS "UserSettings.txt")
     include("UserSettings.txt")
-#endif()
+endif()
 #Project Wide Settings
 #All Options which change the ABI come here
 message("Detected ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")

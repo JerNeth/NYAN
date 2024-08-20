@@ -26,7 +26,7 @@ export namespace nyan::vulkan::wrapper
 
 		~PipelineLayout() noexcept;
 
-		[[nodiscard]] static std::expected<PipelineLayout, Error> create(const LogicalDeviceWrapper& deviceWrapper, DeletionQueue& deletionQueue, std::span<DescriptorSetLayout> descriptorSetLayouts) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<PipelineLayout, Error> create(const LogicalDeviceWrapper& deviceWrapper, DeletionQueue& deletionQueue, std::span<DescriptorSetLayout> descriptorSetLayouts) noexcept;
 
 		static constexpr uint32_t pushConstantSize = 128;
 	private:

@@ -54,6 +54,7 @@
 *.exe
 *.out
 
+*.pdb
 *.opendb
 /CMakeSettings.json
 /UserSettings.txt

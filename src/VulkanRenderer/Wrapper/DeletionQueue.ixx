@@ -62,7 +62,9 @@ export namespace nyan::vulkan::wrapper
 		void queue_query_pool_deletion(VkQueryPool queryPool) noexcept;
 		void queue_pipeline_deletion(VkPipeline pipeline) noexcept;
 		void queue_pipeline_layout_deletion(VkPipelineLayout pipelineLayout) noexcept;
+
 	private:
+		[[nodiscard]] DeletionData& queue_item_deletion() noexcept;
 		void clear_epoch(size_t epoch) noexcept;
 
 		static constexpr size_t numEpochs = 2;

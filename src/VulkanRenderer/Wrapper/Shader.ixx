@@ -103,9 +103,6 @@ export namespace nyan::vulkan::wrapper
 	private:
 		struct ShaderData {
 			Stage stage;
-			std::optional<uint32_t> workGroupSizeX;
-			std::optional<uint32_t> workGroupSizeY;
-			std::optional<uint32_t> workGroupSizeZ;
 			std::vector<Shader::SpecializationConstant> specConstants;
 			std::vector<VkSpecializationMapEntry> specConstantEntries;
 			std::vector<std::byte> specConstantStorage;
@@ -123,7 +120,7 @@ export namespace nyan::vulkan::wrapper
 
 		[[nodiscard]] ShaderInstance create_shader_instance() const noexcept;
 
-		[[nodiscard]] static std::expected<Shader, Error> create(const LogicalDevice& device, std::span<uint32_t> shaderCode) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<Shader, Error> create(const LogicalDevice& device, std::span<uint32_t> shaderCode) noexcept;
 	private:
 		Shader(const LogicalDeviceWrapper& device, VkShaderModule handle, ShaderData shaderData) noexcept;
 

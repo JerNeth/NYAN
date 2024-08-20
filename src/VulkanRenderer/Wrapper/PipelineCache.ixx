@@ -49,10 +49,10 @@ export namespace nyan::vulkan::wrapper
 
 		util::data::DynArray<std::byte> get_data() const noexcept;
 
-		[[nodiscard]] std::expected<void, Error> merge(const PipelineCache& other) noexcept;
-		[[nodiscard]] std::expected<void, Error> merge(std::span<PipelineCache> others) noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<void, Error> merge(const PipelineCache& other) noexcept;
+		[[nodiscard("must handle potential error")]] std::expected<void, Error> merge(std::span<PipelineCache> others) noexcept;
 
-		[[nodiscard]] static std::expected<PipelineCache, Error> create(const LogicalDevice& device, std::span<std::byte> data) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<PipelineCache, Error> create(const LogicalDevice& device, std::span<std::byte> data) noexcept;
 	private:
 		PipelineCache(const LogicalDeviceWrapper& device, VkPipelineCache handle, const  PhysicalDevice& physicalDevice) noexcept;
 

@@ -11,6 +11,7 @@ target_sources(VulkanWrapper
 		"DescriptorPool.cpp"
 		"DescriptorSet.cpp"
 		"DescriptorSetLayout.cpp"
+		"Fence.cpp"
 		"Image.cpp"
 		"Instance.cpp"
 		"LogicalDevice.cpp"
@@ -21,7 +22,9 @@ target_sources(VulkanWrapper
 		"PipelineLayout.cpp" 
 		"Queue.cpp"
 		"Sampler.cpp"
+		"Semaphore.cpp"
 		"Shader.cpp"
+		"Swapchain.cpp"
 	PUBLIC
 		FILE_SET cxx_modules TYPE CXX_MODULES FILES
 		"AccelerationStructure.ixx"
@@ -34,6 +37,8 @@ target_sources(VulkanWrapper
 		"DescriptorSet.ixx" 
 		"DescriptorSetLayout.ixx"
 		"Error.ixx" 
+		"Fence.ixx"
+		"Formats.ixx"
 		"Image.ixx"  
 		"Instance.ixx"  
 		"LogicalDevice.ixx" 
@@ -45,7 +50,10 @@ target_sources(VulkanWrapper
 		"PipelineLayout.ixx" 
 		"Queue.ixx" 
 		"Sampler.ixx"
+		"Semaphore.ixx"
 		"Shader.ixx"
+		"Surface.ixx"
+		"Swapchain.ixx"
 		"VulkanWrapper.ixx"
 )
 	
@@ -61,6 +69,7 @@ target_link_libraries(VulkanWrapper
 		magic_enum::magic_enum
 		Threads::Threads
 )
+
 target_link_libraries(VulkanWrapper 
 	PRIVATE 
 		NYAN::Log
@@ -69,6 +78,7 @@ target_link_libraries(VulkanWrapper
 
 if(WIN32)
     target_compile_definitions(VulkanWrapper PUBLIC VK_USE_PLATFORM_WIN32_KHR)
+    target_compile_definitions(VulkanWrapper PRIVATE NOMINMAX)
 elseif(APPLE)
     target_compile_definitions(VulkanWrapper PUBLIC VK_USE_PLATFORM_MACOS_MVK)
 elseif(UNIX)

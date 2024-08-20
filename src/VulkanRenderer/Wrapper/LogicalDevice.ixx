@@ -25,7 +25,7 @@ export namespace nyan::vulkan::wrapper
 
 		~LogicalDevice() noexcept;
 
-		[[nodiscard]] static std::expected<LogicalDevice, LogicalDeviceCreationError> create(Instance& instance, PhysicalDevice physicalDevice, 
+		[[nodiscard("must handle potential error")]] static std::expected<LogicalDevice, LogicalDeviceCreationError> create(Instance& instance, PhysicalDevice physicalDevice,
 			const VkAllocationCallbacks* allocatorCallbacks, PhysicalDevice::Extensions enabledExtensions,
 			const QueueContainer<float>& queuePriorities) noexcept;
 
@@ -38,6 +38,8 @@ export namespace nyan::vulkan::wrapper
 		[[nodiscard]] const PhysicalDevice::Extensions& get_enabled_extensions() const noexcept;
 
 		[[nodiscard]] const std::vector<Queue>& get_queues(Queue::Type type) const noexcept;
+
+		[[nodiscard]] std::vector<Queue>& get_queues(Queue::Type type) noexcept;
 
 		[[nodiscard]] Allocator& get_allocator() noexcept;
 		[[nodiscard]] const Allocator& get_allocator() const noexcept;
