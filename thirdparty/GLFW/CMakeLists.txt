@@ -4,8 +4,10 @@ include(FetchContent)
 
 
 if(NOT DEFINED repo_glfw OR NOT EXISTS ${repo_glfw})
-	message("GLFW not locally specified, fetching remote")
+	message("repo_glfw not locally specified, fetching remote")
 	set(repo_glfw https://github.com/glfw/glfw.git)
+else()
+	message("repo_glfw locally specified: " ${repo_glfw})
 endif()
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")

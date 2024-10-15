@@ -3,8 +3,10 @@ include(FetchContent)
 
 
 if(NOT DEFINED repo_imgui OR NOT EXISTS ${repo_imgui})
-	message("Imgui not locally specified, fetching remote")
+	message("repo_imgui not locally specified, fetching remote")
 	set(repo_imgui https://github.com/ocornut/imgui.git)
+else()
+	message("repo_imgui locally specified: " ${repo_imgui})
 endif()
 FetchContent_Declare(
 	imgui
@@ -33,8 +35,10 @@ target_compile_definitions(imgui PUBLIC ImTextureID=ImU64)
 
 
 if(NOT DEFINED repo_implot OR NOT EXISTS ${repo_implot})
-	message("Implot not locally specified, fetching remote")
+	message("repo_implot not locally specified, fetching remote")
 	set(repo_implot https://github.com/epezent/implot)
+else()
+	message("repo_implot locally specified: " ${repo_implot})
 endif()
 FetchContent_Declare(
 	implot
@@ -65,3 +69,5 @@ target_include_directories(implot SYSTEM PUBLIC
   ${implot_SOURCE_DIR}
 )
 
+#TODO:https://github.com/aiekick/ImGuiFileDialog
+#TODO:https://github.com/CedricGuillemet/ImGuizmo

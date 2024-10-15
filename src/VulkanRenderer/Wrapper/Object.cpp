@@ -5,11 +5,11 @@ module;
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
-module NYANVulkanWrapper;
-
-using namespace nyan::vulkan::wrapper;
-
+module NYANVulkan;
 import :LogicalDevice;
+
+using namespace nyan::vulkan;
+
 
 template<typename VKObject>
 VkObjectType get_object_type() {
@@ -281,7 +281,7 @@ VkDebugReportObjectTypeEXT get_debug_report_object_type<VkAccelerationStructureK
 }
 
 template<typename HandleClass>
-std::expected<void, Error> nyan::vulkan::wrapper::Object<HandleClass>::set_debug_label(const char* name) const noexcept {
+std::expected<void, Error> nyan::vulkan::Object<HandleClass>::set_debug_label(const char* name) const noexcept {
 
 	const VkDebugUtilsObjectNameInfoEXT label{
         .sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT},
@@ -290,7 +290,7 @@ std::expected<void, Error> nyan::vulkan::wrapper::Object<HandleClass>::set_debug
         .objectHandle {reinterpret_cast<uint64_t>(m_handle)},
         .pObjectName {name},
     };
-    if(auto result = vkSetDebugUtilsObjectNameEXT(r_device.get_handle(), &label); result != VK_SUCCESS)
+    if(auto result = vkSetDebugUtilsObjectNameEXT(ptr_device->get_handle(), &label); result != VK_SUCCESS) [[unlikely]]
         return std::unexpected{ result };
  
     return {};

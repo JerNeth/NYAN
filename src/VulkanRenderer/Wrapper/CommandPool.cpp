@@ -2,26 +2,27 @@ module;
 
 #include <array>
 #include <cassert>
+#include <expected>
 #include <utility>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 
-nyan::vulkan::wrapper::CommandPool::CommandPool(CommandPool&& other) noexcept :
-	Object(other.r_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
+CommandPool::CommandPool(CommandPool&& other) noexcept :
+	Object(*other.ptr_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
 	r_deletionQueue(other.r_deletionQueue),
 	r_queue(other.r_queue)
 {
 
 }
 
-CommandPool& nyan::vulkan::wrapper::CommandPool::operator=(CommandPool&& other) noexcept
+CommandPool& CommandPool::operator=(CommandPool&& other) noexcept
 {
-	assert(std::addressof(r_device) == std::addressof(other.r_device));
+	assert(ptr_device == other.ptr_device);
 	assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
 	assert(std::addressof(r_queue) == std::addressof(other.r_queue));
 	if (this != std::addressof(other)) {
@@ -30,35 +31,35 @@ CommandPool& nyan::vulkan::wrapper::CommandPool::operator=(CommandPool&& other) 
 	return *this;
 }
 
-nyan::vulkan::wrapper::CommandPool::~CommandPool() noexcept
+CommandPool::~CommandPool() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE) {
-		r_deletionQueue.queue_command_pool_deletion(m_handle);
+		r_deletionQueue.queue_deletion(m_handle);
 	}
 }
 
-std::expected<void, Error> nyan::vulkan::wrapper::CommandPool::reset(bool release) noexcept
+std::expected<void, Error> CommandPool::reset(bool release) noexcept
 {
-	if(auto result = r_device.vkResetCommandPool(m_handle, release? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT: static_cast<VkCommandPoolResetFlagBits>(0)); result != VK_SUCCESS)
+	if(auto result = ptr_device->vkResetCommandPool(m_handle, release? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT: static_cast<VkCommandPoolResetFlagBits>(0)); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
 	return {};
 }
 
-std::expected<CommandBuffer, Error> nyan::vulkan::wrapper::CommandPool::allocate_command_buffer() noexcept
+std::expected<CommandBuffer, Error> CommandPool::allocate_command_buffer() noexcept
 {
 	VkCommandBufferAllocateInfo allocateInfo {
 		.sType {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO},
 		.pNext{ nullptr },
 		.commandPool {m_handle},
-		.level {VK_COMMAND_BUFFER_LEVEL_PRIMARY },
+		.level { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
 		.commandBufferCount {1}
 	};
 	VkCommandBuffer cmd{ VK_NULL_HANDLE };
-	if (auto result = r_device.vkAllocateCommandBuffers(&allocateInfo, &cmd); result != VK_SUCCESS)
+	if (auto result = ptr_device->vkAllocateCommandBuffers(&allocateInfo, &cmd); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
-	return CommandBufferAccessor::create(r_device, cmd, r_queue);
+	return CommandBufferAccessor::create(*ptr_device, cmd, r_queue);
 }
 
 std::expected<CommandPool, Error> CommandPool::create(LogicalDevice& device, Queue& queue, bool transient, bool reset) noexcept
@@ -68,9 +69,9 @@ std::expected<CommandPool, Error> CommandPool::create(LogicalDevice& device, Que
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.flags = (transient? VK_COMMAND_POOL_CREATE_TRANSIENT_BIT : static_cast<VkCommandPoolCreateFlags>(0)) |
 				(reset? VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT : static_cast<VkCommandPoolCreateFlags>(0)),
-		.queueFamilyIndex = queue.get_queue_family_index(),
+		.queueFamilyIndex = queue.get_queue_family_index().value,
 	};
-	if (auto result = device.get_device().vkCreateCommandPool(&commandPoolCreateInfo, &handle); result != VK_SUCCESS)
+	if (auto result = device.get_device().vkCreateCommandPool(&commandPoolCreateInfo, &handle); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
 	return CommandPool{device.get_device(), handle, device.get_deletion_queue(), queue};

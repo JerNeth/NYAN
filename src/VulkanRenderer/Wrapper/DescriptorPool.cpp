@@ -2,28 +2,30 @@ module;
 
 #include <array>
 #include <cassert>
+#include <expected>
 #include <utility>
+#include <vector>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 DescriptorPool::DescriptorPool(DescriptorPool&& other) noexcept :
-	Object(other.r_device, other.m_handle),
+	Object(*other.ptr_device, other.m_handle),
 	r_deletionQueue(other.r_deletionQueue),
 	m_sets(std::move(other.m_sets))
 {
 	other.m_handle = VK_NULL_HANDLE;
 }
 
-DescriptorPool& nyan::vulkan::wrapper::DescriptorPool::operator=(
+DescriptorPool& nyan::vulkan::DescriptorPool::operator=(
 	DescriptorPool&& other) noexcept
 {
 	if(this != std::addressof(other))
 	{
-		assert(std::addressof(r_device) == std::addressof(other.r_device));
+		assert(ptr_device == other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_sets, other.m_sets);
 	}
@@ -33,7 +35,7 @@ DescriptorPool& nyan::vulkan::wrapper::DescriptorPool::operator=(
 DescriptorPool::~DescriptorPool() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_deletionQueue.queue_descriptor_pool_deletion(m_handle);
+		r_deletionQueue.queue_deletion(m_handle);
 }
 
 std::vector<DescriptorSet>& DescriptorPool::get_sets() noexcept
@@ -91,7 +93,7 @@ std::expected<DescriptorPool, Error> DescriptorPool::create(LogicalDevice& devic
 
 	VkDescriptorPool pool{ VK_NULL_HANDLE };
 
-	if (auto result = deviceWrapper.vkCreateDescriptorPool(&poolCreateInfo, &pool); result != VK_SUCCESS)
+	if (auto result = deviceWrapper.vkCreateDescriptorPool(&poolCreateInfo, &pool); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ Error{result} };
 
 	std::vector setLayouts{ numDescriptorSets, layout.get_handle() };
@@ -104,16 +106,16 @@ std::expected<DescriptorPool, Error> DescriptorPool::create(LogicalDevice& devic
 		.descriptorSetCount {numDescriptorSets},
 		.pSetLayouts {setLayouts.data()}
 	};
-	if (const auto result = deviceWrapper.vkAllocateDescriptorSets(&allocateInfo, setHandles.data()); result != VK_SUCCESS)
+	if (const auto result = deviceWrapper.vkAllocateDescriptorSets(&allocateInfo, setHandles.data()); result != VK_SUCCESS) [[unlikely]]
 	{
-		device.get_deletion_queue().queue_descriptor_pool_deletion(pool);
+		device.get_deletion_queue().queue_deletion(pool);
 		return std::unexpected{ Error{result} };
 	}
 	std::vector<DescriptorSet> sets;
 	for(auto setHandle : setHandles)
 	{
 		auto set = DescriptorSet::create(deviceWrapper, setHandle, layout);
-		if(!set)
+		if(!set) [[unlikely]]
 			return std::unexpected{ set.error() };
 		sets.emplace_back(std::move(*set));
 	}
@@ -136,7 +138,7 @@ void DescriptorPool::reset() noexcept
 	//Don't know why I would reset, hide for now
 	m_sets.clear();
 	//Synchronization necessary
-	auto result = r_device.vkResetDescriptorPool(m_handle, 0);
+	auto result = ptr_device->vkResetDescriptorPool(m_handle, 0);
 	//Only valid result according to docs is Success, but idk
 	assert(result == VK_SUCCESS);
 }

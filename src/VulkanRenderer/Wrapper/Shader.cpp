@@ -1,19 +1,20 @@
 module;
 
 #include <cassert>
+#include <expected>
 #include <span>
 
 #include "volk.h"
 #include "spirv_cross.hpp"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 
 Shader::Shader(Shader&& other) noexcept :
-	Object(other.r_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
+	Object(*other.ptr_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
 	m_shaderData(other.m_shaderData)
 {
 
@@ -22,6 +23,7 @@ Shader::Shader(Shader&& other) noexcept :
 
 Shader& Shader::operator=(Shader&& other) noexcept
 {
+	assert(ptr_device == other.ptr_device);
 	if (this != std::addressof(other))
 	{
 		std::swap(m_handle, other.m_handle);
@@ -31,10 +33,10 @@ Shader& Shader::operator=(Shader&& other) noexcept
 	return *this;
 }
 
-Shader::~Shader()
+Shader::~Shader() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_device.vkDestroyShaderModule(m_handle);
+		ptr_device->vkDestroyShaderModule(m_handle);
 }
 
 Shader::Stage Shader::get_stage() const noexcept
@@ -42,7 +44,7 @@ Shader::Stage Shader::get_stage() const noexcept
 	return m_shaderData.stage;
 }
 
-ShaderInstance nyan::vulkan::wrapper::Shader::create_shader_instance() const noexcept
+ShaderInstance nyan::vulkan::Shader::create_shader_instance() const noexcept
 {
 	return ShaderInstance{m_shaderData, m_handle};
 }
@@ -127,7 +129,7 @@ std::expected<Shader, Error> Shader::create(const LogicalDevice& device, std::sp
 	Compiler comp(shaderCode.data(), shaderCode.size());
 	const auto stage = convert_spriv_execution_model(comp.get_execution_model());
 	assert(stage);
-	if (!stage)
+	if (!stage) [[unlikely]]
 		return std::unexpected{ VK_ERROR_INVALID_SHADER_NV };
 	
 	const auto& capabilities = comp.get_declared_capabilities();
@@ -231,10 +233,10 @@ std::expected<Shader, Error> Shader::create(const LogicalDevice& device, std::sp
 
 	VkShaderModule handle {VK_NULL_HANDLE};
 	const auto& deviceWrapper = device.get_device();
-	if(const auto result = deviceWrapper.vkCreateShaderModule(&createInfo, &handle); result != VK_SUCCESS)
-	{
+
+	if(const auto result = deviceWrapper.vkCreateShaderModule(&createInfo, &handle); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
-	}
+
 	return Shader{ deviceWrapper, handle, shaderData };
 }
 
@@ -257,12 +259,12 @@ ShaderInstance::ShaderInstance(Shader::ShaderData data, VkShaderModule shaderMod
 {
 }
 
-size_t nyan::vulkan::wrapper::ShaderInstance::get_num_spec_constants() const noexcept
+size_t nyan::vulkan::ShaderInstance::get_num_spec_constants() const noexcept
 {
 	return m_data.specConstantEntries.size();
 }
 
-VkPipelineShaderStageCreateInfo nyan::vulkan::wrapper::ShaderInstance::get_shader_stage_create_info() const noexcept
+VkPipelineShaderStageCreateInfo nyan::vulkan::ShaderInstance::get_shader_stage_create_info() const noexcept
 {
 	return VkPipelineShaderStageCreateInfo {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,

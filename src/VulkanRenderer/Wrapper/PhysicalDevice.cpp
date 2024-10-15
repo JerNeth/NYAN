@@ -2,14 +2,17 @@ module;
 
 #include <bit>
 #include <cassert>
+#include <expected>
 #include <string_view>
+#include <span>
+#include <vector>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 
 std::vector<const char*> PhysicalDevice::Extensions::generate_extension_list(uint32_t apiVersion) const noexcept
@@ -433,27 +436,27 @@ const VkPhysicalDeviceMeshShaderFeaturesEXT& PhysicalDevice::get_mesh_shader_fea
 	return m_meshShaderFeatures;
 }
 
-const VkPhysicalDeviceDescriptorBufferFeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_descriptor_buffer_features() const noexcept
+const VkPhysicalDeviceDescriptorBufferFeaturesEXT& nyan::vulkan::PhysicalDevice::get_descriptor_buffer_features() const noexcept
 {
 	return m_descriptorBufferFeatures;
 }
 
-const VkPhysicalDeviceHostImageCopyFeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_features() const noexcept
+const VkPhysicalDeviceHostImageCopyFeaturesEXT& nyan::vulkan::PhysicalDevice::get_host_image_copy_features() const noexcept
 {
 	return m_hostImageCopyFeatures;
 }
 
-const VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_dynamic_rendering_local_read_features() const noexcept
+const VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR& nyan::vulkan::PhysicalDevice::get_dynamic_rendering_local_read_features() const noexcept
 {
 	return m_dynamicRenderingLocalReadFeatures;
 }
 
-const VkPhysicalDeviceMaintenance5FeaturesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_maintenance5_features() const noexcept
+const VkPhysicalDeviceMaintenance5FeaturesKHR& nyan::vulkan::PhysicalDevice::get_maintenance5_features() const noexcept
 {
 	return m_maintenance5Features;
 }
 
-const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_swapchain_maintenance1_features() const noexcept
+const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT& nyan::vulkan::PhysicalDevice::get_swapchain_maintenance1_features() const noexcept
 {
 	return m_swapchainMaintenance1Features;
 }
@@ -503,37 +506,37 @@ const VkPhysicalDevicePushDescriptorPropertiesKHR& PhysicalDevice::get_push_desc
 	return m_pushDescriptorProperties;
 }
 
-const VkPhysicalDeviceExternalMemoryHostPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_external_memory_host_properties() const noexcept
+const VkPhysicalDeviceExternalMemoryHostPropertiesEXT& nyan::vulkan::PhysicalDevice::get_external_memory_host_properties() const noexcept
 {
 	return m_externalMemoryHostProperties;
 }
 
-const VkPhysicalDeviceDescriptorBufferPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_descriptor_buffer_properties() const noexcept
+const VkPhysicalDeviceDescriptorBufferPropertiesEXT& nyan::vulkan::PhysicalDevice::get_descriptor_buffer_properties() const noexcept
 {
 	return m_descriptorBufferProperties;
 }
 
-const VkPhysicalDeviceMaintenance5PropertiesKHR& nyan::vulkan::wrapper::PhysicalDevice::get_maintenance5_properties() const noexcept
+const VkPhysicalDeviceMaintenance5PropertiesKHR& nyan::vulkan::PhysicalDevice::get_maintenance5_properties() const noexcept
 {
 	return m_maintenance5Properties;
 }
 
-const VkPhysicalDeviceHostImageCopyPropertiesEXT& nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_properties() const noexcept
+const VkPhysicalDeviceHostImageCopyPropertiesEXT& nyan::vulkan::PhysicalDevice::get_host_image_copy_properties() const noexcept
 {
 	return m_hostImageCopyProperties;
 }
 
-std::span<const VkImageLayout> nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_src_layouts() const noexcept
+std::span<const VkImageLayout> nyan::vulkan::PhysicalDevice::get_host_image_copy_src_layouts() const noexcept
 {
 	return { m_hostImageCopySrcLayouts.data(), m_hostImageCopyProperties.copySrcLayoutCount };
 }
 
-std::span<const VkImageLayout> nyan::vulkan::wrapper::PhysicalDevice::get_host_image_copy_dst_layouts() const noexcept
+std::span<const VkImageLayout> nyan::vulkan::PhysicalDevice::get_host_image_copy_dst_layouts() const noexcept
 {
 	return { m_hostImageCopyDstLayouts.data(), m_hostImageCopyProperties.copyDstLayoutCount };
 }
 
-const VkPhysicalDeviceMemoryProperties& nyan::vulkan::wrapper::PhysicalDevice::get_memory_properties() const noexcept
+const VkPhysicalDeviceMemoryProperties& nyan::vulkan::PhysicalDevice::get_memory_properties() const noexcept
 {
 	return m_memoryProperties;
 }
@@ -556,7 +559,7 @@ const PhysicalDevice::Extensions& PhysicalDevice::get_available_extensions() con
 std::expected<PhysicalDevice, PhysicalDeviceCreationError> PhysicalDevice::create(VkPhysicalDevice handle)
 {
 	uint32_t extensionCount;
-	if (auto result = vkEnumerateDeviceExtensionProperties(handle, nullptr, &extensionCount, nullptr); result != VK_SUCCESS) {
+	if (auto result = vkEnumerateDeviceExtensionProperties(handle, nullptr, &extensionCount, nullptr); result != VK_SUCCESS) [[unlikely]] {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
 			return std::unexpected{ PhysicalDeviceCreationError::Type::OutOfMemoryError };
@@ -568,7 +571,7 @@ std::expected<PhysicalDevice, PhysicalDeviceCreationError> PhysicalDevice::creat
 
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 
-	if (auto result = vkEnumerateDeviceExtensionProperties(handle, nullptr, &extensionCount, availableExtensions.data()); result != VK_SUCCESS) {
+	if (auto result = vkEnumerateDeviceExtensionProperties(handle, nullptr, &extensionCount, availableExtensions.data()); result != VK_SUCCESS) [[unlikely]] {
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
 			return std::unexpected{ PhysicalDeviceCreationError::Type::OutOfMemoryError };
@@ -813,7 +816,7 @@ VkPhysicalDevice PhysicalDevice::get_handle() const noexcept
 	return m_handle;
 }
 
-uint32_t nyan::vulkan::wrapper::PhysicalDevice::get_queue_family_index(Queue::Type queueType) const noexcept
+uint32_t nyan::vulkan::PhysicalDevice::get_queue_family_index(Queue::Type queueType) const noexcept
 {
 	return m_queueFamilyIndices[queueType];
 }
@@ -826,6 +829,62 @@ PhysicalDevice::Type PhysicalDevice::get_type() const noexcept
 uint64_t PhysicalDevice::get_id() const noexcept
 {
 	return (static_cast<uint64_t>(m_properties.properties.vendorID) << 32ull) | static_cast<uint64_t>(m_properties.properties.deviceID);
+}
+
+bool PhysicalDevice::supports_image_format(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) const noexcept
+{
+	VkImageFormatProperties2 formatProperties{
+		.sType {VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2},
+		.pNext {nullptr}
+	};
+	VkPhysicalDeviceImageFormatInfo2 formatInfo{
+		.sType {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2},
+		.pNext {nullptr},
+		.format {format},
+		.type {type},
+		.tiling {tiling},
+		.usage {usage},
+		.flags {flags}
+	};
+	if (auto result = vkGetPhysicalDeviceImageFormatProperties2(m_handle, &formatInfo, &formatProperties); result == VK_SUCCESS)
+		return true;
+	return false;
+}
+
+bool PhysicalDevice::vertex_format_supported(VertexFormat format) const noexcept
+{
+	VkFormatProperties formatProperties;
+	vkGetPhysicalDeviceFormatProperties(m_handle, static_cast<VkFormat>(format), &formatProperties);
+	return formatProperties.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
+}
+
+bool PhysicalDevice::image_attachment_supported(Format format) const noexcept
+{
+	VkFormatProperties formatProperties;
+	vkGetPhysicalDeviceFormatProperties(m_handle, static_cast<VkFormat>(format), &formatProperties);
+	return formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+}
+
+bool PhysicalDevice::storage_image_supported(Format format) const noexcept
+{
+	VkFormatProperties formatProperties;
+	vkGetPhysicalDeviceFormatProperties(m_handle, static_cast<VkFormat>(format), &formatProperties);
+	return formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+}
+
+bool PhysicalDevice::image_format_supported(FormatInfo formatInfo) const noexcept
+{
+	VkImageFormatProperties formatProperties;
+	if (auto result = vkGetPhysicalDeviceImageFormatProperties(m_handle, static_cast<VkFormat>(formatInfo.format), static_cast<VkImageType>(formatInfo.type), 
+		formatInfo.optimalTiling ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR, static_cast<VkImageUsageFlags>(convert_image_usage(formatInfo.usage)), 0, &formatProperties); result != VK_SUCCESS)
+		return false;
+	
+	return formatProperties.maxExtent.width != 0;
+}
+
+Version PhysicalDevice::get_version() const noexcept
+{
+	return Version{ m_properties.properties.apiVersion };
 }
 
 PhysicalDevice::PhysicalDevice(VkPhysicalDevice handle, const Extensions& availableExtensions) noexcept :
@@ -854,7 +913,7 @@ void PhysicalDevice::init_type() noexcept
 		m_type = Type::Other;
 }
 
-void nyan::vulkan::wrapper::PhysicalDevice::init_memory_properties() noexcept
+void PhysicalDevice::init_memory_properties() noexcept
 {
 	vkGetPhysicalDeviceMemoryProperties(m_handle, &m_memoryProperties);
 
@@ -931,7 +990,7 @@ void PhysicalDevice::init_queues() noexcept
 void PhysicalDevice::init_features() noexcept
 {
 	vkGetPhysicalDeviceProperties(m_handle, &m_properties.properties);
-	if (m_properties.properties.apiVersion < VK_API_VERSION_1_1)
+	if (get_version() < VK_API_VERSION_1_1)
 	{
 		vkGetPhysicalDeviceFeatures(m_handle, &m_features.features);
 		return;

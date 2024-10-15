@@ -1,31 +1,32 @@
 module;
 
 #include <cassert>
+#include <expected>
 #include <utility>
-#include <iostream>
+#include <span>
 
 #include "magic_enum.hpp"
 
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 
 import :LogicalDevice;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 Buffer::Buffer(Buffer&& other) noexcept :
-	Object(other.r_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
+	Object(*other.ptr_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
 	r_deletionQueue(other.r_deletionQueue),
 	r_allocator(other.r_allocator),
-	m_data(other.m_data)
+	m_data(std::exchange(other.m_data, {}))
 {
 }
 
 Buffer& Buffer::operator=(Buffer&& other) noexcept
 {
-	assert(std::addressof(r_device) == std::addressof(other.r_device));
+	assert(ptr_device == other.ptr_device);
 	assert(std::addressof(r_allocator) == std::addressof(other.r_allocator));
 	assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
 	if (this != std::addressof(other)) 
@@ -39,9 +40,9 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept
 Buffer::~Buffer() noexcept 
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_deletionQueue.queue_buffer_deletion(m_handle);
+		r_deletionQueue.queue_deletion(m_handle);
 	if (m_data.allocation != VK_NULL_HANDLE)
-		r_deletionQueue.queue_allocation_deletion(m_data.allocation);
+		r_deletionQueue.queue_deletion(m_data.allocation);
 }
 
 bool Buffer::shared() const noexcept
@@ -49,23 +50,23 @@ bool Buffer::shared() const noexcept
 	return m_data.queueFamilies.size() > 1;
 }
 
-void* nyan::vulkan::wrapper::Buffer::mapped_data() const noexcept
+void* nyan::vulkan::Buffer::mapped_data() const noexcept
 {
 	return m_data.ptr;
 }
 
-std::expected<void, Error> nyan::vulkan::wrapper::Buffer::flush() const noexcept
+std::expected<void, Error> nyan::vulkan::Buffer::flush() const noexcept
 {
-	if (auto res = r_allocator.flush(m_data.allocation, 0, m_data.size); !res)
+	if (auto res = r_allocator.flush(m_data.allocation, 0, m_data.size); !res) [[unlikely]]
 		return std::unexpected{ res.error() };
 
 	return {};
 }
 
-std::expected<void, Error> nyan::vulkan::wrapper::Buffer::invalidate() const noexcept
+std::expected<void, Error> nyan::vulkan::Buffer::invalidate() const noexcept
 {
 
-	if (auto res = r_allocator.invalidate(m_data.allocation, 0, m_data.size); !res)
+	if (auto res = r_allocator.invalidate(m_data.allocation, 0, m_data.size); !res) [[unlikely]]
 		return std::unexpected{ res.error() };
 
 	return {};
@@ -159,7 +160,7 @@ std::expected<StorageBuffer, Error> StorageBuffer::create(LogicalDevice& device,
 	
 	if (const auto& physicalDevice = device.get_physical_device(); 
 		!supportLargerBuffers ||
-		options.size > physicalDevice.get_properties().limits.maxStorageBufferRange) {
+		options.size > physicalDevice.get_properties().limits.maxStorageBufferRange) [[unlikely]] {
 		//TODO proper error
 		assert(false && "Can't bind larger storage buffers in a single bind"); 
 		return std::unexpected{ VK_ERROR_OUT_OF_DEVICE_MEMORY };
@@ -167,7 +168,7 @@ std::expected<StorageBuffer, Error> StorageBuffer::create(LogicalDevice& device,
 
 	if (const auto& physicalDevice = device.get_physical_device(); 
 		physicalDevice.get_vulkan13_features().maintenance4 &&
-		options.size > physicalDevice.get_vulkan13_properties().maxBufferSize) {
+		options.size > physicalDevice.get_vulkan13_properties().maxBufferSize) [[unlikely]] {
 		//TODO proper error
 		assert(false && "Desired buffer exceeds maximum supported size");
 		return std::unexpected{ VK_ERROR_OUT_OF_DEVICE_MEMORY };
@@ -175,7 +176,8 @@ std::expected<StorageBuffer, Error> StorageBuffer::create(LogicalDevice& device,
 
 	Buffer::Usage usage{ Buffer::UsageFlags::StorageBuffer, Buffer::UsageFlags::TransferDst };
 
-	std::array<uint32_t, 32> queueFamilies;
+	std::array<uint32_t, Queue::FamilyIndex::max> queueFamilies{};
+
 	VkBufferCreateInfo bufferCreateInfo{
 		.sType {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO },
 		.pNext {nullptr},
@@ -214,7 +216,7 @@ std::expected<StorageBuffer, Error> StorageBuffer::create(LogicalDevice& device,
 	VkBuffer buffer;
 	VmaAllocation allocation;
 	VmaAllocationInfo allocationInfo;
-	if (auto result = vmaCreateBuffer(allocatorHandle, &bufferCreateInfo, &allocationCreateInfo, &buffer, &allocation, &allocationInfo); result != VK_SUCCESS)
+	if (auto result = vmaCreateBuffer(allocatorHandle, &bufferCreateInfo, &allocationCreateInfo, &buffer, &allocation, &allocationInfo); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{result};
 
 	VkMemoryPropertyFlags memPropFlags;
@@ -222,7 +224,7 @@ std::expected<StorageBuffer, Error> StorageBuffer::create(LogicalDevice& device,
 
 
 	assert(memPropFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	if (!(memPropFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+	if (!(memPropFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) [[unlikely]] {
 		vmaDestroyBuffer(allocatorHandle, buffer, allocation);
 		return std::unexpected{ VK_ERROR_OUT_OF_DEVICE_MEMORY };
 	}

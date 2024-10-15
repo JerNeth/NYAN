@@ -1,17 +1,19 @@
 module;
 
 #include <cassert>
+#include <expected>
 #include <utility>
+#include <vector>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import :DescriptorSetLayout;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept :
-	Object(other.r_device, other.m_handle),
+	Object(*other.ptr_device, other.m_handle),
 	r_layout(other.r_layout),
 	m_bitmaps(std::move(other.m_bitmaps)),
 	m_counts(std::move(other.m_counts))
@@ -21,7 +23,7 @@ DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept :
 
 DescriptorSet& DescriptorSet::operator=(DescriptorSet&& other) noexcept
 {
-	assert(std::addressof(r_device) == std::addressof(other.r_device));
+	assert(ptr_device == other.ptr_device);
 	assert(std::addressof(r_layout) == std::addressof(other.r_layout));
 	if(this != std::addressof(other))
 	{
@@ -51,7 +53,7 @@ std::expected<StorageBufferDescriptor, Error> DescriptorSet::add(const StorageBu
 {
 	uint32_t descriptorValue{ 0 };
 
-	if (!add_descriptor(m_counts.storageBuffers, m_bitmaps.storageBuffers, descriptorValue))
+	if (!add_descriptor(m_counts.storageBuffers, m_bitmaps.storageBuffers, descriptorValue)) [[unlikely]]
 		return std::unexpected{VK_ERROR_UNKNOWN};
 
 	StorageBufferDescriptor descriptor { descriptorValue };
@@ -68,7 +70,6 @@ void DescriptorSet::update(StorageBufferDescriptor descriptor, const StorageBuff
 	.offset {offset},
 	.range {range}
 	};
-	assert(bufferInfo.buffer != VK_NULL_HANDLE);
 	assert(bufferInfo.range <= std::numeric_limits<uint32_t>::max()); //TODO: Query device, this is a practical common limit
 
 	VkWriteDescriptorSet write{
@@ -84,7 +85,7 @@ void DescriptorSet::update(StorageBufferDescriptor descriptor, const StorageBuff
 		.pTexelBufferView {nullptr}
 	};
 
-	r_device.vkUpdateDescriptorSets(1, &write, 0, nullptr);
+	ptr_device->vkUpdateDescriptorSets(1, &write, 0, nullptr);
 }
 
 template<typename T1, typename T2>
@@ -103,17 +104,17 @@ void DescriptorSet::remove(StorageBufferDescriptor descriptor) noexcept
 std::expected<DescriptorSet, Error> DescriptorSet::create(const LogicalDeviceWrapper& deviceWrapper, const VkDescriptorSet handle, const DescriptorSetLayout& layout) noexcept
 {
 	Bitmaps bitmaps;
-	if (!bitmaps.storageBuffers.reserve(layout.get_info().storageBufferCount))
+	if (!bitmaps.storageBuffers.reserve(layout.get_info().storageBufferCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
-	if (!bitmaps.uniformBuffers.reserve(layout.get_info().uniformBufferCount))
+	if (!bitmaps.uniformBuffers.reserve(layout.get_info().uniformBufferCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
-	if (!bitmaps.samplers.reserve(layout.get_info().samplerCount))
+	if (!bitmaps.samplers.reserve(layout.get_info().samplerCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
-	if (!bitmaps.sampledImages.reserve(layout.get_info().sampledImageCount))
+	if (!bitmaps.sampledImages.reserve(layout.get_info().sampledImageCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
-	if (!bitmaps.storageImages.reserve(layout.get_info().storageImageCount))
+	if (!bitmaps.storageImages.reserve(layout.get_info().storageImageCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
-	if (!bitmaps.accelerationStructures.reserve(layout.get_info().accelerationStructureCount))
+	if (!bitmaps.accelerationStructures.reserve(layout.get_info().accelerationStructureCount)) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
 
 	return DescriptorSet{deviceWrapper, handle, layout, std::move(bitmaps)};

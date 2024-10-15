@@ -5,6 +5,8 @@ include(FetchContent)
 if(NOT DEFINED repo_stb OR NOT EXISTS ${repo_stb})
 	message("STB not locally specified, fetching remote")
 	set(repo_stb https://github.com/nothings/stb.git)
+else()
+	message("repo_stb locally specified: " ${repo_stb})
 endif()
 FetchContent_Declare(
 	stb

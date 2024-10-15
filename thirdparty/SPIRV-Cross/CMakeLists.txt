@@ -13,13 +13,15 @@ else()
 	set(SPIRV_CROSS_SKIP_INSTALL OFF CACHE INTERNAL "Skips installation targets.")
     message("spriv-cross-core not found fetching from repo")
 	if(NOT DEFINED repo_SPIRV_Cross OR NOT EXISTS ${repo_SPIRV_Cross})
-		message("Spirv-cross not locally specified, fetching remote")
+		message("repo_SPIRV_Cross not locally specified, fetching remote")
 		set(repo_SPIRV_Cross https://github.com/KhronosGroup/SPIRV-Cross)
+	else()
+		message("repo_SPIRV_Cross locally specified: " ${repo_SPIRV_Cross})
 	endif()
 	FetchContent_Declare(
 		SPIRV-Cross
 		GIT_REPOSITORY ${repo_SPIRV_Cross}
-		GIT_TAG        vulkan-sdk-1.3.290
+		GIT_TAG        vulkan-sdk-${Vulkan_VERSION}
 		GIT_SHALLOW    true
 	)
 	FetchContent_GetProperties(SPIRV-Cross)

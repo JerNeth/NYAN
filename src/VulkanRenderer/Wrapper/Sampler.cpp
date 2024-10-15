@@ -2,7 +2,7 @@ module;
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;

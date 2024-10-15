@@ -2,41 +2,43 @@ module;
 
 #include <array>
 #include <cassert>
+#include <expected>
 #include <utility>
+#include <variant>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
-nyan::vulkan::wrapper::Pipeline::Pipeline(const LogicalDeviceWrapper& device, const PipelineLayout& layout, VkPipeline handle) :
+nyan::vulkan::Pipeline::Pipeline(const LogicalDeviceWrapper& device, const PipelineLayout& layout, VkPipeline handle) :
 	Object(device, handle),
 	r_layout(layout)
 {
 }
 
-nyan::vulkan::wrapper::Pipeline::Pipeline(Pipeline&& other) noexcept :
-	Object(other.r_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
+nyan::vulkan::Pipeline::Pipeline(Pipeline&& other) noexcept :
+	Object(*other.ptr_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
 	r_layout(other.r_layout)
 {
 }
 
-Pipeline& nyan::vulkan::wrapper::Pipeline::operator=(Pipeline&& other) noexcept
+Pipeline& nyan::vulkan::Pipeline::operator=(Pipeline&& other) noexcept
 {
 	if (this != std::addressof(other))
 	{
-		assert(std::addressof(r_device) == std::addressof(other.r_device));
+		std::swap(ptr_device, other.ptr_device);
 		assert(std::addressof(r_layout) == std::addressof(other.r_layout));
 		std::swap(m_handle, other.m_handle);
 	}
 	return *this;
 }
 
-nyan::vulkan::wrapper::Pipeline::~Pipeline() noexcept
+nyan::vulkan::Pipeline::~Pipeline() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_device.vkDestroyPipeline(m_handle);
+		ptr_device->vkDestroyPipeline(m_handle);
 }
 
 
@@ -178,16 +180,16 @@ nyan::vulkan::wrapper::Pipeline::~Pipeline() noexcept
 	uint32_t vertexInputCount{ 0 };
 	assert(vertexInput.vertexInputCount < GraphicsPipeline::MaxVertexInputs);
 	for (uint32_t location = 0; location < vertexInput.vertexInputCount; location++) {
-		auto format = static_cast<VkFormat>(vertexInput.vertexInputFormats[location]);
+		auto format = vertexInput.vertexInputFormats[location];
 		attributeDescriptions[location] = VkVertexInputAttributeDescription{
 			.location = static_cast<uint32_t>(location),
 			.binding = location,
-			.format = format,
+			.format = static_cast<VkFormat>(format),
 			.offset = 0
 		};
 		bindingDescriptions[location] = VkVertexInputBindingDescription{
 				.binding = static_cast<uint32_t>(location),
-				.stride = static_cast<uint32_t>(format_bytesize(format)),
+				.stride = static_cast<uint32_t>(format_byte_size(format)),
 				.inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
 		};
 	}
@@ -271,8 +273,7 @@ nyan::vulkan::wrapper::Pipeline::~Pipeline() noexcept
 	};
 }
 
-[[nodiscard]] static constexpr VkPipelineMultisampleStateCreateInfo create_multisample_state_create_info(const GraphicsPipeline::PipelineState& pipelineState) noexcept {
-	uint32_t sampleMask{ pipelineState.sampleMask };
+[[nodiscard]] static constexpr VkPipelineMultisampleStateCreateInfo create_multisample_state_create_info(const GraphicsPipeline::PipelineState& pipelineState, const uint32_t& sampleMask) noexcept {
 	assert(pipelineState.rasterizationSampleCount == 1 && "TODO: test if sample mask works for larger samples");
 
 	return VkPipelineMultisampleStateCreateInfo {
@@ -282,7 +283,7 @@ nyan::vulkan::wrapper::Pipeline::~Pipeline() noexcept
 		.rasterizationSamples {static_cast<VkSampleCountFlagBits>(pipelineState.rasterizationSampleCount)},
 		.sampleShadingEnable {static_cast<VkBool32>(pipelineState.sampleShadingEnable)},
 		.minSampleShading {pipelineState.minSampleShading},
-		.pSampleMask {&sampleMask},
+		.pSampleMask {&sampleMask}, //Currently not invoking fragment shader when used
 		.alphaToCoverageEnable {static_cast<VkBool32>(pipelineState.alphaToCoverageEnable)},
 		.alphaToOneEnable {static_cast<VkBool32>(pipelineState.alphaToOneEnable)},
 	};
@@ -519,7 +520,6 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 	assert(false && "TODO");
 
 	constexpr bool useDescriptorBuffers = false;
-	constexpr bool dynamicRendering = true;
 	
 	VkViewport viewport;
 	VkRect2D scissor;
@@ -528,18 +528,30 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 
 	std::array<VkFormat, GraphicsPipeline::MaxAttachments> colorAttachmentFormats;
 
-	auto renderingCreateInfo = create_rendering_create_info(params.renderingCreateInfo, colorAttachmentFormats.data());
+	uint32_t colorAttachmentCount{ 0 };
+	VkPipelineRenderingCreateInfo renderingCreateInfo;
+	if (std::holds_alternative<RenderingCreateInfo>(params.renderInfo)) {
+		const auto& renderingInfo = std::get<RenderingCreateInfo>(params.renderInfo);
+		renderingCreateInfo = create_rendering_create_info(renderingInfo, colorAttachmentFormats.data());
+		colorAttachmentCount = renderingInfo.colorAttachmentCount;
+	}
+	else {
+		assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
+		const auto& renderPassInfo = std::get<RenderPassInfo>(params.renderInfo);
+		colorAttachmentCount = renderPassInfo.renderPass.get_num_color_attachments(renderPassInfo.subpass);
+	}
 
 	auto rasterizationStateCreateInfo = create_rasterization_state_create_info(params.pipelineState);
 
 	//optional
-	auto multisampleStateCreateInfo = create_multisample_state_create_info(params.pipelineState);
+	uint32_t sampleMask{ params.pipelineState.sampleMask };
+	auto multisampleStateCreateInfo = create_multisample_state_create_info(params.pipelineState, sampleMask);
 
 	auto depthStencilStateCreateInfo = create_depth_stencil_state_create_info(params.pipelineState);
 
 	std::array< VkPipelineColorBlendAttachmentState, GraphicsPipeline::MaxAttachments> blendAttachments;
 
-	auto colorBlendStateCreateInfo = create_color_blend_state_create_info(params.renderingCreateInfo.colorAttachmentCount, params.pipelineState, blendAttachments.data());
+	auto colorBlendStateCreateInfo = create_color_blend_state_create_info(colorAttachmentCount, params.pipelineState, blendAttachments.data());
 
 	std::array<VkDynamicState, GraphicsPipeline::DynamicStates::size()> dynamicStates;
 
@@ -547,7 +559,7 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::PrimitiveTopology) ||
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::PrimitiveRestartEnable) ||
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::PatchControlPoints) ||
-		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::VertexInput)) {
+		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::VertexInput)) [[unlikely]] {
 		assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
@@ -566,7 +578,7 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 
 	VkGraphicsPipelineCreateInfo graphicsCreateInfo{
 		.sType {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO},
-		.pNext {dynamicRendering ? &renderingCreateInfo : nullptr},
+		.pNext {std::holds_alternative<RenderingCreateInfo>(params.renderInfo) ? &renderingCreateInfo : nullptr},
 		.flags { useDescriptorBuffers ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT : static_cast<VkPipelineCreateFlags>(0)},
 		.stageCount {stageCount},
 		.pStages {shaderStageCreateInfo.data()},
@@ -580,14 +592,14 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 		.pColorBlendState {&colorBlendStateCreateInfo},
 		.pDynamicState {&dynamicStateCreateInfo},
 		.layout {layout.get_handle()},
-		.renderPass {VK_NULL_HANDLE},
-		.subpass {0},
+		.renderPass {std::holds_alternative<RenderPassInfo>(params.renderInfo) ? std::get<RenderPassInfo>(params.renderInfo).renderPass.get_handle() : VK_NULL_HANDLE },
+		.subpass{ std::holds_alternative<RenderPassInfo>(params.renderInfo) ? std::get<RenderPassInfo>(params.renderInfo).subpass : 0 },
 		.basePipelineHandle{VK_NULL_HANDLE},
 		.basePipelineIndex {0}
 	};
 
 	VkPipeline handle{ VK_NULL_HANDLE };
-	if (auto result = device.get_device().vkCreateGraphicsPipelines(pipelineCache? pipelineCache->get_handle() : nullptr, 1, &graphicsCreateInfo, &handle); result != VK_SUCCESS)
+	if (auto result = device.get_device().vkCreateGraphicsPipelines(pipelineCache? pipelineCache->get_handle() : nullptr, 1, &graphicsCreateInfo, &handle); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
 	return MeshShaderGraphicsPipeline{ device.get_device(), layout , handle, params.pipelineState };
@@ -604,15 +616,35 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 	constexpr bool useDescriptorBuffers = false;
 	constexpr bool dynamicRendering = true;
 
-
+	const auto& physicalDevice = device.get_physical_device();
 	std::array<VkFormat, GraphicsPipeline::MaxAttachments> colorAttachmentFormats;
 
-	auto renderingCreateInfo = create_rendering_create_info(params.renderingCreateInfo, colorAttachmentFormats.data());
+
+	uint32_t colorAttachmentCount{ 0 };
+	VkPipelineRenderingCreateInfo renderingCreateInfo;
+	if (std::holds_alternative<RenderingCreateInfo>(params.renderInfo)) {
+		const auto& renderingInfo = std::get<RenderingCreateInfo>(params.renderInfo);
+		renderingCreateInfo = create_rendering_create_info(renderingInfo, colorAttachmentFormats.data());
+		colorAttachmentCount = renderingInfo.colorAttachmentCount;
+	}
+	else {
+		assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
+		const auto& renderPassInfo = std::get<RenderPassInfo>(params.renderInfo);
+		colorAttachmentCount = renderPassInfo.renderPass.get_num_color_attachments(renderPassInfo.subpass);
+	}
 
 	std::array<VkVertexInputBindingDescription, GraphicsPipeline::MaxVertexInputs> bindingDescriptions;
 	std::array<VkVertexInputAttributeDescription, GraphicsPipeline::MaxVertexInputs> attributeDescriptions;
 
-	auto vertexInputStateCreateInfo = create_vertex_input_state_create_info(params.vertexInput, bindingDescriptions.data(), attributeDescriptions.data());
+
+	for (uint32_t location = 0; location < params.vertexInput.vertexInputCount; location++) {
+		//Probably not necessary since the possible formats are widely supported
+		assert(physicalDevice.vertex_format_supported(params.vertexInput.vertexInputFormats[location]));
+		if (!physicalDevice.vertex_format_supported(params.vertexInput.vertexInputFormats[location])) [[unlikely]]
+			return std::unexpected{ VK_ERROR_FORMAT_NOT_SUPPORTED };
+	}
+
+	auto vertexInputStateCreateInfo = create_vertex_input_state_create_info( params.vertexInput, bindingDescriptions.data(), attributeDescriptions.data());
 
 	auto inputAssemblyStateCreateInfo = create_input_assembly_state_create_info(params.pipelineState);
 
@@ -625,39 +657,40 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 
 	auto rasterizationStateCreateInfo = create_rasterization_state_create_info(params.pipelineState);
 
-	auto multisampleStateCreateInfo = create_multisample_state_create_info(params.pipelineState);
+	uint32_t sampleMask{ params.pipelineState.sampleMask };
+	auto multisampleStateCreateInfo = create_multisample_state_create_info(params.pipelineState, sampleMask);
 
 	auto depthStencilStateCreateInfo = create_depth_stencil_state_create_info(params.pipelineState);
 
 	std::array< VkPipelineColorBlendAttachmentState, GraphicsPipeline::MaxAttachments> blendAttachments;
 
-	auto colorBlendStateCreateInfo = create_color_blend_state_create_info(params.renderingCreateInfo.colorAttachmentCount, params.pipelineState, blendAttachments.data());
+	auto colorBlendStateCreateInfo = create_color_blend_state_create_info(colorAttachmentCount, params.pipelineState, blendAttachments.data());
 
 	std::array<VkDynamicState, GraphicsPipeline::DynamicStates::size()> dynamicStates;
 
 	if (params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ViewportWithCount)) {
-		if (viewportStateCreateInfo.viewportCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Viewport)) {
+		if (viewportStateCreateInfo.viewportCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Viewport)) [[unlikely]] {
 			assert(false);
 			return std::unexpected{ VK_ERROR_UNKNOWN };
 		}
 	}
-	else if (viewportStateCreateInfo.viewportCount == 0) {
+	else if (viewportStateCreateInfo.viewportCount == 0) [[unlikely]] {
 		assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	if (params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount)) {
-		if (viewportStateCreateInfo.scissorCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Scissor)) {
+		if (viewportStateCreateInfo.scissorCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Scissor)) [[unlikely]] {
 			assert(false);
 			return std::unexpected{ VK_ERROR_UNKNOWN };
 		}
 	}
-	else if (viewportStateCreateInfo.scissorCount == 0) {
+	else if (viewportStateCreateInfo.scissorCount == 0) [[unlikely]] {
 		assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	if(params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount) &&
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount) &&
-		(viewportStateCreateInfo.scissorCount != viewportStateCreateInfo.viewportCount)) {
+		(viewportStateCreateInfo.scissorCount != viewportStateCreateInfo.viewportCount)) [[unlikely]] {
 		assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
@@ -678,7 +711,7 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 		shaderStageCreateInfo[stageCount++] = params.tessellationEvaluationShader->get_shader_stage_create_info();
 
 	if (!(params.tessellationControlShader != nullptr && params.tessellationEvaluationShader != nullptr) &&
-		!(params.tessellationControlShader == nullptr && params.tessellationEvaluationShader == nullptr)) {
+		!(params.tessellationControlShader == nullptr && params.tessellationEvaluationShader == nullptr)) [[unlikely]] {
 		assert(false && "Must have control AND evalutation shader");
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
@@ -687,7 +720,7 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 
 	VkGraphicsPipelineCreateInfo graphicsCreateInfo{
 		.sType {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO},
-		.pNext {dynamicRendering ? &renderingCreateInfo : nullptr},
+		.pNext{ std::holds_alternative<RenderingCreateInfo>(params.renderInfo) ? &renderingCreateInfo : nullptr },
 		.flags { useDescriptorBuffers ? VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT : static_cast<VkPipelineCreateFlags>(0)},
 		.stageCount {stageCount},
 		.pStages {shaderStageCreateInfo.data()},
@@ -701,14 +734,14 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 		.pColorBlendState {&colorBlendStateCreateInfo},
 		.pDynamicState {&dynamicStateCreateInfo},
 		.layout {layout.get_handle()},
-		.renderPass {VK_NULL_HANDLE},
-		.subpass {0},
+		.renderPass {std::holds_alternative<RenderPassInfo>(params.renderInfo) ? std::get<RenderPassInfo>(params.renderInfo).renderPass.get_handle() : VK_NULL_HANDLE },
+		.subpass{ std::holds_alternative<RenderPassInfo>(params.renderInfo) ? std::get<RenderPassInfo>(params.renderInfo).subpass : 0 },
 		.basePipelineHandle{VK_NULL_HANDLE},
-		.basePipelineIndex {0}
+		.basePipelineIndex {-1}
 	};
 
 	VkPipeline handle{ VK_NULL_HANDLE };
-	if (auto result = device.get_device().vkCreateGraphicsPipelines(pipelineCache ? pipelineCache->get_handle() : nullptr, 1, &graphicsCreateInfo, &handle); result != VK_SUCCESS)
+	if (auto result = device.get_device().vkCreateGraphicsPipelines(pipelineCache ? pipelineCache->get_handle() : nullptr, 1, &graphicsCreateInfo, &handle); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
 	return VertexShaderGraphicsPipeline{ device.get_device(), layout , handle, params.pipelineState };
@@ -748,7 +781,7 @@ std::expected<ComputePipeline, Error> ComputePipeline::create(const LogicalDevic
 
 	VkPipeline handle{ VK_NULL_HANDLE };
 	if (auto result = device.vkCreateComputePipelines(pipelineCache ? pipelineCache->get_handle() : nullptr, 1, &createInfo, &handle);
-		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+		result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED_EXT) [[unlikely]] {
 		return std::unexpected{result};
 	}
 	return ComputePipeline{device, layout, handle};

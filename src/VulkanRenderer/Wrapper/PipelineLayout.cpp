@@ -1,18 +1,20 @@
 module;
 
 #include <cassert>
+#include <expected>
 #include <utility>
+#include <span>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANData;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 PipelineLayout::PipelineLayout(PipelineLayout&& other) noexcept :
-	Object(other.r_device, other.m_handle),
+	Object(*other.ptr_device, other.m_handle),
 	r_deletionQueue(other.r_deletionQueue)
 {
 	other.m_handle = VK_NULL_HANDLE;
@@ -22,6 +24,7 @@ PipelineLayout& PipelineLayout::operator=(PipelineLayout&& other) noexcept
 {
 	if (this != std::addressof(other))
 	{
+		std::swap(ptr_device, other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 	}
 	return *this;
@@ -30,22 +33,22 @@ PipelineLayout& PipelineLayout::operator=(PipelineLayout&& other) noexcept
 PipelineLayout::~PipelineLayout() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_deletionQueue.queue_pipeline_layout_deletion(m_handle);
+		r_deletionQueue.queue_deletion(m_handle);
 }
 
-std::expected<PipelineLayout, Error> nyan::vulkan::wrapper::PipelineLayout::create(const LogicalDeviceWrapper& deviceWrapper, DeletionQueue& deletionQueue, std::span<DescriptorSetLayout> descriptorSetLayouts) noexcept
+std::expected<PipelineLayout, Error> nyan::vulkan::PipelineLayout::create(const LogicalDeviceWrapper& deviceWrapper, DeletionQueue& deletionQueue, std::span<DescriptorSetLayout> descriptorSetLayouts) noexcept
 {
 	VkPushConstantRange range{
 		.stageFlags = VK_SHADER_STAGE_ALL,
 		.offset = 0,
 		.size = pushConstantSize,
 	};
-	util::data::DynArray<VkDescriptorSetLayout> setLayouts;
-	if (!setLayouts.reserve(descriptorSetLayouts.size()))
+	DynamicArray<VkDescriptorSetLayout> setLayouts;
+	if (!setLayouts.reserve(descriptorSetLayouts.size())) [[unlikely]]
 		return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
 
 	for (const auto& layout : descriptorSetLayouts)
-		if (!setLayouts.push_back(layout.get_handle()))
+		if (!setLayouts.push_back(layout.get_handle())) [[unlikely]]
 			return std::unexpected{ VK_ERROR_OUT_OF_HOST_MEMORY };
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
@@ -57,9 +60,9 @@ std::expected<PipelineLayout, Error> nyan::vulkan::wrapper::PipelineLayout::crea
 	};
 
 	VkPipelineLayout handle{ VK_NULL_HANDLE };
-	if (auto result = deviceWrapper.vkCreatePipelineLayout(&pipelineLayoutCreateInfo, &handle); result != VK_SUCCESS) {
+	if (auto result = deviceWrapper.vkCreatePipelineLayout(&pipelineLayoutCreateInfo, &handle); result != VK_SUCCESS) [[unlikely]] 
 		return std::unexpected{ result };
-	}
+
 	return PipelineLayout{deviceWrapper, handle, deletionQueue};
 }
 

@@ -10,10 +10,11 @@ module;
 #include <optional>
 
 #include "volk.h"
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
+using namespace nyan;
 
 bool find_layer(std::span<VkLayerProperties> availableLayers, std::string_view layerName)
 {
@@ -173,12 +174,12 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 		if (pCallbackData->queueLabelCount) {
 			for (size_t labelIdx = 0; labelIdx < pCallbackData->queueLabelCount; ++labelIdx) {
 				tabs += "\t";
-				pCallbackData->pQueueLabels[labelIdx].color;
+				//pCallbackData->pQueueLabels[labelIdx].color;
 				color = std::array<uint8_t, 3> {static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
-				//logger.format(color, "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);  //TODO
-				logger.format( "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
+				logger.format(color, "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
+				//logger.format( "\n{} {}", tabs, pCallbackData->pQueueLabels[labelIdx].pLabelName);
 			}
 		}
 		if (pCallbackData->cmdBufLabelCount) {
@@ -187,8 +188,8 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 				color = std::array<uint8_t, 3> { static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[0] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[1] * 255),
 					static_cast<uint8_t>(pCallbackData->pQueueLabels[labelIdx].color[2] * 255) };
-				//logger.format(color, "\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName); //TODO
-				logger.format("\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
+				logger.format(color, "\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
+				//logger.format("\n{} {}", tabs, pCallbackData->pCmdBufLabels[labelIdx].pLabelName);
 			}
 		}
 		if (pCallbackData->objectCount) {
@@ -205,18 +206,59 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 	};
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		fun(std::move(nyan::util::log::verbose_message("[Verbose] ")));
+		fun(std::move(log::verbose().message("[Verbose] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		fun(std::move(nyan::util::log::info_message("[Info] ")));
+		fun(std::move(log::info().message("[Info] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		fun(std::move(nyan::util::log::warning_message("[Warning] ")));
+		fun(std::move(log::warning().message("[Warning] ")));
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		fun(std::move(nyan::util::log::error_message("[Error] ")));
+		fun(std::move(log::error().message("[Error] ")));
 	else
-		fun(std::move(nyan::util::log::error_message("[Info] ")));
+		fun(std::move(log::error().message("[Info] ")));
 	
 
 	return VK_FALSE;
+}
+
+static std::expected<std::vector<PhysicalDevice>, PhysicalDeviceCreationError> enumerate_physical_devices(const VkInstance handle) noexcept
+{
+
+	assert(vkEnumeratePhysicalDevices);
+
+	uint32_t numDevices;
+	if (const auto result = vkEnumeratePhysicalDevices(handle, &numDevices, nullptr); result != VK_SUCCESS) [[unlikely]] 
+		return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
+
+	std::vector<VkPhysicalDevice> physicalDeviceHandles(numDevices);
+
+	if (const auto result = vkEnumeratePhysicalDevices(handle, &numDevices, physicalDeviceHandles.data()); result != VK_SUCCESS) [[unlikely]]
+		return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
+
+	std::vector<PhysicalDevice> physicalDevices;
+	for (auto handle : physicalDeviceHandles) {
+
+		auto result = PhysicalDevice::create(handle);
+		if (!result) [[unlikely]]
+			return std::unexpected{ result.error() };
+
+		auto& dev = physicalDevices.emplace_back(std::move(*result));
+		const auto& properties = dev.get_properties(); //VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+		std::string deviceType{};
+		if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_OTHER)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_OTHER";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
+		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
+		log::info().format("[Instance] Found vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType,
+			VK_API_VERSION_VARIANT(properties.apiVersion), VK_API_VERSION_MAJOR(properties.apiVersion),
+			VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
+	}
+	return physicalDevices;
 }
 
 const std::vector<PhysicalDevice>& Instance::get_physical_devices() const noexcept
@@ -224,11 +266,11 @@ const std::vector<PhysicalDevice>& Instance::get_physical_devices() const noexce
 	return m_physicalDevices;
 }
 
-std::expected<PhysicalDevice, PhysicalDeviceSelectionError> nyan::vulkan::wrapper::Instance::select_physical_device(std::optional<uint64_t> deviceId, const PhysicalDevice::Extensions& requiredExtensions) const noexcept
+std::expected<PhysicalDevice, PhysicalDeviceSelectionError> Instance::select_physical_device(std::optional<uint64_t> deviceId, const PhysicalDevice::Extensions& requiredExtensions, Version minVersion) const noexcept
 {
 
 	auto& physicalDevices = get_physical_devices();
-	if(physicalDevices.empty())
+	if(physicalDevices.empty()) [[unlikely]]
 		return std::unexpected{ PhysicalDeviceSelectionError::Type::NoPhysicalDeviceFoundError };
 	std::vector<size_t> validDevices;
 	size_t deviceIdx = 0;
@@ -242,6 +284,8 @@ std::expected<PhysicalDevice, PhysicalDeviceSelectionError> nyan::vulkan::wrappe
 		if ((ext & requiredExtensions) != requiredExtensions)
 			continue;
 
+		if (dev.get_version() < minVersion)
+			continue;
 
 		//Prefer to run on dedicated but give the option to the user to select
 		if (auto devType = dev.get_type(); static_cast<size_t>(bestType) > static_cast<size_t>(devType) && !deviceId)
@@ -256,62 +300,20 @@ std::expected<PhysicalDevice, PhysicalDeviceSelectionError> nyan::vulkan::wrappe
 		validDevices.push_back(idx);
 	}
 
-	if (validDevices.empty())
+	if (validDevices.empty()) [[unlikely]]
 		return std::unexpected{ PhysicalDeviceSelectionError::Type::NoValidPhysicalDeviceError };
 
 	return physicalDevices[validDevices[deviceIdx]];
-}
-
-std::expected<std::vector<PhysicalDevice>, PhysicalDeviceCreationError> enumerate_physical_devices(const VkInstance handle) noexcept
-{
-
-	assert(vkEnumeratePhysicalDevices);
-
-	uint32_t numDevices;
-	if (const auto result = vkEnumeratePhysicalDevices(handle, &numDevices, nullptr); result != VK_SUCCESS) {
-		return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
-	}
-
-	std::vector<VkPhysicalDevice> physicalDeviceHandles(numDevices);
-
-	if (const auto result = vkEnumeratePhysicalDevices(handle, &numDevices, physicalDeviceHandles.data()); result != VK_SUCCESS) {
-		return std::unexpected{ PhysicalDeviceCreationError::Type::UnknownError };
-	}
-
-	std::vector<PhysicalDevice> physicalDevices;
-	for (auto handle : physicalDeviceHandles) {
-		auto result = PhysicalDevice::create(handle);
-		if (!result)
-		{
-			return std::unexpected{ result.error()};
-		}
-		auto& dev = physicalDevices.emplace_back(std::move(*result));
-		const auto& properties = dev.get_properties(); //VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-		std::string deviceType{};
-		if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_OTHER)
-			deviceType = "VK_PHYSICAL_DEVICE_TYPE_OTHER";
-		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-			deviceType = "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU";
-		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-			deviceType = "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU";
-		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
-			deviceType = "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU";
-		else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
-			deviceType = "VK_PHYSICAL_DEVICE_TYPE_CPU";
-		nyan::util::log::info().format("[Instance] Found vulkan capable device: {}\n{}\n{}.{}.{}.{}", properties.deviceName, deviceType,
-		                                       VK_API_VERSION_VARIANT(properties.apiVersion), VK_API_VERSION_MAJOR(properties.apiVersion),
-		                                       VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
-	}
-	return physicalDevices;
 }
 
 std::expected<Instance, InstanceCreationError> Instance::create(
 	const ValidationSettings& validationSettings,
 	const ExtensionSettings& requiredExtensions, const ExtensionSettings& optionalExtension,
 	const std::string_view applicationName, const std::string_view engineName,
-	const uint32_t applicationVersion, const uint32_t engineVersion) noexcept
+	const uint32_t applicationVersion, const uint32_t engineVersion,
+	const Version minVersion) noexcept
 {
-	if (const auto result = volkInitialize(); result != VK_SUCCESS)
+	if (const auto result = volkInitialize(); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{InstanceCreationError::Type::VolkInitializationError };
 	assert(vkCreateInstance);
 	assert(vkEnumerateInstanceVersion);
@@ -319,18 +321,18 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 	assert(vkEnumerateInstanceLayerProperties);
 
 	uint32_t layerPropertyCount {0};
-	if (auto result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr); result != VK_SUCCESS)
+	if (auto result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr); result != VK_SUCCESS) [[unlikely]]
 	{
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
-			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+			result == VK_ERROR_OUT_OF_DEVICE_MEMORY) [[unlikely]]
 			return std::unexpected{ InstanceCreationError::Type::OutOfMemoryError };
 		return std::unexpected{ InstanceCreationError::Type::UnknownError };
 	}
 	std::vector< VkLayerProperties> availableLayers (layerPropertyCount);
-	if (auto result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, availableLayers.data()); result != VK_SUCCESS)
+	if (auto result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, availableLayers.data()); result != VK_SUCCESS) [[unlikely]]
 	{
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
-			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+			result == VK_ERROR_OUT_OF_DEVICE_MEMORY) [[unlikely]]
 			return std::unexpected{ InstanceCreationError::Type::OutOfMemoryError };
 		return std::unexpected{ InstanceCreationError::Type::UnknownError };
 	}
@@ -339,11 +341,11 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 	if (const auto validationLayer = "VK_LAYER_KHRONOS_validation"; 
 		validationSettings.enabled && find_layer(availableLayers, validationLayer))
 		requestedLayers.push_back(validationLayer);
-	//util::log::Logger::info().location().format("Requested instance layer not available: {}", layerName);
+	//log::Logger::info().location().format("Requested instance layer not available: {}", layerName);
 
 	
 	uint32_t propertyCount;
-	if(auto result = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr); result != VK_SUCCESS)
+	if(auto result = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr); result != VK_SUCCESS) [[unlikely]]
 	{
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
@@ -351,7 +353,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 		return std::unexpected{ InstanceCreationError::Type::UnknownError };
 	}
 	std::vector<VkExtensionProperties> availableExtensions(propertyCount);
-	if (auto result = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, availableExtensions.data()); result != VK_SUCCESS)
+	if (auto result = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, availableExtensions.data()); result != VK_SUCCESS) [[unlikely]]
 	{
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
@@ -360,7 +362,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 	}
 
 	for (const auto& layer : requestedLayers) {
-		if (auto result = vkEnumerateInstanceExtensionProperties(layer, &propertyCount, nullptr); result != VK_SUCCESS)
+		if (auto result = vkEnumerateInstanceExtensionProperties(layer, &propertyCount, nullptr); result != VK_SUCCESS) [[unlikely]]
 		{
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 				result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
@@ -368,7 +370,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 			return std::unexpected{ InstanceCreationError::Type::UnknownError };
 		}
 		std::vector<VkExtensionProperties> properties(propertyCount);
-		if (auto result = vkEnumerateInstanceExtensionProperties(layer, &propertyCount, properties.data()); result != VK_SUCCESS)
+		if (auto result = vkEnumerateInstanceExtensionProperties(layer, &propertyCount, properties.data()); result != VK_SUCCESS) [[unlikely]]
 		{
 			if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
 				result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
@@ -391,8 +393,8 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 					requestedExtensions.push_back(extensionName);
 				return true;
 			}
-			// util::log::info().location().format("Extension: \"{}\" not available", extensionName);  //TODO
-			util::log::info().format("Extension: \"{}\" not available", extensionName);
+			// log::info().location().format("Extension: \"{}\" not available", extensionName);  //TODO
+			log::info().format("Extension: \"{}\" not available", extensionName);
 			return false;
 		};
 
@@ -428,19 +430,19 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 				(extensions.getDisplayProperties2 && !check_extension(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME) && (extensions.display = 1) && !check_extension(VK_KHR_DISPLAY_EXTENSION_NAME)));
 		};
 
-	if (add_extensions(requiredExtensions))
+	if (add_extensions(requiredExtensions)) [[unlikely]]
 		return std::unexpected{ InstanceCreationError::Type::RequiredExtensionNotPresentError };
-	if (add_extensions(optionalExtension))
-		util::log::warning_message("[Instance] Requested optional instance extensions not all available");
+	if (add_extensions(optionalExtension)) [[unlikely]]
+		log::warning().message("[Instance] Requested optional instance extensions not all available");
 
-	if (vkEnumerateInstanceVersion == nullptr)
+	if (vkEnumerateInstanceVersion == nullptr) [[unlikely]]
 		return std::unexpected{ InstanceCreationError::Type::APIVersionNotSupportedError };
 
 	uint32_t apiVersion{ VK_API_VERSION_1_0 };
-	if(const auto result = vkEnumerateInstanceVersion(&apiVersion); result != VK_SUCCESS)
+	if(const auto result = vkEnumerateInstanceVersion(&apiVersion); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ InstanceCreationError::Type::OutOfMemoryError };
 
-	if (apiVersion < VK_API_VERSION_1_3)
+	if (minVersion > apiVersion) [[unlikely]]
 		return std::unexpected{ InstanceCreationError::Type::APIVersionNotSupportedError };
 
 	VkApplicationInfo applicationInfo{
@@ -509,12 +511,12 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 	VkAllocationCallbacks* allocator {nullptr};
 	VkInstance handle{ VK_NULL_HANDLE };
 
-	if(auto result = vkCreateInstance(&createInfo, allocator, &handle); result != VK_SUCCESS)
+	if(auto result = vkCreateInstance(&createInfo, allocator, &handle); result != VK_SUCCESS) [[unlikely]]
 	{
 		if (result == VK_ERROR_OUT_OF_HOST_MEMORY ||
-			result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+			result == VK_ERROR_OUT_OF_DEVICE_MEMORY) [[unlikely]]
 			return std::unexpected{ InstanceCreationError::Type::OutOfMemoryError };
-		else if (result == VK_ERROR_INCOMPATIBLE_DRIVER)
+		else if (result == VK_ERROR_INCOMPATIBLE_DRIVER) [[unlikely]]
 			return std::unexpected{ InstanceCreationError::Type::IncompatibleDriverError };
 		else
 			return std::unexpected{ InstanceCreationError::Type::UnknownError };
@@ -539,14 +541,14 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 			.pfnUserCallback {debugCallback},
 			.pUserData {nullptr}
 		};
-		if (auto result = vkCreateDebugUtilsMessengerEXT(handle, &debugMessengerCreateInfo, allocator, &debugUtilsMessenger); result != VK_SUCCESS) {
-			if(result == VK_ERROR_OUT_OF_HOST_MEMORY)
+		if (auto result = vkCreateDebugUtilsMessengerEXT(handle, &debugMessengerCreateInfo, allocator, &debugUtilsMessenger); result != VK_SUCCESS) [[unlikely]] {
+			if(result == VK_ERROR_OUT_OF_HOST_MEMORY) [[unlikely]]
 				return std::unexpected{ InstanceCreationError::Type::OutOfMemoryError };
 			return std::unexpected{ InstanceCreationError::Type::UnknownError };
 		}
 	}
 	auto physicalDeviceEnumerationResult = enumerate_physical_devices(handle);
-	if (!physicalDeviceEnumerationResult)
+	if (!physicalDeviceEnumerationResult) [[unlikely]]
 		return std::unexpected{ InstanceCreationError::Type::PhysicalDeviceEnumerationError };
 
 
@@ -554,15 +556,13 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 }
 
 Instance::Instance(Instance&& other) noexcept :
-	m_handle(std::move(other.m_handle)),
-	m_debugUtilsMessenger(std::move(other.m_debugUtilsMessenger)),
-	m_allocator(std::move(other.m_allocator)),
-	m_physicalDevices(std::move(other.m_physicalDevices)),
+	m_handle(std::exchange(other.m_handle, VK_NULL_HANDLE)),
+	m_debugUtilsMessenger(std::exchange(other.m_debugUtilsMessenger, VK_NULL_HANDLE)),
+	m_allocator(std::exchange(other.m_allocator, nullptr)),
+	m_physicalDevices(std::exchange(other.m_physicalDevices, {})),
 	m_validationSettings(std::move(other.m_validationSettings)),
 	m_enabledExtensions(std::move(other.m_enabledExtensions))
 {
-	other.m_handle = VK_NULL_HANDLE;
-	other.m_debugUtilsMessenger = VK_NULL_HANDLE;
 }
 
 Instance&  Instance::operator=(Instance&& other)  noexcept
@@ -584,6 +584,14 @@ VkInstance Instance::get_handle() const noexcept
 	return m_handle;
 }
 
+Version Instance::get_version() const noexcept
+{
+	uint32_t version{ 0 };
+	assert(vkEnumerateInstanceVersion != nullptr);
+	vkEnumerateInstanceVersion(&version);
+	return Version{ version };
+}
+
 Instance::Instance(VkInstance instance, VkDebugUtilsMessengerEXT debugUtilsMessenger, VkAllocationCallbacks* allocator,
 	std::vector<PhysicalDevice> physicalDevices, const ValidationSettings& validationSettings, ExtensionSettings enabledExtensions) noexcept :
 	m_handle(instance),
@@ -596,7 +604,7 @@ Instance::Instance(VkInstance instance, VkDebugUtilsMessengerEXT debugUtilsMesse
 
 }
 
-Instance::~Instance()
+Instance::~Instance() noexcept
 {
 	assert(vkDestroyInstance);
 

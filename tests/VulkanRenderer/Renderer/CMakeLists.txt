@@ -1,11 +1,10 @@
-add_executable(VulkanRendererTests VulkanRendererTests.cpp)
+add_executable(RendererTests RendererTests.cpp)
 
-enable_testing()
-target_link_libraries(VulkanRendererTests 
+target_link_libraries(RendererTests 
 	PRIVATE 
-			NYAN::VulkanRenderer
+			NYAN::Renderer
 			GTest::gtest_main)
 
 			
 include(GoogleTest)
-gtest_discover_tests(VulkanRendererTests)
+gtest_discover_tests(RendererTests)

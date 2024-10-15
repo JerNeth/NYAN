@@ -7,6 +7,8 @@ set(NYAN_UTIL_BUILD_SAMPLES OFF CACHE INTERNAL "Build samples")
 if(NOT DEFINED repo_nyanutil OR NOT EXISTS ${repo_nyanutil})
 	message("repo_nyanutil not locally specified, fetching remote")
 	set(repo_nyanutil https://github.com/JerNeth/NYANUtil.git)
+else()
+	message("repo_nyanutil locally specified: " ${repo_nyanutil})
 endif()
 FetchContent_Declare(
 	nyanutil

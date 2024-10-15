@@ -1,17 +1,20 @@
 module;
 
 #include <cassert>
+#include <expected>
 #include <utility>
+#include <span>
 
 #include "magic_enum_all.hpp"
 
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
+import NYANData;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 
 LogicalDevice::LogicalDevice(LogicalDevice&& other) noexcept :
@@ -22,6 +25,8 @@ LogicalDevice::LogicalDevice(LogicalDevice&& other) noexcept :
 	m_queues(std::move(other.m_queues)),
 	m_enabledExtensions(std::move(other.m_enabledExtensions))
 {
+	update_wrapper_pointers();
+	
 }
 
 LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) noexcept
@@ -34,6 +39,7 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) noexcept
 		std::swap(m_deletionQueue, other.m_deletionQueue);
 		std::swap(m_queues, other.m_queues);
 		std::swap(m_enabledExtensions, other.m_enabledExtensions);
+		update_wrapper_pointers();
 	}
 	return *this;
 }
@@ -55,7 +61,7 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 	magic_enum::enum_for_each<Queue::Type>([&](auto val) {
 		constexpr Queue::Type queueType = val;
 		auto queueFamilyIndex = physicalDevice.get_queue_family_index(static_cast<Queue::Type>(queueType));
-		if (!queuePriorities[queueType].empty()) {
+		if (queuePriorities[queueType].size() > 0) {
 			if (queueFamilyIndex != ~0u) {
 				queueCreateInfos.push_back(VkDeviceQueueCreateInfo{
 					.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -66,7 +72,7 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 			}
 			else
 			{
-				util::log::warning_message("[LogicalDevice] Requested queues from non-existent queue families");
+				log::warning().message("[LogicalDevice] Requested queues from non-existent queue families");
 			}
 		}
 
@@ -74,7 +80,7 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 	
 
 	assert(!queueCreateInfos.empty());
-	if(queueCreateInfos.empty()) //Not sure if that is actually invalid but a device without queue is probably never intended
+	if(queueCreateInfos.empty()) [[unlikely]] //Not sure if that is actually invalid but a device without queue is probably never intended
 		return std::unexpected{ LogicalDeviceCreationError::Type::NoQueueSpecified }; 
 
 	VkDeviceCreateInfo createInfo{
@@ -96,7 +102,7 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 	}
 
 	VkDevice deviceHandle;
-	if (const auto result = vkCreateDevice(physicalDevice.get_handle(), &createInfo, nullptr, &deviceHandle); result != VK_SUCCESS) {
+	if (const auto result = vkCreateDevice(physicalDevice.get_handle(), &createInfo, nullptr, &deviceHandle); result != VK_SUCCESS) [[unlikely]] {
 		if (result == VK_ERROR_DEVICE_LOST) {
 			return std::unexpected{ LogicalDeviceCreationError::Type::DeviceLostError };
 		}
@@ -117,11 +123,20 @@ std::expected<LogicalDevice, LogicalDeviceCreationError> LogicalDevice::create(I
 	}
 	LogicalDeviceWrapper deviceWrapper{ deviceHandle, allocatorCallbacks };
 
-	auto allocatorResult = Allocator::create(instance, deviceWrapper, physicalDevice, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
-	if(!allocatorResult)
+	//auto allocatorResult = Allocator::create(instance, deviceWrapper, physicalDevice, VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
+	//if(!allocatorResult)
+	//	return std::unexpected{ LogicalDeviceCreationError::Type::AllocatorCreationError };
+	VmaAllocatorCreateFlags createFlags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
+	
+	::VmaAllocator allocator;
+	if (const auto result = deviceWrapper.vmaCreateAllocator(createFlags, physicalDevice.get_handle(),
+	instance.get_handle(), physicalDevice.get_properties().apiVersion, &allocator); result != VK_SUCCESS) [[unlikely]] 
+		//return std::unexpected{ Error{result} };
 		return std::unexpected{ LogicalDeviceCreationError::Type::AllocatorCreationError };
 
-	return LogicalDevice(std::move(deviceWrapper), std::move(physicalDevice), std::move(*allocatorResult), std::move(enabledExtensions), queuePriorities);
+	//return Allocator{logicalDevice, allocator };
+
+	return LogicalDevice(std::move(deviceWrapper), std::move(physicalDevice), allocator, std::move(enabledExtensions), queuePriorities);
 }
 
 const PhysicalDevice& LogicalDevice::get_physical_device() const noexcept
@@ -134,7 +149,7 @@ const LogicalDeviceWrapper& LogicalDevice::get_device() const noexcept
 	return m_deviceWrapper;
 }
 
-DeletionQueue& nyan::vulkan::wrapper::LogicalDevice::get_deletion_queue() noexcept
+DeletionQueue& nyan::vulkan::LogicalDevice::get_deletion_queue() noexcept
 {
 	return m_deletionQueue;
 }
@@ -144,14 +159,14 @@ const PhysicalDevice::Extensions& LogicalDevice::get_enabled_extensions() const 
 	return m_enabledExtensions;
 }
 
-const std::vector<Queue>& LogicalDevice::get_queues(Queue::Type type) const noexcept
+std::span<const Queue> LogicalDevice::get_queues(Queue::Type type) const noexcept
 {
-	return m_queues[type];
+	return { m_queues[type].data(), m_queues[type].size() };
 }
 
-std::vector<Queue>& LogicalDevice::get_queues(Queue::Type type) noexcept
+std::span<Queue> LogicalDevice::get_queues(Queue::Type type) noexcept
 {
-	return m_queues[type];
+	return { m_queues[type].data(), m_queues[type].size() };
 }
 
 Allocator& LogicalDevice::get_allocator() noexcept
@@ -164,12 +179,19 @@ const Allocator& LogicalDevice::get_allocator() const noexcept
 	return m_allocator;
 }
 
-LogicalDevice::LogicalDevice(LogicalDeviceWrapper device, PhysicalDevice physicalDevice, Allocator allocator,
+std::expected<void, Error> LogicalDevice::wait_idle() const noexcept
+{
+	if(auto result = m_deviceWrapper.vkDeviceWaitIdle(); result != VK_SUCCESS) [[unlikely]]
+		return std::unexpected{result};
+	return {};
+}
+
+LogicalDevice::LogicalDevice(LogicalDeviceWrapper device, PhysicalDevice physicalDevice, VmaAllocator allocator,
                              PhysicalDevice::Extensions enabledExtensions,
                              const QueueContainer<float>& queuePriorities) noexcept :
 	m_deviceWrapper(std::move(device)),
 	m_physicalDevice(std::move(physicalDevice)),
-	m_allocator(std::move(allocator)),
+	m_allocator(m_deviceWrapper, allocator),
 	m_deletionQueue(m_deviceWrapper, m_allocator),
 	m_enabledExtensions(std::move(enabledExtensions))
 {
@@ -178,17 +200,39 @@ LogicalDevice::LogicalDevice(LogicalDeviceWrapper device, PhysicalDevice physica
 
 void LogicalDevice::init_queues(const QueueContainer<float>& queuePriorities) noexcept
 {
+	uint32_t queueCount{ 0 };
+	vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice.get_handle(), &queueCount, nullptr);
+	std::vector< VkQueueFamilyProperties> properties(queueCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice.get_handle(), &queueCount, properties.data());
+
 	magic_enum::enum_for_each<Queue::Type>([&](auto val) {
 		constexpr Queue::Type queueType = val;
 		if (auto queueFamilyIndex = m_physicalDevice.get_queue_family_index(queueType); queueFamilyIndex != ~0u) {
+			auto& property = properties[queueFamilyIndex];
+			auto& granularity = property.minImageTransferGranularity;
+			auto granularityArray = std::array<uint32_t, 3>{ granularity.width, granularity.height, granularity.depth };
+			assert(queuePriorities[queueType].size() <= property.queueCount);
 			for (uint32_t queueIdx = 0; queueIdx < queuePriorities[queueType].size(); ++queueIdx) {
 				VkQueue queueHandle{ VK_NULL_HANDLE };
 				m_deviceWrapper.vkGetDeviceQueue(queueFamilyIndex, queueIdx, &queueHandle);
+
 				assert(queueHandle != VK_NULL_HANDLE);
-				m_queues[queueType].emplace_back(m_deviceWrapper, queueHandle, queueType, queueFamilyIndex, queuePriorities[queueType][queueIdx]);
+				// we can ignore since emplace shouldn't fail since the sizes are identically due to being the same type
+				nyan::ignore = m_queues[queueType].emplace_back(m_deviceWrapper, queueHandle, queueType, Queue::FamilyIndex{ queueFamilyIndex }, queuePriorities[queueType][queueIdx], granularityArray);
 			}
 		}
 
 		});
 
+}
+
+void LogicalDevice::update_wrapper_pointers() noexcept
+{
+	m_allocator.ptr_device = &m_deviceWrapper;
+	m_deletionQueue.ptr_device = &m_deviceWrapper;
+	m_deletionQueue.ptr_allocator = &m_allocator;
+
+	for (auto& queues : m_queues)
+		for (auto& queue : queues)
+			queue.ptr_device = &m_deviceWrapper;
 }

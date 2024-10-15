@@ -2,18 +2,19 @@ module;
 
 #include <array>
 #include <cassert>
+#include <expected>
 #include <utility>
 #include <string_view>
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept :
-	Object(other.r_device, other.m_handle),
+	Object(*other.ptr_device, other.m_handle),
 	r_deletionQueue(other.r_deletionQueue),
 	m_info(other.m_info)
 {
@@ -24,7 +25,7 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other)
 {
 	if(this != std::addressof(other))
 	{
-		assert(std::addressof(r_device) == std::addressof(other.r_device));
+		assert(ptr_device == other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_info, other.m_info);
 	}
@@ -34,7 +35,7 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other)
 DescriptorSetLayout::~DescriptorSetLayout() noexcept
 {
 	if (m_handle != VK_NULL_HANDLE)
-		r_deletionQueue.queue_descriptor_set_layout_deletion(m_handle);
+		r_deletionQueue.queue_deletion(m_handle);
 }
 
 const DescriptorSetLayout::DescriptorInfo& DescriptorSetLayout::get_info() const noexcept
@@ -75,23 +76,23 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 	//Not sure if validation instead of error is better here.
 	auto validateDescriptorCount = [&](std::string_view message, auto& info, auto maxVal)
 		{
-			if (info > maxVal) {
-				util::log::warning().format(message, info, maxVal);
+			if (info > maxVal) [[unlikely]] {
+				log::warning().format(message, info, maxVal);
 				info = maxVal;
 			}
 		};
 
-	validateDescriptorCount("Not enough bindless storage buffers {} | {}", info.storageBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers);
-	validateDescriptorCount("Not enough bindless uniform buffers {} | {}", info.uniformBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers);
-	validateDescriptorCount("Not enough bindless sampled images {} | {}", info.sampledImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages);
-	validateDescriptorCount("Not enough bindless storage images  {} | {}", info.storageImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages);
-	validateDescriptorCount("Not enough bindless bindless samplers {} | {}", info.samplerCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers);
-	validateDescriptorCount("Not enough bindless input attachments {} | {}", info.inputAttachmentCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindInputAttachments);
-	validateDescriptorCount("Not enough bindless acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures);
+	validateDescriptorCount("Device does not support enough bindless storage buffers {} | {}", info.storageBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers);
+	validateDescriptorCount("Device does not support enough bindless uniform buffers {} | {}", info.uniformBufferCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers);
+	validateDescriptorCount("Device does not support enough bindless sampled images {} | {}", info.sampledImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSampledImages);
+	validateDescriptorCount("Device does not support enough bindless storage images  {} | {}", info.storageImageCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindStorageImages);
+	validateDescriptorCount("Device does not support enough bindless bindless samplers {} | {}", info.samplerCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindSamplers);
+	validateDescriptorCount("Device does not support enough bindless input attachments {} | {}", info.inputAttachmentCount, vulkan12Properties.maxPerStageDescriptorUpdateAfterBindInputAttachments);
+	validateDescriptorCount("Device does not support enough bindless acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxDescriptorSetUpdateAfterBindAccelerationStructures);
 
 	auto descriptorSum = info.storageBufferCount + info.uniformBufferCount + info.sampledImageCount + info.storageImageCount + info.samplerCount + info.inputAttachmentCount + info.accelerationStructureCount;
-	if (descriptorSum > vulkan12Properties.maxPerStageUpdateAfterBindResources) {
-		util::log::error().format("Not enough bindless descriptors {} | {}", descriptorSum, vulkan12Properties.maxPerStageUpdateAfterBindResources);
+	if (descriptorSum > vulkan12Properties.maxPerStageUpdateAfterBindResources) [[unlikely]] {
+		log::error().format("Not enough bindless descriptors {} | {}", descriptorSum, vulkan12Properties.maxPerStageUpdateAfterBindResources);
 		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
 	}
 
@@ -212,10 +213,11 @@ std::expected<DescriptorSetLayout, Error> DescriptorSetLayout::create(LogicalDev
 		.pBindings = bindings.data()
 	};
 	const auto& deviceWrapper = device.get_device();
+
 	VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
-	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) {
+
+	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) [[unlikely]] 
 		return std::unexpected{ Error{result} };
-	}
 
 	return DescriptorSetLayout{ deviceWrapper, layout, device.get_deletion_queue(), std::move(info)};
 }
@@ -229,9 +231,9 @@ DescriptorSetLayout::DescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapp
 	assert(m_handle != VK_NULL_HANDLE);
 }
 
-std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescriptorSetLayout::create(LogicalDevice& device, DescriptorInfo info) noexcept
+std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::PushDescriptorSetLayout::create(LogicalDevice& device, DescriptorInfo info) noexcept
 {
-	if (!device.get_enabled_extensions().pushDescriptors)
+	if (!device.get_enabled_extensions().pushDescriptors) [[unlikely]]
 		return std::unexpected{ Error{VK_ERROR_EXTENSION_NOT_PRESENT} };
 
 	const auto& physicalDevice = device.get_physical_device();
@@ -245,7 +247,7 @@ std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescrip
 	auto validateDescriptorCount = [&](std::string_view message, auto& info, auto maxVal)
 		{
 			if (info > maxVal) {
-				util::log::warning().format(message, info, maxVal);
+				log::warning().format(message, info, maxVal);
 				info = maxVal;
 			}
 		};
@@ -258,12 +260,12 @@ std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescrip
 	validateDescriptorCount("Not enough descriptor input attachements {} | {}", info.inputAttachmentCount, limits.maxPerStageDescriptorInputAttachments);
 	validateDescriptorCount("Not enough descriptor acceleration structures {} | {}", info.accelerationStructureCount, rtProperties.maxPerStageDescriptorAccelerationStructures);
 	auto descriptorSum = info.storageBufferCount + info.uniformBufferCount + info.sampledImageCount + info.storageImageCount + info.samplerCount + info.inputAttachmentCount + info.accelerationStructureCount;
-	if (descriptorSum > pushDescriptorProperties.maxPushDescriptors) {
-		util::log::error().format("Not enough push descriptors {} | {}", descriptorSum, pushDescriptorProperties.maxPushDescriptors);
+	if (descriptorSum > pushDescriptorProperties.maxPushDescriptors) [[unlikely]] {
+		log::error().format("Not enough push descriptors {} | {}", descriptorSum, pushDescriptorProperties.maxPushDescriptors);
 		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
 	}
-	if (descriptorSum > limits.maxPerStageResources) {
-		util::log::error().format("Not enough descriptors {} | {}", descriptorSum, limits.maxPerStageResources);
+	if (descriptorSum > limits.maxPerStageResources) [[unlikely]] {
+		log::error().format("Not enough descriptors {} | {}", descriptorSum, limits.maxPerStageResources);
 		return std::unexpected{ Error{VK_ERROR_UNKNOWN} };
 	}
 
@@ -345,9 +347,8 @@ std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::wrapper::PushDescrip
 	};
 	const auto& deviceWrapper = device.get_device();
 	VkDescriptorSetLayout layout{ VK_NULL_HANDLE };
-	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) {
+	if (auto result = deviceWrapper.vkCreateDescriptorSetLayout(&setLayoutCreateInfo, &layout); result != VK_SUCCESS) [[unlikely]] 
 		return std::unexpected{ Error{result} };
-	}
 
 	return PushDescriptorSetLayout{ deviceWrapper, layout, device.get_deletion_queue(), std::move(info) };
 }

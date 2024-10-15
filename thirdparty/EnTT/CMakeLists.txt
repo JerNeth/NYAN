@@ -4,8 +4,10 @@ include(FetchContent)
 
 
 if(NOT DEFINED repo_entt OR NOT EXISTS ${repo_entt})
-	message("Entt not locally specified, fetching remote")
+	message("repo_entt not locally specified, fetching remote")
 	set(repo_entt https://github.com/skypjack/entt.git)
+else()
+	message("repo_entt locally specified: " ${repo_entt})
 endif()
 FetchContent_Declare(
 	EnTT

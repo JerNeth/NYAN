@@ -3,10 +3,9 @@ add_subdirectory(shader EXCLUDE_FROM_ALL)
 add_executable(VulkanWrapperTests VulkanWrapperTests.cpp)
 
 
-enable_testing()
 target_link_libraries(VulkanWrapperTests 
 	PRIVATE 
-			NYAN::VulkanWrapper
+			NYAN::Vulkan
 			GTest::gtest_main
 			test_shaders)
 

@@ -8,22 +8,22 @@ module;
 
 #include "volk.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import NYANData;
 import NYANLog;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
 
 
 PipelineCache::PipelineCache(PipelineCache&& other) noexcept :
-	Object(other.r_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
+	Object(*other.ptr_device, std::exchange(other.m_handle, VK_NULL_HANDLE)),
 	r_physicalDevice(other.r_physicalDevice)
 {
 }
 
 PipelineCache& PipelineCache::operator=(PipelineCache&& other) noexcept
 {
-	assert(std::addressof(r_device) == std::addressof(other.r_device));
+	assert(ptr_device == other.ptr_device);
 	if (this != std::addressof(other)) {
 		std::swap(m_handle, other.m_handle);
 	}
@@ -33,19 +33,19 @@ PipelineCache& PipelineCache::operator=(PipelineCache&& other) noexcept
 PipelineCache::~PipelineCache()
 {
 	if (m_handle)
-		r_device.vkDestroyPipelineCache(m_handle);
+		ptr_device->vkDestroyPipelineCache(m_handle);
 }
 
-nyan::util::data::DynArray<std::byte> PipelineCache::get_data() const noexcept
+nyan::DynamicArray<std::byte> PipelineCache::get_data() const noexcept
 {
 
 	size_t dataSize;
-	nyan::util::data::DynArray<std::byte> retVal;
-	if (const auto result = r_device.vkGetPipelineCacheData(m_handle, &dataSize, nullptr); result != VK_SUCCESS)
+	nyan::DynamicArray<std::byte> retVal;
+	if (const auto result = ptr_device->vkGetPipelineCacheData(m_handle, &dataSize, nullptr); result != VK_SUCCESS)
 		return retVal;
 	if (!retVal.resize(sizeof(PipelineCachePrefixHeader) + dataSize))
 		return retVal;
-	if (const auto result = r_device.vkGetPipelineCacheData(m_handle, &dataSize, retVal.data() + sizeof(PipelineCachePrefixHeader)); result != VK_SUCCESS)
+	if (const auto result = ptr_device->vkGetPipelineCacheData(m_handle, &dataSize, retVal.data() + sizeof(PipelineCachePrefixHeader)); result != VK_SUCCESS)
 		return retVal;
 
 	assert(dataSize <= std::numeric_limits<uint32_t>::max());
@@ -64,14 +64,14 @@ nyan::util::data::DynArray<std::byte> PipelineCache::get_data() const noexcept
 		.uuid{std::to_array(properties.pipelineCacheUUID)}
 	};
 	
-	currentHeader->dataHash = nyan::util::data::hash(std::span{ retVal.data() + offsetof(PipelineCachePrefixHeader, vendorID), retVal.size() - offsetof(PipelineCachePrefixHeader, vendorID) });
+	currentHeader->dataHash = nyan::hash(std::span{ retVal.data() + offsetof(PipelineCachePrefixHeader, vendorID), retVal.size() - offsetof(PipelineCachePrefixHeader, vendorID) });
 
 	return retVal;
 }
 
 std::expected<void, Error> PipelineCache::merge(const PipelineCache& other) noexcept
 {
-	if (const auto result = r_device.vkMergePipelineCaches(m_handle, 1, &other.get_handle()); result != VK_SUCCESS)
+	if (const auto result = ptr_device->vkMergePipelineCaches(m_handle, 1, &other.get_handle()); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{result};
 
 	return { };
@@ -79,14 +79,14 @@ std::expected<void, Error> PipelineCache::merge(const PipelineCache& other) noex
 
 std::expected<void, Error> PipelineCache::merge(std::span<PipelineCache> others) noexcept
 {
-	nyan::util::data::DynArray<VkPipelineCache> caches;
-	if(caches.reserve(others.size()))
+	DynamicArray<VkPipelineCache> caches;
+	if(caches.reserve(others.size())) [[unlikely]]
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	for (const auto& cache : others)
-		if(caches.push_back(cache.get_handle()))
+		if(caches.push_back(cache.get_handle())) [[unlikely]]
 			return std::unexpected{ VK_ERROR_UNKNOWN };
 
-	if (const auto result = r_device.vkMergePipelineCaches(m_handle, caches.size(), caches.data()); result != VK_SUCCESS)
+	if (const auto result = ptr_device->vkMergePipelineCaches(m_handle, caches.size(), caches.data()); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
 	return { };
@@ -110,7 +110,7 @@ std::expected<PipelineCache, Error> PipelineCache::create(const LogicalDevice& d
 		PipelineCachePrefixHeader currentHeader{
 			.magicNumber { PipelineCachePrefixHeader::magicNumberValue},
 			.dataSize {header.dataSize},
-			.dataHash {nyan::util::data::hash(std::span{ data.data() + offsetof(PipelineCachePrefixHeader, vendorID), data.size() - offsetof(PipelineCachePrefixHeader, vendorID) })},
+			.dataHash {nyan::hash(std::span{ data.data() + offsetof(PipelineCachePrefixHeader, vendorID), data.size() - offsetof(PipelineCachePrefixHeader, vendorID) })},
 			.vendorID {properties.vendorID},
 			.deviceID {properties.deviceID},
 			.driverVersion {properties.driverVersion},
@@ -122,13 +122,13 @@ std::expected<PipelineCache, Error> PipelineCache::create(const LogicalDevice& d
 			createInfo.pInitialData = data.data() + sizeof(PipelineCachePrefixHeader);
 		}
 		else {
-			nyan::util::log::warning_message("Existing pipeline cache invalid");
+			log::warning().message("Existing pipeline cache invalid");
 		}
 	}
 	VkPipelineCache handle{ VK_NULL_HANDLE };
 	const auto& deviceWrapper = device.get_device();
-	if (auto result = deviceWrapper.vkCreatePipelineCache(&createInfo, &handle); result != VK_SUCCESS) {
-		nyan::util::log::warning_message("Couldn't create pipeline cache");
+	if (auto result = deviceWrapper.vkCreatePipelineCache(&createInfo, &handle); result != VK_SUCCESS) [[unlikely]] {
+		log::warning().message("Couldn't create pipeline cache");
 		return std::unexpected{ result};
 	}
 	

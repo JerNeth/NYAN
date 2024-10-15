@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 add_subdirectory(EnTT)
 
-add_subdirectory(EnTTEditor)
+#add_subdirectory(EnTTEditor)
 
 add_subdirectory(GLFW)
 
@@ -20,4 +20,7 @@ add_subdirectory(Volk)
 
 add_subdirectory(VulkanMemoryAllocator)
 
-add_subdirectory(tinyGLTF)
+#add_subdirectory(tinyGLTF)
+
+target_link_libraries(vma_implementation 
+        PUBLIC volk::volk)

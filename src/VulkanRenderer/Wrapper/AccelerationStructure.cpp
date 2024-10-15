@@ -5,8 +5,8 @@ module;
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
-module NYANVulkanWrapper;
+module NYANVulkan;
 import :Instance;
 import :PhysicalDevice;
 
-using namespace nyan::vulkan::wrapper;
+using namespace nyan::vulkan;
