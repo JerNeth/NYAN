@@ -10,6 +10,8 @@ module;
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANData;
 import NYANLog;
 

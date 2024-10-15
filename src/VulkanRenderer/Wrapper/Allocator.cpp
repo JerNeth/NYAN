@@ -1,13 +1,15 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <utility>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
 
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
 module NYANVulkan;
+import std;
+
 import :Instance;
 import :PhysicalDevice;
 
@@ -20,7 +22,7 @@ Allocator::Allocator(Allocator&& other) noexcept :
 
 Allocator& Allocator::operator=(Allocator&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
+	::assert(ptr_device == other.ptr_device);
 	if(this != std::addressof(other))
 	{
 		std::swap(m_handle, other.m_handle);

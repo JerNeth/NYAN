@@ -1,12 +1,14 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <string_view>
+//#include <cassert>
+//#include <expected>
+//#include <string_view>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANLog;
 
 using namespace nyan::vulkan;
@@ -23,8 +25,8 @@ Queue::Queue(Queue&& other) noexcept :
 
 Queue& Queue::operator=(Queue&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
 	if (std::addressof(other) != this) {
+		std::swap(ptr_device, other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_type, other.m_type);
 		std::swap(m_queueFamilyIndex, other.m_queueFamilyIndex);
@@ -43,7 +45,7 @@ Queue::Queue(const LogicalDeviceWrapper& device, VkQueue handle, Type type, Queu
 	m_minImageTransferGranularity(transferGranularity),
 	m_presentId(0)
 {
-	assert(m_queueFamilyIndex.value != Queue::FamilyIndex::invalid);
+	::assert(m_queueFamilyIndex.value != Queue::FamilyIndex::invalid);
 }
 
 std::expected<void, Error> Queue::wait_idle() const noexcept
@@ -70,7 +72,7 @@ std::expected<void, Error> Queue::submit(CommandBuffer& cmd, BinarySemaphore& wa
 		.pSignalSemaphores{nullptr}
 	};
 	if (!waitSemaphore.signaled()) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	waitSemaphore.m_timeline++;
@@ -78,7 +80,7 @@ std::expected<void, Error> Queue::submit(CommandBuffer& cmd, BinarySemaphore& wa
 	submitInfo.pWaitSemaphores = &waitSemaphore.get_handle();
 
 	if (!signalSemaphore.waited()) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	signalSemaphore.m_timeline++;
@@ -127,7 +129,7 @@ std::expected<void, Error> Queue::submit_signal(CommandBuffer& cmd, BinarySemaph
 	};
 
 	if (!signalSemaphore.waited()) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	signalSemaphore.m_timeline++;
@@ -156,7 +158,7 @@ std::expected<void, Error> Queue::submit_wait(CommandBuffer& cmd, BinarySemaphor
 		.pSignalSemaphores{nullptr}
 	};
 	if (!waitSemaphore.signaled()) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	waitSemaphore.m_timeline++;
@@ -172,7 +174,7 @@ std::expected<void, Error> Queue::submit_wait(CommandBuffer& cmd, BinarySemaphor
 std::expected<void, Error> Queue::submit(BinarySemaphore& semaphore) const noexcept
 {
 	if (!semaphore.signaled()) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	semaphore.m_timeline++;
@@ -228,9 +230,10 @@ std::expected<void, Error> Queue::submit2(CommandBuffer& cmd, Fence* fence) cons
 		submitInfo.pNext = &presentId;
 	VkFence fenceHandle{ VK_NULL_HANDLE };
 	if (fence) {
-		assert(!fence->is_signaled());
-		if (fence->is_signaled()) [[unlikely]]
+		if (fence->is_signaled()) [[unlikely]] {
+			::assert(false);
 			return std::unexpected{ VK_ERROR_UNKNOWN };
+		}
 		fenceHandle = fence->get_handle();
 		fence->set_signaled();
 	}
@@ -248,7 +251,7 @@ std::expected<void, Error> Queue::present(Swapchain& swapchain, BinarySemaphore*
 	//	return std::unexpected{ VK_ERROR_DEVICE_LOST };
 	if (semaphore) {
 		if (!semaphore->signaled()) [[unlikely]] {
-			assert(false);
+			::assert(false);
 			return std::unexpected{ VK_ERROR_DEVICE_LOST };
 		}
 		semaphore->m_timeline++;

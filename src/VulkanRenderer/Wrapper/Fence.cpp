@@ -1,13 +1,15 @@
 module;
 
-#include <cassert>
-#include <chrono>
-#include <expected>
-#include <utility>
+//#include <cassert>
+//#include <chrono>
+//#include <expected>
+//#include <utility>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANLog;
 
 using namespace nyan::vulkan;
@@ -21,7 +23,7 @@ Fence::Fence(Fence&& other) noexcept :
 
 Fence& Fence::operator=(Fence&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
+	::assert(ptr_device == other.ptr_device);
 	if (this != std::addressof(other)) {
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_signaled, other.m_signaled);

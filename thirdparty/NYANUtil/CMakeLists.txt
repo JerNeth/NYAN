@@ -1,20 +1,8 @@
 cmake_minimum_required (VERSION 3.14)
-include(FetchContent)
 
-set(NYAN_UTIL_BUILD_TESTS OFF CACHE INTERNAL "Build tests")
-set(NYAN_UTIL_BUILD_SAMPLES OFF CACHE INTERNAL "Build samples")
-
-if(NOT DEFINED repo_nyanutil OR NOT EXISTS ${repo_nyanutil})
-	message("repo_nyanutil not locally specified, fetching remote")
-	set(repo_nyanutil https://github.com/JerNeth/NYANUtil.git)
-else()
-	message("repo_nyanutil locally specified: " ${repo_nyanutil})
-endif()
-FetchContent_Declare(
-	nyanutil
-	GIT_REPOSITORY ${repo_nyanutil}
-	GIT_TAG        master
-	GIT_SHALLOW    true
+CPMAddPackage(NAME nyanutil
+	GITHUB_REPOSITORY JerNeth/NYANUtil
+	GIT_TAG	master
+	OPTIONS "NYAN_UTIL_BUILD_TESTS OFF" "NYAN_UTIL_BUILD_SAMPLES OFF"
 )
-FetchContent_GetProperties(nyanutil)
-FetchContent_MakeAvailable(nyanutil)
+

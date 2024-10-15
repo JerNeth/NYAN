@@ -1,15 +1,17 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <span>
-#include <utility>
+//#include <cassert>
+//#include <expected>
+//#include <span>
+//#include <utility>
 
 #include "volk.h"
 #include "vk_mem_alloc.h"
 
 
 module NYANVulkan;
+import std;
+
 import NYANData;
 import NYANLog;
 
@@ -101,7 +103,7 @@ std::expected<RenderPass, Error> RenderPass::create(LogicalDevice& device) noexc
 	if (auto result = device.get_device().vkCreateRenderPass(&createInfo, &handle); result != VK_SUCCESS) [[unlikely]] 
 		return std::unexpected{ result };
 
-	assert(false && "TODO");
+	::assert(false, "TODO");
 
 	return RenderPass{ device.get_device(), device.get_deletion_queue(), handle, {} };
 }
@@ -116,8 +118,8 @@ RenderPass::RenderPass(RenderPass&& other) noexcept :
 
 RenderPass& RenderPass::operator=(RenderPass&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
-	assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
+	::assert(ptr_device == other.ptr_device);
+	::assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
 	if (std::addressof(other) != this) {
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_data, other.m_data);
@@ -146,7 +148,7 @@ RenderPass::RenderPass(const LogicalDeviceWrapper& device, DeletionQueue& deleti
 	r_deletionQueue(deletionQueue),
 	m_data(std::move(data))
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }
 
 std::expected<SingleRenderPass, Error> SingleRenderPass::create(LogicalDevice& device, SingleRenderPass::Params params) noexcept
@@ -204,7 +206,7 @@ std::expected<SingleRenderPass, Error> SingleRenderPass::create(LogicalDevice& d
 				nyan::ignore = colorAttachments.push_back(VkAttachmentReference{ .attachment {count++}, .layout{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} });
 		}
 		else {
-			assert(depthStencilAttachment.attachment == VK_ATTACHMENT_UNUSED);
+			::assert(depthStencilAttachment.attachment == VK_ATTACHMENT_UNUSED);
 			if (depthStencilAttachment.attachment != VK_ATTACHMENT_UNUSED) [[unlikely]]
 				return std::unexpected{VK_ERROR_UNKNOWN};
 			depthStencilAttachment.attachment = count++;
@@ -212,9 +214,10 @@ std::expected<SingleRenderPass, Error> SingleRenderPass::create(LogicalDevice& d
 		}
 	}
 
-	assert(colorAttachments.size() == resolveAttachments.size() || resolveAttachments.empty());
-	if (colorAttachments.size() != resolveAttachments.size() && !resolveAttachments.empty()) [[unlikely]]
+	if (colorAttachments.size() != resolveAttachments.size() && !resolveAttachments.empty()) [[unlikely]] {
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
+	}
 
 	VkSubpassDescription subpass
 	{

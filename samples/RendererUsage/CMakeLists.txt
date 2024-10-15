@@ -16,6 +16,6 @@ target_link_libraries(RendererUsage
 		NYAN::Renderer 
 		NYAN::Log
 		NYAN::Data
-		NYAN::GLFWWrapper
+		NYAN::SDLWrapper
 		sample_renderer_shaders
 )

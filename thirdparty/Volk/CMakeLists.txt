@@ -8,19 +8,11 @@ elseif(UNIX)
     set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_XLIB_KHR)
 endif()
 
-if(NOT DEFINED repo_volk OR NOT EXISTS ${repo_volk})
-	message("Volk not locally specified, fetching remote")
-	set(repo_volk https://github.com/zeux/volk.git)
-else()
-	message("repo_volk locally specified:" ${repo_volk})
-endif()
-FetchContent_Declare(
-	volk
-	GIT_REPOSITORY ${repo_volk}
-	GIT_TAG        vulkan-sdk-${Vulkan_VERSION}
-	GIT_SHALLOW    true
+
+CPMAddPackage(NAME volk
+	GITHUB_REPOSITORY zeux/volk
+	GIT_TAG	vulkan-sdk-${Vulkan_VERSION}
 )
-FetchContent_MakeAvailable(volk)
 
 target_compile_definitions(volk INTERFACE 
     VK_NO_PROTOTYPES

@@ -42,8 +42,14 @@ For more detailed instructions and how to run the samples, etc. head over to [ge
 
 The following third party dependencies are necessary:
 
+### Manual
+
 - [Vulkan SDK](https://vulkan.lunarg.com/): must be manually installed (1.3 required)
-- [GLFW](https://github.com/glfw/glfw): automatically fetched
+
+### Managed
+The following dependencies are managed and either included or automatically fetched via [CPM](https://github.com/cpm-cmake/CPM.cmake).
+
+- [SDL](https://github.com/libsdl-org/SDL): automatically fetched
 - [GTest](https://github.com/google/googletest): automatically fetched (Testing only)
 - [Imgui](https://github.com/ocornut/imgui): automatically fetched
 - [MagicEnum](https://github.com/Neargye/magic_enum): automatically fetched

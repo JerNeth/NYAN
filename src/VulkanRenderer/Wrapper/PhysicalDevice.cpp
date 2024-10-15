@@ -1,15 +1,17 @@
 module;
 
-#include <bit>
-#include <cassert>
-#include <expected>
-#include <string_view>
-#include <span>
-#include <vector>
+//#include <bit>
+//#include <cassert>
+//#include <expected>
+//#include <string_view>
+//#include <span>
+//#include <vector>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANLog;
 
 using namespace nyan::vulkan;
@@ -600,7 +602,7 @@ const VkPhysicalDeviceFeatures2& PhysicalDevice::build_feature_chain(const Exten
 	}
 	else
 	{
-		assert(false);
+		::assert(false);
 	}
 	if (m_properties.properties.apiVersion >= VK_API_VERSION_1_2)
 	{
@@ -936,7 +938,7 @@ void PhysicalDevice::init_memory_properties() noexcept
 			if (type.heapIndex != memoryHeapIndex)
 				continue;
 
-			assert(type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			::assert(type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 			if (!(type.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
 				continue;
 

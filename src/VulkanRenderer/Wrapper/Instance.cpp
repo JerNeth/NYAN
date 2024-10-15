@@ -1,16 +1,18 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <span>
-#include <string>
-#include <string_view>
-#include <vector>
-#include <array>
-#include <optional>
+//#include <cassert>
+//#include <expected>
+//#include <span>
+//#include <string>
+//#include <string_view>
+//#include <vector>
+//#include <array>
+//#include <optional>
 
 #include "volk.h"
 module NYANVulkan;
+import std;
+
 import NYANLog;
 
 using namespace nyan::vulkan;
@@ -223,7 +225,7 @@ static constexpr const char* get_object_string(VkObjectType objectType) {
 static std::expected<std::vector<PhysicalDevice>, PhysicalDeviceCreationError> enumerate_physical_devices(const VkInstance handle) noexcept
 {
 
-	assert(vkEnumeratePhysicalDevices);
+	::assert(vkEnumeratePhysicalDevices);
 
 	uint32_t numDevices;
 	if (const auto result = vkEnumeratePhysicalDevices(handle, &numDevices, nullptr); result != VK_SUCCESS) [[unlikely]] 
@@ -315,10 +317,10 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 {
 	if (const auto result = volkInitialize(); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{InstanceCreationError::Type::VolkInitializationError };
-	assert(vkCreateInstance);
-	assert(vkEnumerateInstanceVersion);
-	assert(vkEnumerateInstanceExtensionProperties);
-	assert(vkEnumerateInstanceLayerProperties);
+	::assert(vkCreateInstance);
+	::assert(vkEnumerateInstanceVersion);
+	::assert(vkEnumerateInstanceExtensionProperties);
+	::assert(vkEnumerateInstanceLayerProperties);
 
 	uint32_t layerPropertyCount {0};
 	if (auto result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr); result != VK_SUCCESS) [[unlikely]]
@@ -526,7 +528,7 @@ std::expected<Instance, InstanceCreationError> Instance::create(
 
 	VkDebugUtilsMessengerEXT debugUtilsMessenger{ VK_NULL_HANDLE };
 	if (validationSettings.createCallback && validationSettings.enabled && find_extension(requestedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
-		assert(vkCreateDebugUtilsMessengerEXT);
+		::assert(vkCreateDebugUtilsMessengerEXT);
 		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{
 			.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT},
 			.flags {},
@@ -587,7 +589,7 @@ VkInstance Instance::get_handle() const noexcept
 Version Instance::get_version() const noexcept
 {
 	uint32_t version{ 0 };
-	assert(vkEnumerateInstanceVersion != nullptr);
+	::assert(vkEnumerateInstanceVersion != nullptr);
 	vkEnumerateInstanceVersion(&version);
 	return Version{ version };
 }
@@ -606,7 +608,7 @@ Instance::Instance(VkInstance instance, VkDebugUtilsMessengerEXT debugUtilsMesse
 
 Instance::~Instance() noexcept
 {
-	assert(vkDestroyInstance);
+	::assert(vkDestroyInstance);
 
 	if (m_debugUtilsMessenger != VK_NULL_HANDLE && vkDestroyDebugUtilsMessengerEXT)
 		vkDestroyDebugUtilsMessengerEXT(m_handle, m_debugUtilsMessenger, m_allocator);

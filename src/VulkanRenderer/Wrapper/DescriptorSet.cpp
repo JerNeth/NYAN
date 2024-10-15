@@ -1,13 +1,15 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <vector>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <vector>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import :DescriptorSetLayout;
 
 using namespace nyan::vulkan;
@@ -23,8 +25,8 @@ DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept :
 
 DescriptorSet& DescriptorSet::operator=(DescriptorSet&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
-	assert(std::addressof(r_layout) == std::addressof(other.r_layout));
+	::assert(ptr_device == other.ptr_device);
+	::assert(std::addressof(r_layout) == std::addressof(other.r_layout));
 	if(this != std::addressof(other))
 	{
 		std::swap(m_handle, other.m_handle);
@@ -70,7 +72,7 @@ void DescriptorSet::update(StorageBufferDescriptor descriptor, const StorageBuff
 	.offset {offset},
 	.range {range}
 	};
-	assert(bufferInfo.range <= std::numeric_limits<uint32_t>::max()); //TODO: Query device, this is a practical common limit
+	::assert(bufferInfo.range <= std::numeric_limits<uint32_t>::max()); //TODO: Query device, this is a practical common limit
 
 	VkWriteDescriptorSet write{
 		.sType {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET},

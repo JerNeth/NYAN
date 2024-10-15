@@ -1,12 +1,13 @@
 module;
 
-#include <cassert>
-#include <utility>
+//#include <cassert>
+//#include <utility>
 
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
 module NYANVulkan;
+import std;
 
 using namespace nyan::vulkan;
 
@@ -122,14 +123,14 @@ void nyan::vulkan::DeletionQueue::queue_deletion(VkRenderPass renderPass) noexce
 }
 DeletionQueue::DeletionData& nyan::vulkan::DeletionQueue::queue_item_deletion() noexcept
 {
-	assert(m_currentEpoch < numEpochs);
+	::assert(m_currentEpoch < numEpochs);
 	// ReSharper disable once CppUseStructuredBinding
 	m_deletionEmpty[m_currentEpoch] = false;
 	return m_deletionQueues[m_currentEpoch];
 }
 void DeletionQueue::clear_epoch(const size_t epoch) noexcept
 {
-	assert(epoch < numEpochs);
+	::assert(epoch < numEpochs);
 	if (epoch >= numEpochs)
 		return;
 	if (!m_deletionEmpty[epoch])

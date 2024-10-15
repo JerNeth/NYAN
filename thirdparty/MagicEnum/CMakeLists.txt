@@ -1,19 +1,7 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14)
 
-include(FetchContent)
-
-if(NOT DEFINED repo_magicenum OR NOT EXISTS ${repo_magicenum})
-	message("MagicEnum not locally specified, fetching remote")
-	set(repo_magicenum https://github.com/Neargye/magic_enum.git)
-else()
-	message("MagicEnum locally specified: " ${repo_magicenum})
-endif()
-
-FetchContent_Declare(
-	magic_enum
-	GIT_REPOSITORY ${repo_magicenum}
-	GIT_TAG        master
-	GIT_SHALLOW    true
+CPMAddPackage(NAME magic_enum
+	GITHUB_REPOSITORY Neargye/magic_enum
+	GIT_TAG	master
 )
 
-FetchContent_MakeAvailable(magic_enum)

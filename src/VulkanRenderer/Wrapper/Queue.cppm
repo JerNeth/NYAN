@@ -8,8 +8,8 @@ module;
 //#include <vector>
 //#include <memory>
 
-#include "magic_enum.hpp"
-#include "magic_enum_containers.hpp"
+#include "magic_enum/magic_enum.hpp"
+#include "magic_enum/magic_enum_containers.hpp"
 
 #include "volk.h"
 #include "vk_mem_alloc.h"

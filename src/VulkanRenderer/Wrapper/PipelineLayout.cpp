@@ -1,13 +1,15 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <span>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <span>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANData;
 import NYANLog;
 
@@ -70,5 +72,5 @@ PipelineLayout::PipelineLayout(const LogicalDeviceWrapper& deviceWrapper, VkPipe
 	Object(deviceWrapper, pipelineLayout),
 	r_deletionQueue(deletionQueue)
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }

@@ -1,13 +1,14 @@
 module;
 
-#include <array>
-#include <cassert>
-#include <expected>
-#include <utility>
+//#include <array>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
 
 using namespace nyan::vulkan;
 
@@ -22,9 +23,9 @@ CommandPool::CommandPool(CommandPool&& other) noexcept :
 
 CommandPool& CommandPool::operator=(CommandPool&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
-	assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
-	assert(std::addressof(r_queue) == std::addressof(other.r_queue));
+	::assert(ptr_device == other.ptr_device);
+	::assert(std::addressof(r_deletionQueue) == std::addressof(other.r_deletionQueue));
+	::assert(std::addressof(r_queue) == std::addressof(other.r_queue));
 	if (this != std::addressof(other)) {
 		std::swap(m_handle, other.m_handle);
 	}
@@ -82,5 +83,5 @@ CommandPool::CommandPool(const LogicalDeviceWrapper& device, VkCommandPool handl
 	r_deletionQueue(deletionQueue),
 	r_queue(queue)
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }

@@ -1,14 +1,16 @@
 module;
 
-#include <array>
-#include <cassert>
-#include <expected>
-#include <span>
-#include <limits>
+//#include <array>
+//#include <cassert>
+//#include <expected>
+//#include <span>
+//#include <limits>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANData;
 import NYANLog;
 
@@ -23,7 +25,7 @@ PipelineCache::PipelineCache(PipelineCache&& other) noexcept :
 
 PipelineCache& PipelineCache::operator=(PipelineCache&& other) noexcept
 {
-	assert(ptr_device == other.ptr_device);
+	::assert(ptr_device == other.ptr_device);
 	if (this != std::addressof(other)) {
 		std::swap(m_handle, other.m_handle);
 	}
@@ -48,7 +50,7 @@ nyan::DynamicArray<std::byte> PipelineCache::get_data() const noexcept
 	if (const auto result = ptr_device->vkGetPipelineCacheData(m_handle, &dataSize, retVal.data() + sizeof(PipelineCachePrefixHeader)); result != VK_SUCCESS)
 		return retVal;
 
-	assert(dataSize <= std::numeric_limits<uint32_t>::max());
+	::assert(dataSize <= std::numeric_limits<uint32_t>::max());
 	if (dataSize > std::numeric_limits<uint32_t>::max())
 		return retVal;
 

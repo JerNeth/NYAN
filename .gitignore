@@ -5,6 +5,8 @@
 /out
 /TestResults
 
+/tmp/deps
+
 /debug
 /Debug
 
@@ -58,3 +60,5 @@
 *.opendb
 /CMakeSettings.json
 /UserSettings.txt
+
+CPM.cmake

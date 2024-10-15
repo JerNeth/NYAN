@@ -1,6 +1,6 @@
 module;
 
-export module NYANGLFW:ModuleSettings;
+export module NYANSDL:ModuleSettings;
 import NYANAssert;
 
 #ifdef NDEBUG

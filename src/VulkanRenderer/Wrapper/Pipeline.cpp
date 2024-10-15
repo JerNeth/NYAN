@@ -1,14 +1,15 @@
 module;
 
-#include <array>
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <variant>
+//#include <array>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <variant>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
 
 using namespace nyan::vulkan;
 
@@ -29,7 +30,7 @@ Pipeline& nyan::vulkan::Pipeline::operator=(Pipeline&& other) noexcept
 	if (this != std::addressof(other))
 	{
 		std::swap(ptr_device, other.ptr_device);
-		assert(std::addressof(r_layout) == std::addressof(other.r_layout));
+		::assert(std::addressof(r_layout) == std::addressof(other.r_layout));
 		std::swap(m_handle, other.m_handle);
 	}
 	return *this;
@@ -507,7 +508,7 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDeviceWrapper& device, const Pip
 	Pipeline(device, layout, handle),
 	m_pipelineState(pipelineState)
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }
 
 const GraphicsPipeline::PipelineState& GraphicsPipeline::get_pipeline_state() const noexcept
@@ -517,7 +518,7 @@ const GraphicsPipeline::PipelineState& GraphicsPipeline::get_pipeline_state() co
 
 std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::create(const LogicalDevice& device, const PipelineLayout& layout, const Parameters& params, PipelineCache* pipelineCache) noexcept
 {
-	assert(false && "TODO");
+	::assert(false, "TODO");
 
 	constexpr bool useDescriptorBuffers = false;
 	
@@ -536,7 +537,7 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 		colorAttachmentCount = renderingInfo.colorAttachmentCount;
 	}
 	else {
-		assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
+		::assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
 		const auto& renderPassInfo = std::get<RenderPassInfo>(params.renderInfo);
 		colorAttachmentCount = renderPassInfo.renderPass.get_num_color_attachments(renderPassInfo.subpass);
 	}
@@ -560,7 +561,7 @@ std::expected<MeshShaderGraphicsPipeline, Error> MeshShaderGraphicsPipeline::cre
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::PrimitiveRestartEnable) ||
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::PatchControlPoints) ||
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::VertexInput)) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 
@@ -628,7 +629,7 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 		colorAttachmentCount = renderingInfo.colorAttachmentCount;
 	}
 	else {
-		assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
+		::assert(std::holds_alternative<RenderPassInfo>(params.renderInfo));
 		const auto& renderPassInfo = std::get<RenderPassInfo>(params.renderInfo);
 		colorAttachmentCount = renderPassInfo.renderPass.get_num_color_attachments(renderPassInfo.subpass);
 	}
@@ -639,7 +640,7 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 
 	for (uint32_t location = 0; location < params.vertexInput.vertexInputCount; location++) {
 		//Probably not necessary since the possible formats are widely supported
-		assert(physicalDevice.vertex_format_supported(params.vertexInput.vertexInputFormats[location]));
+		::assert(physicalDevice.vertex_format_supported(params.vertexInput.vertexInputFormats[location]));
 		if (!physicalDevice.vertex_format_supported(params.vertexInput.vertexInputFormats[location])) [[unlikely]]
 			return std::unexpected{ VK_ERROR_FORMAT_NOT_SUPPORTED };
 	}
@@ -670,28 +671,28 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 
 	if (params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ViewportWithCount)) {
 		if (viewportStateCreateInfo.viewportCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Viewport)) [[unlikely]] {
-			assert(false);
+			::assert(false);
 			return std::unexpected{ VK_ERROR_UNKNOWN };
 		}
 	}
 	else if (viewportStateCreateInfo.viewportCount == 0) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	if (params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount)) {
 		if (viewportStateCreateInfo.scissorCount != 0 || params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::Scissor)) [[unlikely]] {
-			assert(false);
+			::assert(false);
 			return std::unexpected{ VK_ERROR_UNKNOWN };
 		}
 	}
 	else if (viewportStateCreateInfo.scissorCount == 0) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	if(params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount) &&
 		params.pipelineState.dynamicState.test(GraphicsPipeline::DynamicState::ScissorWithCount) &&
 		(viewportStateCreateInfo.scissorCount != viewportStateCreateInfo.viewportCount)) [[unlikely]] {
-		assert(false);
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 
@@ -712,7 +713,7 @@ std::expected<VertexShaderGraphicsPipeline, Error> VertexShaderGraphicsPipeline:
 
 	if (!(params.tessellationControlShader != nullptr && params.tessellationEvaluationShader != nullptr) &&
 		!(params.tessellationControlShader == nullptr && params.tessellationEvaluationShader == nullptr)) [[unlikely]] {
-		assert(false && "Must have control AND evalutation shader");
+		::assert(false, "Must have tess control AND evaluation shader");
 		return std::unexpected{ VK_ERROR_UNKNOWN };
 	}
 	shaderStageCreateInfo[stageCount++] = params.fragmentShader.get_shader_stage_create_info();
@@ -755,7 +756,7 @@ VertexShaderGraphicsPipeline::VertexShaderGraphicsPipeline(const LogicalDeviceWr
 std::expected<ComputePipeline, Error> ComputePipeline::create(const LogicalDeviceWrapper& device, const PipelineLayout& layout, const ShaderInstance& computeShader, PipelineCache* pipelineCache) noexcept
 {
 	VkPipelineLayout pipelineLayout { layout.get_handle()};
-	assert(pipelineLayout != VK_NULL_HANDLE);
+	::assert(pipelineLayout != VK_NULL_HANDLE);
 	//assert(config.shaderInstance != invalidShaderId);
 	VkComputePipelineCreateInfo createInfo{
 		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -767,7 +768,7 @@ std::expected<ComputePipeline, Error> ComputePipeline::create(const LogicalDevic
 		.basePipelineIndex = -1
 	};
 	//Validate VUID-VkComputePipelineCreateInfo-flags-xxxxx
-	assert(!(createInfo.flags & (VK_PIPELINE_CREATE_LIBRARY_BIT_KHR |
+	::assert(!(createInfo.flags & (VK_PIPELINE_CREATE_LIBRARY_BIT_KHR |
 		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR |
 		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR |
 		VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR |
@@ -777,7 +778,7 @@ std::expected<ComputePipeline, Error> ComputePipeline::create(const LogicalDevic
 		VK_PIPELINE_CREATE_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR |
 		VK_PIPELINE_CREATE_RAY_TRACING_ALLOW_MOTION_BIT_NV |
 		VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV)));
-	assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
+	::assert(createInfo.stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
 	VkPipeline handle{ VK_NULL_HANDLE };
 	if (auto result = device.vkCreateComputePipelines(pipelineCache ? pipelineCache->get_handle() : nullptr, 1, &createInfo, &handle);
@@ -790,12 +791,12 @@ std::expected<ComputePipeline, Error> ComputePipeline::create(const LogicalDevic
 ComputePipeline::ComputePipeline(const LogicalDeviceWrapper& device, const PipelineLayout& layout, VkPipeline handle) noexcept :
 	Pipeline(device, layout, handle)
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }
 
 std::expected<RayTracingPipeline, Error> RayTracingPipeline::create(const LogicalDeviceWrapper& device, const PipelineLayout& layout, PipelineCache* pipelineCache) noexcept
 {
-	assert(false && "TODO");
+	::assert(false, "TODO");
 	VkPipeline handle{ VK_NULL_HANDLE };
 	return RayTracingPipeline{device, layout, handle };
 }
@@ -803,5 +804,5 @@ std::expected<RayTracingPipeline, Error> RayTracingPipeline::create(const Logica
 RayTracingPipeline::RayTracingPipeline(const LogicalDeviceWrapper& device, const PipelineLayout& layout, VkPipeline handle) noexcept :
 	Pipeline(device, layout, handle)
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }

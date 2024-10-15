@@ -4,9 +4,10 @@ module;
 //#include <expected>
 //#include <span>
 
+#include "magic_enum/magic_enum.hpp"
+
 #include <volk.h>
 
-#include <magic_enum.hpp>
 
 export module NYANVulkan:Shader;
 import std;

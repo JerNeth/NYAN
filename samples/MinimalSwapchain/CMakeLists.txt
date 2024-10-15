@@ -14,5 +14,5 @@ target_link_libraries(MinimalSwapchain
 		vma_implementation
 		NYAN::Log
 		NYAN::Data
-		NYAN::GLFWWrapper
+		NYAN::SDLWrapper
 )

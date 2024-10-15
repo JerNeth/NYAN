@@ -6,7 +6,7 @@ export module NYANRenderer:WSI;
 import std;
 
 import NYANVulkan;
-import NYANGLFW;
+import NYANSDL;
 
 import :Error;
 
@@ -17,7 +17,7 @@ export namespace nyan::renderer
 	public:
 		void acquire() noexcept;
 		void present() noexcept;
-		[[nodiscard("must handle potential error")]] static std::expected<WSI, WSIError> create(glfw::Window& r_window) noexcept;
+		[[nodiscard("must handle potential error")]] static std::expected<WSI, WSIError> create() noexcept;
 	private:
 		WSI() noexcept;
 

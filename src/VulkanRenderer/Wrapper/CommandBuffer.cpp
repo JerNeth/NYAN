@@ -1,16 +1,17 @@
-// ReSharper disable CppMemberFunctionMayBeConst
-// Functions are technically const but semantically they modify something
 module;
 
-#include <bit>
-#include <cassert>
-#include <expected>
-#include <utility>
+//#include <bit>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANData;
+
 import :DescriptorSet;
 import :Pipeline;
 
@@ -18,13 +19,13 @@ using namespace nyan::vulkan;
 
 void PipelineBind::push_descriptor_set(uint32_t firstSet, const StorageBuffer& buffer, VkDeviceSize offset, VkDeviceSize range) const noexcept
 {
-	assert(false && "TODO");
+	::assert(false && "TODO");
 	VkDescriptorBufferInfo bufferInfo{
 		.buffer {buffer.get_handle()},
 		.offset {offset},
 		.range {range}
 	};
-	assert(bufferInfo.buffer != VK_NULL_HANDLE);
+	::assert(bufferInfo.buffer != VK_NULL_HANDLE);
 
 	VkWriteDescriptorSet write{
 		.sType {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET},
@@ -54,9 +55,9 @@ PipelineBind::PipelineBind(const LogicalDeviceWrapper& device, VkCommandBuffer c
 	m_layout(layout),
 	m_bindPoint(bindPoint)
 {
-	assert(m_cmd != VK_NULL_HANDLE);
-	assert(m_layout != VK_NULL_HANDLE);
-	assert(m_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS || 
+	::assert(m_cmd != VK_NULL_HANDLE);
+	::assert(m_layout != VK_NULL_HANDLE);
+	::assert(m_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS || 
 		m_bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE ||
 		m_bindPoint == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
 }
@@ -137,21 +138,21 @@ void GraphicsPipelineBind::begin_rendering(const RenderingInfo& _renderingInfo) 
 	uint32_t layers{ 0 };
 
 	for (const auto& attachment : _renderingInfo.colorAttachments) {
-		if (auto localWidth = attachment.image.get_width(); width != 0 && width != localWidth)
-			assert(false);
+		if (auto localWidth = attachment.image.get_width(); width != 0 && width != localWidth) [[unlikely]]
+			::assert(false);
 		else
 			width = localWidth;
 
-		if (auto localHeight = attachment.image.get_height(); height != 0 && height != localHeight)
-			assert(false);
+		if (auto localHeight = attachment.image.get_height(); height != 0 && height != localHeight) [[unlikely]]
+			::assert(false);
 		else
 			height = localHeight;
 
-		if (auto localLayers = attachment.image.get_layers(); layers != 0 && layers != localLayers)
-			assert(false);
+		if (auto localLayers = attachment.image.get_layers(); layers != 0 && layers != localLayers) [[unlikely]]
+			::assert(false);
 		else
 			layers = localLayers;
-		assert(attachment.layout != Layout::Undefined);
+		::assert(attachment.layout != Layout::Undefined);
 		nyan::ignore = colorAttachments.push_back(VkRenderingAttachmentInfo{
 				.sType{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO},
 				.pNext{nullptr},
@@ -255,8 +256,8 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept
 {
 	if(this != std::addressof(other))
 	{
-		assert(ptr_device == other.ptr_device);
-		assert(std::addressof(r_queue) == std::addressof(other.r_queue));
+		::assert(ptr_device == other.ptr_device);
+		::assert(std::addressof(r_queue) == std::addressof(other.r_queue));
 		std::swap(m_handle, other.m_handle);
 		//std::swap(m_state, other.m_state);
 	}
@@ -386,7 +387,7 @@ VertexPipelineBind CommandBuffer::bind_pipeline(const VertexShaderGraphicsPipeli
 				bind.set_scissor(pipelineState.viewport.width, pipelineState.viewport.height, 0, 0);
 				break;
 			default:
-				assert(false && "TODO");
+				::assert(false && "TODO");
 		}
 		});
 	
@@ -395,7 +396,7 @@ VertexPipelineBind CommandBuffer::bind_pipeline(const VertexShaderGraphicsPipeli
 
 ComputePipelineBind CommandBuffer::bind_pipeline(const ComputePipeline& pipeline) noexcept
 {
-	assert(r_queue.get_type() == Queue::Type::Compute ||
+	::assert(r_queue.get_type() == Queue::Type::Compute ||
 		r_queue.get_type() == Queue::Type::Graphics);
 	//assert(m_state == State::Recording);
 	ptr_device->vkCmdBindPipeline(m_handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.get_handle());
@@ -404,7 +405,7 @@ ComputePipelineBind CommandBuffer::bind_pipeline(const ComputePipeline& pipeline
 
 void CommandBuffer::begin_region(const char* name, const float* color) noexcept
 {
-	assert(vkCmdBeginDebugUtilsLabelEXT);
+	::assert(vkCmdBeginDebugUtilsLabelEXT);
 	VkDebugUtilsLabelEXT label{
 		.sType {VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT},
 		.pNext {nullptr},
@@ -423,7 +424,7 @@ void CommandBuffer::begin_region(const char* name, const float* color) noexcept
 
 void CommandBuffer::end_region() noexcept
 {
-	assert(vkCmdEndDebugUtilsLabelEXT);
+	::assert(vkCmdEndDebugUtilsLabelEXT);
 	vkCmdEndDebugUtilsLabelEXT(m_handle);
 }
 

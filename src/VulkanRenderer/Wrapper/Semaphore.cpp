@@ -1,13 +1,15 @@
 module;
 
-#include <atomic>
-#include <cassert>
-#include <expected>
-#include <utility>
+//#include <atomic>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANLog;
 import :LogicalDevice;
 
@@ -68,9 +70,10 @@ std::expected<uint64_t, Error> TimelineSemaphore::get_value() const noexcept
 
 std::expected<TimelineSemaphore, Error> TimelineSemaphore::create(LogicalDevice& device, uint64_t initialValue) noexcept
 {
-	assert(device.get_enabled_extensions().timelineSemaphore);
-	if(!device.get_enabled_extensions().timelineSemaphore) [[unlikely]]
+	if (!device.get_enabled_extensions().timelineSemaphore) [[unlikely]] {
+		::assert(false);
 		return std::unexpected{ VK_ERROR_EXTENSION_NOT_PRESENT };
+	}
 
 	VkSemaphoreTypeCreateInfo typeCreateInfo{
 		.sType {VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO},

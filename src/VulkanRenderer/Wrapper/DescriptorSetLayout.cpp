@@ -1,14 +1,16 @@
 module;
 
-#include <array>
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <string_view>
+//#include <array>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <string_view>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANLog;
 
 using namespace nyan::vulkan;
@@ -25,7 +27,7 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other)
 {
 	if(this != std::addressof(other))
 	{
-		assert(ptr_device == other.ptr_device);
+		::assert(ptr_device == other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_info, other.m_info);
 	}
@@ -61,7 +63,7 @@ VkDescriptorType DescriptorSetLayout::bindless_binding_to_type(const uint32_t bi
 	case DescriptorSetLayout::accelerationStructureBinding:
 		return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 	default:
-		assert(false);
+		::assert(false);
 		return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	}
 }
@@ -228,7 +230,7 @@ DescriptorSetLayout::DescriptorSetLayout(const LogicalDeviceWrapper& deviceWrapp
 	r_deletionQueue(deletionQueue),
 	m_info(std::move(info))
 {
-	assert(m_handle != VK_NULL_HANDLE);
+	::assert(m_handle != VK_NULL_HANDLE);
 }
 
 std::expected<PushDescriptorSetLayout, Error> nyan::vulkan::PushDescriptorSetLayout::create(LogicalDevice& device, DescriptorInfo info) noexcept

@@ -1,14 +1,16 @@
 module;
 
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <span>
-#include <vector>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <span>
+//#include <vector>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
+
 import NYANData;
 import NYANLog;
 
@@ -42,9 +44,10 @@ std::expected <PresentModes, Error> Surface::get_present_modes(const PhysicalDev
 	if (auto result = vkGetPhysicalDeviceSurfacePresentModesKHR(device.get_handle(), m_handle.surface, &count, nullptr); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
-	assert(count <= 6);
-	if (count > 6) [[unlikely]]
+	if (count > 6) [[unlikely]] {
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
+	}
 
 	nyan::StaticVector< VkPresentModeKHR, 6> presentModesVec(count);
 
@@ -63,9 +66,10 @@ std::expected <PresentModes, Error> Surface::get_present_modes2(const PhysicalDe
 	if (auto result = vkGetPhysicalDeviceSurfacePresentModes2EXT(device.get_handle(), &m_handle, &count, nullptr); result != VK_SUCCESS) [[unlikely]]
 		return std::unexpected{ result };
 
-	assert(count <= 6);
-	if (count > 6)
+	if (count > 6) [[unlikely]] {
+		::assert(false);
 		return std::unexpected{ VK_ERROR_UNKNOWN };
+	}
 
 	nyan::StaticVector< VkPresentModeKHR, 6> presentModesVec(count);
 
@@ -182,5 +186,5 @@ Surface::Surface(const Instance& instance, VkSurfaceKHR handle) noexcept :
 	ptr_instance(&instance),
 	m_handle(VkPhysicalDeviceSurfaceInfo2KHR { .sType{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR},.pNext{nullptr}, .surface{ handle } })
 {
-	assert(m_handle.surface != VK_NULL_HANDLE);
+	::assert(m_handle.surface != VK_NULL_HANDLE);
 }

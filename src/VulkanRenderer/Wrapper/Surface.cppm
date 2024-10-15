@@ -5,7 +5,7 @@ module;
 //#include <span>
 //#include <vector>
 
-#include "magic_enum.hpp"
+#include "magic_enum/magic_enum.hpp"
 
 #include "volk.h"
 

@@ -1,2 +1,2 @@
 add_subdirectory(VulkanRenderer)
-add_subdirectory(GLFW)
+add_subdirectory(SDL)

@@ -8,8 +8,17 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD
 
 include(CheckIPOSupported)
 
+set(CPM_DOWNLOAD_VERSION 0.40.2) 
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
 
+if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
+    message(STATUS "Downloading CPM.cmake")
+    file(DOWNLOAD https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake ${CPM_DOWNLOAD_LOCATION})
+endif()
 
+include(${CPM_DOWNLOAD_LOCATION})
+
+cmake_policy(SET CMP0168 NEW)
 cmake_policy(SET CMP0091 NEW)
 project(NYAN
         VERSION 0.0.1
@@ -18,10 +27,6 @@ project(NYAN
 # Tell CMake that we explicitly want `import std`. This will initialize the
 # property on all targets declared after this to 1
 set(CMAKE_CXX_MODULE_STD 1)
-
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/UserSettings.txt)
-    include(${CMAKE_CURRENT_SOURCE_DIR}/UserSettings.txt)
-endif()
 
 #Project Wide Settings
 #All Options which change the ABI come here

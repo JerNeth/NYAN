@@ -29,7 +29,7 @@ add_library(NYAN::Renderer ALIAS Renderer)
 target_link_libraries(Renderer 
 	PRIVATE 
 		NYAN::Assert
-		NYAN::GLFWWrapper
+		NYAN::SDLWrapper
 		NYAN::Vulkan
 		NYAN::Log
 		NYAN::Data

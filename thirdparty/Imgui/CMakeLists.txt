@@ -1,53 +1,47 @@
-cmake_minimum_required (VERSION 3.14)
-include(FetchContent)
+cmake_minimum_required (VERSION 3.23)
 
-
-if(NOT DEFINED repo_imgui OR NOT EXISTS ${repo_imgui})
-	message("repo_imgui not locally specified, fetching remote")
-	set(repo_imgui https://github.com/ocornut/imgui.git)
-else()
-	message("repo_imgui locally specified: " ${repo_imgui})
-endif()
-FetchContent_Declare(
-	imgui
-	GIT_REPOSITORY ${repo_imgui}
-	GIT_TAG        master
-	GIT_SHALLOW    true
+CPMAddPackage(NAME imgui
+	GITHUB_REPOSITORY ocornut/imgui
+	GIT_TAG	master
+	DOWNLOAD_ONLY YES
 )
 
-FetchContent_MakeAvailable(imgui)
 set(IMGUI_SRC 
 	${imgui_SOURCE_DIR}/imgui.cpp
 	${imgui_SOURCE_DIR}/imgui_draw.cpp
 	${imgui_SOURCE_DIR}/imgui_demo.cpp
 	${imgui_SOURCE_DIR}/imgui_widgets.cpp
 	${imgui_SOURCE_DIR}/imgui_tables.cpp
-
+	)
+set(IMGUI_H 
+	${imgui_SOURCE_DIR}/imgui.h
+	${imgui_SOURCE_DIR}/imgui_internal.h
+	${imgui_SOURCE_DIR}/imconfig.h
+	${imgui_SOURCE_DIR}/imstb_rectpack.h
+	${imgui_SOURCE_DIR}/imstb_textedit.h
+	${imgui_SOURCE_DIR}/imstb_truetype.h
 	)
 add_library(imgui STATIC ${IMGUI_SRC})
-target_include_directories(imgui SYSTEM PUBLIC
-  ${imgui_SOURCE_DIR}
+
+#target_include_directories(imgui SYSTEM PUBLIC
+#  ${imgui_SOURCE_DIR}
+#)
+
+target_sources(
+	imgui
+	PUBLIC FILE_SET HEADERS BASE_DIRS ${imgui_SOURCE_DIR} FILES ${IMGUI_H}
+	PRIVATE ${IMGUI_SRC}
 )
+
 target_compile_definitions(imgui PUBLIC ImTextureID=ImU64)
 #target_compile_definitions(imgui PRIVATE IMGUI_DISABLE_OBSOLETE_KEYIO)
-#message(${imgui_SOURCE_DIR})
-#message(${IMGUI_SRC})
 
-
-if(NOT DEFINED repo_implot OR NOT EXISTS ${repo_implot})
-	message("repo_implot not locally specified, fetching remote")
-	set(repo_implot https://github.com/epezent/implot)
-else()
-	message("repo_implot locally specified: " ${repo_implot})
-endif()
-FetchContent_Declare(
-	implot
-	GIT_REPOSITORY ${repo_implot}
-	GIT_TAG        master
-	GIT_SHALLOW    true
+CPMAddPackage(NAME implot
+	GITHUB_REPOSITORY epezent/implot
+	GIT_TAG	master
+	DOWNLOAD_ONLY YES
 )
 
-FetchContent_MakeAvailable(implot)
 set(IMPLOT_SRC 
 	${implot_SOURCE_DIR}/implot.cpp
 	${implot_SOURCE_DIR}/implot_items.cpp
@@ -57,12 +51,11 @@ set(IMPLOT_H
 	${implot_SOURCE_DIR}/implot_internal.h
 	)
 add_library(implot STATIC ${IMPLOT_SRC})
+
 target_sources(
 	implot
-	PUBLIC 
-		${IMPLOT_H}
-	PRIVATE 
-		${IMPLOT_SRC}
+	PUBLIC FILE_SET HEADERS BASE_DIRS ${implot_SOURCE_DIR} FILES ${IMPLOT_H}
+	PRIVATE ${IMPLOT_SRC}
 )
 target_link_libraries(implot PRIVATE imgui)
 target_include_directories(implot SYSTEM PUBLIC

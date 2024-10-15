@@ -1,14 +1,15 @@
 module;
 
-#include <array>
-#include <cassert>
-#include <expected>
-#include <utility>
-#include <vector>
+//#include <array>
+//#include <cassert>
+//#include <expected>
+//#include <utility>
+//#include <vector>
 
 #include "volk.h"
 
 module NYANVulkan;
+import std;
 
 using namespace nyan::vulkan;
 
@@ -25,7 +26,7 @@ DescriptorPool& nyan::vulkan::DescriptorPool::operator=(
 {
 	if(this != std::addressof(other))
 	{
-		assert(ptr_device == other.ptr_device);
+		::assert(ptr_device == other.ptr_device);
 		std::swap(m_handle, other.m_handle);
 		std::swap(m_sets, other.m_sets);
 	}
@@ -134,11 +135,11 @@ DescriptorPool::DescriptorPool(const LogicalDeviceWrapper& deviceWrapper, const 
 
 void DescriptorPool::reset() noexcept
 {
-	assert(false);
+	::assert(false);
 	//Don't know why I would reset, hide for now
 	m_sets.clear();
 	//Synchronization necessary
 	auto result = ptr_device->vkResetDescriptorPool(m_handle, 0);
 	//Only valid result according to docs is Success, but idk
-	assert(result == VK_SUCCESS);
+	::assert(result == VK_SUCCESS);
 }
